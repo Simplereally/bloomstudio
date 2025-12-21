@@ -2,7 +2,6 @@
 
 // Component following SRP - Only handles parameter controls UI
 
-import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -23,10 +22,11 @@ import {
   Frame,
   Monitor,
   SlidersHorizontal,
+  Loader2,
 } from "lucide-react"
-import type { ImageGenerationParams, AspectRatio } from "@/types/pollinations"
+import type { ImageGenerationParams, AspectRatio, ImageModel } from "@/types/pollinations"
 import { IMAGE_MODELS, ASPECT_RATIOS, DEFAULT_DIMENSIONS } from "@/lib/image-models"
-import { PollinationsAPI } from "@/lib/pollinations-api"
+import { useGenerationControls } from "@/hooks/use-generation-controls"
 
 interface GenerationControlsProps {
   onGenerate: (params: ImageGenerationParams) => void
@@ -44,64 +44,32 @@ const ICON_MAP = {
 }
 
 export function GenerationControls({ onGenerate, isGenerating }: GenerationControlsProps) {
-  const [prompt, setPrompt] = useState("")
-  const [model, setModel] = useState<string>("flux")
-  const [aspectRatio, setAspectRatio] = useState<AspectRatio>("1:1")
-  const [width, setWidth] = useState(1024)
-  const [height, setHeight] = useState(1024)
-  const [seed, setSeed] = useState(-1)
-  const [enhance, setEnhance] = useState(false)
-  const [privateGen, setPrivateGen] = useState(false)
-  const [safe, setSafe] = useState(false)
-
-  const handleAspectRatioChange = (value: AspectRatio) => {
-    setAspectRatio(value)
-    if (value !== "custom") {
-      const ratio = ASPECT_RATIOS.find((r) => r.value === value)
-      if (ratio) {
-        setWidth(ratio.width)
-        setHeight(ratio.height)
-      }
-    }
-  }
-
-  const handleWidthChange = (value: number[]) => {
-    const roundedWidth = PollinationsAPI.roundDimension(value[0])
-    setWidth(roundedWidth)
-    setAspectRatio("custom")
-  }
-
-  const handleHeightChange = (value: number[]) => {
-    const roundedHeight = PollinationsAPI.roundDimension(value[0])
-    setHeight(roundedHeight)
-    setAspectRatio("custom")
-  }
-
-  const handleRandomSeed = () => {
-    setSeed(PollinationsAPI.generateRandomSeed())
-  }
-
-  const handleGenerate = () => {
-    if (!prompt.trim()) return
-
-    const params: ImageGenerationParams = {
-      prompt: prompt.trim(),
-      model: model as any,
-      width,
-      height,
-      seed: seed === -1 ? undefined : seed,
-      enhance,
-      private: privateGen,
-      safe,
-    }
-
-    onGenerate(params)
-  }
-
-  const currentModel = IMAGE_MODELS.find((m) => m.id === model)
+  const {
+    prompt,
+    setPrompt,
+    model,
+    setModel,
+    aspectRatio,
+    handleAspectRatioChange,
+    width,
+    handleWidthChange,
+    height,
+    handleHeightChange,
+    seed,
+    setSeed,
+    handleRandomSeed,
+    enhance,
+    setEnhance,
+    privateGen,
+    setPrivateGen,
+    safe,
+    setSafe,
+    handleGenerate,
+    currentModel,
+  } = useGenerationControls({ onGenerate })
 
   return (
-    <Card className="p-4 space-y-4 bg-card/50 backdrop-blur border-border/50">
+    <Card className="p-4 space-y-4 bg-card/50 backdrop-blur border-border/50" data-testid="generation-controls">
       {/* Prompt Input */}
       <div className="space-y-2">
         <Label htmlFor="prompt" className="text-sm font-medium">
@@ -109,6 +77,7 @@ export function GenerationControls({ onGenerate, isGenerating }: GenerationContr
         </Label>
         <Textarea
           id="prompt"
+          data-testid="prompt-input"
           placeholder="Describe the image you want to create..."
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
@@ -123,15 +92,15 @@ export function GenerationControls({ onGenerate, isGenerating }: GenerationContr
           <Label htmlFor="model" className="text-sm font-medium">
             Model
           </Label>
-          <Select value={model} onValueChange={setModel} disabled={isGenerating}>
-            <SelectTrigger id="model" className="bg-background/50">
+          <Select value={model} onValueChange={(v) => setModel(v as ImageModel)} disabled={isGenerating}>
+            <SelectTrigger id="model" data-testid="model-select" className="bg-background/50">
               <SelectValue>
                 <span className="font-medium text-sm">{currentModel?.name}</span>
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {IMAGE_MODELS.map((m) => (
-                <SelectItem key={m.id} value={m.id}>
+                <SelectItem key={m.id} value={m.id} data-testid={`model-item-${m.id}`}>
                   <div className="flex flex-col items-start">
                     <span className="font-medium">{m.name}</span>
                     <span className="text-xs text-muted-foreground">{m.description}</span>
@@ -152,14 +121,14 @@ export function GenerationControls({ onGenerate, isGenerating }: GenerationContr
             onValueChange={(v) => handleAspectRatioChange(v as AspectRatio)}
             disabled={isGenerating}
           >
-            <SelectTrigger id="aspect-ratio" className="bg-background/50">
+            <SelectTrigger id="aspect-ratio" data-testid="aspect-ratio-select" className="bg-background/50">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {ASPECT_RATIOS.map((ratio) => {
                 const IconComponent = ICON_MAP[ratio.icon as keyof typeof ICON_MAP]
                 return (
-                  <SelectItem key={ratio.value} value={ratio.value}>
+                  <SelectItem key={ratio.value} value={ratio.value} data-testid={`aspect-ratio-item-${ratio.value}`}>
                     <div className="flex items-center gap-2">
                       {IconComponent && <IconComponent className="h-4 w-4 text-muted-foreground" />}
                       <span>{ratio.label}</span>
@@ -184,6 +153,7 @@ export function GenerationControls({ onGenerate, isGenerating }: GenerationContr
           </Label>
           <Slider
             id="width"
+            data-testid="width-slider"
             min={DEFAULT_DIMENSIONS.MIN}
             max={DEFAULT_DIMENSIONS.MAX}
             step={DEFAULT_DIMENSIONS.STEP}
@@ -199,6 +169,7 @@ export function GenerationControls({ onGenerate, isGenerating }: GenerationContr
           </Label>
           <Slider
             id="height"
+            data-testid="height-slider"
             min={DEFAULT_DIMENSIONS.MIN}
             max={DEFAULT_DIMENSIONS.MAX}
             step={DEFAULT_DIMENSIONS.STEP}
@@ -218,6 +189,7 @@ export function GenerationControls({ onGenerate, isGenerating }: GenerationContr
         <div className="flex gap-2">
           <Input
             id="seed"
+            data-testid="seed-input"
             type="number"
             placeholder="Random (-1)"
             value={seed === -1 ? "" : seed}
@@ -235,6 +207,7 @@ export function GenerationControls({ onGenerate, isGenerating }: GenerationContr
             disabled={isGenerating}
             title="Generate random seed"
             className="shrink-0 bg-transparent"
+            data-testid="random-seed-button"
           >
             <Dice6 className="h-4 w-4" />
           </Button>
@@ -252,7 +225,13 @@ export function GenerationControls({ onGenerate, isGenerating }: GenerationContr
                 AI Enhancement
               </Label>
             </div>
-            <Switch id="enhance" checked={enhance} onCheckedChange={setEnhance} disabled={isGenerating} />
+            <Switch
+              id="enhance"
+              data-testid="enhance-switch"
+              checked={enhance}
+              onCheckedChange={setEnhance}
+              disabled={isGenerating}
+            />
           </div>
 
           <div className="flex items-center justify-between">
@@ -262,7 +241,13 @@ export function GenerationControls({ onGenerate, isGenerating }: GenerationContr
                 Private
               </Label>
             </div>
-            <Switch id="private" checked={privateGen} onCheckedChange={setPrivateGen} disabled={isGenerating} />
+            <Switch
+              id="private"
+              data-testid="private-switch"
+              checked={privateGen}
+              onCheckedChange={setPrivateGen}
+              disabled={isGenerating}
+            />
           </div>
 
           <div className="flex items-center justify-between">
@@ -272,14 +257,39 @@ export function GenerationControls({ onGenerate, isGenerating }: GenerationContr
                 Safety Filter
               </Label>
             </div>
-            <Switch id="safe" checked={safe} onCheckedChange={setSafe} disabled={isGenerating} />
+            <Switch
+              id="safe"
+              data-testid="safe-switch"
+              checked={safe}
+              onCheckedChange={setSafe}
+              disabled={isGenerating}
+            />
           </div>
         </div>
       </div>
 
       {/* Generate Button */}
-      <Button onClick={handleGenerate} disabled={isGenerating || !prompt.trim()} className="w-full" size="lg">
-        {isGenerating ? "Generating..." : "Generate Image"}
+      <Button
+        data-testid="generate-button"
+        onClick={handleGenerate}
+        disabled={isGenerating || !prompt.trim()}
+        className={`w-full relative overflow-hidden transition-all duration-300 ${isGenerating ? "opacity-90 saturate-[0.8]" : ""}`}
+        size="lg"
+      >
+        {isGenerating ? (
+          <>
+            <span className="relative z-10 flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Crafting...
+            </span>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
+          </>
+        ) : (
+          <span className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4" />
+            Generate Image
+          </span>
+        )}
       </Button>
     </Card>
   )

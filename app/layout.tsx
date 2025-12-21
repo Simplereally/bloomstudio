@@ -39,7 +39,7 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      <html lang="en" className="dark">
+      <html lang="en" className="dark" suppressHydrationWarning>
         <body className={`font-sans antialiased`}>
           {children}
           <Analytics />
