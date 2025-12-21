@@ -1,0 +1,47 @@
+"use client"
+
+import { SignUp } from "@clerk/nextjs"
+import { Sparkles } from "lucide-react"
+import Link from "next/link"
+import { useEffect, useState } from "react"
+
+export default function SignUpPage() {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+      <Link href="/" className="absolute top-6 left-6 flex items-center gap-2">
+        <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/15">
+          <Sparkles className="h-5 w-5 text-primary" />
+        </div>
+        <span className="font-semibold">Pixelstream</span>
+      </Link>
+
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold mb-2">Create your account</h1>
+          <p className="text-muted-foreground">Start generating unlimited AI images for free</p>
+        </div>
+
+        {mounted ? (
+          <SignUp
+            appearance={{
+              elements: {
+                rootBox: "mx-auto",
+                card: "bg-card border border-border shadow-lg",
+              },
+            }}
+          />
+        ) : (
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-pulse text-muted-foreground">Loading...</div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

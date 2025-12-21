@@ -35,4 +35,5 @@ export interface AspectRatioOption {
   value: AspectRatio
   width: number
   height: number
+  icon: string
 }
