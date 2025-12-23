@@ -1,4 +1,5 @@
-import { describe, it, expect, vi } from "vitest"
+// @vitest-environment jsdom
+import { describe, it, expect, vi, beforeEach } from "vitest"
 import { renderHook, act } from "@testing-library/react"
 import { useGenerationControls } from "./use-generation-controls"
 import { ASPECT_RATIOS } from "@/lib/image-models"

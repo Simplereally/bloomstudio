@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { ClerkProvider } from "@clerk/nextjs"
+import { QueryProvider } from "@/components/providers"
 import "./globals.css"
 
 const _geist = Geist({ subsets: ["latin"] })
@@ -39,12 +40,14 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      <html lang="en" className="dark" suppressHydrationWarning>
-        <body className={`font-sans antialiased`}>
-          {children}
-          <Analytics />
-        </body>
-      </html>
+      <QueryProvider>
+        <html lang="en" className="dark" suppressHydrationWarning>
+          <body className={`font-sans antialiased`}>
+            {children}
+            <Analytics />
+          </body>
+        </html>
+      </QueryProvider>
     </ClerkProvider>
   )
 }

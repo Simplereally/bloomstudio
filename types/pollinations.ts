@@ -4,6 +4,7 @@ export type ImageModel = "flux" | "turbo" | "flux-realism" | "flux-anime" | "flu
 
 export interface ImageGenerationParams {
   prompt: string
+  negativePrompt?: string
   model?: ImageModel
   width?: number
   height?: number
