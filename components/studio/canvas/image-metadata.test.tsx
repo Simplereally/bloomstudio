@@ -15,6 +15,12 @@ const mockImage: GeneratedImage = {
         model: "flux-realism",
         seed: 12345,
         enhance: true,
+        quality: "medium",
+        private: false,
+        nologo: false,
+        nofeed: false,
+        safe: false,
+        transparent: false,
     },
     timestamp: Date.now(),
 }

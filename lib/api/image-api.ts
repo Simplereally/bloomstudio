@@ -2,12 +2,33 @@
  * Image API Service
  *
  * Centralized API functions for image operations.
- * These functions are designed to be used with TanStack Query hooks.
- * Following SRP: This module handles only image-related API operations.
+ * Designed to be used with TanStack Query hooks.
+ * Following SRP: handles only image-related API operations.
  */
 
 import { PollinationsAPI } from "@/lib/pollinations-api"
-import type { ImageGenerationParams, GeneratedImage } from "@/types/pollinations"
+import {
+    ImageGenerationParamsSchema,
+    GeneratedImageSchema,
+    type ImageGenerationParams,
+    type GeneratedImage,
+    type ApiError,
+} from "@/lib/schemas/pollinations.schema"
+
+/**
+ * Custom error class for API errors with typed details
+ */
+export class PollinationsApiError extends Error {
+    constructor(
+        message: string,
+        public code?: string,
+        public status?: number,
+        public details?: Record<string, unknown>
+    ) {
+        super(message)
+        this.name = "PollinationsApiError"
+    }
+}
 
 /**
  * Response type for image generation operations
@@ -18,68 +39,77 @@ export interface GenerateImageResponse {
 }
 
 /**
- * Error type for API operations
- */
-export interface ApiError {
-    message: string
-    code?: string
-    status?: number
-}
-
-/**
  * Generates an image using the Pollinations API.
  *
- * @param params - Image generation parameters
+ * @param params - Image generation parameters (validated with Zod)
  * @returns Promise resolving to the generated image data
- * @throws ApiError if generation fails
+ * @throws PollinationsApiError if generation fails
  */
 export async function generateImage(
     params: ImageGenerationParams
 ): Promise<GeneratedImage> {
-    const url = PollinationsAPI.buildImageUrl(params)
+    // Validate params with Zod schema
+    const validatedParams = ImageGenerationParamsSchema.parse(params)
+    const url = PollinationsAPI.buildImageUrl(validatedParams)
 
     try {
-        // Fetch the image to trigger generation and ensure it's ready
         const response = await fetch(url, {
             method: "GET",
+            headers: PollinationsAPI.getHeaders(),
             // No-store to ensure we trigger generation, not hit cache
             cache: "no-store",
         })
 
         if (!response.ok) {
-            const error: ApiError = {
-                message: `Image generation failed with status ${response.status}`,
-                status: response.status,
-                code: "GENERATION_FAILED",
+            // Try to parse error response
+            let errorData: ApiError | undefined
+            try {
+                errorData = await response.json()
+            } catch {
+                // Response is not JSON
             }
-            throw error
+
+            throw new PollinationsApiError(
+                errorData?.error?.message ??
+                `Image generation failed with status ${response.status}`,
+                errorData?.error?.code ?? "GENERATION_FAILED",
+                response.status,
+                errorData?.error?.details as Record<string, unknown> | undefined
+            )
         }
 
-        // Return the image metadata
+        // Build and validate the generated image object
         const generatedImage: GeneratedImage = {
             id: `img_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
             url,
-            prompt: params.prompt,
-            params,
+            prompt: validatedParams.prompt,
+            params: validatedParams,
             timestamp: Date.now(),
         }
 
-        return generatedImage
+        return GeneratedImageSchema.parse(generatedImage)
     } catch (error) {
-        // Re-throw ApiError as-is
-        if (isApiError(error)) {
+        // Re-throw PollinationsApiError as-is
+        if (error instanceof PollinationsApiError) {
             throw error
         }
 
-        // Wrap unknown errors
-        const apiError: ApiError = {
-            message:
-                error instanceof Error
-                    ? error.message
-                    : "An unexpected error occurred during image generation",
-            code: "UNKNOWN_ERROR",
+        // Wrap Zod validation errors
+        if (error instanceof Error && error.name === "ZodError") {
+            throw new PollinationsApiError(
+                "Invalid image generation parameters",
+                "VALIDATION_ERROR",
+                400
+            )
         }
-        throw apiError
+
+        // Wrap unknown errors
+        throw new PollinationsApiError(
+            error instanceof Error
+                ? error.message
+                : "An unexpected error occurred during image generation",
+            "UNKNOWN_ERROR"
+        )
     }
 }
 
@@ -90,27 +120,27 @@ export async function generateImage(
  * @returns Promise resolving to the image blob
  */
 export async function downloadImage(imageUrl: string): Promise<Blob> {
-    const response = await fetch(imageUrl)
+    const response = await fetch(imageUrl, {
+        headers: PollinationsAPI.getHeaders(),
+    })
 
     if (!response.ok) {
-        throw {
-            message: "Failed to download image",
-            status: response.status,
-            code: "DOWNLOAD_FAILED",
-        } as ApiError
+        throw new PollinationsApiError(
+            "Failed to download image",
+            "DOWNLOAD_FAILED",
+            response.status
+        )
     }
 
     return response.blob()
 }
 
 /**
- * Type guard for ApiError
+ * Type guard for PollinationsApiError
  */
-export function isApiError(error: unknown): error is ApiError {
-    return (
-        typeof error === "object" &&
-        error !== null &&
-        "message" in error &&
-        typeof (error as ApiError).message === "string"
-    )
+export function isApiError(error: unknown): error is PollinationsApiError {
+    return error instanceof PollinationsApiError
 }
+
+// Re-export for backwards compatibility
+export type { ApiError }

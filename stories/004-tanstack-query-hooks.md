@@ -278,21 +278,36 @@ export function useDownloadImage(
       const blob = await downloadImageApi(url)
 
       // Convert format if needed
+      // Convert format if needed
       let finalBlob = blob
       if (format && format !== getExtension(filename)) {
         // Use canvas for format conversion
-        const img = await createImageBitmap(blob)
-        const canvas = document.createElement("canvas")
-        canvas.width = img.width
-        canvas.height = img.height
-        const ctx = canvas.getContext("2d")!
-        ctx.drawImage(img, 0, 0)
-        
-        const mimeType = format === "png" ? "image/png" : 
-                         format === "webp" ? "image/webp" : "image/jpeg"
-        finalBlob = await new Promise<Blob>((resolve) => {
-          canvas.toBlob((b) => resolve(b!), mimeType, 0.92)
-        })
+        // Note: This requires CORS headers on the source image. 
+        // If the API does not return Access-Control-Allow-Origin, this will fail.
+        try {
+          const img = await createImageBitmap(blob)
+          const canvas = document.createElement("canvas")
+          canvas.width = img.width
+          canvas.height = img.height
+          const ctx = canvas.getContext("2d")!
+          ctx.drawImage(img, 0, 0)
+          
+          const mimeType = format === "png" ? "image/png" : 
+                           format === "webp" ? "image/webp" : "image/jpeg"
+          finalBlob = await new Promise<Blob>((resolve, reject) => {
+            canvas.toBlob((b) => {
+              if (b) resolve(b)
+              else reject(new Error("Canvas export failed"))
+            }, mimeType, 0.92)
+          })
+        } catch (e) {
+          throw new PollinationsApiError(
+            "Format conversion failed. The image server might be restricting access (CORS).", 
+            "DOWNLOAD_RESTRICTED", 
+            403,
+            { originalError: e }
+          )
+        }
       }
 
       // Create download link and trigger browser download

@@ -8,7 +8,7 @@
  */
 
 import { useMutation } from "@tanstack/react-query"
-import { downloadImage as downloadImageApi, type ApiError } from "@/lib/api"
+import { downloadImage as downloadImageApi, PollinationsApiError } from "@/lib/api"
 
 /**
  * Parameters for download operation
@@ -37,7 +37,7 @@ export interface UseDownloadImageOptions {
     /**
      * Callback fired on download error
      */
-    onError?: (error: ApiError, params: DownloadImageParams) => void
+    onError?: (error: PollinationsApiError, params: DownloadImageParams) => void
 }
 
 /**
@@ -72,7 +72,7 @@ export interface UseDownloadImageReturn {
     /**
      * Error from the last failed download
      */
-    error: ApiError | null
+    error: PollinationsApiError | null
 }
 
 /**
@@ -93,7 +93,7 @@ export interface UseDownloadImageReturn {
 export function useDownloadImage(
     options: UseDownloadImageOptions = {}
 ): UseDownloadImageReturn {
-    const mutation = useMutation<void, ApiError, DownloadImageParams>({
+    const mutation = useMutation<void, PollinationsApiError, DownloadImageParams>({
         mutationFn: async ({ url, filename }) => {
             const blob = await downloadImageApi(url)
 

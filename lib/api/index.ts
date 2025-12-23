@@ -8,6 +8,7 @@ export {
     generateImage,
     downloadImage,
     isApiError,
+    PollinationsApiError,
     type GenerateImageResponse,
-    type ApiError,
 } from "./image-api"
+

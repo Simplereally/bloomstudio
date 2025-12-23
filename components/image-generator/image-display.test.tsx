@@ -20,7 +20,14 @@ describe("ImageDisplay", () => {
             width: 1024,
             height: 1024,
             model: "flux",
-            seed: 123
+            seed: 123,
+            enhance: false,
+            quality: "medium",
+            private: false,
+            nologo: false,
+            nofeed: false,
+            safe: false,
+            transparent: false
         },
         timestamp: Date.now()
     }

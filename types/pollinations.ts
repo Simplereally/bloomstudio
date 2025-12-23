@@ -1,34 +1,8 @@
-// Type definitions for Pollinations API following SRP
+// types/pollinations.ts
+// Re-export everything from the new schema file for backwards compatibility
+export * from "@/lib/schemas/pollinations.schema"
 
-export type ImageModel = "flux" | "turbo" | "flux-realism" | "flux-anime" | "flux-3d" | "any-dark"
-
-export interface ImageGenerationParams {
-  prompt: string
-  negativePrompt?: string
-  model?: ImageModel
-  width?: number
-  height?: number
-  seed?: number
-  enhance?: boolean
-  private?: boolean
-  safe?: boolean
-}
-
-export interface ModelInfo {
-  id: ImageModel
-  name: string
-  description: string
-  style: string
-}
-
-export interface GeneratedImage {
-  id: string
-  url: string
-  prompt: string
-  params: ImageGenerationParams
-  timestamp: number
-}
-
+// Keep UI-specific types that don't need runtime validation
 export type AspectRatio = "1:1" | "16:9" | "9:16" | "4:3" | "3:4" | "21:9" | "custom"
 
 export interface AspectRatioOption {
@@ -37,4 +11,13 @@ export interface AspectRatioOption {
   width: number
   height: number
   icon: string
+}
+
+// Deprecated - keep for backwards compatibility, remove in future
+/** @deprecated Use ImageModel from schemas instead */
+export interface ModelInfo {
+  id: string
+  name: string
+  description: string
+  style: string
 }

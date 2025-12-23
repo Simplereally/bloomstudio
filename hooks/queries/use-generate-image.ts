@@ -8,7 +8,7 @@
  */
 
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { generateImage, type ApiError } from "@/lib/api"
+import { generateImage, PollinationsApiError } from "@/lib/api"
 import { queryKeys } from "@/lib/query"
 import type { ImageGenerationParams, GeneratedImage } from "@/types/pollinations"
 
@@ -29,14 +29,14 @@ export interface UseGenerateImageOptions {
     /**
      * Callback fired on generation error
      */
-    onError?: (error: ApiError, params: ImageGenerationParams) => void
+    onError?: (error: PollinationsApiError, params: ImageGenerationParams) => void
 
     /**
      * Callback fired after mutation settles (success or error)
      */
     onSettled?: (
         image: GeneratedImage | undefined,
-        error: ApiError | null,
+        error: PollinationsApiError | null,
         params: ImageGenerationParams
     ) => void
 }
@@ -73,7 +73,7 @@ export interface UseGenerateImageReturn {
     /**
      * Error from the last failed generation
      */
-    error: ApiError | null
+    error: PollinationsApiError | null
 
     /**
      * The last successfully generated image
@@ -114,7 +114,7 @@ export function useGenerateImage(
 
     const mutation = useMutation<
         GeneratedImage,
-        ApiError,
+        PollinationsApiError,
         ImageGenerationParams
     >({
         mutationFn: generateImage,

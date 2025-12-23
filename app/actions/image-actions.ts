@@ -3,8 +3,12 @@
 import { PollinationsAPI } from "@/lib/pollinations-api"
 import type { ImageGenerationParams, GeneratedImage } from "@/types/pollinations"
 
+import { ImageGenerationParamsSchema } from "@/lib/schemas/pollinations.schema"
+
 export async function generateImageAction(params: ImageGenerationParams): Promise<GeneratedImage> {
-    const url = PollinationsAPI.buildImageUrl(params)
+    // Validate and fill defaults
+    const resolvedParams = ImageGenerationParamsSchema.parse(params)
+    const url = PollinationsAPI.buildImageUrl(resolvedParams)
 
     try {
         // We fetch the image on the server to trigger the generation.
@@ -23,8 +27,8 @@ export async function generateImageAction(params: ImageGenerationParams): Promis
         return {
             id: Date.now().toString(),
             url,
-            prompt: params.prompt,
-            params,
+            prompt: resolvedParams.prompt,
+            params: resolvedParams, // Now matches strict type
             timestamp: Date.now(),
         }
     } catch (error) {

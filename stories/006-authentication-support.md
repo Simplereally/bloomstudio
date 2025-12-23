@@ -23,8 +23,9 @@ NEXT_PUBLIC_POLLINATIONS_KEY=pk_your_publishable_key
 ### 1. Auth Utilities
 
 Create `lib/auth/pollinations-auth.ts`:
-- `validateApiKey(key)`: Returns "publishable" | "secret" | null
-- `getPollinationsAuth()`: Gets appropriate key based on environment
+- Import `getApiKey` from `lib/config/api.config.ts` (Story 002)
+- `getPollinationsAuth()`: Uses `getApiKey()` to determine current auth state
+- `validateApiKeyType(key)`: Returns "publishable" | "secret" | null
 - `getRateLimitInfo(keyType)`: Returns rate limit description
 
 ### 2. Server-Side API Route

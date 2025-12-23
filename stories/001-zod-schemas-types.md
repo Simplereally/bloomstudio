@@ -6,6 +6,7 @@ Migrate all Pollinations API types to use Zod v4.2.1 for runtime validation with
 ## Priority: High
 ## Estimated Effort: 4 hours
 ## Dependencies: None
+## Status: Completed
 
 ---
 
@@ -51,7 +52,8 @@ import { z } from "zod/v4"
 export const QualitySchema = z.enum(["low", "medium", "high", "hd"])
 
 // Image models from the new API
-export const ImageModelSchema = z.enum([
+// We define known models for reference, but allow any string to support dynamic models
+export const KnownImageModelSchema = z.enum([
   "flux",
   "turbo", 
   "gptimage",
@@ -61,6 +63,11 @@ export const ImageModelSchema = z.enum([
   "nanobanana",
   "nanobanana-pro",
   "zimage"
+])
+
+export const ImageModelSchema = z.union([
+  KnownImageModelSchema,
+  z.string()
 ])
 
 // Video models
@@ -86,7 +93,8 @@ export const ImageGenerationParamsSchema = z.object({
   seed: z.number().int().min(0).max(1844674407370955).optional(),
   enhance: z.boolean().optional().default(false),
   quality: QualitySchema.optional().default("medium"),
-  negative_prompt: z.string().optional(),
+  // negative_prompt (snake_case) is handled by transformation in the service layer
+  // We only expose negativePrompt (camelCase) to the application
   private: z.boolean().optional().default(false),
   nologo: z.boolean().optional().default(false),
   nofeed: z.boolean().optional().default(false),
@@ -263,14 +271,20 @@ export interface ModelInfo {
 
 ## Acceptance Criteria
 
-- [ ] All existing TypeScript interfaces are migrated to Zod schemas
-- [ ] Zod v4.2.1 syntax is used correctly (using `z.enum`, not deprecated patterns)
-- [ ] All new API parameters from `endpoint_refactor.md` are included
-- [ ] Type inference (`z.infer`) is used to derive TypeScript types
-- [ ] Backwards compatibility is maintained via re-exports
-- [ ] Video generation parameters are properly typed
-- [ ] Error response schemas match API documentation
-- [ ] All schemas have appropriate validation constraints
+- [x] All existing TypeScript interfaces are migrated to Zod schemas
+- [x] Zod v4.2.1 syntax is used correctly (using `z.enum`, not deprecated patterns)
+- [x] All new API parameters from `endpoint_refactor.md` are included
+- [x] Type inference (`z.infer`) is used to derive TypeScript types
+- [x] Backwards compatibility is maintained via re-exports
+- [x] Video generation parameters are properly typed
+- [x] Error response schemas match API documentation
+- [x] All schemas have appropriate validation constraints
+
+## Implementation Notes
+
+- **Schema Refinement**: Removed `negative_prompt` (snake_case) from `ImageGenerationParamsSchema` to avoid duplication with `negativePrompt` (camelCase). The transformation to snake_case should happen in the API service layer (Story 002).
+- **Dynamic Models**: `ImageModelSchema` was implemented as `z.union([KnownImageModelSchema, z.string()])` instead of a strict enum. This allows validation of known models for UI autocomplete while blindly accepting new models returned by the dynamic models API (Story 003), preventing crashes if the API adds new models.
+
 
 ---
 
@@ -307,12 +321,12 @@ describe("pollinations.schema", () => {
       expect(result.success).toBe(false)
     })
 
-    it("rejects invalid model", () => {
+    it("accepts unknown model (dynamic)", () => {
       const result = ImageGenerationParamsSchema.safeParse({
         prompt: "test",
-        model: "invalid-model",
+        model: "new-experimental-model",
       })
-      expect(result.success).toBe(false)
+      expect(result.success).toBe(true)
     })
 
     it("applies defaults correctly", () => {

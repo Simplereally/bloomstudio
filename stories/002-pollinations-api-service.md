@@ -6,6 +6,7 @@ Update the `PollinationsAPI` service class and `lib/api/image-api.ts` to use the
 ## Priority: High
 ## Estimated Effort: 3 hours
 ## Dependencies: Story 001 (Zod Schemas & Types)
+## Status: Completed
 
 ---
 
@@ -438,15 +439,15 @@ export type { ApiError }
 
 ## Acceptance Criteria
 
-- [ ] Base URL updated to `https://gen.pollinations.ai`
-- [ ] Path structure changed from `/prompt/{prompt}` to `/image/{prompt}`
-- [ ] All new query parameters are supported (quality, transparent, guidance_scale, etc.)
-- [ ] API configuration is centralized in `lib/config/api.config.ts`
-- [ ] Authentication headers are properly handled
-- [ ] Zod validation is applied to input parameters
-- [ ] Error handling uses the new error schemas
-- [ ] Video URL building is supported for future video generation
-- [ ] Backwards compatibility maintained (existing hooks should work)
+- [x] Base URL updated to `https://gen.pollinations.ai`
+- [x] Path structure changed from `/prompt/{prompt}` to `/image/{prompt}`
+- [x] All new query parameters are supported (quality, transparent, guidance_scale, etc.)
+- [x] API configuration is centralized in `lib/config/api.config.ts`
+- [x] Authentication headers are properly handled
+- [x] Zod validation is applied to input parameters
+- [x] Error handling uses the new error schemas
+- [x] Video URL building is supported for future video generation
+- [x] Backwards compatibility maintained (existing hooks should work)
 
 ---
 

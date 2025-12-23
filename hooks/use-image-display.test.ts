@@ -27,7 +27,15 @@ describe("useImageDisplay", () => {
         params: {
             prompt: "A beautiful landscape",
             width: 1024,
-            height: 1024
+            height: 1024,
+            model: "flux",
+            enhance: false,
+            quality: "medium",
+            private: false,
+            nologo: false,
+            nofeed: false,
+            safe: false,
+            transparent: false
         },
         timestamp: Date.now()
     }

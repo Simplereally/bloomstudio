@@ -10,8 +10,16 @@ const mockImage: GeneratedImage = {
     prompt: "A beautiful sunset",
     params: {
         prompt: "A beautiful sunset",
+        model: "flux",
         width: 1024,
         height: 1024,
+        enhance: false,
+        quality: "medium",
+        private: false,
+        nologo: false,
+        nofeed: false,
+        safe: false,
+        transparent: false,
     },
     timestamp: Date.now(),
 }

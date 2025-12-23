@@ -1,60 +1,158 @@
-// API service layer following SRP - Single responsibility: API communication
+/**
+ * Pollinations API Service Layer
+ *
+ * Handles URL construction and API interactions for gen.pollinations.ai.
+ * Following SRP - Single responsibility: API communication.
+ */
 
-import type { ImageGenerationParams } from "@/types/pollinations"
-
-const BASE_URL = "https://image.pollinations.ai"
+import { API_CONFIG, API_DEFAULTS, API_CONSTRAINTS, getApiKey } from "@/lib/config/api.config"
+import type {
+  ResolvedImageGenerationParams,
+  ResolvedVideoGenerationParams,
+} from "@/lib/schemas/pollinations.schema"
 
 export class PollinationsAPI {
+  private static readonly BASE_URL = API_CONFIG.baseUrl
+
   /**
-   * Builds the image generation URL with all parameters
+   * Builds the image generation URL with all parameters.
+   * Uses the new /image/{prompt} path structure.
    */
-  static buildImageUrl(params: ImageGenerationParams): string {
+  static buildImageUrl(params: ResolvedImageGenerationParams): string {
     const { prompt, negativePrompt, ...options } = params
     const encodedPrompt = encodeURIComponent(prompt)
 
     const queryParams = new URLSearchParams()
 
-    // negative_prompt should be the first query param (2nd param after prompt)
+    // Model - only include if different from default
+    if (options.model && options.model !== API_DEFAULTS.model) {
+      queryParams.append("model", options.model)
+    }
+
+    // Dimensions - only include if different from defaults
+    if (options.width && options.width !== API_DEFAULTS.width) {
+      queryParams.append("width", options.width.toString())
+    }
+    if (options.height && options.height !== API_DEFAULTS.height) {
+      queryParams.append("height", options.height.toString())
+    }
+
+    // Seed (only if explicitly set)
+    if (options.seed !== undefined && options.seed >= 0) {
+      queryParams.append("seed", options.seed.toString())
+    }
+
+    // Negative prompt
     if (negativePrompt?.trim()) {
       queryParams.append("negative_prompt", negativePrompt.trim())
     }
 
-    if (options.model) queryParams.append("model", options.model)
-    if (options.width) queryParams.append("width", options.width.toString())
-    if (options.height) queryParams.append("height", options.height.toString())
-    if (options.seed !== undefined && options.seed !== -1) {
-
-      queryParams.append("seed", options.seed.toString())
+    // Quality - only include if different from default
+    if (options.quality && options.quality !== API_DEFAULTS.quality) {
+      queryParams.append("quality", options.quality)
     }
-    queryParams.append("enhance", "false")
-    queryParams.append("private", "true")
-    queryParams.append("safe", "false")
-    queryParams.append("quality", "hd")
-    queryParams.append("nologo", "true")
+
+    // Guidance scale
+    if (options.guidance_scale !== undefined) {
+      queryParams.append("guidance_scale", options.guidance_scale.toString())
+    }
+
+    // Boolean flags - only append if different from defaults (which are all false)
+    if (options.enhance !== API_DEFAULTS.enhance) queryParams.append("enhance", "true")
+    if (options.transparent !== API_DEFAULTS.transparent) queryParams.append("transparent", "true")
+    if (options.nologo !== API_DEFAULTS.nologo) queryParams.append("nologo", "true")
+    if (options.nofeed !== API_DEFAULTS.nofeed) queryParams.append("nofeed", "true")
+    if (options.safe !== API_DEFAULTS.safe) queryParams.append("safe", "true")
+    if (options.private !== API_DEFAULTS.private) queryParams.append("private", "true")
+
+    // Reference image(s) for image-to-image
+    if (options.image) {
+      queryParams.append("image", options.image)
+    }
+
+    // Add API key if available
+    const apiKey = getApiKey()
+    if (apiKey) {
+      queryParams.append("key", apiKey)
+    }
 
     const query = queryParams.toString()
-    return `${BASE_URL}/prompt/${encodedPrompt}${query ? `?${query}` : ""}`
+    return `${this.BASE_URL}/image/${encodedPrompt}${query ? `?${query}` : ""}`
   }
 
   /**
-   * Validates dimension value (must be 64-2048 and divisible by 64)
+   * Builds video generation URL with video-specific parameters.
+   */
+  static buildVideoUrl(params: ResolvedVideoGenerationParams): string {
+    const { duration, aspectRatio, audio, ...imageParams } = params
+    const baseUrl = this.buildImageUrl(
+      imageParams as ResolvedImageGenerationParams
+    )
+
+    const additionalParams = new URLSearchParams()
+
+    if (duration !== undefined) {
+      additionalParams.append("duration", duration.toString())
+    }
+    if (aspectRatio) {
+      additionalParams.append("aspectRatio", aspectRatio)
+    }
+    if (audio) {
+      additionalParams.append("audio", "true")
+    }
+
+    const additional = additionalParams.toString()
+    if (!additional) return baseUrl
+
+    return baseUrl.includes("?")
+      ? `${baseUrl}&${additional}`
+      : `${baseUrl}?${additional}`
+  }
+
+  /**
+   * Validates dimension value (must be within range and divisible by step)
    */
   static validateDimension(value: number): boolean {
-    return value >= 64 && value <= 2048 && value % 64 === 0
+    const { min, max, step } = API_CONSTRAINTS.dimensions
+    return value >= min && value <= max && value % step === 0
   }
 
   /**
    * Rounds dimension to nearest valid value
    */
   static roundDimension(value: number): number {
-    const clamped = Math.max(64, Math.min(2048, value))
-    return Math.round(clamped / 64) * 64
+    const { min, max, step } = API_CONSTRAINTS.dimensions
+    const clamped = Math.max(min, Math.min(max, value))
+    return Math.round(clamped / step) * step
   }
 
   /**
-   * Generates a random seed
+   * Generates a random seed within valid range
    */
   static generateRandomSeed(): number {
+    // Use safe integer range for JavaScript
     return Math.floor(Math.random() * 2147483647)
+  }
+
+  /**
+   * Validates guidance scale value
+   */
+  static validateGuidanceScale(value: number): boolean {
+    const { min, max } = API_CONSTRAINTS.guidanceScale
+    return value >= min && value <= max
+  }
+
+  /**
+   * Get request headers with optional authentication
+   */
+  static getHeaders(): HeadersInit {
+    const headers: HeadersInit = {}
+    const apiKey = getApiKey()
+
+    if (apiKey) {
+      headers["Authorization"] = `Bearer ${apiKey}`
+    }
+
+    return headers
   }
 }
