@@ -7,20 +7,23 @@ afterEach(() => {
     cleanup()
 })
 
-// Mock window.matchMedia for responsive tests
-Object.defineProperty(window, 'matchMedia', {
-    writable: true,
-    value: (query: string) => ({
-        matches: false,
-        media: query,
-        onchange: null,
-        addListener: () => { },
-        removeListener: () => { },
-        addEventListener: () => { },
-        removeEventListener: () => { },
-        dispatchEvent: () => false,
-    }),
-})
+// Only set up browser mocks when window is available (jsdom environment)
+if (typeof window !== 'undefined') {
+    // Mock window.matchMedia for responsive tests
+    Object.defineProperty(window, 'matchMedia', {
+        writable: true,
+        value: (query: string) => ({
+            matches: false,
+            media: query,
+            onchange: null,
+            addListener: () => { },
+            removeListener: () => { },
+            addEventListener: () => { },
+            removeEventListener: () => { },
+            dispatchEvent: () => false,
+        }),
+    })
+}
 
 // Mock ResizeObserver
 global.ResizeObserver = class ResizeObserver {

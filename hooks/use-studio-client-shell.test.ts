@@ -10,6 +10,7 @@ vi.mock("@/lib/pollinations-api", () => ({
     PollinationsAPI: {
         buildImageUrl: vi.fn(() => "https://pollinations.ai/p/mock-url"),
         generateRandomSeed: vi.fn(() => 12345),
+        getHeaders: vi.fn(() => ({})),
     }
 }))
 

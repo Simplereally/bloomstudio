@@ -22,16 +22,19 @@ import {
     Palette,
     Box,
     Moon,
+    Wand2,
+    PenTool,
+    Cloud,
 } from "lucide-react"
-import type { ImageModel, ModelInfo } from "@/types/pollinations"
+import type { ImageModelInfo } from "@/lib/schemas/pollinations.schema"
 
 export interface ModelSelectorProps {
     /** Currently selected model */
-    selectedModel: ImageModel
+    selectedModel: string
     /** Callback when model changes */
-    onModelChange: (model: ImageModel) => void
+    onModelChange: (model: string) => void
     /** Available models */
-    models: ModelInfo[]
+    models: ImageModelInfo[]
     /** Whether selection is disabled */
     disabled?: boolean
     /** Display mode */
@@ -40,21 +43,34 @@ export interface ModelSelectorProps {
     className?: string
 }
 
-// Map model IDs to icons
-const MODEL_ICONS: Record<ImageModel, React.ComponentType<{ className?: string }>> = {
+// Map model names to icons
+const MODEL_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
     flux: Sparkles,
     turbo: Zap,
+    gptimage: Camera,
+    kontext: PenTool,
+    seedream: Cloud,
+    "seedream-pro": Cloud,
+    // Legacy fallbacks
     "flux-realism": Camera,
     "flux-anime": Palette,
     "flux-3d": Box,
     "any-dark": Moon,
 }
 
-// Map model IDs to style badges
+// Map model names to style badges
 const MODEL_BADGES: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
     turbo: { label: "Fast", variant: "secondary" },
-    "flux-realism": { label: "HD", variant: "default" },
-    "flux-anime": { label: "Art", variant: "outline" },
+    gptimage: { label: "GPT", variant: "default" },
+    "seedream-pro": { label: "Pro", variant: "default" },
+}
+
+/**
+ * Get display name for a model
+ */
+function getModelDisplayName(model: ImageModelInfo): string {
+    // Capitalize and format the model name
+    return model.name.charAt(0).toUpperCase() + model.name.slice(1)
 }
 
 export function ModelSelector({
@@ -74,16 +90,16 @@ export function ModelSelector({
                 </Label>
                 <div className="grid grid-cols-2 gap-2" data-testid="model-cards">
                     {models.map((model) => {
-                        const Icon = MODEL_ICONS[model.id] || Sparkles
-                        const badge = MODEL_BADGES[model.id]
-                        const isSelected = selectedModel === model.id
+                        const Icon = MODEL_ICONS[model.name] || Wand2
+                        const badge = MODEL_BADGES[model.name]
+                        const isSelected = selectedModel === model.name
 
                         return (
                             <button
-                                key={model.id}
+                                key={model.name}
                                 type="button"
                                 disabled={disabled}
-                                onClick={() => onModelChange(model.id)}
+                                onClick={() => onModelChange(model.name)}
                                 className={cn(
                                     "relative flex flex-col items-start gap-1 p-3 rounded-lg border text-left",
                                     "transition-all duration-200",
@@ -93,7 +109,7 @@ export function ModelSelector({
                                         : "border-border/50 bg-background/50",
                                     disabled && "opacity-50 cursor-not-allowed"
                                 )}
-                                data-testid={`model-card-${model.id}`}
+                                data-testid={`model-card-${model.name}`}
                             >
                                 <div className="flex items-center gap-2 w-full">
                                     <Icon
@@ -103,7 +119,7 @@ export function ModelSelector({
                                         )}
                                     />
                                     <span className="text-sm font-medium truncate">
-                                        {model.name}
+                                        {getModelDisplayName(model)}
                                     </span>
                                     {badge && (
                                         <Badge
@@ -115,7 +131,7 @@ export function ModelSelector({
                                     )}
                                 </div>
                                 <span className="text-xs text-muted-foreground line-clamp-1">
-                                    {model.description}
+                                    {model.description || "Image generation model"}
                                 </span>
                             </button>
                         )
@@ -135,35 +151,35 @@ export function ModelSelector({
             <ToggleGroup
                 type="single"
                 value={selectedModel}
-                onValueChange={(value) => value && onModelChange(value as ImageModel)}
+                onValueChange={(value) => value && onModelChange(value)}
                 disabled={disabled}
                 className="flex flex-wrap gap-1"
                 data-testid="model-toggle-group"
             >
                 {models.map((model) => {
-                    const Icon = MODEL_ICONS[model.id] || Sparkles
+                    const Icon = MODEL_ICONS[model.name] || Wand2
 
                     return (
-                        <Tooltip key={model.id}>
+                        <Tooltip key={model.name}>
                             <TooltipTrigger asChild>
                                 <ToggleGroupItem
-                                    value={model.id}
-                                    aria-label={model.name}
+                                    value={model.name}
+                                    aria-label={getModelDisplayName(model)}
                                     className={cn(
                                         "flex items-center gap-1.5 px-3 h-8",
                                         "data-[state=on]:bg-primary/15 data-[state=on]:text-primary",
                                         "data-[state=on]:border-primary/30"
                                     )}
-                                    data-testid={`model-toggle-${model.id}`}
+                                    data-testid={`model-toggle-${model.name}`}
                                 >
                                     <Icon className="h-3.5 w-3.5" />
-                                    <span className="text-xs font-medium">{model.name}</span>
+                                    <span className="text-xs font-medium">{getModelDisplayName(model)}</span>
                                 </ToggleGroupItem>
                             </TooltipTrigger>
                             <TooltipContent side="bottom" className="max-w-[200px]">
-                                <p className="font-medium">{model.name}</p>
+                                <p className="font-medium">{getModelDisplayName(model)}</p>
                                 <p className="text-xs text-muted-foreground">
-                                    {model.description}
+                                    {model.description || "Image generation model"}
                                 </p>
                             </TooltipContent>
                         </Tooltip>

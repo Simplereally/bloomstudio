@@ -3,14 +3,14 @@
 import { SignIn } from "@clerk/nextjs"
 import { Sparkles } from "lucide-react"
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { useSyncExternalStore } from "react"
+
+const emptySubscribe = () => () => {}
+const getSnapshot = () => true
+const getServerSnapshot = () => false
 
 export default function SignInPage() {
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  const mounted = useSyncExternalStore(emptySubscribe, getSnapshot, getServerSnapshot)
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">

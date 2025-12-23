@@ -61,7 +61,8 @@ export function Particles({
     m.uniforms.positions.value = target.texture
     m.uniforms.initialPositions.value = simulationMaterial.uniforms.positions.value
     return m
-  }, [simulationMaterial])
+     
+  }, [simulationMaterial, target.texture])
 
   const [scene] = useState(() => new THREE.Scene())
   const [camera] = useState(() => new THREE.OrthographicCamera(-1, 1, 1, -1, 1 / Math.pow(2, 53), 1))
@@ -79,12 +80,13 @@ export function Particles({
     return particles
   }, [size])
 
+   
   useFrame((state, delta) => {
     if (!dofPointsMaterial || !simulationMaterial) return
 
     state.gl.setRenderTarget(target)
     state.gl.clear()
-    // @ts-ignore
+    // @ts-expect-error - Three.js types incompatibility with R3F
     state.gl.render(scene, camera)
     state.gl.setRenderTarget(null)
 
@@ -111,6 +113,9 @@ export function Particles({
       setIsRevealing(false)
     }
 
+    // Three.js materials must have their uniforms mutated in the animation loop
+    // This is the standard pattern for R3F and is unavoidable
+    /* eslint-disable react-hooks/immutability */
     dofPointsMaterial.uniforms.uTime.value = currentTime
 
     dofPointsMaterial.uniforms.uFocus.value = focus
@@ -128,22 +133,23 @@ export function Particles({
     dofPointsMaterial.uniforms.uOpacity.value = opacity
     dofPointsMaterial.uniforms.uRevealFactor.value = revealFactor
     dofPointsMaterial.uniforms.uRevealProgress.value = easedProgress
+    /* eslint-enable react-hooks/immutability */
   })
 
   return (
     <>
       {createPortal(
-        // @ts-ignore
+        // @ts-expect-error - Three.js types incompatibility with R3F
         <mesh material={simulationMaterial}>
           <bufferGeometry>
             <bufferAttribute attach="attributes-position" args={[positions, 3]} />
             <bufferAttribute attach="attributes-uv" args={[uvs, 2]} />
           </bufferGeometry>
         </mesh>,
-        // @ts-ignore
+        // @ts-expect-error - Three.js types incompatibility with R3F
         scene,
       )}
-      {/* @ts-ignore */}
+      {/* @ts-expect-error - Three.js types incompatibility with R3F */}
       <points material={dofPointsMaterial} {...props}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[particles, 3]} />

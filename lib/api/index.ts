@@ -9,6 +9,9 @@ export {
     downloadImage,
     isApiError,
     PollinationsApiError,
+    ClientErrorCode,
+    ApiErrorCodeConst,
+    AllErrorCodes,
     type GenerateImageResponse,
 } from "./image-api"
 

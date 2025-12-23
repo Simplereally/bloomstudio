@@ -4,10 +4,28 @@ import { renderHook, act, waitFor } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import * as React from "react"
 import { useDownloadImage } from "./use-download-image"
+import { PollinationsApiError, ClientErrorCode } from "@/lib/api"
 
 // Mock the image API module
 vi.mock("@/lib/api", () => ({
     downloadImage: vi.fn(),
+    PollinationsApiError: class PollinationsApiError extends Error {
+        constructor(
+            message: string,
+            public code?: string,
+            public status?: number,
+            public details?: Record<string, unknown>
+        ) {
+            super(message)
+            this.name = "PollinationsApiError"
+        }
+    },
+    ClientErrorCode: {
+        GENERATION_FAILED: "GENERATION_FAILED",
+        VALIDATION_ERROR: "VALIDATION_ERROR",
+        NETWORK_ERROR: "NETWORK_ERROR",
+        UNKNOWN_ERROR: "UNKNOWN_ERROR",
+    },
 }))
 
 // Import the mocked function
@@ -65,9 +83,11 @@ describe("useDownloadImage", () => {
         const mockBlob = new Blob(["test"], { type: "image/jpeg" })
         mockDownloadImage.mockResolvedValueOnce(mockBlob)
 
+        // Store original createElement
+        const originalCreateElement = document.createElement.bind(document)
+
         // Mock after renderHook to avoid interfering with container creation
         const createElementSpy = vi.spyOn(document, "createElement")
-        const originalCreateElement = createElementSpy.getMockImplementation() || document.createElement.bind(document)
         createElementSpy.mockImplementation((tagName: string) => {
             if (tagName === "a") {
                 return mockAnchor as unknown as HTMLAnchorElement
@@ -90,21 +110,28 @@ describe("useDownloadImage", () => {
             })
         })
 
-        expect(result.current.isDownloading).toBe(true)
-
         await waitFor(() => {
             expect(result.current.isDownloading).toBe(false)
         })
 
-        expect(result.current.isSuccess).toBe(true)
+        await waitFor(() => {
+            expect(result.current.isSuccess).toBe(true)
+        })
+
         expect(onSuccess).toHaveBeenCalledWith({
             url: "https://example.com/image.jpg",
             filename: "test-image.jpg",
         })
+
+        createElementSpy.mockRestore()
     })
 
-    it("handles download error", async () => {
-        const error = { message: "Download failed", code: "DOWNLOAD_FAILED" }
+    it("handles download error with PollinationsApiError type", async () => {
+        const error = new PollinationsApiError(
+            "Download failed",
+            ClientErrorCode.GENERATION_FAILED,
+            500
+        )
         mockDownloadImage.mockRejectedValueOnce(error)
 
         const onError = vi.fn()
@@ -124,7 +151,12 @@ describe("useDownloadImage", () => {
             expect(result.current.isDownloading).toBe(false)
         })
 
-        expect(result.current.isError).toBe(true)
+        await waitFor(() => {
+            expect(result.current.isError).toBe(true)
+        })
+
+        expect(result.current.error).toBeInstanceOf(PollinationsApiError)
+        expect(result.current.error?.code).toBe(ClientErrorCode.GENERATION_FAILED)
         expect(onError).toHaveBeenCalled()
     })
 
@@ -132,13 +164,15 @@ describe("useDownloadImage", () => {
         const mockBlob = new Blob(["test"], { type: "image/jpeg" })
         mockDownloadImage.mockResolvedValueOnce(mockBlob)
 
+        // Store original createElement
+        const originalCreateElement = document.createElement.bind(document)
+
         const { result } = renderHook(() => useDownloadImage(), {
             wrapper: createWrapper(),
         })
 
         // Mock after renderHook
         const createElementSpy = vi.spyOn(document, "createElement")
-        const originalCreateElement = document.createElement.bind(document)
         createElementSpy.mockImplementation((tagName: string) => {
             if (tagName === "a") {
                 return mockAnchor as unknown as HTMLAnchorElement
@@ -159,8 +193,14 @@ describe("useDownloadImage", () => {
             expect(result.current.isDownloading).toBe(false)
         })
 
+        await waitFor(() => {
+            expect(result.current.isSuccess).toBe(true)
+        })
+
         expect(mockAnchor.download).toBe("my-custom-name.jpg")
         expect(mockAnchor.click).toHaveBeenCalled()
+
+        createElementSpy.mockRestore()
     })
 
     it("cleans up blob URL after download", async () => {

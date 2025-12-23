@@ -14,21 +14,12 @@ import {
     type GeneratedImage,
     type ApiError,
 } from "@/lib/schemas/pollinations.schema"
-
-/**
- * Custom error class for API errors with typed details
- */
-export class PollinationsApiError extends Error {
-    constructor(
-        message: string,
-        public code?: string,
-        public status?: number,
-        public details?: Record<string, unknown>
-    ) {
-        super(message)
-        this.name = "PollinationsApiError"
-    }
-}
+import {
+    PollinationsApiError,
+    ClientErrorCodeConst,
+    ApiErrorCodeConst,
+    AllErrorCodes,
+} from "@/lib/errors"
 
 /**
  * Response type for image generation operations
@@ -61,21 +52,7 @@ export async function generateImage(
         })
 
         if (!response.ok) {
-            // Try to parse error response
-            let errorData: ApiError | undefined
-            try {
-                errorData = await response.json()
-            } catch {
-                // Response is not JSON
-            }
-
-            throw new PollinationsApiError(
-                errorData?.error?.message ??
-                `Image generation failed with status ${response.status}`,
-                errorData?.error?.code ?? "GENERATION_FAILED",
-                response.status,
-                errorData?.error?.details as Record<string, unknown> | undefined
-            )
+            throw await PollinationsApiError.fromResponse(response)
         }
 
         // Build and validate the generated image object
@@ -94,22 +71,8 @@ export async function generateImage(
             throw error
         }
 
-        // Wrap Zod validation errors
-        if (error instanceof Error && error.name === "ZodError") {
-            throw new PollinationsApiError(
-                "Invalid image generation parameters",
-                "VALIDATION_ERROR",
-                400
-            )
-        }
-
-        // Wrap unknown errors
-        throw new PollinationsApiError(
-            error instanceof Error
-                ? error.message
-                : "An unexpected error occurred during image generation",
-            "UNKNOWN_ERROR"
-        )
+        // Use the enhanced error class for all other errors
+        throw PollinationsApiError.fromError(error)
     }
 }
 
@@ -127,7 +90,7 @@ export async function downloadImage(imageUrl: string): Promise<Blob> {
     if (!response.ok) {
         throw new PollinationsApiError(
             "Failed to download image",
-            "DOWNLOAD_FAILED",
+            ClientErrorCodeConst.GENERATION_FAILED,
             response.status
         )
     }
@@ -142,5 +105,6 @@ export function isApiError(error: unknown): error is PollinationsApiError {
     return error instanceof PollinationsApiError
 }
 
-// Re-export for backwards compatibility
+// Re-export error class and types
+export { PollinationsApiError, ClientErrorCodeConst, ClientErrorCodeConst as ClientErrorCode, ApiErrorCodeConst, AllErrorCodes }
 export type { ApiError }

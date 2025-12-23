@@ -24,8 +24,8 @@ export class PollinationsAPI {
 
     const queryParams = new URLSearchParams()
 
-    // Model - only include if different from default
-    if (options.model && options.model !== API_DEFAULTS.model) {
+    // Model - always include (upstream API requires explicit model selection)
+    if (options.model) {
       queryParams.append("model", options.model)
     }
 
@@ -70,12 +70,7 @@ export class PollinationsAPI {
       queryParams.append("image", options.image)
     }
 
-    // Add API key if available
-    const apiKey = getApiKey()
-    if (apiKey) {
-      queryParams.append("key", apiKey)
-    }
-
+    // Note: API key is sent via Authorization header in getHeaders(), not in URL
     const query = queryParams.toString()
     return `${this.BASE_URL}/image/${encodedPrompt}${query ? `?${query}` : ""}`
   }

@@ -15,12 +15,7 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 import {
-    Square,
-    RectangleHorizontal,
-    RectangleVertical,
-    Image as ImageIcon,
     Frame,
-    Monitor,
     SlidersHorizontal,
 } from "lucide-react"
 import type { AspectRatio, AspectRatioOption } from "@/types/pollinations"
@@ -36,17 +31,6 @@ export interface AspectRatioSelectorProps {
     disabled?: boolean
     /** Additional class names */
     className?: string
-}
-
-// Map ratio icons to components
-const RATIO_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-    square: Square,
-    "rectangle-horizontal": RectangleHorizontal,
-    "rectangle-vertical": RectangleVertical,
-    image: ImageIcon,
-    frame: Frame,
-    monitor: Monitor,
-    sliders: SlidersHorizontal,
 }
 
 export function AspectRatioSelector({
@@ -80,7 +64,6 @@ export function AspectRatioSelector({
                 data-testid="aspect-ratio-group"
             >
                 {ratios.map((ratio) => {
-                    const Icon = RATIO_ICONS[ratio.icon] || Square
                     const isSelected = selectedRatio === ratio.value
 
                     return (

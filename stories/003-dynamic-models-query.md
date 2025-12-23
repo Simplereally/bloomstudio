@@ -6,6 +6,7 @@ Replace hardcoded image models with a TanStack Query hook that fetches available
 ## Priority: Medium
 ## Estimated Effort: 4 hours
 ## Dependencies: Story 001 (Zod Schemas), Story 002 (API Service)
+## Status: Completed
 
 ---
 
@@ -388,14 +389,14 @@ export const DEFAULT_DIMENSIONS = {
 
 ## Acceptance Criteria
 
-- [ ] `useImageModels` hook fetches models from `/image/models` endpoint
-- [ ] Models are cached with appropriate stale time (5 minutes)
-- [ ] Fallback to static models when API fails
-- [ ] `getModel` helper finds models by name or alias
-- [ ] Query keys are properly structured for cache invalidation
-- [ ] Hook exposes loading, error, and fallback states
-- [ ] Existing model references are deprecated with JSDoc
-- [ ] Response is validated with Zod schema
+- [x] `useImageModels` hook fetches models from `/image/models` endpoint
+- [x] Models are cached with appropriate stale time (5 minutes)
+- [x] Fallback to static models when API fails
+- [x] `getModel` helper finds models by name or alias
+- [x] Query keys are properly structured for cache invalidation
+- [x] Hook exposes loading, error, and fallback states
+- [x] Existing model references are deprecated with JSDoc
+- [x] Response is validated with Zod schema
 
 ---
 

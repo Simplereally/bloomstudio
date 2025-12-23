@@ -17,6 +17,7 @@ import type {
 import { PollinationsAPI } from "@/lib/pollinations-api"
 import { useGenerateImage, useDownloadImage } from "@/hooks/queries"
 import type { GenerationOptions } from "@/components/studio"
+import { showErrorToast, showAuthRequiredToast } from "@/lib/errors"
 
 /**
  * Return type for the useStudioClientShell hook
@@ -117,7 +118,12 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
             }
         },
         onError: (error) => {
-            console.error("Generation error:", error.message)
+            // Show appropriate toast based on error type
+            if (error.code === "UNAUTHORIZED") {
+                showAuthRequiredToast()
+            } else {
+                showErrorToast(error)
+            }
         },
     })
 
@@ -126,7 +132,7 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
             // Could show a toast notification here
         },
         onError: (error) => {
-            console.error("Download error:", error.message)
+            showErrorToast(error)
         },
     })
 

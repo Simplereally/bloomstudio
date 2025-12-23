@@ -55,7 +55,7 @@ describe("PollinationsAPI", () => {
             expect(url).toContain("model=turbo")
         })
 
-        it("excludes model parameter when flux (default)", () => {
+        it("includes model parameter when flux (default)", () => {
             const url = PollinationsAPI.buildImageUrl({
                 prompt: "test",
                 model: "flux",
@@ -69,7 +69,8 @@ describe("PollinationsAPI", () => {
                 safe: false,
                 transparent: false,
             })
-            expect(url).not.toContain("model=")
+            // Model is always included - upstream API requires explicit model selection
+            expect(url).toContain("model=flux")
         })
 
         it("includes quality parameter when not default", () => {

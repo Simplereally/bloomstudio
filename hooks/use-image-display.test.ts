@@ -141,7 +141,7 @@ describe("useImageDisplay", () => {
             expect(result.current.isDownloading).toBe(false)
         })
 
-        expect(global.fetch).toHaveBeenCalledWith(mockImage.url)
+        expect(global.fetch).toHaveBeenCalledWith(mockImage.url, { headers: {} })
     })
 
     it("should allow manual toggle of isImageLoading", () => {

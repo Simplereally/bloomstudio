@@ -21,7 +21,6 @@ import {
     ImageToolbar,
     ImageMetadata,
     ImageGallery,
-    type GenerationOptions,
 } from "@/components/studio"
 import {
     Dialog,
@@ -34,10 +33,9 @@ import {
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 
 // Types and utilities
-import type { ImageGenerationParams, GeneratedImage, AspectRatio, ImageModel } from "@/types/pollinations"
-import { IMAGE_MODELS, ASPECT_RATIOS } from "@/lib/image-models"
-import { PollinationsAPI } from "@/lib/pollinations-api"
+import { ASPECT_RATIOS } from "@/lib/image-models"
 import { useStudioClientShell } from "@/hooks/use-studio-client-shell"
+import { useImageModels } from "@/hooks/queries"
 
 interface StudioClientShellProps {
     defaultLayout?: Record<string, number>
@@ -87,6 +85,8 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
         setIsFullscreen,
     } = useStudioClientShell()
 
+    const { models, isLoading: isLoadingModels } = useImageModels()
+
     // Sidebar content
     const sidebarContent = (
         <div className="h-full flex flex-col bg-card/50 backdrop-blur-sm border-r border-border/50">
@@ -111,8 +111,8 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
                     <ModelSelector
                         selectedModel={model}
                         onModelChange={setModel}
-                        models={IMAGE_MODELS}
-                        disabled={isGenerating}
+                        models={models}
+                        disabled={isGenerating || isLoadingModels}
                     />
 
                     {/* Aspect Ratio */}
@@ -265,6 +265,7 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
 
                         {currentImage && (
                             <div className="relative w-full h-full flex items-center justify-center p-4" onClick={() => setIsFullscreen(false)}>
+                                {/* eslint-disable-next-line @next/next/no-img-element -- External generated image URLs */}
                                 <img
                                     src={currentImage.url}
                                     alt={currentImage.prompt}

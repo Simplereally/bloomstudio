@@ -1,17 +1,17 @@
-import { describe, it, expect, vi } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
 import { ModelSelector } from "./model-selector"
-import type { ModelInfo } from "@/types/pollinations"
+import type { ImageModelInfo } from "@/lib/schemas/pollinations.schema"
 
-const mockModels: ModelInfo[] = [
-    { id: "flux", name: "Flux", description: "Default balanced model", style: "Versatile" },
-    { id: "turbo", name: "Turbo", description: "Fastest generation", style: "Fast" },
-    { id: "flux-realism", name: "Flux Realism", description: "Photorealistic", style: "Photorealistic" },
+const mockModels: ImageModelInfo[] = [
+    { name: "flux", aliases: ["default"], pricing: { currency: "pollen" }, description: "Default balanced model" },
+    { name: "turbo", aliases: ["fast"], pricing: { currency: "pollen" }, description: "Fastest generation" },
+    { name: "gptimage", aliases: [], pricing: { currency: "pollen" }, description: "GPT-powered generation" },
 ]
 
 describe("ModelSelector", () => {
     const defaultProps = {
-        selectedModel: "flux" as const,
+        selectedModel: "flux",
         onModelChange: vi.fn(),
         models: mockModels,
     }
@@ -33,7 +33,7 @@ describe("ModelSelector", () => {
 
             expect(screen.getByTestId("model-toggle-flux")).toBeInTheDocument()
             expect(screen.getByTestId("model-toggle-turbo")).toBeInTheDocument()
-            expect(screen.getByTestId("model-toggle-flux-realism")).toBeInTheDocument()
+            expect(screen.getByTestId("model-toggle-gptimage")).toBeInTheDocument()
         })
 
         it("shows the selected model as active", () => {
@@ -74,7 +74,7 @@ describe("ModelSelector", () => {
 
             expect(screen.getByTestId("model-card-flux")).toBeInTheDocument()
             expect(screen.getByTestId("model-card-turbo")).toBeInTheDocument()
-            expect(screen.getByTestId("model-card-flux-realism")).toBeInTheDocument()
+            expect(screen.getByTestId("model-card-gptimage")).toBeInTheDocument()
         })
 
         it("shows model descriptions in cards", () => {

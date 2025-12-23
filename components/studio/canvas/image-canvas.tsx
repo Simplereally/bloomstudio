@@ -93,11 +93,11 @@ export function ImageCanvas({
                             {[...Array(6)].map((_, i) => (
                                 <div
                                     key={i}
-                                    className="absolute w-2 h-2 rounded-full bg-primary/30"
+                                    className="absolute w-2 h-2 rounded-full bg-primary/30 animate-float"
                                     style={{
                                         left: `${20 + i * 12}%`,
                                         top: `${30 + (i % 3) * 20}%`,
-                                        animation: `float ${2 + i * 0.5}s ease-in-out infinite`,
+                                        animationDuration: `${2 + i * 0.5}s`,
                                         animationDelay: `${i * 0.2}s`,
                                     }}
                                 />
@@ -178,14 +178,6 @@ export function ImageCanvas({
                     </div>
                 )}
             </div>
-
-            {/* Float animation keyframes */}
-            <style jsx>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0) scale(1); opacity: 0.3; }
-          50% { transform: translateY(-20px) scale(1.1); opacity: 0.6; }
-        }
-      `}</style>
         </Card>
     )
 }

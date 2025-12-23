@@ -1,46 +1,15 @@
-// Model definitions following SOC - Separated from API logic
+/**
+ * Image Generation Constants
+ *
+ * UI-specific constants for image generation that are not API-dependent.
+ */
 
-import type { ModelInfo, AspectRatioOption } from "@/types/pollinations"
+import type { AspectRatioOption } from "@/types/pollinations"
 
-export const IMAGE_MODELS: ModelInfo[] = [
-  {
-    id: "flux",
-    name: "Flux",
-    description: "Default balanced model for speed and quality",
-    style: "Versatile",
-  },
-  {
-    id: "turbo",
-    name: "Turbo",
-    description: "Fastest generation with good quality",
-    style: "Fast",
-  },
-  {
-    id: "flux-realism",
-    name: "Flux Realism",
-    description: "Photorealistic images with high detail",
-    style: "Photorealistic",
-  },
-  {
-    id: "flux-anime",
-    name: "Flux Anime",
-    description: "Anime and manga style illustrations",
-    style: "Anime",
-  },
-  {
-    id: "flux-3d",
-    name: "Flux 3D",
-    description: "3D rendered style with depth",
-    style: "3D Render",
-  },
-  {
-    id: "any-dark",
-    name: "Any Dark",
-    description: "Dark aesthetic with moody atmosphere",
-    style: "Dark",
-  },
-]
-
+/**
+ * Aspect ratio options for image generation.
+ * These are UI-specific presets, not determined by the API.
+ */
 export const ASPECT_RATIOS: AspectRatioOption[] = [
   { label: "Square", value: "1:1", width: 1024, height: 1024, icon: "square" },
   { label: "Landscape", value: "16:9", width: 1344, height: 768, icon: "rectangle-horizontal" },
@@ -51,6 +20,13 @@ export const ASPECT_RATIOS: AspectRatioOption[] = [
   { label: "Custom", value: "custom", width: 1024, height: 1024, icon: "sliders" },
 ]
 
+/**
+ * Default dimension constraints for image generation.
+ * These match the API constraints from api.config.ts but are kept here
+ * for backwards compatibility with existing UI code.
+ * 
+ * @see API_CONSTRAINTS in @/lib/config/api.config for the canonical source
+ */
 export const DEFAULT_DIMENSIONS = {
   MIN: 64,
   MAX: 2048,

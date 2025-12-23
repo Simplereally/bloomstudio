@@ -106,6 +106,24 @@ export const ValidationErrorDetailsSchema = z.object({
     fieldErrors: z.record(z.string(), z.array(z.string())),
 });
 
+// API error codes - these are the codes returned by the Pollinations API
+export const ApiErrorCodeSchema = z.enum([
+    "BAD_REQUEST",
+    "UNAUTHORIZED",
+    "INTERNAL_ERROR",
+]);
+
+// Client-side error codes - these are additional codes used by the client
+export const ClientErrorCodeSchema = z.enum([
+    "GENERATION_FAILED",
+    "VALIDATION_ERROR",
+    "NETWORK_ERROR",
+    "UNKNOWN_ERROR",
+]);
+
+// Combined error codes (API + Client)
+export const ErrorCodeSchema = z.union([ApiErrorCodeSchema, ClientErrorCodeSchema]);
+
 // Base error schema
 const BaseApiErrorSchema = z.object({
     message: z.string(),
@@ -176,3 +194,6 @@ export type BadRequestError = z.infer<typeof BadRequestErrorSchema>;
 export type UnauthorizedError = z.infer<typeof UnauthorizedErrorSchema>;
 export type InternalError = z.infer<typeof InternalErrorSchema>;
 export type ApiError = z.infer<typeof ApiErrorSchema>;
+export type ApiErrorCode = z.infer<typeof ApiErrorCodeSchema>;
+export type ClientErrorCode = z.infer<typeof ClientErrorCodeSchema>;
+export type ErrorCode = z.infer<typeof ErrorCodeSchema>;

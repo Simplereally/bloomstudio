@@ -21,29 +21,45 @@ vi.mock("@/components/clerk-user-button", () => ({
 
 // Mock Dialog
 vi.mock("@/components/ui/dialog", () => ({
-    Dialog: ({ open, children }: any) => open ? <div data-testid="fullscreen-dialog">{children}</div> : null,
-    DialogContent: ({ children }: any) => <div data-testid="dialog-content">{children}</div>,
+    Dialog: ({ open, children }: { open?: boolean; children?: React.ReactNode }) => open ? <div data-testid="fullscreen-dialog">{children}</div> : null,
+    DialogContent: ({ children }: { children?: React.ReactNode }) => <div data-testid="dialog-content">{children}</div>,
     DialogOverlay: () => <div data-testid="dialog-overlay" />,
-    DialogPortal: ({ children }: any) => <div data-testid="dialog-portal">{children}</div>,
-    DialogTitle: ({ children }: any) => <div data-testid="dialog-title">{children}</div>,
-    DialogDescription: ({ children }: any) => <div data-testid="dialog-description">{children}</div>,
+    DialogPortal: ({ children }: { children?: React.ReactNode }) => <div data-testid="dialog-portal">{children}</div>,
+    DialogTitle: ({ children }: { children?: React.ReactNode }) => <div data-testid="dialog-title">{children}</div>,
+    DialogDescription: ({ children }: { children?: React.ReactNode }) => <div data-testid="dialog-description">{children}</div>,
 }))
 
 // Mock Resizable components
 vi.mock("@/components/ui/resizable", () => ({
-    ResizablePanelGroup: ({ children }: any) => <div data-testid="resizable-group">{children}</div>,
-    ResizablePanel: ({ children, id }: any) => <div data-testid={`resizable-panel-${id}`}>{children}</div>,
+    ResizablePanelGroup: ({ children }: { children?: React.ReactNode }) => <div data-testid="resizable-group">{children}</div>,
+    ResizablePanel: ({ children, id }: { children?: React.ReactNode; id?: string }) => <div data-testid={`resizable-panel-${id}`}>{children}</div>,
     ResizableHandle: () => <div data-testid="resizable-handle" />,
 }))
 
 // Mock Tooltip components to avoid portal issues in tests
 vi.mock("@/components/ui/tooltip", () => ({
-    Tooltip: ({ children }: any) => <div>{children}</div>,
-    TooltipTrigger: ({ children }: any) => <div>{children}</div>,
-    TooltipContent: ({ children }: any) => <div>{children}</div>,
-    TooltipProvider: ({ children }: any) => <div>{children}</div>,
+    Tooltip: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+    TooltipTrigger: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+    TooltipContent: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+    TooltipProvider: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
 }))
 
+// Mock hooks/queries to avoid actual react-query usage in tests
+vi.mock("@/hooks/queries", () => ({
+    useImageModels: () => ({ models: [], isLoading: false }),
+}))
+
+// Mock ImageCanvas to avoid styled-jsx warnings in tests
+vi.mock("@/components/studio/canvas/image-canvas", () => ({
+     
+    ImageCanvas: ({ image, isGenerating, className }: { image?: { url: string; prompt: string } | null; isGenerating?: boolean; className?: string }) => (
+        <div data-testid="image-canvas" className={className}>
+            {isGenerating && <div data-testid="loading-state">Loading...</div>}
+            {/* eslint-disable-next-line @next/next/no-img-element -- Test mock */}
+            {image && <img src={image.url} alt={image.prompt} data-testid="generated-image" />}
+        </div>
+    ),
+}))
 describe("StudioClientShell", () => {
     const mockHookReturn = {
         prompt: "",

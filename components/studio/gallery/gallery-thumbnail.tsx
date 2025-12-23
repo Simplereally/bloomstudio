@@ -63,7 +63,7 @@ export function GalleryThumbnail({
     size = "md",
     className,
 }: GalleryThumbnailProps) {
-    const [isHovered, setIsHovered] = React.useState(false)
+    const [, setIsHovered] = React.useState(false)
 
     return (
         <Card

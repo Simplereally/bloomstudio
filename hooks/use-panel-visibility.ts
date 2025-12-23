@@ -33,7 +33,11 @@ export function usePanelVisibility(
         if (!panel) return
 
         try {
-            isVisible ? panel.expand() : panel.collapse()
+            if (isVisible) {
+                panel.expand()
+            } else {
+                panel.collapse()
+            }
             prevVisible.current = isVisible
         } catch {
             // Panel group not ready - safe to ignore, initial state is correct

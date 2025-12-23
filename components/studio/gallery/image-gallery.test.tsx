@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest"
-import { render, screen, fireEvent } from "@testing-library/react"
+import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { ImageGallery } from "./image-gallery"
 import type { GeneratedImage } from "@/types/pollinations"
@@ -88,8 +88,7 @@ describe("ImageGallery", () => {
     it("renders thumbnails for all images", () => {
         render(<ImageGallery images={mockImages} />)
 
-        const thumbnails = screen.getAllByTestId("gallery-thumbnail")
-        expect(thumbnails).toHaveLength(3)
+        expect(screen.getAllByTestId("gallery-thumbnail")).toHaveLength(3)
     })
 
     it("calls onSelectImage when thumbnail is clicked", async () => {
@@ -104,7 +103,6 @@ describe("ImageGallery", () => {
     it("marks active image", () => {
         render(<ImageGallery images={mockImages} activeImageId="2" />)
 
-        const thumbnails = screen.getAllByTestId("gallery-thumbnail")
         // The active thumbnail should have the active indicator
         expect(screen.getByTestId("active-indicator")).toBeInTheDocument()
     })

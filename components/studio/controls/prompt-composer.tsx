@@ -22,7 +22,6 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 import {
-    Sparkles,
     ChevronDown,
     Wand2,
     History,

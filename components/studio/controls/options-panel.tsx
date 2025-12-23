@@ -14,11 +14,12 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipTrigger,
-} from "@/components/ui/tooltip"
+// Tooltip components available for future enhancement
+// import {
+//     Tooltip,
+//     TooltipContent,
+//     TooltipTrigger,
+// } from "@/components/ui/tooltip"
 import {
     Settings2,
     ChevronDown,

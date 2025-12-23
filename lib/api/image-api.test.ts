@@ -1,11 +1,12 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 import {
     generateImage,
     downloadImage,
     isApiError,
     PollinationsApiError,
+    ClientErrorCodeConst,
+    ApiErrorCodeConst,
 } from "./image-api"
-import { PollinationsAPI } from "@/lib/pollinations-api"
 
 // Mock the PollinationsAPI
 vi.mock("@/lib/pollinations-api", () => ({
@@ -73,17 +74,23 @@ describe("image-api", () => {
         })
 
         it("throws PollinationsApiError with parsed error details", async () => {
+            // Use status 500 which matches InternalErrorSchema
             const errorResponse = {
+                status: 500,
+                success: false,
                 error: {
                     message: "Rate limit exceeded",
-                    code: "RATE_LIMITED",
-                    details: { retryAfter: 60 },
+                    code: "INTERNAL_ERROR",
+                    timestamp: new Date().toISOString(),
+                    details: { 
+                        name: "RateLimitError",
+                    },
                 },
             }
 
             mockFetch.mockResolvedValueOnce({
                 ok: false,
-                status: 429,
+                status: 500,
                 json: async () => errorResponse,
             })
 
@@ -94,9 +101,8 @@ describe("image-api", () => {
                 expect(error).toBeInstanceOf(PollinationsApiError)
                 const apiError = error as PollinationsApiError
                 expect(apiError.message).toBe("Rate limit exceeded")
-                expect(apiError.code).toBe("RATE_LIMITED")
-                expect(apiError.status).toBe(429)
-                expect(apiError.details).toEqual({ retryAfter: 60 })
+                expect(apiError.code).toBe(ApiErrorCodeConst.INTERNAL_ERROR)
+                expect(apiError.status).toBe(500)
             }
         })
 
@@ -116,9 +122,9 @@ describe("image-api", () => {
                 expect(error).toBeInstanceOf(PollinationsApiError)
                 const apiError = error as PollinationsApiError
                 expect(apiError.message).toBe(
-                    "Image generation failed with status 503"
+                    "Request failed with status 503"
                 )
-                expect(apiError.code).toBe("GENERATION_FAILED")
+                expect(apiError.code).toBe(ApiErrorCodeConst.INTERNAL_ERROR)
                 expect(apiError.status).toBe(503)
             }
         })
@@ -137,7 +143,7 @@ describe("image-api", () => {
                 expect(error).toBeInstanceOf(PollinationsApiError)
                 const apiError = error as PollinationsApiError
                 expect(apiError.message).toBe("Network failure")
-                expect(apiError.code).toBe("UNKNOWN_ERROR")
+                expect(apiError.code).toBe(ClientErrorCodeConst.UNKNOWN_ERROR)
             }
         })
 
@@ -187,7 +193,7 @@ describe("image-api", () => {
                 expect(error).toBeInstanceOf(PollinationsApiError)
                 const apiError = error as PollinationsApiError
                 expect(apiError.message).toBe("Failed to download image")
-                expect(apiError.code).toBe("DOWNLOAD_FAILED")
+                expect(apiError.code).toBe(ClientErrorCodeConst.GENERATION_FAILED)
                 expect(apiError.status).toBe(404)
             }
         })
@@ -237,15 +243,15 @@ describe("image-api", () => {
         it("creates error with all properties", () => {
             const error = new PollinationsApiError(
                 "Test message",
-                "TEST_CODE",
+                ApiErrorCodeConst.INTERNAL_ERROR,
                 500,
                 { extra: "data" }
             )
 
             expect(error.message).toBe("Test message")
-            expect(error.code).toBe("TEST_CODE")
+            expect(error.code).toBe(ApiErrorCodeConst.INTERNAL_ERROR)
             expect(error.status).toBe(500)
-            expect(error.details).toEqual({ extra: "data" })
+            expect(error.details).toMatchObject({ extra: "data" })
             expect(error.name).toBe("PollinationsApiError")
         })
 
@@ -253,15 +259,105 @@ describe("image-api", () => {
             const error = new PollinationsApiError("Test message")
 
             expect(error.message).toBe("Test message")
-            expect(error.code).toBeUndefined()
-            expect(error.status).toBeUndefined()
-            expect(error.details).toBeUndefined()
+            expect(error.code).toBe(ClientErrorCodeConst.UNKNOWN_ERROR)
+            expect(error.status).toBe(500)
         })
 
         it("is instanceof Error", () => {
             const error = new PollinationsApiError("Test")
             expect(error instanceof Error).toBe(true)
             expect(error instanceof PollinationsApiError).toBe(true)
+        })
+
+        it("provides user-friendly message", () => {
+            const error = new PollinationsApiError(
+                "Technical error",
+                ApiErrorCodeConst.UNAUTHORIZED,
+                401
+            )
+            expect(error.userMessage).toBe("Authentication required")
+        })
+
+        it("identifies retryable errors", () => {
+            const serverError = new PollinationsApiError(
+                "Server error",
+                ApiErrorCodeConst.INTERNAL_ERROR,
+                500
+            )
+            const validationError = new PollinationsApiError(
+                "Invalid params",
+                ApiErrorCodeConst.BAD_REQUEST,
+                400
+            )
+
+            expect(serverError.isRetryable).toBe(true)
+            expect(validationError.isRetryable).toBe(false)
+        })
+
+        it("identifies auth errors", () => {
+            const authError = new PollinationsApiError(
+                "Unauthorized",
+                ApiErrorCodeConst.UNAUTHORIZED,
+                401
+            )
+            const otherError = new PollinationsApiError(
+                "Other",
+                ApiErrorCodeConst.INTERNAL_ERROR,
+                500
+            )
+
+            expect(authError.isAuthError).toBe(true)
+            expect(otherError.isAuthError).toBe(false)
+        })
+
+        it("identifies validation errors", () => {
+            const validationError = new PollinationsApiError(
+                "Bad request",
+                ApiErrorCodeConst.BAD_REQUEST,
+                400
+            )
+            const otherError = new PollinationsApiError(
+                "Other",
+                ApiErrorCodeConst.INTERNAL_ERROR,
+                500
+            )
+
+            expect(validationError.isValidationError).toBe(true)
+            expect(otherError.isValidationError).toBe(false)
+        })
+
+        it("provides flat field errors", () => {
+            const error = new PollinationsApiError(
+                "Validation failed",
+                ApiErrorCodeConst.BAD_REQUEST,
+                400,
+                {
+                    fieldErrors: {
+                        prompt: ["Prompt is required"],
+                        width: ["Width must be at least 64"],
+                    },
+                }
+            )
+
+            expect(error.hasFieldErrors).toBe(true)
+            expect(error.flatFieldErrors).toContain("prompt: Prompt is required")
+            expect(error.flatFieldErrors).toContain("width: Width must be at least 64")
+        })
+
+        it("serializes to JSON", () => {
+            const error = new PollinationsApiError(
+                "Test",
+                ApiErrorCodeConst.INTERNAL_ERROR,
+                500,
+                { requestId: "req_123" }
+            )
+
+            const json = error.toJSON()
+            expect(json.name).toBe("PollinationsApiError")
+            expect(json.message).toBe("Test")
+            expect(json.code).toBe(ApiErrorCodeConst.INTERNAL_ERROR)
+            expect(json.status).toBe(500)
+            expect(json.requestId).toBe("req_123")
         })
     })
 })

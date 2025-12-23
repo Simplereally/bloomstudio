@@ -7,9 +7,10 @@
  * Integrates TanStack Query for download operations.
  */
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useRef, useCallback } from "react"
 import type { GeneratedImage } from "@/types/pollinations"
 import { useDownloadImage } from "@/hooks/queries"
+import { showErrorToast, showSuccessToast } from "@/lib/errors"
 
 /**
  * Return type for useImageDisplay hook
@@ -33,20 +34,22 @@ export function useImageDisplay(
 ): UseImageDisplayReturn {
     const [copiedUrl, setCopiedUrl] = useState<string | null>(null)
     const [isImageLoading, setIsImageLoading] = useState(false)
+    const previousImageId = useRef<string | null>(null)
 
     // Use TanStack Query for downloads
     const { download, isDownloading } = useDownloadImage({
         onError: (error) => {
-            console.error("[useImageDisplay] Download error:", error.message)
+            showErrorToast(error)
         },
     })
 
-    // Reset loading state when the image changes
-    useEffect(() => {
-        if (currentImage) {
+    // Track image changes and set loading state synchronously during render
+    if (currentImage?.id !== previousImageId.current) {
+        previousImageId.current = currentImage?.id ?? null
+        if (currentImage && !isImageLoading) {
             setIsImageLoading(true)
         }
-    }, [currentImage?.id])
+    }
 
     const handleDownload = useCallback(
         (image: GeneratedImage) => {
@@ -62,9 +65,10 @@ export function useImageDisplay(
         try {
             await navigator.clipboard.writeText(url)
             setCopiedUrl(url)
+            showSuccessToast("URL copied to clipboard")
             setTimeout(() => setCopiedUrl(null), 2000)
-        } catch (error) {
-            console.error("[useImageDisplay] Copy error:", error)
+        } catch {
+            showErrorToast(new Error("Failed to copy URL to clipboard"))
         }
     }, [])
 
