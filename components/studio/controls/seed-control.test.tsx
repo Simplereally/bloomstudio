@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { SeedControl } from "./seed-control"
@@ -51,7 +51,7 @@ describe("SeedControl", () => {
         expect(onSeedChange).toHaveBeenCalledTimes(1)
         const calledWith = onSeedChange.mock.calls[0][0]
         expect(calledWith).toBeGreaterThanOrEqual(0)
-        expect(calledWith).toBeLessThanOrEqual(2147483647)
+        expect(calledWith).toBeLessThanOrEqual(1844674407370955)
     })
 
     it("shows copy button when seed is set", () => {

@@ -11,6 +11,7 @@ import {
     ApiErrorCodeConst,
     ClientErrorCodeConst,
     PollinationsApiError,
+    isPollinationsApiError,
 } from "@/lib/errors"
 import { PollinationsAPI } from "@/lib/pollinations-api"
 import {
@@ -39,10 +40,10 @@ export interface GenerateImageResponse {
 export async function generateImage(
     params: ImageGenerationParams
 ): Promise<GeneratedImage> {
-    // Validate params with Zod schema
+    // Validate params with Zod schema (applies defaults)
     const validatedParams = ImageGenerationParamsSchema.parse(params)
     const url = PollinationsAPI.buildImageUrl(validatedParams)
-    
+
     try {
         const response = await fetch(url, {
             method: "GET",
@@ -71,7 +72,7 @@ export async function generateImage(
             throw error
         }
 
-        // Use the enhanced error class for all other errors
+        // Use the enhanced error class for all other errors (converts ZodErrors, NetworkErrors, etc.)
         throw PollinationsApiError.fromError(error)
     }
 }
@@ -100,12 +101,16 @@ export async function downloadImage(imageUrl: string): Promise<Blob> {
 
 /**
  * Type guard for PollinationsApiError
+ * Re-exported from errors lib for convenience
  */
-export function isApiError(error: unknown): error is PollinationsApiError {
-    return error instanceof PollinationsApiError
-}
+export const isApiError = isPollinationsApiError
 
 // Re-export error class and types
-export { AllErrorCodes, ApiErrorCodeConst, ClientErrorCodeConst as ClientErrorCode, ClientErrorCodeConst, PollinationsApiError }
+export {
+    AllErrorCodes,
+    ApiErrorCodeConst,
+    ClientErrorCodeConst as ClientErrorCode,
+    ClientErrorCodeConst,
+    PollinationsApiError,
+}
 export type { ApiError }
-

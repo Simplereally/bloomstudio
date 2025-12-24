@@ -25,7 +25,7 @@ export interface AspectRatioSelectorProps {
     /** Callback when aspect ratio changes */
     onRatioChange: (ratio: AspectRatio, dimensions: { width: number; height: number }) => void
     /** Available aspect ratios */
-    ratios: AspectRatioOption[]
+    ratios: readonly AspectRatioOption[]
     /** Whether selection is disabled */
     disabled?: boolean
     /** Additional class names */

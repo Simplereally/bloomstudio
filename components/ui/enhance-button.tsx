@@ -9,9 +9,9 @@
 
 import { Button } from "@/components/ui/button"
 import {
-    Tooltip,
-    TooltipContent,
-    TooltipTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { Loader2, Square, Wand2 } from "lucide-react"
 import * as React from "react"
@@ -61,7 +61,7 @@ export function EnhanceButton({
           size="icon-sm"
           onClick={handleClick}
           disabled={isDisabled}
-          className={`absolute bottom-2 right-2 z-10 h-7 w-7 rounded-md bg-background/80 backdrop-blur-sm border border-border/50 shadow-sm hover:bg-accent hover:text-accent-foreground transition-all duration-200 ${isEnhancing ? "text-destructive hover:text-destructive hover:bg-destructive/10" : ""} ${className || ""}`}
+          className={`group absolute bottom-2 right-2 z-10 h-7 w-7 rounded-md bg-background/80 backdrop-blur-sm border border-border/50 shadow-sm hover:bg-accent hover:text-accent-foreground transition-all duration-200 ${isEnhancing ? "text-destructive hover:text-destructive hover:bg-destructive/10" : ""} ${className || ""}`}
           data-testid={isEnhancing ? "enhance-button-stop" : "enhance-button-wand"}
           aria-label={tooltipText}
         >

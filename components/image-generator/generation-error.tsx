@@ -109,7 +109,7 @@ export function GenerationError({ error, onRetry, isRetrying = false, className,
   const hasFormErrors = formErrors && formErrors.length > 0;
 
   // Detailed info for debugging
-  const hasDetails = showDetails && (apiError?.requestId || apiError?.details?.stack);
+  const hasDetails = showDetails && apiError?.requestId;
 
   return (
     <Alert variant={variant} className={cn("relative", className)}>

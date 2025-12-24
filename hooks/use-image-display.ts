@@ -47,7 +47,7 @@ export function useImageDisplay(currentImage: GeneratedImage | null): UseImageDi
   useEffect(() => {
     const previousId = previousImageId.current;
     const currentId = currentImage?.id ?? null;
-    
+
     // Only trigger loading when we have a NEW image (id changed to a non-null value)
     if (currentId !== null && currentId !== previousId) {
       previousImageId.current = currentId;
@@ -59,6 +59,17 @@ export function useImageDisplay(currentImage: GeneratedImage | null): UseImageDi
       previousImageId.current = null;
     }
   }, [currentImage?.id]);
+
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleDownload = useCallback(
     (image: GeneratedImage) => {
@@ -72,10 +83,18 @@ export function useImageDisplay(currentImage: GeneratedImage | null): UseImageDi
 
   const handleCopyUrl = useCallback(async (url: string) => {
     try {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+
       await navigator.clipboard.writeText(url);
       setCopiedUrl(url);
       showSuccessToast("URL copied to clipboard");
-      setTimeout(() => setCopiedUrl(null), 2000);
+
+      copyTimeoutRef.current = setTimeout(() => {
+        setCopiedUrl(null);
+        copyTimeoutRef.current = null;
+      }, 2000);
     } catch {
       showErrorToast(new Error("Failed to copy URL to clipboard"));
     }

@@ -5,17 +5,22 @@ import {
     KnownImageModelSchema,
     ImageModelSchema,
     VideoModelSchema,
+    GenerationModelSchema,
     VideoAspectRatioSchema,
     ImageGenerationParamsSchema,
     VideoGenerationParamsSchema,
     GeneratedImageSchema,
     ModelPricingSchema,
     ImageModelInfoSchema,
+    ImageModelsResponseSchema,
     ValidationErrorDetailsSchema,
     BadRequestErrorSchema,
     UnauthorizedErrorSchema,
     InternalErrorSchema,
     ApiErrorSchema,
+    ApiErrorCodeSchema,
+    ClientErrorCodeSchema,
+    ErrorCodeSchema,
 } from "./pollinations.schema"
 
 describe("pollinations.schema", () => {
@@ -71,6 +76,14 @@ describe("pollinations.schema", () => {
         })
     })
 
+    describe("GenerationModelSchema", () => {
+        it("accepts both image and video models", () => {
+            expect(GenerationModelSchema.parse("flux")).toBe("flux")
+            expect(GenerationModelSchema.parse("veo")).toBe("veo")
+            expect(GenerationModelSchema.parse("custom-image-model")).toBe("custom-image-model")
+        })
+    })
+
     describe("ImageGenerationParamsSchema", () => {
         it("validates valid params", () => {
             const result = ImageGenerationParamsSchema.safeParse({
@@ -90,8 +103,8 @@ describe("pollinations.schema", () => {
             expect(result).toMatchObject({
                 prompt: "A beautiful sunset",
                 model: "flux",
-                width: 1024,
-                height: 1024,
+                width: 768,
+                height: 768,
                 enhance: false,
                 quality: "medium",
                 private: false,
@@ -145,8 +158,8 @@ describe("pollinations.schema", () => {
                 prompt: "test",
             })
             expect(result.model).toBe("flux")
-            expect(result.width).toBe(1024)
-            expect(result.height).toBe(1024)
+            expect(result.width).toBe(768)
+            expect(result.height).toBe(768)
             expect(result.enhance).toBe(false)
         })
 
@@ -182,6 +195,21 @@ describe("pollinations.schema", () => {
                     seed: -1,
                 })
             ).toThrow()
+
+            expect(() =>
+                ImageGenerationParamsSchema.parse({
+                    prompt: "test",
+                    seed: 1844674407370955 + 1,
+                })
+            ).toThrow()
+        })
+
+        it("accepts max valid seed", () => {
+            const result = ImageGenerationParamsSchema.safeParse({
+                prompt: "test",
+                seed: 1844674407370955,
+            })
+            expect(result.success).toBe(true)
         })
 
         it("rejects invalid guidance_scale", () => {
@@ -316,6 +344,26 @@ describe("pollinations.schema", () => {
         })
     })
 
+    describe("ImageModelsResponseSchema", () => {
+        it("validates an array of model info", () => {
+            const models = [
+                {
+                    name: "flux",
+                    aliases: [],
+                    pricing: { currency: "pollen" as const, image_price: 1 },
+                },
+                {
+                    name: "turbo",
+                    aliases: [],
+                    pricing: { currency: "pollen" as const, image_price: 1 },
+                }
+            ]
+            const result = ImageModelsResponseSchema.parse(models)
+            expect(result).toHaveLength(2)
+            expect(result[0].name).toBe("flux")
+        })
+    })
+
     describe("Error Schemas", () => {
         describe("ValidationErrorDetailsSchema", () => {
             it("validates validation error details", () => {
@@ -436,6 +484,25 @@ describe("pollinations.schema", () => {
         })
     })
 
+    describe("Error Code Schemas", () => {
+        it("validates API error codes", () => {
+            expect(ApiErrorCodeSchema.parse("BAD_REQUEST")).toBe("BAD_REQUEST")
+            expect(ApiErrorCodeSchema.parse("UNAUTHORIZED")).toBe("UNAUTHORIZED")
+            expect(() => ApiErrorCodeSchema.parse("INVALID")).toThrow()
+        })
+
+        it("validates client error codes", () => {
+            expect(ClientErrorCodeSchema.parse("NETWORK_ERROR")).toBe("NETWORK_ERROR")
+            expect(ClientErrorCodeSchema.parse("VALIDATION_ERROR")).toBe("VALIDATION_ERROR")
+            expect(() => ClientErrorCodeSchema.parse("BAD_REQUEST")).toThrow()
+        })
+
+        it("validates combined error codes", () => {
+            expect(ErrorCodeSchema.parse("BAD_REQUEST")).toBe("BAD_REQUEST")
+            expect(ErrorCodeSchema.parse("NETWORK_ERROR")).toBe("NETWORK_ERROR")
+        })
+    })
+
     describe("Type inference", () => {
         it("infers correct types from schemas", () => {
             // This test ensures TypeScript types are correctly inferred
@@ -449,7 +516,7 @@ describe("pollinations.schema", () => {
             // Output type has all defaults filled in
             const output: ImageParams = ImageGenerationParamsSchema.parse(input)
             expect(output.model).toBe("flux")
-            expect(output.width).toBe(1024)
+            expect(output.width).toBe(768)
         })
     })
 })

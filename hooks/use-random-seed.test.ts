@@ -59,7 +59,7 @@ describe("useRandomSeed", () => {
 
             expect(result.current.isRandomMode(0)).toBe(false)
             expect(result.current.isRandomMode(12345)).toBe(false)
-            expect(result.current.isRandomMode(2147483647)).toBe(false)
+            expect(result.current.isRandomMode(1844674407370955)).toBe(false)
         })
 
         it("RANDOM_SEED constant is -1", () => {
@@ -74,10 +74,10 @@ describe("useRandomSeed", () => {
             expect(result.current.MIN_SEED).toBe(0)
         })
 
-        it("MAX_SEED is 2147483647", () => {
+        it("MAX_SEED is 1844674407370955", () => {
             const { result } = renderHook(() => useRandomSeed())
 
-            expect(result.current.MAX_SEED).toBe(2147483647)
+            expect(result.current.MAX_SEED).toBe(1844674407370955)
         })
     })
 
@@ -87,7 +87,7 @@ describe("useRandomSeed", () => {
 
             expect(Number.isInteger(seed)).toBe(true)
             expect(seed).toBeGreaterThanOrEqual(0)
-            expect(seed).toBeLessThanOrEqual(2147483647)
+            expect(seed).toBeLessThanOrEqual(1844674407370955)
         })
 
         it("isRandomSeedMode correctly identifies random mode", () => {

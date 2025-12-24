@@ -36,10 +36,9 @@ export interface UseRandomSeedReturn {
 const RANDOM_SEED_VALUE = -1
 
 /**
- * Maximum safe seed value for JavaScript
- * Using 2^31 - 1 (max 32-bit signed integer) for broader compatibility
+ * Maximum safe seed value for Pollinations API
  */
-const MAX_SAFE_SEED = 1844674407370955
+const MAX_SAFE_SEED = API_CONSTRAINTS.seed.max
 
 /**
  * Hook for generating random seeds within valid Pollinations API range.

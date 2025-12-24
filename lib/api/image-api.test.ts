@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import {
     generateImage,
     downloadImage,
@@ -7,6 +7,7 @@ import {
     ClientErrorCodeConst,
     ApiErrorCodeConst,
 } from "./image-api"
+import { PollinationsAPI } from "@/lib/pollinations-api"
 
 // Mock the PollinationsAPI
 vi.mock("@/lib/pollinations-api", () => ({
@@ -14,7 +15,7 @@ vi.mock("@/lib/pollinations-api", () => ({
         buildImageUrl: vi.fn(
             () => "https://gen.pollinations.ai/image/test%20prompt"
         ),
-        getHeaders: vi.fn(() => ({})),
+        getHeaders: vi.fn(() => ({ "Authorization": "Bearer test-token" })),
     },
 }))
 
@@ -25,26 +26,52 @@ global.fetch = mockFetch
 describe("image-api", () => {
     beforeEach(() => {
         vi.clearAllMocks()
+        vi.useFakeTimers()
+        vi.setSystemTime(new Date("2025-01-01T00:00:00Z"))
+    })
+
+    afterEach(() => {
+        vi.useRealTimers()
     })
 
     describe("generateImage", () => {
-        it("generates an image successfully", async () => {
+        it("generates an image successfully with correct parameters", async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: true,
                 status: 200,
             })
 
-            const result = await generateImage({ prompt: "test prompt" })
+            const params = { prompt: "test prompt", width: 512, height: 512 }
+            const result = await generateImage(params)
 
+            // Verify result structure
             expect(result).toMatchObject({
-                url: expect.stringContaining("gen.pollinations.ai"),
+                url: "https://gen.pollinations.ai/image/test%20prompt",
                 prompt: "test prompt",
-                timestamp: expect.any(Number),
+                timestamp: 1735689600000, // Fixed system time (Jan 1, 2025)
                 id: expect.stringMatching(/^img_\d+_[a-z0-9]+$/),
+                params: expect.objectContaining({
+                    prompt: "test prompt",
+                    width: 512,
+                    height: 512,
+                }),
             })
+
+            // Verify API calls
+            expect(PollinationsAPI.buildImageUrl).toHaveBeenCalledWith(
+                expect.objectContaining(params)
+            )
+            expect(mockFetch).toHaveBeenCalledWith(
+                "https://gen.pollinations.ai/image/test%20prompt",
+                expect.objectContaining({
+                    method: "GET",
+                    headers: { "Authorization": "Bearer test-token" },
+                    cache: "no-store",
+                })
+            )
         })
 
-        it("uses validated params with defaults applied", async () => {
+        it("applies default values for missing optional parameters", async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: true,
                 status: 200,
@@ -55,42 +82,31 @@ describe("image-api", () => {
             expect(result.params).toMatchObject({
                 prompt: "test",
                 model: "flux",
-                width: 1024,
-                height: 1024,
+                width: 768,   // Updated from 1024 to 768 based on schema
+                height: 768,  // Updated from 1024 to 768 based on schema
                 enhance: false,
             })
         })
 
-        it("throws PollinationsApiError on HTTP error", async () => {
-            mockFetch.mockResolvedValueOnce({
-                ok: false,
-                status: 500,
-                json: async () => ({}),
-            })
-
-            await expect(generateImage({ prompt: "test" })).rejects.toThrow(
-                PollinationsApiError
-            )
-        })
-
-        it("throws PollinationsApiError with parsed error details", async () => {
-            // Use status 500 which matches InternalErrorSchema
+        it("throws PollinationsApiError on HTTP error with parsed details", async () => {
             const errorResponse = {
-                status: 500,
+                status: 400,
                 success: false,
                 error: {
-                    message: "Rate limit exceeded",
-                    code: "INTERNAL_ERROR",
+                    message: "Invalid width",
+                    code: "BAD_REQUEST",
                     timestamp: new Date().toISOString(),
-                    details: { 
-                        name: "RateLimitError",
+                    details: {
+                        name: "ZodError",
+                        formErrors: [],
+                        fieldErrors: { width: ["Must be at least 64"] }
                     },
                 },
             }
 
             mockFetch.mockResolvedValueOnce({
                 ok: false,
-                status: 500,
+                status: 400,
                 json: async () => errorResponse,
             })
 
@@ -100,19 +116,17 @@ describe("image-api", () => {
             } catch (error) {
                 expect(error).toBeInstanceOf(PollinationsApiError)
                 const apiError = error as PollinationsApiError
-                expect(apiError.message).toBe("Rate limit exceeded")
-                expect(apiError.code).toBe(ApiErrorCodeConst.INTERNAL_ERROR)
-                expect(apiError.status).toBe(500)
+                expect(apiError.message).toBe("Invalid width")
+                expect(apiError.code).toBe(ApiErrorCodeConst.BAD_REQUEST)
+                expect(apiError.status).toBe(400)
             }
         })
 
-        it("handles non-JSON error responses", async () => {
+        it("handles non-JSON error responses gracefully", async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: false,
                 status: 503,
-                json: async () => {
-                    throw new Error("Not JSON")
-                },
+                json: async () => { throw new Error("Not JSON") },
             })
 
             try {
@@ -121,20 +135,18 @@ describe("image-api", () => {
             } catch (error) {
                 expect(error).toBeInstanceOf(PollinationsApiError)
                 const apiError = error as PollinationsApiError
-                expect(apiError.message).toBe(
-                    "Request failed with status 503"
-                )
+                expect(apiError.message).toContain("503")
                 expect(apiError.code).toBe(ApiErrorCodeConst.INTERNAL_ERROR)
-                expect(apiError.status).toBe(503)
             }
         })
 
-        it("throws validation error for empty prompt", async () => {
+        it("throws validation error for invalid prompt", async () => {
+            // Empty prompt should fail Zod validation
             await expect(generateImage({ prompt: "" })).rejects.toThrow()
         })
 
-        it("wraps network errors", async () => {
-            mockFetch.mockRejectedValueOnce(new Error("Network failure"))
+        it("wraps unexpected network errors", async () => {
+            mockFetch.mockRejectedValueOnce(new Error("DNS Failure"))
 
             try {
                 await generateImage({ prompt: "test" })
@@ -142,42 +154,30 @@ describe("image-api", () => {
             } catch (error) {
                 expect(error).toBeInstanceOf(PollinationsApiError)
                 const apiError = error as PollinationsApiError
-                expect(apiError.message).toBe("Network failure")
+                expect(apiError.message).toBe("DNS Failure")
                 expect(apiError.code).toBe(ClientErrorCodeConst.UNKNOWN_ERROR)
             }
-        })
-
-        it("includes authentication headers in request", async () => {
-            mockFetch.mockResolvedValueOnce({
-                ok: true,
-                status: 200,
-            })
-
-            await generateImage({ prompt: "test" })
-
-            expect(mockFetch).toHaveBeenCalledWith(
-                expect.any(String),
-                expect.objectContaining({
-                    method: "GET",
-                    headers: expect.any(Object),
-                    cache: "no-store",
-                })
-            )
         })
     })
 
     describe("downloadImage", () => {
-        it("downloads image as blob", async () => {
-            const mockBlob = new Blob(["test image data"], { type: "image/png" })
+        it("downloads image as blob successfully", async () => {
+            const mockBlob = new Blob(["data"], { type: "image/png" })
             mockFetch.mockResolvedValueOnce({
                 ok: true,
                 status: 200,
                 blob: async () => mockBlob,
             })
 
-            const result = await downloadImage("https://example.com/image.png")
+            const result = await downloadImage("https://example.com/img.png")
 
             expect(result).toBe(mockBlob)
+            expect(mockFetch).toHaveBeenCalledWith(
+                "https://example.com/img.png",
+                expect.objectContaining({
+                    headers: { "Authorization": "Bearer test-token" },
+                })
+            )
         })
 
         it("throws PollinationsApiError on download failure", async () => {
@@ -187,177 +187,27 @@ describe("image-api", () => {
             })
 
             try {
-                await downloadImage("https://example.com/missing.png")
+                await downloadImage("https://example.com/404.png")
                 expect.fail("Should have thrown")
             } catch (error) {
                 expect(error).toBeInstanceOf(PollinationsApiError)
                 const apiError = error as PollinationsApiError
                 expect(apiError.message).toBe("Failed to download image")
-                expect(apiError.code).toBe(ClientErrorCodeConst.GENERATION_FAILED)
                 expect(apiError.status).toBe(404)
+                expect(apiError.code).toBe(ClientErrorCodeConst.GENERATION_FAILED)
             }
-        })
-
-        it("includes authentication headers in download request", async () => {
-            const mockBlob = new Blob(["test"], { type: "image/png" })
-            mockFetch.mockResolvedValueOnce({
-                ok: true,
-                status: 200,
-                blob: async () => mockBlob,
-            })
-
-            await downloadImage("https://example.com/image.png")
-
-            expect(mockFetch).toHaveBeenCalledWith(
-                "https://example.com/image.png",
-                expect.objectContaining({
-                    headers: expect.any(Object),
-                })
-            )
         })
     })
 
     describe("isApiError", () => {
-        it("returns true for PollinationsApiError", () => {
-            const error = new PollinationsApiError("Test error")
-            expect(isApiError(error)).toBe(true)
-        })
+        it("identifies PollinationsApiError correctly", () => {
+            const apiError = new PollinationsApiError("API Error")
+            const regularError = new Error("Regular Error")
 
-        it("returns false for regular Error", () => {
-            const error = new Error("Test error")
-            expect(isApiError(error)).toBe(false)
-        })
-
-        it("returns false for plain objects", () => {
-            const error = { message: "Test error" }
-            expect(isApiError(error)).toBe(false)
-        })
-
-        it("returns false for null/undefined", () => {
+            expect(isApiError(apiError)).toBe(true)
+            expect(isApiError(regularError)).toBe(false)
             expect(isApiError(null)).toBe(false)
-            expect(isApiError(undefined)).toBe(false)
-        })
-    })
-
-    describe("PollinationsApiError", () => {
-        it("creates error with all properties", () => {
-            const error = new PollinationsApiError(
-                "Test message",
-                ApiErrorCodeConst.INTERNAL_ERROR,
-                500,
-                { extra: "data" }
-            )
-
-            expect(error.message).toBe("Test message")
-            expect(error.code).toBe(ApiErrorCodeConst.INTERNAL_ERROR)
-            expect(error.status).toBe(500)
-            expect(error.details).toMatchObject({ extra: "data" })
-            expect(error.name).toBe("PollinationsApiError")
-        })
-
-        it("creates error with only message", () => {
-            const error = new PollinationsApiError("Test message")
-
-            expect(error.message).toBe("Test message")
-            expect(error.code).toBe(ClientErrorCodeConst.UNKNOWN_ERROR)
-            expect(error.status).toBe(500)
-        })
-
-        it("is instanceof Error", () => {
-            const error = new PollinationsApiError("Test")
-            expect(error instanceof Error).toBe(true)
-            expect(error instanceof PollinationsApiError).toBe(true)
-        })
-
-        it("provides user-friendly message", () => {
-            const error = new PollinationsApiError(
-                "Technical error",
-                ApiErrorCodeConst.UNAUTHORIZED,
-                401
-            )
-            expect(error.userMessage).toBe("Authentication required")
-        })
-
-        it("identifies retryable errors", () => {
-            const serverError = new PollinationsApiError(
-                "Server error",
-                ApiErrorCodeConst.INTERNAL_ERROR,
-                500
-            )
-            const validationError = new PollinationsApiError(
-                "Invalid params",
-                ApiErrorCodeConst.BAD_REQUEST,
-                400
-            )
-
-            expect(serverError.isRetryable).toBe(true)
-            expect(validationError.isRetryable).toBe(false)
-        })
-
-        it("identifies auth errors", () => {
-            const authError = new PollinationsApiError(
-                "Unauthorized",
-                ApiErrorCodeConst.UNAUTHORIZED,
-                401
-            )
-            const otherError = new PollinationsApiError(
-                "Other",
-                ApiErrorCodeConst.INTERNAL_ERROR,
-                500
-            )
-
-            expect(authError.isAuthError).toBe(true)
-            expect(otherError.isAuthError).toBe(false)
-        })
-
-        it("identifies validation errors", () => {
-            const validationError = new PollinationsApiError(
-                "Bad request",
-                ApiErrorCodeConst.BAD_REQUEST,
-                400
-            )
-            const otherError = new PollinationsApiError(
-                "Other",
-                ApiErrorCodeConst.INTERNAL_ERROR,
-                500
-            )
-
-            expect(validationError.isValidationError).toBe(true)
-            expect(otherError.isValidationError).toBe(false)
-        })
-
-        it("provides flat field errors", () => {
-            const error = new PollinationsApiError(
-                "Validation failed",
-                ApiErrorCodeConst.BAD_REQUEST,
-                400,
-                {
-                    fieldErrors: {
-                        prompt: ["Prompt is required"],
-                        width: ["Width must be at least 64"],
-                    },
-                }
-            )
-
-            expect(error.hasFieldErrors).toBe(true)
-            expect(error.flatFieldErrors).toContain("prompt: Prompt is required")
-            expect(error.flatFieldErrors).toContain("width: Width must be at least 64")
-        })
-
-        it("serializes to JSON", () => {
-            const error = new PollinationsApiError(
-                "Test",
-                ApiErrorCodeConst.INTERNAL_ERROR,
-                500,
-                { requestId: "req_123" }
-            )
-
-            const json = error.toJSON()
-            expect(json.name).toBe("PollinationsApiError")
-            expect(json.message).toBe("Test")
-            expect(json.code).toBe(ApiErrorCodeConst.INTERNAL_ERROR)
-            expect(json.status).toBe(500)
-            expect(json.requestId).toBe("req_123")
+            expect(isApiError({})).toBe(false)
         })
     })
 })

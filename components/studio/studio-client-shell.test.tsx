@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, fireEvent } from "@testing-library/react"
+import { render, screen, fireEvent, within, act } from "@testing-library/react"
 import { StudioClientShell } from "./studio-client-shell"
 import { useStudioClientShell } from "@/hooks/use-studio-client-shell"
 
@@ -14,14 +14,10 @@ vi.mock("@/components/clerk-user-button", () => ({
     ClerkUserButton: () => <div data-testid="clerk-user-button" />
 }))
 
-// Mock ClerkUserButton
-vi.mock("@/components/clerk-user-button", () => ({
-    ClerkUserButton: () => <div data-testid="clerk-user-button" />
-}))
-
-// Mock Dialog
+// Mock Radix UI Portal and Dialog to work in JSDOM
 vi.mock("@/components/ui/dialog", () => ({
-    Dialog: ({ open, children }: { open?: boolean; children?: React.ReactNode }) => open ? <div data-testid="fullscreen-dialog">{children}</div> : null,
+    Dialog: ({ open, children, onOpenChange }: { open?: boolean; children?: React.ReactNode; onOpenChange?: (open: boolean) => void }) =>
+        open ? <div data-testid="fullscreen-dialog" onClick={() => onOpenChange?.(false)}>{children}</div> : null,
     DialogContent: ({ children }: { children?: React.ReactNode }) => <div data-testid="dialog-content">{children}</div>,
     DialogOverlay: () => <div data-testid="dialog-overlay" />,
     DialogPortal: ({ children }: { children?: React.ReactNode }) => <div data-testid="dialog-portal">{children}</div>,
@@ -44,22 +40,16 @@ vi.mock("@/components/ui/tooltip", () => ({
     TooltipProvider: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
 }))
 
-// Mock hooks/queries to avoid actual react-query usage in tests
+// Mock hooks/queries
 vi.mock("@/hooks/queries", () => ({
     useImageModels: () => ({ models: [], isLoading: false }),
+    useEnhancePrompt: ({ onSuccess }: { onSuccess?: (text: string) => void } = {}) => ({
+        enhance: vi.fn(({ prompt }) => onSuccess?.(prompt + " enhanced")),
+        cancel: vi.fn(),
+        isEnhancing: false,
+    }),
 }))
 
-// Mock ImageCanvas to avoid styled-jsx warnings in tests
-vi.mock("@/components/studio/canvas/image-canvas", () => ({
-     
-    ImageCanvas: ({ image, isGenerating, className }: { image?: { url: string; prompt: string } | null; isGenerating?: boolean; className?: string }) => (
-        <div data-testid="image-canvas" className={className}>
-            {isGenerating && <div data-testid="loading-state">Loading...</div>}
-            {/* eslint-disable-next-line @next/next/no-img-element -- Test mock */}
-            {image && <img src={image.url} alt={image.prompt} data-testid="generated-image" />}
-        </div>
-    ),
-}))
 describe("StudioClientShell", () => {
     const mockHookReturn = {
         prompt: "",
@@ -93,6 +83,7 @@ describe("StudioClientShell", () => {
         handleAspectRatioChange: vi.fn(),
         handleWidthChange: vi.fn(),
         handleHeightChange: vi.fn(),
+        handleModelChange: vi.fn(),
         handleGenerate: vi.fn(),
         handleRemoveImage: vi.fn(),
         handleDeleteSelected: vi.fn(),
@@ -102,21 +93,29 @@ describe("StudioClientShell", () => {
         handleOpenInNewTab: vi.fn(),
         isFullscreen: false,
         setIsFullscreen: vi.fn(),
+        aspectRatios: [
+            { label: "Square", value: "1:1", width: 1000, height: 1000, icon: "square", category: "square" },
+            { label: "Custom", value: "custom", width: 1000, height: 1000, icon: "sliders", category: "square" },
+        ],
     }
 
     beforeEach(() => {
         vi.clearAllMocks()
-        // Default mock implementation
         const useStudioClientShellMock = useStudioClientShell as unknown as ReturnType<typeof vi.fn>
         useStudioClientShellMock.mockReturnValue(mockHookReturn)
+
+        // Mock document.execCommand to avoid JSDOM warnings
+        if (typeof document !== 'undefined') {
+            document.execCommand = vi.fn().mockReturnValue(true)
+        }
     })
 
-    it("renders the studio components", () => {
+    it("renders core layout components", () => {
         render(<StudioClientShell />)
 
         expect(screen.getByTestId("studio-header")).toBeInTheDocument()
         expect(screen.getByTestId("clerk-user-button")).toBeInTheDocument()
-        expect(screen.getByPlaceholderText(/describe the image you want to create/i)).toBeInTheDocument()
+        expect(screen.getByTestId("prompt-composer")).toBeInTheDocument()
         expect(screen.getByText("Generate Image")).toBeInTheDocument()
     })
 
@@ -135,7 +134,7 @@ describe("StudioClientShell", () => {
         expect(mockHookReturn.handleGenerate).toHaveBeenCalled()
     })
 
-    it("shows loading state during generation", () => {
+    it("shows generating state", () => {
         const useStudioClientShellMock = useStudioClientShell as unknown as ReturnType<typeof vi.fn>
         useStudioClientShellMock.mockReturnValue({
             ...mockHookReturn,
@@ -149,43 +148,145 @@ describe("StudioClientShell", () => {
         expect(screen.getByRole("button", { name: /generating/i })).toBeDisabled()
     })
 
-    it("toggles sidebar visibility", () => {
+    it("toggles sidebars via header controls", () => {
         render(<StudioClientShell />)
 
-        const toggleSidebarButton = screen.getByTestId("toggle-left-sidebar")
-        fireEvent.click(toggleSidebarButton)
-
+        fireEvent.click(screen.getByTestId("toggle-left-sidebar"))
         expect(mockHookReturn.setShowLeftSidebar).toHaveBeenCalled()
-    })
 
-    it("toggles gallery visibility", () => {
-        render(<StudioClientShell />)
-
-        const toggleGalleryButton = screen.getByTestId("toggle-right-panel")
-        fireEvent.click(toggleGalleryButton)
-
+        fireEvent.click(screen.getByTestId("toggle-right-panel"))
         expect(mockHookReturn.setShowGallery).toHaveBeenCalled()
     })
 
-    it("renders fullscreen dialog when isFullscreen is true", () => {
+    it("handles prompt enhancement", () => {
+        const setPrompt = vi.fn()
         const useStudioClientShellMock = useStudioClientShell as unknown as ReturnType<typeof vi.fn>
         useStudioClientShellMock.mockReturnValue({
             ...mockHookReturn,
-            isFullscreen: true,
-            currentImage: {
-                id: "1",
-                url: "test.jpg",
-                prompt: "test",
-                params: { width: 1024, height: 1024 }
-            }
+            prompt: "forest",
+            setPrompt,
         })
 
         render(<StudioClientShell />)
 
-        expect(screen.getByTestId("fullscreen-dialog")).toBeInTheDocument()
+        const enhanceButtons = screen.getAllByTestId("enhance-button-wand")
+        // The first one is for the main prompt
+        fireEvent.click(enhanceButtons[0])
 
-        // Should have 2 images: one in canvas, one in fullscreen
-        const images = screen.getAllByRole("img", { name: "test" })
-        expect(images).toHaveLength(2)
+        expect(setPrompt).toHaveBeenCalledWith("forest enhanced")
+    })
+
+    it("handles negative prompt enhancement", () => {
+        const setNegativePrompt = vi.fn()
+        const useStudioClientShellMock = useStudioClientShell as unknown as ReturnType<typeof vi.fn>
+        useStudioClientShellMock.mockReturnValue({
+            ...mockHookReturn,
+            prompt: "forest",
+            negativePrompt: "buildings",
+            setNegativePrompt,
+        })
+
+        render(<StudioClientShell />)
+
+        // Toggle negative prompt area
+        fireEvent.click(screen.getByTestId("negative-prompt-toggle"))
+
+        const enhanceButtons = screen.getAllByTestId("enhance-button-wand")
+        // The second one is for the negative prompt
+        fireEvent.click(enhanceButtons[1])
+
+        expect(setNegativePrompt).toHaveBeenCalledWith("forest enhanced")
+    })
+
+    it("adds suggestions to prompt", () => {
+        const setPrompt = vi.fn()
+        const useStudioClientShellMock = useStudioClientShell as unknown as ReturnType<typeof vi.fn>
+        useStudioClientShellMock.mockReturnValue({
+            ...mockHookReturn,
+            prompt: "forest",
+            setPrompt,
+        })
+
+        render(<StudioClientShell />)
+
+        const suggestion = screen.getByText("+ cinematic lighting")
+        fireEvent.click(suggestion)
+
+        expect(setPrompt).toHaveBeenCalledWith("forest cinematic lighting")
+    })
+
+    it("selects from prompt history", () => {
+        const setPrompt = vi.fn()
+        const useStudioClientShellMock = useStudioClientShell as unknown as ReturnType<typeof vi.fn>
+        useStudioClientShellMock.mockReturnValue({
+            ...mockHookReturn,
+            promptHistory: ["previous prompt"],
+            setPrompt,
+        })
+
+        render(<StudioClientShell />)
+
+        fireEvent.click(screen.getByTestId("history-toggle"))
+        fireEvent.click(screen.getByText("previous prompt"))
+
+        expect(setPrompt).toHaveBeenCalledWith("previous prompt")
+    })
+
+    it("handles image actions in toolbar", async () => {
+        const currentImage = {
+            id: "1",
+            url: "test.jpg",
+            prompt: "test image",
+            params: { width: 1024, height: 1024, model: "flux" }
+        }
+
+        const useStudioClientShellMock = useStudioClientShell as unknown as ReturnType<typeof vi.fn>
+        useStudioClientShellMock.mockReturnValue({
+            ...mockHookReturn,
+            currentImage,
+        })
+
+        render(<StudioClientShell />)
+
+        fireEvent.click(screen.getByTestId("download-button"))
+        expect(mockHookReturn.handleDownload).toHaveBeenCalledWith(currentImage)
+
+        // Wrap in act because toolbar update its internal 'copied' state
+        await act(async () => {
+            fireEvent.click(screen.getByTestId("copy-button"))
+        })
+        expect(mockHookReturn.handleCopyUrl).toHaveBeenCalledWith(currentImage)
+
+        fireEvent.click(screen.getByTestId("fullscreen-button"))
+        expect(mockHookReturn.setIsFullscreen).toHaveBeenCalledWith(true)
+    })
+
+    it("renders fullscreen dialog with image and metadata", () => {
+        const currentImage = {
+            id: "1",
+            url: "test.jpg",
+            prompt: "test image",
+            params: { width: 1024, height: 1024, model: "flux" }
+        }
+
+        const useStudioClientShellMock = useStudioClientShell as unknown as ReturnType<typeof vi.fn>
+        useStudioClientShellMock.mockReturnValue({
+            ...mockHookReturn,
+            isFullscreen: true,
+            currentImage,
+        })
+
+        render(<StudioClientShell />)
+
+        const dialog = screen.getByTestId("fullscreen-dialog")
+        expect(dialog).toBeInTheDocument()
+
+        const dialogScoped = within(dialog)
+
+        const images = dialogScoped.getAllByRole("img", { name: "test image" })
+        expect(images.length).toBeGreaterThan(0)
+
+        expect(dialogScoped.getByText("1024x1024")).toBeInTheDocument()
+        expect(dialogScoped.getByText("flux")).toBeInTheDocument()
     })
 })

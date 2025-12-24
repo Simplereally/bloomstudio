@@ -10,9 +10,11 @@
 import type { GenerationOptions } from "@/components/studio"
 import { useDownloadImage, useGenerateImage } from "@/hooks/queries"
 import { useRandomSeed } from "@/hooks/use-random-seed"
+import { getModelAspectRatios, getModelConstraints } from "@/lib/config/model-constraints"
 import { showAuthRequiredToast, showErrorToast } from "@/lib/errors"
 import type {
     AspectRatio,
+    AspectRatioOption,
     GeneratedImage,
     ImageGenerationParams,
     ImageModel,
@@ -66,6 +68,7 @@ export interface UseStudioClientShellReturn {
     ) => void
     handleWidthChange: (newWidth: number) => void
     handleHeightChange: (newHeight: number) => void
+    handleModelChange: (newModel: ImageModel) => void
     handleGenerate: () => void
     handleRemoveImage: (id: string) => void
     handleDeleteSelected: () => void
@@ -73,6 +76,9 @@ export interface UseStudioClientShellReturn {
     handleCopyUrl: (image: GeneratedImage) => Promise<void>
     handleRegenerate: () => void
     handleOpenInNewTab: () => void
+
+    // Model-specific data
+    aspectRatios: readonly AspectRatioOption[]
 }
 
 export function useStudioClientShell(): UseStudioClientShellReturn {
@@ -160,6 +166,27 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
         setHeight(newHeight)
         setAspectRatio("custom")
     }, [])
+
+    // Handle model change with dimension reset for pixel-limited models
+    const handleModelChange = React.useCallback((newModel: ImageModel) => {
+        setModel(newModel)
+
+        const constraints = getModelConstraints(newModel)
+        const currentPixels = width * height
+
+        // If current dimensions exceed new model's limit, reset to defaults
+        if (currentPixels >= constraints.maxPixels) {
+            setWidth(constraints.defaultDimensions.width)
+            setHeight(constraints.defaultDimensions.height)
+            setAspectRatio("1:1")
+        }
+    }, [width, height])
+
+    // Get model-specific aspect ratios for the selector
+    const aspectRatios = React.useMemo(
+        () => getModelAspectRatios(model),
+        [model]
+    )
 
     // Refs for values that shouldn't trigger handleGenerate recreation
     // This prevents the keyboard shortcut effect from re-running on every keystroke
@@ -368,6 +395,7 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
         handleAspectRatioChange,
         handleWidthChange,
         handleHeightChange,
+        handleModelChange,
         handleGenerate,
         handleRemoveImage,
         handleDeleteSelected,
@@ -375,5 +403,8 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
         handleCopyUrl,
         handleRegenerate: triggerRegenerate,
         handleOpenInNewTab,
+
+        // Model-specific data
+        aspectRatios,
     }
 }

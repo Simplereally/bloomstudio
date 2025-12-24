@@ -7,6 +7,9 @@
 // Query hooks (TanStack Query)
 export * from "./queries"
 
+// Dimension constraints hook
+export { useDimensionConstraints } from "./use-dimension-constraints"
+
 // Local state hooks
 export { useGenerationControls } from "./use-generation-controls"
 export type { GenerationControlsState, UseGenerationControlsProps } from "./use-generation-controls"

@@ -5,6 +5,7 @@
  * Follows SRP: Only manages seed value input
  */
 
+import { API_CONSTRAINTS } from "@/lib/config/api.config"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -42,7 +43,7 @@ export const SeedControl = React.memo(function SeedControl({
     const [copied, setCopied] = React.useState(false)
 
     const generateRandomSeed = () => {
-        const newSeed = Math.floor(Math.random() * 2147483647)
+        const newSeed = Math.floor(Math.random() * (API_CONSTRAINTS.seed.max + 1))
         onSeedChange(newSeed)
     }
 
@@ -53,7 +54,7 @@ export const SeedControl = React.memo(function SeedControl({
         } else {
             const numValue = parseInt(value, 10)
             if (!isNaN(numValue)) {
-                onSeedChange(Math.max(-1, Math.min(2147483647, numValue)))
+                onSeedChange(Math.max(-1, Math.min(API_CONSTRAINTS.seed.max, numValue)))
             }
         }
     }
@@ -92,7 +93,7 @@ export const SeedControl = React.memo(function SeedControl({
                         onChange={handleInputChange}
                         disabled={disabled}
                         min={-1}
-                        max={2147483647}
+                        max={API_CONSTRAINTS.seed.max}
                         className={`pr-8 text-sm bg-background/50 border-border/50 ${isLocked ? "border-primary/50 bg-primary/5" : ""}`}
                         data-testid="seed-input"
                     />

@@ -1,5 +1,7 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 import { PollinationsAPI } from "./pollinations-api"
+import { API_CONSTRAINTS } from "./config/api.config"
+import * as apiConfig from "./config/api.config"
 
 
 describe("PollinationsAPI", () => {
@@ -181,8 +183,8 @@ describe("PollinationsAPI", () => {
             const url = PollinationsAPI.buildImageUrl({
                 prompt: "test",
                 model: "flux",
-                width: 1024,
-                height: 1024,
+                width: 768,
+                height: 768,
                 enhance: false,
                 quality: "medium",
                 private: false,
@@ -200,7 +202,7 @@ describe("PollinationsAPI", () => {
                 prompt: "test",
                 model: "flux",
                 width: 512,
-                height: 768,
+                height: 1024,
                 enhance: false,
                 quality: "medium",
                 private: false,
@@ -210,7 +212,7 @@ describe("PollinationsAPI", () => {
                 transparent: false,
             })
             expect(url).toContain("width=512")
-            expect(url).toContain("height=768")
+            expect(url).toContain("height=1024")
         })
 
         it("includes seed when provided", () => {
@@ -391,6 +393,26 @@ describe("PollinationsAPI", () => {
             // Should have at least 2 unique values in 10 attempts
             expect(uniqueSeeds.size).toBeGreaterThan(1)
         })
+
+        it("stays within valid seed range", () => {
+            const seed = PollinationsAPI.generateRandomSeed()
+            expect(seed).toBeGreaterThanOrEqual(API_CONSTRAINTS.seed.min)
+            expect(seed).toBeLessThanOrEqual(API_CONSTRAINTS.seed.max)
+        })
+
+        it("handles edge cases for random generation", () => {
+            const mathSpy = vi.spyOn(Math, "random")
+
+            // Test minimum (Math.random() = 0)
+            mathSpy.mockReturnValue(0)
+            expect(PollinationsAPI.generateRandomSeed()).toBe(0)
+
+            // Test maximum (Math.random() is close to 1.0)
+            mathSpy.mockReturnValue(0.9999999999999999)
+            expect(PollinationsAPI.generateRandomSeed()).toBe(API_CONSTRAINTS.seed.max)
+
+            mathSpy.mockRestore()
+        })
     })
 
     describe("validateGuidanceScale", () => {
@@ -412,9 +434,22 @@ describe("PollinationsAPI", () => {
     })
 
     describe("getHeaders", () => {
+        beforeEach(() => {
+            vi.restoreAllMocks()
+        })
+
         it("returns empty headers when no API key", () => {
+            vi.spyOn(apiConfig, "getApiKey").mockReturnValue(undefined)
             const headers = PollinationsAPI.getHeaders()
             expect(headers).toEqual({})
+        })
+
+        it("returns Authorization header when API key is present", () => {
+            vi.spyOn(apiConfig, "getApiKey").mockReturnValue("test-api-key")
+            const headers = PollinationsAPI.getHeaders()
+            expect(headers).toEqual({
+                "Authorization": "Bearer test-api-key"
+            })
         })
     })
 })

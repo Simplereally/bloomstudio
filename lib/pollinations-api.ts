@@ -121,12 +121,9 @@ export class PollinationsAPI {
     return Math.round(clamped / step) * step
   }
 
-  /**
-   * Generates a random seed within valid range
-   */
   static generateRandomSeed(): number {
-    // Use safe integer range for JavaScript
-    return Math.floor(Math.random() * 2147483647)
+    // Generate a random integer between 0 and the max seed value (inclusive)
+    return Math.floor(Math.random() * (API_CONSTRAINTS.seed.max + 1))
   }
 
   /**

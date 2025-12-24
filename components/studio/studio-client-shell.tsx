@@ -34,7 +34,6 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 // Types and utilities
 import { useEnhancePrompt, useImageModels } from "@/hooks/queries"
 import { useStudioClientShell } from "@/hooks/use-studio-client-shell"
-import { ASPECT_RATIOS } from "@/lib/image-models"
 import { setInputValueWithUndo } from "@/lib/utils/set-input-value-with-undo"
 import * as React from "react"
 
@@ -84,6 +83,8 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
         handleOpenInNewTab,
         isFullscreen,
         setIsFullscreen,
+        handleModelChange,
+        aspectRatios,
     } = useStudioClientShell()
 
     const { models, isLoading: isLoadingModels } = useImageModels()
@@ -193,7 +194,7 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
                     {/* Model Selection */}
                     <ModelSelector
                         selectedModel={model}
-                        onModelChange={setModel}
+                        onModelChange={handleModelChange}
                         models={models}
                         disabled={isGenerating || isLoadingModels}
                     />
@@ -202,7 +203,7 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
                     <AspectRatioSelector
                         selectedRatio={aspectRatio}
                         onRatioChange={handleAspectRatioChange}
-                        ratios={ASPECT_RATIOS}
+                        ratios={aspectRatios}
                         disabled={isGenerating}
                     />
 
@@ -212,6 +213,7 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
                         height={height}
                         onWidthChange={handleWidthChange}
                         onHeightChange={handleHeightChange}
+                        modelId={model}
                         disabled={isGenerating}
                     />
 

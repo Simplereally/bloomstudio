@@ -245,13 +245,5 @@ If you receive an image with different dimensions than requested, the API has li
 
 - [Pollinations AI](https://pollinations.ai)
 - [Black Forest Labs (Flux creators)](https://bfl.ai)
-- [Flux.1 on Replicate](https://replicate.com)
-- [Flux documentation on Segmind](https://segmind.com)
 
 ---
-
-## Changelog
-
-| Date | Change |
-|------|--------|
-| 2024-12-24 | Initial research and documentation |
