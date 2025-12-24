@@ -5,12 +5,12 @@
  * Follows SRP: Only manages image display and visual states
  */
 
-import * as React from "react"
-import Image from "next/image"
-import { cn } from "@/lib/utils"
 import { Card } from "@/components/ui/card"
-import { Loader2, ImagePlus, Sparkles } from "lucide-react"
+import { cn } from "@/lib/utils"
 import type { GeneratedImage } from "@/types/pollinations"
+import { ImagePlus, Loader2, Sparkles } from "lucide-react"
+import Image from "next/image"
+import * as React from "react"
 
 export interface ImageCanvasProps {
     /** Current image to display */
@@ -25,7 +25,7 @@ export interface ImageCanvasProps {
     className?: string
 }
 
-export function ImageCanvas({
+export const ImageCanvas = React.memo(function ImageCanvas({
     image,
     isGenerating = false,
     progress,
@@ -180,4 +180,4 @@ export function ImageCanvas({
             </div>
         </Card>
     )
-}
+})

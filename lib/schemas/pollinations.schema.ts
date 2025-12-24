@@ -33,11 +33,11 @@ export const VideoAspectRatioSchema = z.enum(["16:9", "9:16"]);
 
 // Image generation parameters matching gen.pollinations.ai API
 export const ImageGenerationParamsSchema = z.object({
-    prompt: z.string().min(1, "Prompt is required"),
+    prompt: z.string().min(1, { error: "Prompt is required" }),
     negativePrompt: z.string().optional(),
     model: ImageModelSchema.optional().default("flux"),
-    width: z.number().int().min(64).max(2048).optional().default(1024),
-    height: z.number().int().min(64).max(2048).optional().default(1024),
+    width: z.number().int().min(64).max(2048).optional().default(768),
+    height: z.number().int().min(64).max(2048).optional().default(768),
     seed: z.number().int().min(0).max(1844674407370955).optional(),
     enhance: z.boolean().optional().default(false),
     quality: QualitySchema.optional().default("medium"),
@@ -63,7 +63,7 @@ export const VideoGenerationParamsSchema = ImageGenerationParamsSchema.extend({
 // Generated image result
 export const GeneratedImageSchema = z.object({
     id: z.string(),
-    url: z.string().url(),
+    url: z.url(),
     prompt: z.string(),
     params: ImageGenerationParamsSchema,
     timestamp: z.number(),
@@ -99,7 +99,7 @@ export const ImageModelInfoSchema = z.object({
 export const ImageModelsResponseSchema = z.array(ImageModelInfoSchema);
 
 // Validation error details
-export const ValidationErrorDetailsSchema = z.object({
+export const ValidationErrorDetailsSchema = z.looseObject({
     name: z.string(),
     stack: z.string().optional(),
     formErrors: z.array(z.string()),
@@ -125,7 +125,7 @@ export const ClientErrorCodeSchema = z.enum([
 export const ErrorCodeSchema = z.union([ApiErrorCodeSchema, ClientErrorCodeSchema]);
 
 // Base error schema
-const BaseApiErrorSchema = z.object({
+const BaseApiErrorSchema = z.looseObject({
     message: z.string(),
     timestamp: z.string(),
     requestId: z.string().optional(),
@@ -133,38 +133,42 @@ const BaseApiErrorSchema = z.object({
 });
 
 // 400 Bad Request
-export const BadRequestErrorSchema = z.object({
+export const BadRequestErrorSchema = z.looseObject({
     status: z.literal(400),
     success: z.literal(false),
     error: BaseApiErrorSchema.extend({
         code: z.literal("BAD_REQUEST"),
-        details: ValidationErrorDetailsSchema,
+        details: ValidationErrorDetailsSchema.optional(),
     }),
 });
 
 // 401 Unauthorized
-export const UnauthorizedErrorSchema = z.object({
+export const UnauthorizedErrorSchema = z.looseObject({
     status: z.literal(401),
     success: z.literal(false),
     error: BaseApiErrorSchema.extend({
         code: z.literal("UNAUTHORIZED"),
-        details: z.object({
-            name: z.string(),
+        details: z.looseObject({
+            name: z.string().optional(),
             stack: z.string().optional(),
-        }),
+        }).optional(),
     }),
 });
 
 // 500 Internal Error
-export const InternalErrorSchema = z.object({
+export const InternalErrorSchema = z.looseObject({
     status: z.literal(500),
     success: z.literal(false),
     error: BaseApiErrorSchema.extend({
         code: z.literal("INTERNAL_ERROR"),
-        details: z.object({
-            name: z.string(),
+        message: z.union([
+            z.literal("Oh snap, something went wrong on our end. We're on it!"),
+            z.string(),
+        ]),
+        details: z.looseObject({
+            name: z.string().optional(),
             stack: z.string().optional(),
-        }),
+        }).optional(),
     }),
 });
 

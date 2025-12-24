@@ -6,20 +6,20 @@
  * Following SRP: handles only image-related API operations.
  */
 
+import {
+    AllErrorCodes,
+    ApiErrorCodeConst,
+    ClientErrorCodeConst,
+    PollinationsApiError,
+} from "@/lib/errors"
 import { PollinationsAPI } from "@/lib/pollinations-api"
 import {
-    ImageGenerationParamsSchema,
     GeneratedImageSchema,
-    type ImageGenerationParams,
-    type GeneratedImage,
+    ImageGenerationParamsSchema,
     type ApiError,
+    type GeneratedImage,
+    type ImageGenerationParams,
 } from "@/lib/schemas/pollinations.schema"
-import {
-    PollinationsApiError,
-    ClientErrorCodeConst,
-    ApiErrorCodeConst,
-    AllErrorCodes,
-} from "@/lib/errors"
 
 /**
  * Response type for image generation operations
@@ -42,7 +42,7 @@ export async function generateImage(
     // Validate params with Zod schema
     const validatedParams = ImageGenerationParamsSchema.parse(params)
     const url = PollinationsAPI.buildImageUrl(validatedParams)
-
+    
     try {
         const response = await fetch(url, {
             method: "GET",
@@ -106,5 +106,6 @@ export function isApiError(error: unknown): error is PollinationsApiError {
 }
 
 // Re-export error class and types
-export { PollinationsApiError, ClientErrorCodeConst, ClientErrorCodeConst as ClientErrorCode, ApiErrorCodeConst, AllErrorCodes }
+export { AllErrorCodes, ApiErrorCodeConst, ClientErrorCodeConst as ClientErrorCode, ClientErrorCodeConst, PollinationsApiError }
 export type { ApiError }
+

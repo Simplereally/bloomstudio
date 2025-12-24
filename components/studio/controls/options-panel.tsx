@@ -5,15 +5,14 @@
  * Follows SRP: Only manages generation options toggles
  */
 
-import * as React from "react"
-import { cn } from "@/lib/utils"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import {
     Collapsible,
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
+import * as React from "react"
 // Tooltip components available for future enhancement
 // import {
 //     Tooltip,
@@ -21,12 +20,12 @@ import {
 //     TooltipTrigger,
 // } from "@/components/ui/tooltip"
 import {
-    Settings2,
     ChevronDown,
-    Sparkles,
-    Lock,
-    Shield,
     Info,
+    Lock,
+    Settings2,
+    Shield,
+    Sparkles,
 } from "lucide-react"
 
 export interface GenerationOptions {
@@ -69,19 +68,12 @@ function OptionItem({
 }: OptionItemProps) {
     return (
         <div
-            className={cn(
-                "flex items-center justify-between py-2.5 px-3 rounded-lg",
-                "hover:bg-accent/30 transition-colors",
-                disabled && "opacity-50"
-            )}
+            className={`flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-accent/30 transition-colors ${disabled ? "opacity-50" : ""}`}
             data-testid={`option-${id}`}
         >
             <div className="flex items-center gap-3">
                 <div
-                    className={cn(
-                        "flex items-center justify-center w-7 h-7 rounded-md",
-                        checked ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
-                    )}
+                    className={`flex items-center justify-center w-7 h-7 rounded-md ${checked ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}
                 >
                     {icon}
                 </div>
@@ -108,7 +100,7 @@ function OptionItem({
     )
 }
 
-export function OptionsPanel({
+export const OptionsPanel = React.memo(function OptionsPanel({
     options,
     onOptionsChange,
     disabled = false,
@@ -125,47 +117,32 @@ export function OptionsPanel({
     const activeCount = Object.values(options).filter(Boolean).length
 
     return (
-        <div className={cn("space-y-2", className)} data-testid="options-panel">
+        <div className={`space-y-2 ${className || ""}`} data-testid="options-panel">
             <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
                 <CollapsibleTrigger
-                    className={cn(
-                        "flex items-center justify-between w-full",
-                        "py-2 px-3 rounded-lg",
-                        "hover:bg-accent/30 transition-colors",
-                        "text-left"
-                    )}
+                    className={`flex items-center justify-between w-full py-2 px-3 rounded-lg hover:bg-accent/30 transition-colors text-left`}
                     data-testid="options-trigger"
                 >
                     <div className="flex items-center gap-2">
                         <Settings2 className="h-4 w-4 text-primary" />
                         <span className="text-sm font-medium">Advanced Options</span>
                         {activeCount > 0 && (
-                            <span
-                                className={cn(
-                                    "flex items-center justify-center",
-                                    "w-5 h-5 rounded-full text-xs font-medium",
-                                    "bg-primary/15 text-primary"
-                                )}
-                                data-testid="active-count"
-                            >
+                                <span
+                                    className={`flex items-center justify-center w-5 h-5 rounded-full text-xs font-medium bg-primary/15 text-primary`}
+                                    data-testid="active-count"
+                                >
                                 {activeCount}
                             </span>
                         )}
                     </div>
                     <ChevronDown
-                        className={cn(
-                            "h-4 w-4 text-muted-foreground transition-transform",
-                            isExpanded && "rotate-180"
-                        )}
+                        className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? "rotate-180" : ""}`}
                     />
                 </CollapsibleTrigger>
 
                 <CollapsibleContent className="pt-1">
                     <div
-                        className={cn(
-                            "rounded-lg border border-border/50",
-                            "bg-background/50 divide-y divide-border/50"
-                        )}
+                        className="rounded-lg border border-border/50 bg-background/50 divide-y divide-border/50"
                     >
                         <OptionItem
                             id="enhance"
@@ -208,4 +185,4 @@ export function OptionsPanel({
             </Collapsible>
         </div>
     )
-}
+})

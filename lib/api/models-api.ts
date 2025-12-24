@@ -9,7 +9,7 @@
 import { API_CONFIG } from "@/lib/config/api.config";
 import { PollinationsAPI } from "@/lib/pollinations-api";
 import { ImageModelsResponseSchema, type ImageModelInfo } from "@/lib/schemas/pollinations.schema";
-import { PollinationsApiError, ClientErrorCodeConst } from "./image-api";
+import { ClientErrorCodeConst, PollinationsApiError } from "./image-api";
 
 /**
  * Fetches available image models from the API.
@@ -19,7 +19,7 @@ import { PollinationsApiError, ClientErrorCodeConst } from "./image-api";
  */
 export async function fetchImageModels(): Promise<ImageModelInfo[]> {
   const url = `${API_CONFIG.baseUrl}/image/models`;
-
+ 
   try {
     const response = await fetch(url, {
       method: "GET",

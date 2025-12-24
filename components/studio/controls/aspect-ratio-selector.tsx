@@ -5,20 +5,19 @@
  * Follows SRP: Only manages aspect ratio selection UI
  */
 
-import * as React from "react"
-import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import {
     Tooltip,
     TooltipContent,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
+import type { AspectRatio, AspectRatioOption } from "@/types/pollinations"
 import {
     Frame,
     SlidersHorizontal,
 } from "lucide-react"
-import type { AspectRatio, AspectRatioOption } from "@/types/pollinations"
+import * as React from "react"
 
 export interface AspectRatioSelectorProps {
     /** Currently selected aspect ratio */
@@ -33,7 +32,7 @@ export interface AspectRatioSelectorProps {
     className?: string
 }
 
-export function AspectRatioSelector({
+export const AspectRatioSelector = React.memo(function AspectRatioSelector({
     selectedRatio,
     onRatioChange,
     ratios,
@@ -49,62 +48,46 @@ export function AspectRatioSelector({
     }
 
     return (
-        <div className={cn("space-y-2", className)} data-testid="aspect-ratio-selector">
+        <div className={`space-y-2 ${className || ""}`} data-testid="aspect-ratio-selector">
             <Label className="text-sm font-medium flex items-center gap-2">
                 <Frame className="h-3.5 w-3.5 text-primary" />
                 Aspect Ratio
             </Label>
-
-            <ToggleGroup
-                type="single"
-                value={selectedRatio}
-                onValueChange={handleChange}
-                disabled={disabled}
-                className="grid grid-cols-4 gap-1.5"
-                data-testid="aspect-ratio-group"
-            >
+            <div className="grid grid-cols-6 gap-1.5" data-testid="aspect-ratio-buttons">
                 {ratios.map((ratio) => {
                     const isSelected = selectedRatio === ratio.value
+                    const isCustom = ratio.value === "custom"
 
                     return (
                         <Tooltip key={ratio.value}>
                             <TooltipTrigger asChild>
-                                <ToggleGroupItem
-                                    value={ratio.value}
-                                    aria-label={ratio.label}
-                                    className={cn(
-                                        "flex flex-col items-center gap-1 h-auto py-2 px-1",
-                                        "data-[state=on]:bg-primary/15 data-[state=on]:text-primary",
-                                        "data-[state=on]:border-primary/30 data-[state=on]:ring-1 data-[state=on]:ring-primary/20"
-                                    )}
+                                <Button
+                                    variant={isSelected ? "secondary" : "outline"}
+                                    onClick={() => onRatioChange(ratio.value, { width: ratio.width, height: ratio.height })}
+                                    disabled={disabled}
+                                    className={`flex flex-col items-center gap-1.5 h-auto py-3 px-1 transition-all ${isSelected ? "bg-primary/10 border-primary/30 ring-1 ring-primary/20" : ""}`}
                                     data-testid={`ratio-${ratio.value.replace(":", "-")}`}
                                 >
                                     {/* Visual ratio preview box */}
                                     <div
-                                        className={cn(
-                                            "flex items-center justify-center",
-                                            "border rounded-sm",
-                                            isSelected
-                                                ? "border-primary/50 bg-primary/10"
-                                                : "border-border/50 bg-background/50"
-                                        )}
+                                        className={`flex items-center justify-center border rounded-sm ${isSelected ? "border-primary/50 bg-primary/20" : "border-border/50 bg-background/50"}`}
                                         style={{
-                                            width: ratio.value === "custom" ? 24 : Math.min(24, 24 * (ratio.width / Math.max(ratio.width, ratio.height))),
-                                            height: ratio.value === "custom" ? 24 : Math.min(24, 24 * (ratio.height / Math.max(ratio.width, ratio.height))),
+                                            width: isCustom ? 32 : Math.min(32, 32 * (ratio.width / Math.max(ratio.width, ratio.height))),
+                                            height: isCustom ? 32 : Math.min(32, 32 * (ratio.height / Math.max(ratio.width, ratio.height))),
                                         }}
                                     >
-                                        {ratio.value === "custom" && (
+                                        {isCustom && (
                                             <SlidersHorizontal className="h-3 w-3 text-muted-foreground" />
                                         )}
                                     </div>
-                                    <span className="text-[10px] font-medium leading-none">
-                                        {ratio.value === "custom" ? "Custom" : ratio.value}
+                                    <span className="text-xs font-medium leading-none">
+                                        {isCustom ? "Custom" : ratio.value}
                                     </span>
-                                </ToggleGroupItem>
+                                </Button>
                             </TooltipTrigger>
                             <TooltipContent side="bottom">
                                 <p className="font-medium">{ratio.label}</p>
-                                {ratio.value !== "custom" && (
+                                {!isCustom && (
                                     <p className="text-xs text-muted-foreground">
                                         {ratio.width} × {ratio.height}
                                     </p>
@@ -113,7 +96,7 @@ export function AspectRatioSelector({
                         </Tooltip>
                     )
                 })}
-            </ToggleGroup>
+            </div>
         </div>
     )
-}
+})

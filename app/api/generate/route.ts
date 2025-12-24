@@ -1,13 +1,14 @@
-import { NextRequest, NextResponse } from "next/server"
-import { ZodError } from "zod"
+import { getAuthorizationHeader, hasSecretKey } from "@/lib/auth"
+import { PollinationsApiError } from "@/lib/errors"
 import { PollinationsAPI } from "@/lib/pollinations-api"
-import { hasSecretKey, getAuthorizationHeader } from "@/lib/auth"
 import {
     ServerGenerateRequestSchema,
-    type ServerGenerateSuccess,
     type ServerGenerateError,
+    type ServerGenerateSuccess,
 } from "@/lib/schemas/server-generate.schema"
-import { GeneratedImageSchema } from "@/lib/schemas/pollinations.schema"
+import { GeneratedImageSchema } from "@/types/pollinations"
+import { NextRequest, NextResponse } from "next/server"
+import { ZodError } from "zod"
 
 /**
  * POST /api/generate
@@ -48,6 +49,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ServerGen
         const authHeader = getAuthorizationHeader(secretKey)
 
         // Make the request to Pollinations API
+        console.log(`[/api/generate] Firing request to: ${generationUrl}`)
         const response = await fetch(generationUrl, {
             method: "GET",
             headers: {
@@ -56,42 +58,22 @@ export async function POST(request: NextRequest): Promise<NextResponse<ServerGen
             cache: "no-store",
         })
 
-        // Log response details for debugging
-        console.log("[/api/generate] Pollinations response:", {
-            status: response.status,
-            statusText: response.statusText,
-            headers: Object.fromEntries(response.headers.entries()),
-            contentType: response.headers.get("content-type"),
-            contentLength: response.headers.get("content-length"),
-        })
-
         if (!response.ok) {
-            // Try to parse error from upstream
-            let errorMessage = `Generation failed with status ${response.status}`
-            let errorCode = "UPSTREAM_ERROR"
-
-            try {
-                const errorData = await response.json()
-                if (errorData?.error?.message) {
-                    errorMessage = errorData.error.message
-                }
-                if (errorData?.error?.code) {
-                    errorCode = errorData.error.code
-                }
-            } catch {
-                // Response is not JSON, use default message
-            }
+            // Use typed error parsing from our Pollinations error schemas
+            const apiError = await PollinationsApiError.fromResponse(response)
+            
+            // Log the full typed error for debugging (includes details, requestId, etc.)
+            console.error("[/api/generate] Pollinations API error:", apiError.toJSON())
 
             return NextResponse.json(
                 {
                     success: false,
                     error: {
-                        code: errorCode,
-                        message: errorMessage,
-                        details: { status: response.status },
+                        code: apiError.code,
+                        message: apiError.message,
                     },
                 },
-                { status: response.status }
+                { status: apiError.status }
             )
         }
 

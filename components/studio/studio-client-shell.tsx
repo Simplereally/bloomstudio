@@ -1,6 +1,5 @@
 "use client"
 
-import * as React from "react"
 import { ClerkUserButton } from "@/components/clerk-user-button"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -9,33 +8,35 @@ import { Sparkles } from "lucide-react"
 
 // Studio Components
 import {
-    StudioLayout,
-    StudioHeader,
-    PromptComposer,
-    ModelSelector,
     AspectRatioSelector,
     DimensionControls,
-    SeedControl,
-    OptionsPanel,
     ImageCanvas,
-    ImageToolbar,
-    ImageMetadata,
     ImageGallery,
+    ImageMetadata,
+    ImageToolbar,
+    ModelSelector,
+    OptionsPanel,
+    PromptComposer,
+    SeedControl,
+    StudioHeader,
+    StudioLayout,
 } from "@/components/studio"
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogOverlay,
     DialogPortal,
     DialogTitle,
-    DialogDescription,
 } from "@/components/ui/dialog"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 
 // Types and utilities
-import { ASPECT_RATIOS } from "@/lib/image-models"
+import { useEnhancePrompt, useImageModels } from "@/hooks/queries"
 import { useStudioClientShell } from "@/hooks/use-studio-client-shell"
-import { useImageModels } from "@/hooks/queries"
+import { ASPECT_RATIOS } from "@/lib/image-models"
+import { setInputValueWithUndo } from "@/lib/utils/set-input-value-with-undo"
+import * as React from "react"
 
 interface StudioClientShellProps {
     defaultLayout?: Record<string, number>
@@ -87,6 +88,80 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
 
     const { models, isLoading: isLoadingModels } = useImageModels()
 
+    // Refs for textareas - used for undo-friendly value setting
+    const promptTextareaRef = React.useRef<HTMLTextAreaElement>(null)
+    const negativePromptTextareaRef = React.useRef<HTMLTextAreaElement>(null)
+
+    // Prompt enhancement for main prompt
+    const {
+        enhance: enhanceMainPrompt,
+        cancel: cancelMainPromptEnhance,
+        isEnhancing: isEnhancingMainPrompt,
+    } = useEnhancePrompt({
+        onSuccess: (enhancedText: string) => {
+            // Use setInputValueWithUndo to preserve browser's native Ctrl+Z undo
+            if (promptTextareaRef.current) {
+                setInputValueWithUndo(promptTextareaRef.current, enhancedText)
+                // Also update React state to keep it in sync
+                setPrompt(enhancedText)
+            } else {
+                // Fallback if ref is not available
+                setPrompt(enhancedText)
+            }
+        },
+    })
+
+    // Prompt enhancement for negative prompt
+    const {
+        enhance: enhanceNegPrompt,
+        cancel: cancelNegPromptEnhance,
+        isEnhancing: isEnhancingNegPrompt,
+    } = useEnhancePrompt({
+        onSuccess: (enhancedText: string) => {
+            // Use setInputValueWithUndo to preserve browser's native Ctrl+Z undo
+            if (negativePromptTextareaRef.current) {
+                setInputValueWithUndo(negativePromptTextareaRef.current, enhancedText)
+                // Also update React state to keep it in sync
+                setNegativePrompt(enhancedText)
+            } else {
+                // Fallback if ref is not available
+                setNegativePrompt(enhancedText)
+            }
+        },
+    })
+
+    const handleEnhancePrompt = React.useCallback(() => {
+        enhanceMainPrompt({ prompt, type: "prompt" })
+    }, [enhanceMainPrompt, prompt])
+
+    const handleEnhanceNegativePrompt = React.useCallback(() => {
+        enhanceNegPrompt({ prompt, negativePrompt, type: "negative" })
+    }, [enhanceNegPrompt, prompt, negativePrompt])
+
+    // Stable callbacks for PromptComposer - use refs to avoid recreating on every keystroke
+    const promptRef = React.useRef(prompt)
+    React.useEffect(() => {
+        promptRef.current = prompt
+    }, [prompt])
+
+    const handleSelectHistory = React.useCallback((p: string) => {
+        if (promptTextareaRef.current) {
+            setInputValueWithUndo(promptTextareaRef.current, p)
+        }
+        setPrompt(p)
+    }, [setPrompt])
+
+    const handleAddSuggestion = React.useCallback((s: string) => {
+        const newPrompt = `${promptRef.current} ${s}`.trim()
+        if (promptTextareaRef.current) {
+            setInputValueWithUndo(promptTextareaRef.current, newPrompt)
+        }
+        setPrompt(newPrompt)
+    }, [setPrompt])
+
+    // Stable suggestions array - avoid recreating on every render
+    const suggestions = React.useMemo(() => ["cinematic lighting", "8k ultra HD", "detailed"], [])
+
     // Sidebar content
     const sidebarContent = (
         <div className="h-full flex flex-col bg-card/50 backdrop-blur-sm border-r border-border/50">
@@ -100,9 +175,17 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
                         onNegativePromptChange={setNegativePrompt}
                         isGenerating={isGenerating}
                         promptHistory={promptHistory}
-                        onSelectHistory={setPrompt}
-                        suggestions={["cinematic lighting", "8k ultra HD", "detailed"]}
-                        onAddSuggestion={(s: string) => setPrompt((p: string) => `${p} ${s}`.trim())}
+                        onSelectHistory={handleSelectHistory}
+                        suggestions={suggestions}
+                        onAddSuggestion={handleAddSuggestion}
+                        isEnhancingPrompt={isEnhancingMainPrompt}
+                        onEnhancePrompt={handleEnhancePrompt}
+                        onCancelEnhancePrompt={cancelMainPromptEnhance}
+                        isEnhancingNegativePrompt={isEnhancingNegPrompt}
+                        onEnhanceNegativePrompt={handleEnhanceNegativePrompt}
+                        onCancelEnhanceNegativePrompt={cancelNegPromptEnhance}
+                        promptTextareaRef={promptTextareaRef}
+                        negativePromptTextareaRef={negativePromptTextareaRef}
                     />
 
                     <Separator className="bg-border/50" />

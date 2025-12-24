@@ -7,17 +7,17 @@
  * Integrates TanStack Query for image generation with local UI state.
  */
 
-import * as React from "react"
+import type { GenerationOptions } from "@/components/studio"
+import { useDownloadImage, useGenerateImage } from "@/hooks/queries"
+import { useRandomSeed } from "@/hooks/use-random-seed"
+import { showAuthRequiredToast, showErrorToast } from "@/lib/errors"
 import type {
-    ImageGenerationParams,
-    GeneratedImage,
     AspectRatio,
+    GeneratedImage,
+    ImageGenerationParams,
     ImageModel,
 } from "@/types/pollinations"
-import { PollinationsAPI } from "@/lib/pollinations-api"
-import { useGenerateImage, useDownloadImage } from "@/hooks/queries"
-import type { GenerationOptions } from "@/components/studio"
-import { showErrorToast, showAuthRequiredToast } from "@/lib/errors"
+import * as React from "react"
 
 /**
  * Return type for the useStudioClientShell hook
@@ -105,6 +105,9 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
     const [promptHistory, setPromptHistory] = React.useState<string[]>([])
     const [isFullscreen, setIsFullscreen] = React.useState(false)
 
+    // Random seed generation hook
+    const { generateSeed, isRandomMode } = useRandomSeed()
+
     // TanStack Query hooks
     const { generate, isGenerating } = useGenerateImage({
         onSuccess: (image) => {
@@ -112,9 +115,10 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
             setImages((prev) => [image, ...prev])
             setCurrentImage(image)
 
-            // Generate new random seed if not locked
-            if (!seedLocked && seed !== -1) {
-                setSeed(PollinationsAPI.generateRandomSeed())
+            // Generate new random seed if not locked and not in random mode
+            // (Random mode generates a new seed on each request anyway)
+            if (!seedLocked && !isRandomMode(seed)) {
+                setSeed(generateSeed())
             }
         },
         onError: (error) => {
@@ -157,40 +161,80 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
         setAspectRatio("custom")
     }, [])
 
+    // Refs for values that shouldn't trigger handleGenerate recreation
+    // This prevents the keyboard shortcut effect from re-running on every keystroke
+    const promptRef = React.useRef(prompt)
+    const negativePromptRef = React.useRef(negativePrompt)
+    const promptHistoryRef = React.useRef(promptHistory)
+    const modelRef = React.useRef(model)
+    const widthRef = React.useRef(width)
+    const heightRef = React.useRef(height)
+    const seedRef = React.useRef(seed)
+    const optionsRef = React.useRef(options)
+
+    // Keep refs in sync with state
+    React.useEffect(() => {
+        promptRef.current = prompt
+    }, [prompt])
+    React.useEffect(() => {
+        negativePromptRef.current = negativePrompt
+    }, [negativePrompt])
+    React.useEffect(() => {
+        promptHistoryRef.current = promptHistory
+    }, [promptHistory])
+    React.useEffect(() => {
+        modelRef.current = model
+    }, [model])
+    React.useEffect(() => {
+        widthRef.current = width
+    }, [width])
+    React.useEffect(() => {
+        heightRef.current = height
+    }, [height])
+    React.useEffect(() => {
+        seedRef.current = seed
+    }, [seed])
+    React.useEffect(() => {
+        optionsRef.current = options
+    }, [options])
+
     // Generate image using TanStack Query
+    // Uses refs to avoid recreating the callback on every state change
     const handleGenerate = React.useCallback(() => {
-        if (!prompt.trim() || isGenerating) return
+        const currentPrompt = promptRef.current
+        const currentNegativePrompt = negativePromptRef.current
+        const currentPromptHistory = promptHistoryRef.current
+        const currentModel = modelRef.current
+        const currentWidth = widthRef.current
+        const currentHeight = heightRef.current
+        const currentSeed = seedRef.current
+        const currentOptions = optionsRef.current
+
+        if (!currentPrompt.trim() || isGenerating) return
 
         // Add to prompt history
-        if (!promptHistory.includes(prompt.trim())) {
-            setPromptHistory((prev) => [prompt.trim(), ...prev.slice(0, 9)])
+        if (!currentPromptHistory.includes(currentPrompt.trim())) {
+            setPromptHistory((prev) => [currentPrompt.trim(), ...prev.slice(0, 9)])
         }
 
+        // When seed is -1 (random mode), generate a fresh random seed for this request
+        // This ensures each generation gets a unique seed, preventing cached results
+        const effectiveSeed = currentSeed === -1 ? generateSeed() : currentSeed
+
         const params: ImageGenerationParams = {
-            prompt: prompt.trim(),
-            negativePrompt: negativePrompt.trim() || undefined,
-            model,
-            width,
-            height,
-            seed: seed === -1 ? undefined : seed,
-            enhance: options.enhance,
-            private: options.private,
-            safe: options.safe,
+            prompt: currentPrompt.trim(),
+            negativePrompt: currentNegativePrompt.trim() || undefined,
+            model: currentModel,
+            width: currentWidth,
+            height: currentHeight,
+            seed: effectiveSeed,
+            enhance: currentOptions.enhance,
+            private: currentOptions.private,
+            safe: currentOptions.safe,
         }
 
         generate(params)
-    }, [
-        prompt,
-        negativePrompt,
-        isGenerating,
-        promptHistory,
-        model,
-        width,
-        height,
-        seed,
-        options,
-        generate,
-    ])
+    }, [isGenerating, generate, generateSeed])
 
     // Handle image removal
     const handleRemoveImage = React.useCallback((id: string) => {

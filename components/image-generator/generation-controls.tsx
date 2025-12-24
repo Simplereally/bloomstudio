@@ -8,31 +8,34 @@
  */
 
 import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { EnhanceButton } from "@/components/ui/enhance-button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Card } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
-import {
-  Sparkles,
-  Dice6,
-  Square,
-  RectangleHorizontal,
-  RectangleVertical,
-  ImageIcon,
-  Frame,
-  Monitor,
-  SlidersHorizontal,
-  Loader2,
-  RotateCcw,
-} from "lucide-react"
-import type { ImageGenerationParams, AspectRatio } from "@/types/pollinations"
-import { ASPECT_RATIOS, DEFAULT_DIMENSIONS } from "@/lib/image-models"
+import { Textarea } from "@/components/ui/textarea"
+import { useEnhancePrompt } from "@/hooks/queries/use-enhance-prompt"
 import { useGenerationControls } from "@/hooks/use-generation-controls"
-import { QualitySelector } from "./quality-selector"
-import { ModelSelector } from "./model-selector"
+import { ASPECT_RATIOS, DEFAULT_DIMENSIONS } from "@/lib/image-models"
+import type { AspectRatio, ImageGenerationParams } from "@/types/pollinations"
+import {
+    Dice6,
+    Frame,
+    ImageIcon,
+    Loader2,
+    Monitor,
+    RectangleHorizontal,
+    RectangleVertical,
+    RotateCcw,
+    SlidersHorizontal,
+    Sparkles,
+    Square,
+} from "lucide-react"
+import { toast } from "sonner"
 import { AdvancedSettings } from "./advanced-settings"
+import { ModelSelector } from "./model-selector"
+import { QualitySelector } from "./quality-selector"
 
 interface GenerationControlsProps {
   onGenerate: (params: ImageGenerationParams) => void
@@ -86,6 +89,20 @@ export function GenerationControls({ onGenerate, isGenerating }: GenerationContr
     resetToDefaults,
   } = useGenerationControls({ onGenerate })
 
+  // Prompt enhancement hook
+  const {
+    enhance: enhancePromptText,
+    cancel: cancelPromptEnhance,
+    isEnhancing: isEnhancingPrompt,
+  } = useEnhancePrompt({
+    onSuccess: (enhancedText) => {
+      setPrompt(enhancedText)
+    },
+    onError: () => {
+      toast.error("There was an issue enhancing the prompt - please try again.")
+    },
+  })
+
   return (
     <Card className="p-4 space-y-4 bg-card/50 backdrop-blur border-border/50" data-testid="generation-controls">
       {/* Prompt Input */}
@@ -93,15 +110,23 @@ export function GenerationControls({ onGenerate, isGenerating }: GenerationContr
         <Label htmlFor="prompt" className="text-sm font-medium">
           Prompt
         </Label>
-        <Textarea
-          id="prompt"
-          data-testid="prompt-input"
-          placeholder="Describe the image you want to create..."
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          className="min-h-20 resize-none bg-background/50"
-          disabled={isGenerating}
-        />
+        <div className="relative">
+          <Textarea
+            id="prompt"
+            data-testid="prompt-input"
+            placeholder="Describe the image you want to create..."
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            className="min-h-20 resize-none bg-background/50 pr-10"
+            disabled={isGenerating || isEnhancingPrompt}
+          />
+          <EnhanceButton
+            isEnhancing={isEnhancingPrompt}
+            disabled={!prompt.trim() || isGenerating}
+            onEnhance={() => enhancePromptText({ prompt, type: "prompt" })}
+            onCancel={cancelPromptEnhance}
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -227,6 +252,7 @@ export function GenerationControls({ onGenerate, isGenerating }: GenerationContr
         <AdvancedSettings
           open={showAdvanced}
           onOpenChange={setShowAdvanced}
+          mainPrompt={prompt}
           negativePrompt={negativePrompt}
           onNegativePromptChange={setNegativePrompt}
           transparent={transparent}

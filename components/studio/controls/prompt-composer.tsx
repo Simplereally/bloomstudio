@@ -5,17 +5,16 @@
  * Follows SRP: Only manages prompt text input and composition
  */
 
-import * as React from "react"
-import { cn } from "@/lib/utils"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
     Collapsible,
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import { EnhanceButton } from "@/components/ui/enhance-button"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
     Tooltip,
     TooltipContent,
@@ -23,11 +22,12 @@ import {
 } from "@/components/ui/tooltip"
 import {
     ChevronDown,
-    Wand2,
     History,
-    X,
     Lightbulb,
+    Wand2,
+    X,
 } from "lucide-react"
+import * as React from "react"
 
 export interface PromptComposerProps {
     /** Current prompt value */
@@ -52,9 +52,25 @@ export interface PromptComposerProps {
     onAddSuggestion?: (suggestion: string) => void
     /** Additional class names */
     className?: string
+    /** Whether the main prompt is being enhanced */
+    isEnhancingPrompt?: boolean
+    /** Callback to trigger prompt enhancement */
+    onEnhancePrompt?: () => void
+    /** Callback to cancel prompt enhancement */
+    onCancelEnhancePrompt?: () => void
+    /** Whether the negative prompt is being enhanced */
+    isEnhancingNegativePrompt?: boolean
+    /** Callback to trigger negative prompt enhancement */
+    onEnhanceNegativePrompt?: () => void
+    /** Callback to cancel negative prompt enhancement */
+    onCancelEnhanceNegativePrompt?: () => void
+    /** Ref for the main prompt textarea (for undo-friendly value setting) */
+    promptTextareaRef?: React.RefObject<HTMLTextAreaElement | null>
+    /** Ref for the negative prompt textarea (for undo-friendly value setting) */
+    negativePromptTextareaRef?: React.RefObject<HTMLTextAreaElement | null>
 }
 
-export function PromptComposer({
+export const PromptComposer = React.memo(function PromptComposer({
     prompt,
     onPromptChange,
     negativePrompt = "",
@@ -66,10 +82,24 @@ export function PromptComposer({
     suggestions = [],
     onAddSuggestion,
     className,
+    isEnhancingPrompt = false,
+    onEnhancePrompt,
+    onCancelEnhancePrompt,
+    isEnhancingNegativePrompt = false,
+    onEnhanceNegativePrompt,
+    onCancelEnhanceNegativePrompt,
+    promptTextareaRef,
+    negativePromptTextareaRef,
 }: PromptComposerProps) {
     const [showNegative, setShowNegative] = React.useState(false)
     const [showHistory, setShowHistory] = React.useState(false)
-    const textareaRef = React.useRef<HTMLTextAreaElement>(null)
+    const internalPromptRef = React.useRef<HTMLTextAreaElement>(null)
+    const internalNegativePromptRef = React.useRef<HTMLTextAreaElement>(null)
+
+    // Use provided refs or fall back to internal refs
+    const textareaRef = promptTextareaRef ?? internalPromptRef
+    const negativeTextareaRef = negativePromptTextareaRef ?? internalNegativePromptRef
+
 
     const characterCount = prompt.length
     const isNearLimit = characterCount > maxLength * 0.9
@@ -88,7 +118,7 @@ export function PromptComposer({
     }
 
     return (
-        <div className={cn("space-y-3", className)} data-testid="prompt-composer">
+        <div className={`space-y-3 ${className || ""}`} data-testid="prompt-composer">
             {/* Main Prompt */}
             <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -118,10 +148,7 @@ export function PromptComposer({
                             </Tooltip>
                         )}
                         <span
-                            className={cn(
-                                "text-xs tabular-nums",
-                                isNearLimit ? "text-destructive" : "text-muted-foreground"
-                            )}
+                            className={`text-xs tabular-nums ${isNearLimit ? "text-destructive" : "text-muted-foreground"}`}
                             data-testid="character-count"
                         >
                             {characterCount}/{maxLength}
@@ -137,17 +164,12 @@ export function PromptComposer({
                         value={prompt}
                         onChange={(e) => onPromptChange(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        disabled={isGenerating}
+                        disabled={isGenerating || isEnhancingPrompt}
                         maxLength={maxLength}
-                        className={cn(
-                            "min-h-24 resize-none pr-8",
-                            "bg-background/50 border-border/50",
-                            "focus:ring-2 focus:ring-primary/20 focus:border-primary/50",
-                            "transition-all duration-200"
-                        )}
+                        className="min-h-24 resize-none pr-8 pb-10 bg-background/50 border-border/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all duration-200"
                         data-testid="prompt-input"
                     />
-                    {prompt && !isGenerating && (
+                    {prompt && !isGenerating && !isEnhancingPrompt && (
                         <Button
                             type="button"
                             variant="ghost"
@@ -159,6 +181,14 @@ export function PromptComposer({
                             <X className="h-3.5 w-3.5" />
                         </Button>
                     )}
+                    {onEnhancePrompt && onCancelEnhancePrompt && (
+                        <EnhanceButton
+                            isEnhancing={isEnhancingPrompt}
+                            disabled={!prompt.trim() || isGenerating}
+                            onEnhance={onEnhancePrompt}
+                            onCancel={onCancelEnhancePrompt}
+                        />
+                    )}
                 </div>
 
                 {/* Prompt History Dropdown */}
@@ -168,21 +198,17 @@ export function PromptComposer({
                         data-testid="prompt-history"
                     >
                         {promptHistory.slice(0, 5).map((historyPrompt, index) => (
-                            <button
+                            <Button
                                 key={index}
-                                type="button"
-                                className={cn(
-                                    "w-full text-left text-sm p-2 rounded-md",
-                                    "hover:bg-accent/50 transition-colors",
-                                    "line-clamp-2"
-                                )}
+                                variant="ghost"
+                                className="w-full justify-start text-left text-sm h-auto p-2"
                                 onClick={() => {
                                     onSelectHistory?.(historyPrompt)
                                     setShowHistory(false)
                                 }}
                             >
-                                {historyPrompt}
-                            </button>
+                                <span className="line-clamp-2">{historyPrompt}</span>
+                            </Button>
                         ))}
                     </div>
                 )}
@@ -218,29 +244,33 @@ export function PromptComposer({
                         >
                             <span className="text-xs">Negative Prompt</span>
                             <ChevronDown
-                                className={cn(
-                                    "h-3.5 w-3.5 transition-transform",
-                                    showNegative && "rotate-180"
-                                )}
+                                className={`h-3.5 w-3.5 transition-transform ${showNegative ? "rotate-180" : ""}`}
                             />
                         </Button>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="pt-2">
-                        <Textarea
-                            placeholder="What to avoid in the image..."
-                            value={negativePrompt}
-                            onChange={(e) => onNegativePromptChange(e.target.value)}
-                            disabled={isGenerating}
-                            className={cn(
-                                "min-h-16 resize-none",
-                                "bg-background/50 border-border/50",
-                                "text-sm"
+                        <div className="relative">
+                            <Textarea
+                                ref={negativeTextareaRef}
+                                placeholder="What to avoid in the image..."
+                                value={negativePrompt}
+                                onChange={(e) => onNegativePromptChange(e.target.value)}
+                                disabled={isGenerating || isEnhancingNegativePrompt}
+                                className="min-h-16 resize-none pb-10 bg-background/50 border-border/50 text-sm"
+                                data-testid="negative-prompt-input"
+                            />
+                            {onEnhanceNegativePrompt && onCancelEnhanceNegativePrompt && (
+                                <EnhanceButton
+                                    isEnhancing={isEnhancingNegativePrompt}
+                                    disabled={!prompt.trim() || isGenerating}
+                                    onEnhance={onEnhanceNegativePrompt}
+                                    onCancel={onCancelEnhanceNegativePrompt}
+                                />
                             )}
-                            data-testid="negative-prompt-input"
-                        />
+                        </div>
                     </CollapsibleContent>
                 </Collapsible>
             )}
         </div>
     )
-}
+})

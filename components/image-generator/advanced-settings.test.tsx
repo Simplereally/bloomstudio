@@ -1,13 +1,38 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import type { ReactNode } from "react"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import { AdvancedSettings } from "./advanced-settings"
+
+// Create a wrapper with QueryClientProvider for tests
+function createWrapper() {
+    const queryClient = new QueryClient({
+        defaultOptions: {
+            queries: { retry: false },
+            mutations: { retry: false },
+        },
+    })
+    return function Wrapper({ children }: { children: ReactNode }) {
+        return (
+            <QueryClientProvider client={queryClient}>
+                {children}
+            </QueryClientProvider>
+        )
+    }
+}
+
+// Custom render with QueryClientProvider
+function renderWithClient(ui: React.ReactElement) {
+    return render(ui, { wrapper: createWrapper() })
+}
 
 describe("AdvancedSettings", () => {
     const defaultProps = {
         open: false,
         onOpenChange: vi.fn(),
+        mainPrompt: "test prompt",
         negativePrompt: "",
         onNegativePromptChange: vi.fn(),
         transparent: false,
@@ -29,7 +54,7 @@ describe("AdvancedSettings", () => {
     })
 
     it("renders the trigger button", () => {
-        render(<AdvancedSettings {...defaultProps} />)
+        renderWithClient(<AdvancedSettings {...defaultProps} />)
         
         expect(screen.getByTestId("advanced-settings-trigger")).toBeInTheDocument()
         expect(screen.getByText("Advanced Settings")).toBeInTheDocument()
@@ -38,7 +63,7 @@ describe("AdvancedSettings", () => {
     it("calls onOpenChange when trigger is clicked", async () => {
         const user = userEvent.setup()
         const onOpenChange = vi.fn()
-        render(<AdvancedSettings {...defaultProps} onOpenChange={onOpenChange} />)
+        renderWithClient(<AdvancedSettings {...defaultProps} onOpenChange={onOpenChange} />)
         
         await user.click(screen.getByTestId("advanced-settings-trigger"))
         
@@ -46,7 +71,7 @@ describe("AdvancedSettings", () => {
     })
 
     it("shows content when open is true", () => {
-        render(<AdvancedSettings {...defaultProps} open />)
+        renderWithClient(<AdvancedSettings {...defaultProps} open />)
         
         expect(screen.getByTestId("advanced-settings-content")).toBeInTheDocument()
         expect(screen.getByTestId("negative-prompt-input")).toBeInTheDocument()
@@ -54,7 +79,7 @@ describe("AdvancedSettings", () => {
     })
 
     it("hides content when open is false", () => {
-        render(<AdvancedSettings {...defaultProps} />)
+        renderWithClient(<AdvancedSettings {...defaultProps} />)
         
         // Radix Collapsible renders content but hides it with hidden attribute
         const content = screen.queryByTestId("advanced-settings-content")
@@ -62,7 +87,7 @@ describe("AdvancedSettings", () => {
     })
 
     it("renders all toggle switches when open", () => {
-        render(<AdvancedSettings {...defaultProps} open />)
+        renderWithClient(<AdvancedSettings {...defaultProps} open />)
         
         expect(screen.getByTestId("transparent-switch")).toBeInTheDocument()
         expect(screen.getByTestId("nologo-switch")).toBeInTheDocument()
@@ -72,7 +97,7 @@ describe("AdvancedSettings", () => {
     })
 
     it("displays negative prompt value", () => {
-        render(
+        renderWithClient(
             <AdvancedSettings
                 {...defaultProps}
                 open
@@ -88,7 +113,7 @@ describe("AdvancedSettings", () => {
     it("calls onNegativePromptChange when input changes", async () => {
         const user = userEvent.setup()
         const onNegativePromptChange = vi.fn()
-        render(
+        renderWithClient(
             <AdvancedSettings
                 {...defaultProps}
                 open
@@ -102,11 +127,15 @@ describe("AdvancedSettings", () => {
     })
 
     it("displays guidance scale value or Auto", () => {
-        const { rerender } = render(<AdvancedSettings {...defaultProps} open />)
+        const { rerender } = renderWithClient(<AdvancedSettings {...defaultProps} open />)
         
         expect(screen.getByText("Auto")).toBeInTheDocument()
         
-        rerender(<AdvancedSettings {...defaultProps} open guidanceScale={12} />)
+        rerender(
+            <QueryClientProvider client={new QueryClient()}>
+                <AdvancedSettings {...defaultProps} open guidanceScale={12} />
+            </QueryClientProvider>
+        )
         
         expect(screen.getByText("12")).toBeInTheDocument()
     })
@@ -119,7 +148,7 @@ describe("AdvancedSettings", () => {
         const onPrivateChange = vi.fn()
         const onSafeChange = vi.fn()
 
-        render(
+        renderWithClient(
             <AdvancedSettings
                 {...defaultProps}
                 open
@@ -148,7 +177,7 @@ describe("AdvancedSettings", () => {
     })
 
     it("disables all controls when disabled prop is true", () => {
-        render(<AdvancedSettings {...defaultProps} open disabled />)
+        renderWithClient(<AdvancedSettings {...defaultProps} open disabled />)
         
         expect(screen.getByTestId("negative-prompt-input")).toBeDisabled()
         expect(screen.getByTestId("guidance-scale-slider")).toHaveAttribute(
@@ -163,7 +192,7 @@ describe("AdvancedSettings", () => {
     })
 
     it("shows correct toggle descriptions", () => {
-        render(<AdvancedSettings {...defaultProps} open />)
+        renderWithClient(<AdvancedSettings {...defaultProps} open />)
         
         expect(screen.getByText("Generate PNG with transparency")).toBeInTheDocument()
         expect(screen.getByText("Remove Pollinations logo")).toBeInTheDocument()
@@ -173,13 +202,17 @@ describe("AdvancedSettings", () => {
     })
 
     it("rotates chevron when open", () => {
-        const { rerender } = render(<AdvancedSettings {...defaultProps} />)
+        const { rerender } = renderWithClient(<AdvancedSettings {...defaultProps} />)
         
         const trigger = screen.getByTestId("advanced-settings-trigger")
         const chevron = trigger.querySelector("svg")
         expect(chevron).not.toHaveClass("rotate-180")
         
-        rerender(<AdvancedSettings {...defaultProps} open />)
+        rerender(
+            <QueryClientProvider client={new QueryClient()}>
+                <AdvancedSettings {...defaultProps} open />
+            </QueryClientProvider>
+        )
         
         const openChevron = screen.getByTestId("advanced-settings-trigger").querySelector("svg")
         expect(openChevron).toHaveClass("rotate-180")

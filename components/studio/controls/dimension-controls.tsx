@@ -5,18 +5,17 @@
  * Follows SRP: Only manages dimension input UI
  */
 
-import * as React from "react"
-import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
 import {
     Tooltip,
     TooltipContent,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { Link, Unlink, Ruler } from "lucide-react"
+import { Link, Ruler, Unlink } from "lucide-react"
+import * as React from "react"
 
 export interface DimensionControlsProps {
     /** Current width value */
@@ -39,7 +38,7 @@ export interface DimensionControlsProps {
     className?: string
 }
 
-export function DimensionControls({
+export const DimensionControls = React.memo(function DimensionControls({
     width,
     height,
     onWidthChange,
@@ -106,7 +105,7 @@ export function DimensionControls({
     const megapixels = ((width * height) / 1_000_000).toFixed(2)
 
     return (
-        <div className={cn("space-y-3", className)} data-testid="dimension-controls">
+        <div className={`space-y-3 ${className || ""}`} data-testid="dimension-controls">
             <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium flex items-center gap-2">
                     <Ruler className="h-3.5 w-3.5 text-primary" />
@@ -210,4 +209,4 @@ export function DimensionControls({
             </div>
         </div>
     )
-}
+})

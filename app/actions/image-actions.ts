@@ -1,7 +1,7 @@
 "use server"
 
 import { PollinationsAPI } from "@/lib/pollinations-api"
-import type { ImageGenerationParams, GeneratedImage } from "@/types/pollinations"
+import type { GeneratedImage, ImageGenerationParams } from "@/types/pollinations"
 
 import { ImageGenerationParamsSchema } from "@/lib/schemas/pollinations.schema"
 
@@ -9,7 +9,7 @@ export async function generateImageAction(params: ImageGenerationParams): Promis
     // Validate and fill defaults
     const resolvedParams = ImageGenerationParamsSchema.parse(params)
     const url = PollinationsAPI.buildImageUrl(resolvedParams)
-
+ 
     try {
         // We fetch the image on the server to trigger the generation.
         // This ensures that the server action hangs until Pollinations has finished rendering.

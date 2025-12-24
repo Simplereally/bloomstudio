@@ -7,23 +7,29 @@
  * Includes negative prompt, guidance scale, and toggle options.
  */
 
-import { ChevronDown } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import {
     Collapsible,
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
+import { EnhanceButton } from "@/components/ui/enhance-button"
 import { Label } from "@/components/ui/label"
-import { Slider } from "@/components/ui/slider"
-import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
+import { Slider } from "@/components/ui/slider"
+import { Switch } from "@/components/ui/switch"
+import { Textarea } from "@/components/ui/textarea"
+import { useEnhancePrompt } from "@/hooks/queries/use-enhance-prompt"
 import { API_CONSTRAINTS } from "@/lib/config/api.config"
+import { ChevronDown } from "lucide-react"
+import { toast } from "sonner"
 
 interface AdvancedSettingsProps {
     open: boolean
     onOpenChange: (open: boolean) => void
+
+    // Main prompt for context (needed for negative prompt enhancement)
+    mainPrompt: string
 
     // Negative prompt
     negativePrompt: string
@@ -91,6 +97,7 @@ function SettingToggle({
 export function AdvancedSettings({
     open,
     onOpenChange,
+    mainPrompt,
     negativePrompt,
     onNegativePromptChange,
     transparent,
@@ -108,6 +115,20 @@ export function AdvancedSettings({
     disabled = false,
 }: AdvancedSettingsProps) {
     const { min: minGuidance, max: maxGuidance } = API_CONSTRAINTS.guidanceScale
+
+    // Negative prompt enhancement hook
+    const {
+        enhance: enhanceNegativePromptText,
+        cancel: cancelNegativeEnhance,
+        isEnhancing: isEnhancingNegative,
+    } = useEnhancePrompt({
+        onSuccess: (enhancedText) => {
+            onNegativePromptChange(enhancedText)
+        },
+        onError: () => {
+            toast.error("There was an issue enhancing the prompt - please try again.")
+        },
+    })
 
     return (
         <Collapsible open={open} onOpenChange={onOpenChange}>
@@ -133,15 +154,27 @@ export function AdvancedSettings({
                     <Label htmlFor="negative-prompt" className="text-sm font-medium">
                         Negative Prompt
                     </Label>
-                    <Textarea
-                        id="negative-prompt"
-                        data-testid="negative-prompt-input"
-                        placeholder="What to avoid in generation..."
-                        value={negativePrompt}
-                        onChange={(e) => onNegativePromptChange(e.target.value)}
-                        className="min-h-[60px] resize-none bg-background/50"
-                        disabled={disabled}
-                    />
+                    <div className="relative">
+                        <Textarea
+                            id="negative-prompt"
+                            data-testid="negative-prompt-input"
+                            placeholder="What to avoid in generation..."
+                            value={negativePrompt}
+                            onChange={(e) => onNegativePromptChange(e.target.value)}
+                            className="min-h-[60px] resize-none bg-background/50 pr-10"
+                            disabled={disabled || isEnhancingNegative}
+                        />
+                        <EnhanceButton
+                            isEnhancing={isEnhancingNegative}
+                            disabled={!mainPrompt.trim() || disabled}
+                            onEnhance={() => enhanceNegativePromptText({ 
+                                prompt: mainPrompt, 
+                                negativePrompt,
+                                type: "negative" 
+                            })}
+                            onCancel={cancelNegativeEnhance}
+                        />
+                    </div>
                     <p className="text-xs text-muted-foreground">
                         Default: &quot;worst quality, blurry&quot;
                     </p>

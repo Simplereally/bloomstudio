@@ -5,13 +5,13 @@
  * Follows SRP: Only manages gallery grid display
  */
 
-import * as React from "react"
-import { cn } from "@/lib/utils"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
-import { GalleryThumbnail } from "./gallery-thumbnail"
-import { ImageOff, Trash2, CheckSquare, Square } from "lucide-react"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { cn } from "@/lib/utils"
 import type { GeneratedImage } from "@/types/pollinations"
+import { CheckSquare, ImageOff, Square, Trash2 } from "lucide-react"
+import * as React from "react"
+import { GalleryThumbnail } from "./gallery-thumbnail"
 
 export interface ImageGalleryProps {
     /** Array of generated images */
@@ -44,7 +44,7 @@ export interface ImageGalleryProps {
     className?: string
 }
 
-export function ImageGallery({
+export const ImageGallery = React.memo(function ImageGallery({
     images,
     activeImageId,
     onSelectImage,
@@ -194,4 +194,4 @@ export function ImageGallery({
             </ScrollArea>
         </div>
     )
-}
+})

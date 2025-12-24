@@ -5,7 +5,7 @@
  * Following SRP - Single responsibility: API communication.
  */
 
-import { API_CONFIG, API_DEFAULTS, API_CONSTRAINTS, getApiKey } from "@/lib/config/api.config"
+import { API_CONFIG, API_CONSTRAINTS, API_DEFAULTS, getApiKey } from "@/lib/config/api.config"
 import type {
   ResolvedImageGenerationParams,
   ResolvedVideoGenerationParams,
@@ -24,6 +24,11 @@ export class PollinationsAPI {
 
     const queryParams = new URLSearchParams()
 
+    // Negative prompt
+    if (negativePrompt?.trim()) {
+      queryParams.append("negative_prompt", negativePrompt.trim())
+    }
+
     // Model - always include (upstream API requires explicit model selection)
     if (options.model) {
       queryParams.append("model", options.model)
@@ -40,11 +45,6 @@ export class PollinationsAPI {
     // Seed (only if explicitly set)
     if (options.seed !== undefined && options.seed >= 0) {
       queryParams.append("seed", options.seed.toString())
-    }
-
-    // Negative prompt
-    if (negativePrompt?.trim()) {
-      queryParams.append("negative_prompt", negativePrompt.trim())
     }
 
     // Quality - only include if different from default

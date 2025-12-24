@@ -5,23 +5,23 @@
  * Uses Zod inference for full type safety down the stack.
  */
 
-import { z } from "zod"
 import {
+    ApiErrorCodeSchema,
     ApiErrorSchema,
     BadRequestErrorSchema,
-    UnauthorizedErrorSchema,
-    InternalErrorSchema,
-    ValidationErrorDetailsSchema,
-    ApiErrorCodeSchema,
     ClientErrorCodeSchema,
+    InternalErrorSchema,
+    UnauthorizedErrorSchema,
+    ValidationErrorDetailsSchema,
     type ApiError,
-    type BadRequestError,
-    type UnauthorizedError,
-    type InternalError,
     type ApiErrorCode,
+    type BadRequestError,
     type ClientErrorCode,
     type ErrorCode,
+    type InternalError,
+    type UnauthorizedError,
 } from "@/lib/schemas/pollinations.schema"
+import { z } from "zod"
 
 // Re-export schema types for convenience
 export type { ApiErrorCode, ClientErrorCode, ErrorCode }
@@ -194,8 +194,8 @@ export class PollinationsApiError extends Error {
             ApiErrorCodeConst.BAD_REQUEST,
             status,
             {
-                ...error.details,
-                requestId: error.requestId,
+                ...(error.details || {}),
+                requestId: error.requestId ?? undefined,
             }
         )
     }
@@ -210,8 +210,8 @@ export class PollinationsApiError extends Error {
             ApiErrorCodeConst.UNAUTHORIZED,
             status,
             {
-                ...error.details,
-                requestId: error.requestId,
+                ...(error.details || {}),
+                requestId: error.requestId ?? undefined,
             }
         )
     }
@@ -221,13 +221,15 @@ export class PollinationsApiError extends Error {
      */
     static fromInternalError(response: InternalError): PollinationsApiError {
         const { status, error } = response
+        let extraDetails: PollinationsErrorDetails = { ...(error.details || {}) }
+
         return new PollinationsApiError(
             error.message,
             ApiErrorCodeConst.INTERNAL_ERROR,
             status,
             {
-                ...error.details,
-                requestId: error.requestId,
+                ...extraDetails,
+                requestId: extraDetails.requestId || error.requestId || undefined,
             }
         )
     }
@@ -260,6 +262,7 @@ export class PollinationsApiError extends Error {
             const json = await response.json()
             
             // Try parsing with specific schemas for better type narrowing
+            // These match the official Pollinations API JSON schema exactly
             const badRequest = BadRequestErrorSchema.safeParse(json)
             if (badRequest.success) {
                 return PollinationsApiError.fromBadRequest(badRequest.data)
@@ -281,7 +284,7 @@ export class PollinationsApiError extends Error {
                 return PollinationsApiError.fromApiResponse(apiError.data)
             }
         } catch {
-            // Response is not valid JSON or doesn't match schema
+            // Response is not valid JSON
         }
 
         // Fallback for non-standard error responses
@@ -443,11 +446,55 @@ export function isErrorWithMessage(
 }
 
 /**
+ * Type guard for ServerGenerationError (from use-generate-image hook)
+ * We check the structure rather than using instanceof to avoid circular imports
+ */
+export function isServerGenerationError(
+    error: unknown
+): error is { name: string; message: string; code: string; status?: number; details?: Record<string, unknown> } {
+    return (
+        typeof error === "object" &&
+        error !== null &&
+        "name" in error &&
+        (error as { name: string }).name === "ServerGenerationError" &&
+        "code" in error &&
+        typeof (error as { code: unknown }).code === "string"
+    )
+}
+
+/**
+ * Get user-friendly message for ServerGenerationError based on its error code
+ */
+function getServerGenerationErrorMessage(code: string): string {
+    // Map server error codes to user-friendly messages
+    const codeToMessage: Record<string, string> = {
+        // API error codes (from server)
+        CONFIGURATION_ERROR: "Server configuration error",
+        UPSTREAM_ERROR: "Image generation service unavailable",
+        VALIDATION_ERROR: ERROR_MESSAGES[ClientErrorCodeConst.VALIDATION_ERROR],
+        INVALID_JSON: "Invalid request format",
+        INTERNAL_ERROR: ERROR_MESSAGES[ApiErrorCodeConst.INTERNAL_ERROR],
+        BAD_REQUEST: ERROR_MESSAGES[ApiErrorCodeConst.BAD_REQUEST],
+        UNAUTHORIZED: ERROR_MESSAGES[ApiErrorCodeConst.UNAUTHORIZED],
+        // Client error codes
+        GENERATION_FAILED: ERROR_MESSAGES[ClientErrorCodeConst.GENERATION_FAILED],
+        NETWORK_ERROR: ERROR_MESSAGES[ClientErrorCodeConst.NETWORK_ERROR],
+        UNKNOWN_ERROR: ERROR_MESSAGES[ClientErrorCodeConst.UNKNOWN_ERROR],
+    }
+    
+    return codeToMessage[code] ?? ERROR_MESSAGES[ClientErrorCodeConst.GENERATION_FAILED]
+}
+
+/**
  * Get error message from any error type
  */
 export function getErrorMessage(error: unknown): string {
     if (isPollinationsApiError(error)) {
         return error.userMessage
+    }
+    // Handle ServerGenerationError - use user-friendly message based on code
+    if (isServerGenerationError(error)) {
+        return getServerGenerationErrorMessage(error.code)
     }
     if (isErrorWithMessage(error)) {
         return error.message
