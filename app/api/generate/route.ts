@@ -1,3 +1,5 @@
+// to-do: investigate 400 errors using zimage 16:9 and 9:16, params error
+// to-do: investigate 400 errors using turbo 16:9, 524 error from pollinations
 import { getAuthorizationHeader, hasSecretKey } from "@/lib/auth"
 import { PollinationsApiError } from "@/lib/errors"
 import { PollinationsAPI } from "@/lib/pollinations-api"
@@ -61,7 +63,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ServerGen
         if (!response.ok) {
             // Use typed error parsing from our Pollinations error schemas
             const apiError = await PollinationsApiError.fromResponse(response)
-            
+
             // Log the full typed error for debugging (includes details, requestId, etc.)
             console.error("[/api/generate] Pollinations API error:", apiError.toJSON())
 

@@ -10,7 +10,14 @@
 import type { GenerationOptions } from "@/components/studio"
 import { useDownloadImage, useGenerateImage } from "@/hooks/queries"
 import { useRandomSeed } from "@/hooks/use-random-seed"
-import { getModelAspectRatios, getModelConstraints } from "@/lib/config/model-constraints"
+import {
+    getModelAspectRatios,
+    getModelConstraints,
+    isGPTImageModel,
+    isGPTImageLargeModel,
+    findNearestGPTImageSize,
+    findNearestGPTImageLargeSize
+} from "@/lib/config/model-constraints"
 import { showAuthRequiredToast, showErrorToast } from "@/lib/errors"
 import type {
     AspectRatio,
@@ -167,20 +174,43 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
         setAspectRatio("custom")
     }, [])
 
-    // Handle model change with dimension reset for pixel-limited models
+    // Handle model change with dimension reset for pixel-limited models or fixed-size models
     const handleModelChange = React.useCallback((newModel: ImageModel) => {
         setModel(newModel)
 
         const constraints = getModelConstraints(newModel)
         const currentPixels = width * height
 
-        // If current dimensions exceed new model's limit, reset to defaults
-        if (currentPixels >= constraints.maxPixels) {
+        // GPT Image Large (HD) requires fixed dimensions - map to nearest supported size
+        // Check this first since it's more specific than GPT Image
+        if (isGPTImageLargeModel(newModel)) {
+            const nearest = findNearestGPTImageLargeSize(aspectRatio, width, height)
+            setWidth(nearest.width)
+            setHeight(nearest.height)
+            setAspectRatio(nearest.ratio)
+            return
+        }
+
+        // GPT Image requires fixed dimensions - map to nearest supported size
+        if (isGPTImageModel(newModel)) {
+            const nearest = findNearestGPTImageSize(aspectRatio, width, height)
+            setWidth(nearest.width)
+            setHeight(nearest.height)
+            setAspectRatio(nearest.ratio)
+            return
+        }
+
+        // For other models, reset to defaults if current dimensions exceed model limit
+        // Check both pixel count AND individual dimension limits (important for Turbo's 768px max)
+        const exceedsPixelLimit = currentPixels >= constraints.maxPixels
+        const exceedsDimensionLimit = width > constraints.maxDimension || height > constraints.maxDimension
+
+        if (exceedsPixelLimit || exceedsDimensionLimit) {
             setWidth(constraints.defaultDimensions.width)
             setHeight(constraints.defaultDimensions.height)
             setAspectRatio("1:1")
         }
-    }, [width, height])
+    }, [width, height, aspectRatio])
 
     // Get model-specific aspect ratios for the selector
     const aspectRatios = React.useMemo(

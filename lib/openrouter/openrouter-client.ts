@@ -8,10 +8,10 @@
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { generateText, streamText } from "ai"
 import {
-    getOpenRouterApiKey,
-    OPENROUTER_CONFIG,
-    OPENROUTER_MODELS,
-    type OpenRouterModel,
+  getOpenRouterApiKey,
+  OPENROUTER_CONFIG,
+  OPENROUTER_MODELS,
+  type OpenRouterModel,
 } from "./openrouter-config"
 
 /**
@@ -41,7 +41,7 @@ export interface GenerateOptions {
   /** User prompt */
   prompt: string
   /** Maximum tokens to generate */
-  maxTokens?: number
+  maxOutputTokens?: number
   /** Temperature for randomness (0-2) */
   temperature?: number
   /** Abort signal for cancellation */
@@ -61,7 +61,7 @@ export async function generate(options: GenerateOptions): Promise<string> {
     model: openrouter(model),
     system: options.system,
     prompt: options.prompt,
-    maxTokens: options.maxTokens ?? 1024,
+    maxOutputTokens: options.maxOutputTokens ?? 1024,
     temperature: options.temperature ?? 0.7,
     abortSignal: options.abortSignal,
     headers: {
@@ -86,7 +86,7 @@ export async function generateStream(options: GenerateOptions) {
     model: openrouter(model),
     system: options.system,
     prompt: options.prompt,
-    maxTokens: options.maxTokens ?? 1024,
+    maxOutputTokens: options.maxOutputTokens ?? 1024,
     temperature: options.temperature ?? 0.7,
     abortSignal: options.abortSignal,
     headers: {

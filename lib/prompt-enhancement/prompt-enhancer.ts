@@ -7,10 +7,10 @@
 
 import { generate } from "@/lib/openrouter"
 import {
-    NEGATIVE_PROMPT_ENHANCEMENT_SYSTEM,
-    PROMPT_ENHANCEMENT_SYSTEM,
-    buildNegativePromptEnhancementMessage,
-    buildPromptEnhancementMessage,
+  NEGATIVE_PROMPT_ENHANCEMENT_SYSTEM,
+  PROMPT_ENHANCEMENT_SYSTEM,
+  buildNegativePromptEnhancementMessage,
+  buildPromptEnhancementMessage,
 } from "./enhancement-prompts"
 
 /**
@@ -53,13 +53,13 @@ export async function enhancePrompt(
       prompt: buildPromptEnhancementMessage(prompt),
       abortSignal: options?.abortSignal,
       temperature: 0.7,
-      maxTokens: 512,
+      maxOutputTokens: 512,
     })
 
     // Trim and strip wrapping quotes if present
     let cleanedText = enhancedText.trim()
-    if ((cleanedText.startsWith('"') && cleanedText.endsWith('"')) || 
-        (cleanedText.startsWith("'") && cleanedText.endsWith("'"))) {
+    if ((cleanedText.startsWith('"') && cleanedText.endsWith('"')) ||
+      (cleanedText.startsWith("'") && cleanedText.endsWith("'"))) {
       cleanedText = cleanedText.slice(1, -1).trim()
     }
 
@@ -101,13 +101,13 @@ export async function enhanceNegativePrompt(
       prompt: buildNegativePromptEnhancementMessage(mainPrompt, existingNegativePrompt),
       abortSignal: options?.abortSignal,
       temperature: 0.7,
-      maxTokens: 256,
+      maxOutputTokens: 256,
     })
 
     // Trim and strip wrapping quotes if present
     let cleanedText = enhancedText.trim()
-    if ((cleanedText.startsWith('"') && cleanedText.endsWith('"')) || 
-        (cleanedText.startsWith("'") && cleanedText.endsWith("'"))) {
+    if ((cleanedText.startsWith('"') && cleanedText.endsWith('"')) ||
+      (cleanedText.startsWith("'") && cleanedText.endsWith("'"))) {
       cleanedText = cleanedText.slice(1, -1).trim()
     }
 

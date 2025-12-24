@@ -31,9 +31,19 @@ describe("useDimensionConstraints", () => {
             expect(result.current.constraints.step).toBe(32)
         })
 
-        it("should return default constraints for non-flux models", () => {
+        it("should return Turbo constraints for turbo model (strict 768px limit)", () => {
             const { result } = renderHook(() =>
                 useDimensionConstraints({ ...defaultProps, modelId: "turbo" })
+            )
+
+            expect(result.current.constraints.maxPixels).toBe(589_825)
+            expect(result.current.constraints.maxDimension).toBe(768)
+            expect(result.current.constraints.step).toBe(64)
+        })
+
+        it("should return default constraints for unknown models", () => {
+            const { result } = renderHook(() =>
+                useDimensionConstraints({ ...defaultProps, modelId: "some-unknown-model" })
             )
 
             expect(result.current.constraints.maxPixels).toBe(Infinity)
@@ -63,7 +73,7 @@ describe("useDimensionConstraints", () => {
             const { result } = renderHook(() =>
                 useDimensionConstraints({
                     ...defaultProps,
-                    modelId: "turbo",
+                    modelId: "some-unknown-model",
                     width: 1024,
                     height: 1024,
                 })
@@ -71,6 +81,21 @@ describe("useDimensionConstraints", () => {
 
             expect(result.current.maxWidth).toBe(2048)
             expect(result.current.maxHeight).toBe(2048)
+        })
+
+        it("should return 768 maxDimension for turbo model", () => {
+            const { result } = renderHook(() =>
+                useDimensionConstraints({
+                    ...defaultProps,
+                    modelId: "turbo",
+                    width: 512,
+                    height: 512,
+                })
+            )
+
+            // Turbo has strict 768px max dimension
+            expect(result.current.maxWidth).toBe(768)
+            expect(result.current.maxHeight).toBe(768)
         })
     })
 
@@ -128,7 +153,7 @@ describe("useDimensionConstraints", () => {
             const { result } = renderHook(() =>
                 useDimensionConstraints({
                     ...defaultProps,
-                    modelId: "turbo",
+                    modelId: "some-unknown-model",
                 })
             )
 
@@ -157,10 +182,18 @@ describe("useDimensionConstraints", () => {
 
         it("should be false for models without limits", () => {
             const { result } = renderHook(() =>
-                useDimensionConstraints({ ...defaultProps, modelId: "turbo" })
+                useDimensionConstraints({ ...defaultProps, modelId: "some-unknown-model" })
             )
 
             expect(result.current.hasPixelLimit).toBe(false)
+        })
+
+        it("should be true for turbo model (has 589,824 pixel limit)", () => {
+            const { result } = renderHook(() =>
+                useDimensionConstraints({ ...defaultProps, modelId: "turbo" })
+            )
+
+            expect(result.current.hasPixelLimit).toBe(true)
         })
     })
 
@@ -281,9 +314,28 @@ describe("useDimensionConstraints", () => {
 
             expect(result.current.constraints.maxPixels).toBe(1_048_575)
 
-            rerender({ modelId: "turbo" })
+            rerender({ modelId: "some-unknown-model" })
 
             expect(result.current.constraints.maxPixels).toBe(Infinity)
+        })
+
+        it("should update constraints when switching to turbo", () => {
+            const { result, rerender } = renderHook(
+                ({ modelId }) =>
+                    useDimensionConstraints({
+                        ...defaultProps,
+                        modelId,
+                    }),
+                { initialProps: { modelId: "flux" } }
+            )
+
+            expect(result.current.constraints.maxPixels).toBe(1_048_575)
+            expect(result.current.constraints.maxDimension).toBe(2048)
+
+            rerender({ modelId: "turbo" })
+
+            expect(result.current.constraints.maxPixels).toBe(589_825)
+            expect(result.current.constraints.maxDimension).toBe(768)
         })
     })
 })
