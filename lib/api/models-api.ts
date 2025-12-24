@@ -6,13 +6,10 @@
  * Following SRP: handles only model-related API operations.
  */
 
-import { API_CONFIG } from "@/lib/config/api.config"
-import { PollinationsAPI } from "@/lib/pollinations-api"
-import {
-    ImageModelsResponseSchema,
-    type ImageModelInfo,
-} from "@/lib/schemas/pollinations.schema"
-import { PollinationsApiError, ClientErrorCode } from "./image-api"
+import { API_CONFIG } from "@/lib/config/api.config";
+import { PollinationsAPI } from "@/lib/pollinations-api";
+import { ImageModelsResponseSchema, type ImageModelInfo } from "@/lib/schemas/pollinations.schema";
+import { PollinationsApiError, ClientErrorCodeConst } from "./image-api";
 
 /**
  * Fetches available image models from the API.
@@ -21,43 +18,41 @@ import { PollinationsApiError, ClientErrorCode } from "./image-api"
  * @throws PollinationsApiError if fetch fails
  */
 export async function fetchImageModels(): Promise<ImageModelInfo[]> {
-    const url = `${API_CONFIG.baseUrl}/image/models`
+  const url = `${API_CONFIG.baseUrl}/image/models`;
 
-    try {
-        const response = await fetch(url, {
-            method: "GET",
-            headers: {
-                ...PollinationsAPI.getHeaders(),
-                Accept: "application/json",
-            },
-            // Cache for 5 minutes - models don't change frequently
-            next: { revalidate: 300 },
-        })
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        ...PollinationsAPI.getHeaders(),
+        Accept: "application/json",
+      },
+      // Cache for 5 minutes - models don't change frequently
+      next: { revalidate: 300 },
+    });
 
-        if (!response.ok) {
-            throw new PollinationsApiError(
-                `Failed to fetch image models: ${response.status}`,
-                ClientErrorCode.GENERATION_FAILED,
-                response.status
-            )
-        }
-
-        const data = await response.json()
-
-        // Validate response with Zod
-        return ImageModelsResponseSchema.parse(data)
-    } catch (error) {
-        if (error instanceof PollinationsApiError) {
-            throw error
-        }
-
-        throw new PollinationsApiError(
-            error instanceof Error
-                ? error.message
-                : "Failed to fetch image models",
-            ClientErrorCode.UNKNOWN_ERROR
-        )
+    if (!response.ok) {
+      throw new PollinationsApiError(
+        `Failed to fetch image models: ${response.status}`,
+        ClientErrorCodeConst.GENERATION_FAILED,
+        response.status
+      );
     }
+
+    const data = await response.json();
+
+    // Validate response with Zod
+    return ImageModelsResponseSchema.parse(data);
+  } catch (error) {
+    if (error instanceof PollinationsApiError) {
+      throw error;
+    }
+
+    throw new PollinationsApiError(
+      error instanceof Error ? error.message : "Failed to fetch image models",
+      ClientErrorCodeConst.UNKNOWN_ERROR
+    );
+  }
 }
 
 /**
@@ -66,11 +61,7 @@ export async function fetchImageModels(): Promise<ImageModelInfo[]> {
  * @param modelName - The model name or alias to find
  * @returns Promise resolving to model info or undefined if not found
  */
-export async function fetchImageModel(
-    modelName: string
-): Promise<ImageModelInfo | undefined> {
-    const models = await fetchImageModels()
-    return models.find(
-        (m) => m.name === modelName || m.aliases.includes(modelName)
-    )
+export async function fetchImageModel(modelName: string): Promise<ImageModelInfo | undefined> {
+  const models = await fetchImageModels();
+  return models.find((m) => m.name === modelName || m.aliases.includes(modelName));
 }

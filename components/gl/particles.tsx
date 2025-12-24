@@ -1,13 +1,13 @@
 "use client"
 
-import * as THREE from "three"
-import { useMemo, useState, useRef } from "react"
-import { createPortal, useFrame } from "@react-three/fiber"
 import { useFBO } from "@react-three/drei"
+import { createPortal, useFrame } from "@react-three/fiber"
+import { useMemo, useRef, useState } from "react"
+import * as THREE from "three"
 
+import * as easing from "maath/easing"
 import { DofPointsMaterial } from "./shaders/dof-points-material"
 import { SimulationMaterial } from "./shaders/simulation-material"
-import * as easing from "maath/easing"
 
 export function Particles({
   speed,
@@ -86,7 +86,6 @@ export function Particles({
 
     state.gl.setRenderTarget(target)
     state.gl.clear()
-    // @ts-expect-error - Three.js types incompatibility with R3F
     state.gl.render(scene, camera)
     state.gl.setRenderTarget(null)
 
@@ -139,17 +138,14 @@ export function Particles({
   return (
     <>
       {createPortal(
-        // @ts-expect-error - Three.js types incompatibility with R3F
         <mesh material={simulationMaterial}>
           <bufferGeometry>
             <bufferAttribute attach="attributes-position" args={[positions, 3]} />
             <bufferAttribute attach="attributes-uv" args={[uvs, 2]} />
           </bufferGeometry>
         </mesh>,
-        // @ts-expect-error - Three.js types incompatibility with R3F
         scene,
       )}
-      {/* @ts-expect-error - Three.js types incompatibility with R3F */}
       <points material={dofPointsMaterial} {...props}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[particles, 3]} />

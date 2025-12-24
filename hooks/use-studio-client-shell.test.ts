@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { renderHook, act, waitFor } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { act, renderHook, waitFor } from "@testing-library/react"
 import * as React from "react"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { useStudioClientShell } from "./use-studio-client-shell"
 
 // Mock PollinationsAPI
@@ -35,13 +35,35 @@ describe("useStudioClientShell", () => {
         window.URL.createObjectURL = vi.fn()
         window.URL.revokeObjectURL = vi.fn()
 
-        // Mock fetch
-        global.fetch = vi.fn(() =>
-            Promise.resolve({
+        // Mock fetch to return proper server generate response
+        global.fetch = vi.fn((url: string) => {
+            // Mock /api/generate endpoint
+            if (typeof url === 'string' && url.includes('/api/generate')) {
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({
+                        success: true,
+                        data: {
+                            id: `img_${Date.now()}_test`,
+                            url: "https://pollinations.ai/p/mock-url",
+                            prompt: "A beautiful cat",
+                            params: {
+                                prompt: "A beautiful cat",
+                                width: 1024,
+                                height: 1024,
+                                model: "flux",
+                            },
+                            timestamp: Date.now(),
+                        }
+                    }),
+                })
+            }
+            // Default mock for other fetch calls (like image downloads)
+            return Promise.resolve({
                 ok: true,
                 blob: () => Promise.resolve(new Blob(["mock content"], { type: "image/jpeg" })),
             })
-        ) as unknown as typeof fetch
+        }) as unknown as typeof fetch
 
         // Mock window.open
         window.open = vi.fn()

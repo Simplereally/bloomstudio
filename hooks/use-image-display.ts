@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 /**
  * useImageDisplay Hook
@@ -7,21 +7,21 @@
  * Integrates TanStack Query for download operations.
  */
 
-import { useState, useRef, useCallback } from "react"
-import type { GeneratedImage } from "@/types/pollinations"
-import { useDownloadImage } from "@/hooks/queries"
-import { showErrorToast, showSuccessToast } from "@/lib/errors"
+import { useDownloadImage } from "@/hooks/queries";
+import { showErrorToast, showSuccessToast } from "@/lib/errors";
+import type { GeneratedImage } from "@/types/pollinations";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
  * Return type for useImageDisplay hook
  */
 export interface UseImageDisplayReturn {
-    copiedUrl: string | null
-    isImageLoading: boolean
-    setIsImageLoading: React.Dispatch<React.SetStateAction<boolean>>
-    isDownloading: boolean
-    handleDownload: (image: GeneratedImage) => void
-    handleCopyUrl: (url: string) => Promise<void>
+  copiedUrl: string | null;
+  isImageLoading: boolean;
+  setIsImageLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  isDownloading: boolean;
+  handleDownload: (image: GeneratedImage) => void;
+  handleCopyUrl: (url: string) => Promise<void>;
 }
 
 /**
@@ -29,55 +29,64 @@ export interface UseImageDisplayReturn {
  *
  * @param currentImage - The currently displayed image
  */
-export function useImageDisplay(
-    currentImage: GeneratedImage | null
-): UseImageDisplayReturn {
-    const [copiedUrl, setCopiedUrl] = useState<string | null>(null)
-    const [isImageLoading, setIsImageLoading] = useState(false)
-    const previousImageId = useRef<string | null>(null)
+export function useImageDisplay(currentImage: GeneratedImage | null): UseImageDisplayReturn {
+  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+  const [isImageLoading, setIsImageLoading] = useState(false);
+  const previousImageId = useRef<string | null>(null);
 
-    // Use TanStack Query for downloads
-    const { download, isDownloading } = useDownloadImage({
-        onError: (error) => {
-            showErrorToast(error)
-        },
-    })
+  // Use TanStack Query for downloads
+  const { download, isDownloading } = useDownloadImage({
+    onError: (error) => {
+      showErrorToast(error);
+    },
+  });
 
-    // Track image changes and set loading state synchronously during render
-    if (currentImage?.id !== previousImageId.current) {
-        previousImageId.current = currentImage?.id ?? null
-        if (currentImage && !isImageLoading) {
-            setIsImageLoading(true)
-        }
+  // Track image changes and set loading state when image changes
+  // This pattern is intentional: we need to show loading UI when image prop changes.
+  // Similar to getDerivedStateFromProps but reactive to prop changes.
+  useEffect(() => {
+    const previousId = previousImageId.current;
+    const currentId = currentImage?.id ?? null;
+    
+    // Only trigger loading when we have a NEW image (id changed to a non-null value)
+    if (currentId !== null && currentId !== previousId) {
+      previousImageId.current = currentId;
+      // This setState is intentional - we need to show loading state for the new image
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: sync loading state with new image
+      setIsImageLoading(true);
+    } else if (currentId === null && previousId !== null) {
+      // Image was removed
+      previousImageId.current = null;
     }
+  }, [currentImage?.id]);
 
-    const handleDownload = useCallback(
-        (image: GeneratedImage) => {
-            download({
-                url: image.url,
-                filename: `pixelstream-${image.id}.jpg`,
-            })
-        },
-        [download]
-    )
+  const handleDownload = useCallback(
+    (image: GeneratedImage) => {
+      download({
+        url: image.url,
+        filename: `pixelstream-${image.id}.jpg`,
+      });
+    },
+    [download]
+  );
 
-    const handleCopyUrl = useCallback(async (url: string) => {
-        try {
-            await navigator.clipboard.writeText(url)
-            setCopiedUrl(url)
-            showSuccessToast("URL copied to clipboard")
-            setTimeout(() => setCopiedUrl(null), 2000)
-        } catch {
-            showErrorToast(new Error("Failed to copy URL to clipboard"))
-        }
-    }, [])
-
-    return {
-        copiedUrl,
-        isImageLoading,
-        setIsImageLoading,
-        isDownloading,
-        handleDownload,
-        handleCopyUrl,
+  const handleCopyUrl = useCallback(async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedUrl(url);
+      showSuccessToast("URL copied to clipboard");
+      setTimeout(() => setCopiedUrl(null), 2000);
+    } catch {
+      showErrorToast(new Error("Failed to copy URL to clipboard"));
     }
+  }, []);
+
+  return {
+    copiedUrl,
+    isImageLoading,
+    setIsImageLoading,
+    isDownloading,
+    handleDownload,
+    handleCopyUrl,
+  };
 }

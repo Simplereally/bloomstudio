@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen } from "@testing-library/react"
-import userEvent from "@testing-library/user-event"
-import { ImageDisplay } from "./image-display"
 import { useImageDisplay } from "@/hooks/use-image-display"
 import type { GeneratedImage } from "@/types/pollinations"
+import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+import { ImageDisplay } from "./image-display"
 
 // Mock the hook
 vi.mock("@/hooks/use-image-display", () => ({
@@ -43,6 +43,7 @@ describe("ImageDisplay", () => {
     const mockHookReturn = {
         copiedUrl: null,
         isImageLoading: false,
+        isDownloading: false,
         setIsImageLoading: vi.fn(),
         handleDownload: vi.fn(),
         handleCopyUrl: vi.fn(),

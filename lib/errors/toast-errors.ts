@@ -11,7 +11,7 @@ import {
     isPollinationsApiError,
     getErrorMessage,
     ApiErrorCodeConst,
-    ClientErrorCode,
+    ClientErrorCodeConst,
     ERROR_MESSAGES,
 } from "@/lib/errors"
 
@@ -38,13 +38,13 @@ function getToastConfig(error: PollinationsApiError): ErrorToastConfig {
                 duration: 5000,
             }
         case ApiErrorCodeConst.INTERNAL_ERROR:
-        case ClientErrorCode.NETWORK_ERROR:
+        case ClientErrorCodeConst.NETWORK_ERROR:
             return {
                 type: "error",
                 duration: 8000,
             }
         case ApiErrorCodeConst.BAD_REQUEST:
-        case ClientErrorCode.VALIDATION_ERROR:
+        case ClientErrorCodeConst.VALIDATION_ERROR:
             return {
                 type: "error",
                 duration: 6000,
