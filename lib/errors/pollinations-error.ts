@@ -244,10 +244,11 @@ export class PollinationsApiError extends Error {
                 return PollinationsApiError.fromUnauthorized(response)
             case 500:
                 return PollinationsApiError.fromInternalError(response)
-            default:
+            default: {
                 // This should never happen due to exhaustive check, but TypeScript needs it
                 const _exhaustive: never = response
                 return _exhaustive
+            }
         }
     }
 
