@@ -47,10 +47,7 @@ export class PollinationsAPI {
       queryParams.append("seed", options.seed.toString())
     }
 
-    // Quality - only include if different from default
-    if (options.quality && options.quality !== API_DEFAULTS.quality) {
-      queryParams.append("quality", options.quality)
-    }
+    queryParams.append("quality", "hd")
 
     // Guidance scale
     if (options.guidance_scale !== undefined) {

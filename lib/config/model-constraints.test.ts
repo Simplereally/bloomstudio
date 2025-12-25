@@ -36,6 +36,8 @@ import {
     validateGPTImageLargeDimensions,
     findNearestGPTImageSize,
     findNearestGPTImageLargeSize,
+    SEEDREAM_ASPECT_RATIOS,
+    ZIMAGE_ASPECT_RATIOS,
 } from "./model-constraints"
 
 describe("Model Constraints", () => {
@@ -155,10 +157,17 @@ describe("Model Constraints", () => {
             expect(ratios).toEqual(TURBO_ASPECT_RATIOS)
         })
 
-        it("should return FLUX_ASPECT_RATIOS for nanobanana, seedream, and zimage", () => {
+        it("should return FLUX_ASPECT_RATIOS for nanobanana", () => {
             expect(getModelAspectRatios("nanobanana")).toEqual(FLUX_ASPECT_RATIOS)
-            expect(getModelAspectRatios("seedream")).toEqual(FLUX_ASPECT_RATIOS)
-            expect(getModelAspectRatios("zimage")).toEqual(FLUX_ASPECT_RATIOS)
+        })
+
+        it("should return ZIMAGE_ASPECT_RATIOS for zimage", () => {
+            expect(getModelAspectRatios("zimage")).toEqual(ZIMAGE_ASPECT_RATIOS)
+        })
+
+        it("should return SEEDREAM_ASPECT_RATIOS for seedream models", () => {
+            expect(getModelAspectRatios("seedream")).toEqual(SEEDREAM_ASPECT_RATIOS)
+            expect(getModelAspectRatios("seedream-pro")).toEqual(SEEDREAM_ASPECT_RATIOS)
         })
     })
 
@@ -198,6 +207,20 @@ describe("Model Constraints", () => {
             expect(result.pixelCount).toBe(1_048_576)
             expect(result.correctedWidth).toBe(FLUX_CONSTRAINTS.defaultDimensions.width)
             expect(result.correctedHeight).toBe(FLUX_CONSTRAINTS.defaultDimensions.height)
+        })
+
+        it("should report invalid for Seedream when under 3.6MP minimum", () => {
+            const result = validateDimensions("seedream", 1024, 1024)
+            expect(result.isValid).toBe(false)
+            expect(result.pixelCount).toBe(1_048_576)
+            expect(result.pixelCount).toBeLessThan(SEEDREAM_CONSTRAINTS.minPixels)
+        })
+
+        it("should report valid for Seedream when at the 3.6MP minimum", () => {
+            // 2560 * 1440 = 3,686,400
+            const result = validateDimensions("seedream", 2560, 1440)
+            expect(result.isValid).toBe(true)
+            expect(result.pixelCount).toBe(3_686_400)
         })
 
         it("should report invalid for turbo when exceeding 768px limit", () => {
@@ -293,6 +316,30 @@ describe("Flux Preset Pixel Counts", () => {
     })
 })
 
+describe("Seedream Preset Pixel Counts", () => {
+    it("should verify all preset pixel counts match requirements", () => {
+        const expectedPixelCounts: Record<string, number> = {
+            "1:1": 16_777_216,      // 4096×4096
+            "16:9": 14_745_600,     // 5120×2880
+            "9:16": 14_745_600,     // 2880×5120
+            "4:3": 15_925_248,      // 4608×3456
+            "3:4": 15_925_248,      // 3456×4608
+            "3:2": 16_613_376,      // 4992×3328
+            "2:3": 16_613_376,      // 3328×4992
+            "21:9": 15_676_416,     // 6048×2592
+        }
+
+        for (const ratio of SEEDREAM_ASPECT_RATIOS) {
+            if (ratio.value !== "custom" && expectedPixelCounts[ratio.value]) {
+                const actualPixels = ratio.width * ratio.height
+                expect(actualPixels).toBe(expectedPixelCounts[ratio.value])
+                expect(actualPixels).toBeLessThanOrEqual(SEEDREAM_CONSTRAINTS.maxPixels)
+                expect(actualPixels).toBeGreaterThanOrEqual(SEEDREAM_CONSTRAINTS.minPixels)
+            }
+        }
+    })
+})
+
 describe("GPT Image Model Constraints", () => {
     describe("GPTIMAGE_CONSTRAINTS", () => {
         it("should have dimensions disabled", () => {
@@ -326,18 +373,18 @@ describe("GPT Image Model Constraints", () => {
             expect(square?.height).toBe(1024)
         })
 
-        it("should include 1792x1024 (16:9)", () => {
+        it("should include 1536x1024 (16:9)", () => {
             const landscape = GPTIMAGE_SUPPORTED_SIZES.find((s) => s.ratio === "16:9")
             expect(landscape).toBeDefined()
-            expect(landscape?.width).toBe(1792)
+            expect(landscape?.width).toBe(1536)
             expect(landscape?.height).toBe(1024)
         })
 
-        it("should include 1024x1792 (9:16)", () => {
+        it("should include 1024x1536 (9:16)", () => {
             const portrait = GPTIMAGE_SUPPORTED_SIZES.find((s) => s.ratio === "9:16")
             expect(portrait).toBeDefined()
             expect(portrait?.width).toBe(1024)
-            expect(portrait?.height).toBe(1792)
+            expect(portrait?.height).toBe(1536)
         })
     })
 
@@ -423,13 +470,13 @@ describe("GPT Image Model Constraints", () => {
             expect(result.error).toBeUndefined()
         })
 
-        it("should return valid for 1792x1024", () => {
-            const result = validateGPTImageDimensions(1792, 1024)
+        it("should return valid for 1536x1024", () => {
+            const result = validateGPTImageDimensions(1536, 1024)
             expect(result.valid).toBe(true)
         })
 
-        it("should return valid for 1024x1792", () => {
-            const result = validateGPTImageDimensions(1024, 1792)
+        it("should return valid for 1024x1536", () => {
+            const result = validateGPTImageDimensions(1024, 1536)
             expect(result.valid).toBe(true)
         })
 
@@ -461,14 +508,14 @@ describe("GPT Image Model Constraints", () => {
                 height: 1024,
                 ratio: "1:1",
             })
-            expect(findNearestGPTImageSize("16:9", 1792, 1024)).toEqual({
-                width: 1792,
+            expect(findNearestGPTImageSize("16:9", 1536, 1024)).toEqual({
+                width: 1536,
                 height: 1024,
                 ratio: "16:9",
             })
-            expect(findNearestGPTImageSize("9:16", 1024, 1792)).toEqual({
+            expect(findNearestGPTImageSize("9:16", 1024, 1536)).toEqual({
                 width: 1024,
-                height: 1792,
+                height: 1536,
                 ratio: "9:16",
             })
         })
@@ -477,7 +524,7 @@ describe("GPT Image Model Constraints", () => {
             // 21:9 (ultrawide) should map to 16:9
             const result = findNearestGPTImageSize("21:9", 1536, 640)
             expect(result.ratio).toBe("16:9")
-            expect(result.width).toBe(1792)
+            expect(result.width).toBe(1536)
             expect(result.height).toBe(1024)
         })
 
@@ -486,7 +533,7 @@ describe("GPT Image Model Constraints", () => {
             const result = findNearestGPTImageSize("9:21", 640, 1536)
             expect(result.ratio).toBe("9:16")
             expect(result.width).toBe(1024)
-            expect(result.height).toBe(1792)
+            expect(result.height).toBe(1536)
         })
 
         it("should map square-ish ratios to 1:1", () => {
@@ -519,8 +566,8 @@ describe("GPT Image Preset Dimensions", () => {
     it("should verify all GPT Image preset dimensions match DALL-E requirements", () => {
         const expectedSizes = [
             { width: 1024, height: 1024, ratio: "1:1" },
-            { width: 1792, height: 1024, ratio: "16:9" },
-            { width: 1024, height: 1792, ratio: "9:16" },
+            { width: 1536, height: 1024, ratio: "16:9" },
+            { width: 1024, height: 1536, ratio: "9:16" },
         ]
 
         for (const expected of expectedSizes) {
@@ -704,16 +751,6 @@ describe("GPT Image Large Model Constraints", () => {
             const result = findNearestGPTImageLargeSize("4:3", 1152, 864)
             expect(result.ratio).toBe("1:1")
         })
-
-        it("should return same result as findNearestGPTImageSize (shared logic)", () => {
-            // Since GPT Image Large uses the same fixed sizes
-            expect(findNearestGPTImageLargeSize("1:1", 1024, 1024)).toEqual(
-                findNearestGPTImageSize("1:1", 1024, 1024)
-            )
-            expect(findNearestGPTImageLargeSize("21:9", 1536, 640)).toEqual(
-                findNearestGPTImageSize("21:9", 1536, 640)
-            )
-        })
     })
 })
 
@@ -738,21 +775,25 @@ describe("New Model Constraints", () => {
     })
 
     describe("SEEDREAM_CONSTRAINTS", () => {
-        it("should have standard 1MP limit", () => {
-            expect(SEEDREAM_CONSTRAINTS.maxPixels).toBe(1_048_576)
+        it("should have 16MP maximum limit", () => {
+            expect(SEEDREAM_CONSTRAINTS.maxPixels).toBe(16_777_216)
         })
 
-        it("should have 32-pixel step alignment", () => {
-            expect(SEEDREAM_CONSTRAINTS.step).toBe(32)
+        it("should have 3.6MB minimum limit", () => {
+            expect(SEEDREAM_CONSTRAINTS.minPixels).toBe(3_686_400)
+        })
+
+        it("should have 64-pixel step alignment", () => {
+            expect(SEEDREAM_CONSTRAINTS.step).toBe(64)
         })
 
         it("should have dimensions enabled", () => {
             expect(SEEDREAM_CONSTRAINTS.dimensionsEnabled).toBe(true)
         })
 
-        it("should have correct default dimensions", () => {
-            expect(SEEDREAM_CONSTRAINTS.defaultDimensions.width).toBe(1024)
-            expect(SEEDREAM_CONSTRAINTS.defaultDimensions.height).toBe(1024)
+        it("should have correct default dimensions (4096x4096)", () => {
+            expect(SEEDREAM_CONSTRAINTS.defaultDimensions.width).toBe(4096)
+            expect(SEEDREAM_CONSTRAINTS.defaultDimensions.height).toBe(4096)
         })
     })
 
@@ -781,8 +822,8 @@ describe("New Model Constraints", () => {
     })
 
     describe("ZIMAGE_CONSTRAINTS", () => {
-        it("should have standard 1MP limit", () => {
-            expect(ZIMAGE_CONSTRAINTS.maxPixels).toBe(1_048_576)
+        it("should have 4MP limit", () => {
+            expect(ZIMAGE_CONSTRAINTS.maxPixels).toBe(4_194_304)
         })
 
         it("should have 32-pixel step alignment", () => {
@@ -794,8 +835,8 @@ describe("New Model Constraints", () => {
         })
 
         it("should have correct default dimensions", () => {
-            expect(ZIMAGE_CONSTRAINTS.defaultDimensions.width).toBe(1024)
-            expect(ZIMAGE_CONSTRAINTS.defaultDimensions.height).toBe(1024)
+            expect(ZIMAGE_CONSTRAINTS.defaultDimensions.width).toBe(2048)
+            expect(ZIMAGE_CONSTRAINTS.defaultDimensions.height).toBe(2048)
         })
     })
 

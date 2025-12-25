@@ -12,10 +12,25 @@ import {
     ServerGenerationError,
     isServerGenerationError,
 } from "./use-generate-image"
+import { useMutation as useConvexMutation } from "convex/react"
 
 // Mock fetch
 const mockFetch = vi.fn()
 global.fetch = mockFetch
+
+// Mock Convex
+vi.mock("convex/react", () => ({
+    useMutation: () => vi.fn().mockResolvedValue("imageId"),
+}))
+
+// Mock Convex API
+vi.mock("@/convex/_generated/api", () => ({
+    api: {
+        generatedImages: {
+            create: "generatedImages.create",
+        },
+    },
+}))
 
 // Create a wrapper with QueryClientProvider
 function createWrapper() {

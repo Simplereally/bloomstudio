@@ -9,6 +9,7 @@
 
 import type { GenerationOptions } from "@/components/studio"
 import { useDownloadImage, useGenerateImage } from "@/hooks/queries"
+import { useDeleteGeneratedImage } from "@/hooks/mutations/use-delete-image"
 import { useRandomSeed } from "@/hooks/use-random-seed"
 import {
     getModelAspectRatios,
@@ -19,6 +20,8 @@ import {
     findNearestGPTImageLargeSize
 } from "@/lib/config/model-constraints"
 import { showAuthRequiredToast, showErrorToast } from "@/lib/errors"
+import { toast } from "sonner"
+import { Id } from "@/convex/_generated/dataModel"
 import type {
     AspectRatio,
     AspectRatioOption,
@@ -67,6 +70,8 @@ export interface UseStudioClientShellReturn {
     isFullscreen: boolean
     setIsFullscreen: React.Dispatch<React.SetStateAction<boolean>>
     isDownloading: boolean
+    referenceImage: string | undefined
+    setReferenceImage: React.Dispatch<React.SetStateAction<string | undefined>>
 
     // Handlers
     handleAspectRatioChange: (
@@ -117,6 +122,7 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
     )
     const [promptHistory, setPromptHistory] = React.useState<string[]>([])
     const [isFullscreen, setIsFullscreen] = React.useState(false)
+    const [referenceImage, setReferenceImage] = React.useState<string | undefined>(undefined)
 
     // Random seed generation hook
     const { generateSeed, isRandomMode } = useRandomSeed()
@@ -228,6 +234,7 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
     const heightRef = React.useRef(height)
     const seedRef = React.useRef(seed)
     const optionsRef = React.useRef(options)
+    const referenceImageRef = React.useRef(referenceImage)
 
     // Keep refs in sync with state
     React.useEffect(() => {
@@ -254,6 +261,9 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
     React.useEffect(() => {
         optionsRef.current = options
     }, [options])
+    React.useEffect(() => {
+        referenceImageRef.current = referenceImage
+    }, [referenceImage])
 
     // Generate image using TanStack Query
     // Uses refs to avoid recreating the callback on every state change
@@ -266,6 +276,7 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
         const currentHeight = heightRef.current
         const currentSeed = seedRef.current
         const currentOptions = optionsRef.current
+        const currentReferenceImage = referenceImageRef.current
 
         if (!currentPrompt.trim() || isGenerating) return
 
@@ -288,13 +299,29 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
             enhance: currentOptions.enhance,
             private: currentOptions.private,
             safe: currentOptions.safe,
+            image: currentReferenceImage,
         }
 
         generate(params)
     }, [isGenerating, generate, generateSeed])
 
+    const deleteMutation = useDeleteGeneratedImage()
+
     // Handle image removal
-    const handleRemoveImage = React.useCallback((id: string) => {
+    const handleRemoveImage = React.useCallback(async (id: string) => {
+        const imageToDelete = images.find(img => img.id === id)
+
+        // If image has a Convex ID, delete it from the server
+        if (imageToDelete?._id) {
+            try {
+                await deleteMutation.mutateAsync(imageToDelete._id as Id<"generatedImages">)
+            } catch (error) {
+                console.error("Failed to delete image from server:", error)
+                // Mutation hook already shows toast, but we should stop here
+                return
+            }
+        }
+
         setImages((prev) => prev.filter((img) => img.id !== id))
         setCurrentImage((curr) => {
             if (curr?.id === id) {
@@ -302,7 +329,7 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
             }
             return curr
         })
-    }, [])
+    }, [images, deleteMutation])
 
     // Update currentImage when removed image was selected
     React.useEffect(() => {
@@ -312,11 +339,30 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
     }, [images, currentImage])
 
     // Handle bulk delete
-    const handleDeleteSelected = React.useCallback(() => {
+    const handleDeleteSelected = React.useCallback(async () => {
+        const idsToDelete = Array.from(selectedIds)
+        const imagesToDelete = images.filter(img => selectedIds.has(img.id))
+
+        // Delete all persistent images
+        const persistentIds = imagesToDelete
+            .filter(img => img._id)
+            .map(img => img._id as Id<"generatedImages">)
+
+        if (persistentIds.length > 0) {
+            try {
+                // Batch delete not available in hook, do them sequentially or concurrently
+                // For simplicity and toast handling, we'll do them concurrently
+                await Promise.all(persistentIds.map(dbId => deleteMutation.mutateAsync(dbId)))
+                toast.success(`Deleted ${persistentIds.length} images`)
+            } catch (error) {
+                console.error("Bulk delete partially failed:", error)
+            }
+        }
+
         setImages((prev) => prev.filter((img) => !selectedIds.has(img.id)))
         setSelectedIds(new Set())
         setSelectionMode(false)
-    }, [selectedIds])
+    }, [selectedIds, images, deleteMutation])
 
     // Download image using TanStack Query
     const handleDownload = React.useCallback(
@@ -433,6 +479,8 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
         handleCopyUrl,
         handleRegenerate: triggerRegenerate,
         handleOpenInNewTab,
+        referenceImage,
+        setReferenceImage,
 
         // Model-specific data
         aspectRatios,

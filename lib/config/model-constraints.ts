@@ -15,6 +15,7 @@ import { ASPECT_RATIOS } from "@/lib/image-models"
  */
 export const FLUX_CONSTRAINTS: ModelConstraints = {
     maxPixels: 1_048_575, // Strictly < 2^20 (1MP)
+    minPixels: 0,
     minDimension: 64,
     maxDimension: 2048,
     step: 32,
@@ -27,6 +28,7 @@ export const FLUX_CONSTRAINTS: ModelConstraints = {
  */
 export const DEFAULT_CONSTRAINTS: ModelConstraints = {
     maxPixels: Infinity,
+    minPixels: 0,
     minDimension: 64,
     maxDimension: 2048,
     step: 64,
@@ -40,8 +42,9 @@ export const DEFAULT_CONSTRAINTS: ModelConstraints = {
  */
 export const GPTIMAGE_CONSTRAINTS: ModelConstraints = {
     maxPixels: Infinity, // Fixed sizes, not pixel-based
-    minDimension: 2048,
-    maxDimension: 2560,
+    minPixels: 0,
+    minDimension: 1024,
+    maxDimension: 1792,
     step: 1, // Not applicable - fixed sizes
     defaultDimensions: { width: 1024, height: 1024 },
     dimensionsEnabled: false, // ⚠️ KEY: Disables dimension controls
@@ -53,6 +56,7 @@ export const GPTIMAGE_CONSTRAINTS: ModelConstraints = {
  */
 export const GPTIMAGE_LARGE_CONSTRAINTS: ModelConstraints = {
     maxPixels: Infinity, // Fixed sizes, not pixel-based
+    minPixels: 0,
     minDimension: 1024,
     maxDimension: 1792,
     step: 1, // Not applicable - fixed sizes
@@ -87,6 +91,7 @@ export const GPTIMAGE_LARGE_SUPPORTED_SIZES = [
  */
 export const NANOBANANA_CONSTRAINTS: ModelConstraints = {
     maxPixels: 1_048_576,
+    minPixels: 0,
     minDimension: 64,
     maxDimension: 2048,
     step: 32,
@@ -100,11 +105,12 @@ export const NANOBANANA_CONSTRAINTS: ModelConstraints = {
  * Uses standard 1MP limit with 32-pixel alignment.
  */
 export const SEEDREAM_CONSTRAINTS: ModelConstraints = {
-    maxPixels: 1_048_576,
-    minDimension: 64,
-    maxDimension: 2048,
-    step: 32,
-    defaultDimensions: { width: 1024, height: 1024 },
+    maxPixels: 16_777_216, // Runware: max 16,777,216 total pixels
+    minPixels: 3_686_400, // Runware: min 3,686,400 total pixels
+    minDimension: 1024, // Parallel AI Summary: at least 1024px
+    maxDimension: 6144, // Accommodates 6048 from recommended list
+    step: 64, // Standard alignment
+    defaultDimensions: { width: 4096, height: 4096 }, // Highest supported 1:1
     dimensionsEnabled: true,
 } as const
 
@@ -115,6 +121,7 @@ export const SEEDREAM_CONSTRAINTS: ModelConstraints = {
  */
 export const TURBO_CONSTRAINTS: ModelConstraints = {
     maxPixels: 589_825, // Allows 768 × 768 = 589,824 (strict < comparison)
+    minPixels: 0,
     minDimension: 64,
     maxDimension: 768, // Strict maximum
     step: 64,
@@ -129,6 +136,7 @@ export const TURBO_CONSTRAINTS: ModelConstraints = {
  */
 export const ZIMAGE_CONSTRAINTS: ModelConstraints = {
     maxPixels: 4_194_304,
+    minPixels: 0,
     minDimension: 64,
     maxDimension: 4096,
     step: 32,
@@ -299,6 +307,22 @@ export const ZIMAGE_ASPECT_RATIOS: readonly AspectRatioOption[] = [
 ] as const
 
 /**
+ * Seedream 4.5 (Pro) optimized aspect ratio presets.
+ * Uses the highest possible supported pixel dimensions (4K) as per Runware documentation.
+ */
+export const SEEDREAM_ASPECT_RATIOS: readonly AspectRatioOption[] = [
+    { label: "Square", value: "1:1", width: 4096, height: 4096, icon: "square", category: "square" },
+    { label: "Landscape", value: "16:9", width: 5120, height: 2880, icon: "rectangle-horizontal", category: "landscape" },
+    { label: "Portrait", value: "9:16", width: 2880, height: 5120, icon: "rectangle-vertical", category: "portrait" },
+    { label: "Photo", value: "4:3", width: 4608, height: 3456, icon: "image", category: "landscape" },
+    { label: "Portrait Photo", value: "3:4", width: 3456, height: 4608, icon: "frame", category: "portrait" },
+    { label: "Photo Wide", value: "3:2", width: 4992, height: 3328, icon: "image", category: "landscape" },
+    { label: "Photo Tall", value: "2:3", width: 3328, height: 4992, icon: "frame", category: "portrait" },
+    { label: "Ultrawide", value: "21:9", width: 6048, height: 2592, icon: "monitor", category: "ultrawide" },
+    { label: "Custom", value: "custom", width: 4096, height: 4096, icon: "sliders", category: "square" },
+] as const
+
+/**
  * Get aspect ratio presets for a specific model.
  * - Flux, Nanobanana, Seedream, and ZImage get optimized presets that stay under 1MP.
  * - Turbo gets scaled-down presets with 768px max.
@@ -313,9 +337,14 @@ export function getModelAspectRatios(modelId: string): readonly AspectRatioOptio
     if (isTurboModel(modelId)) {
         return TURBO_ASPECT_RATIOS
     }
-    // Flux, Nanobanana, Seedream, and ZImage all use standard 1MP-optimized ratios
-    if (isFluxModel(modelId) || isNanobananaModel(modelId) || isSeedreamModel(modelId)) {
+    // Flux, Nanobanana all use standard 1MP-optimized ratios
+    if (isFluxModel(modelId) || isNanobananaModel(modelId)) {
         return FLUX_ASPECT_RATIOS
+    }
+
+    // Seedream uses high-resolution (4K) presets
+    if (isSeedreamModel(modelId)) {
+        return SEEDREAM_ASPECT_RATIOS
     }
 
     if (isZImageModel(modelId)) {
@@ -342,13 +371,15 @@ export function validateDimensions(
 } {
     const constraints = getModelConstraints(modelId)
     const pixelCount = width * height
-    const hasLimit = constraints.maxPixels < Infinity
-    const isValid = pixelCount < constraints.maxPixels
+    const hasMaxLimit = constraints.maxPixels < Infinity
+    const isUnderMax = pixelCount < constraints.maxPixels
+    const isAboveMin = pixelCount >= constraints.minPixels
+    const isValid = isUnderMax && isAboveMin
 
     return {
         isValid,
         pixelCount,
-        percentOfLimit: hasLimit ? (pixelCount / constraints.maxPixels) * 100 : null,
+        percentOfLimit: hasMaxLimit ? (pixelCount / constraints.maxPixels) * 100 : null,
         ...(isValid ? {} : {
             correctedWidth: constraints.defaultDimensions.width,
             correctedHeight: constraints.defaultDimensions.height,
@@ -479,7 +510,7 @@ export function validateGPTImageLargeDimensions(
     width: number,
     height: number
 ): GPTImageValidationResult {
-    const validSize = GPTIMAGE_SUPPORTED_SIZES.find(
+    const validSize = GPTIMAGE_LARGE_SUPPORTED_SIZES.find(
         (s) => s.width === width && s.height === height
     )
 
@@ -498,20 +529,30 @@ export function validateGPTImageLargeDimensions(
     return { valid: true }
 }
 
-/**
- * Find the nearest supported GPT Image Large size for the given aspect ratio.
- * Uses the same logic as GPT Image since both models share the same fixed sizes.
- * 
- * @param currentRatio - The current aspect ratio
- * @param currentWidth - The current width (used to determine orientation for custom ratios)
- * @param currentHeight - The current height (used to determine orientation for custom ratios)
- * @returns The nearest supported GPT Image Large size with its ratio
- */
 export function findNearestGPTImageLargeSize(
     currentRatio: AspectRatio,
     currentWidth: number,
     currentHeight: number
 ): { width: number; height: number; ratio: AspectRatio } {
-    // GPT Image Large uses the same fixed sizes as GPT Image
-    return findNearestGPTImageSize(currentRatio, currentWidth, currentHeight)
+    // Direct mapping for supported ratios
+    const supportedSize = GPTIMAGE_LARGE_SUPPORTED_SIZES.find(
+        (s) => s.ratio === currentRatio
+    )
+    if (supportedSize) {
+        return { ...supportedSize }
+    }
+
+    // Map other ratios to nearest GPT Image Large size
+    const ratioNumber = currentWidth / currentHeight
+
+    if (ratioNumber > 1.4) {
+        // Landscape wider than 4:3 → 16:9
+        return { width: 1792, height: 1024, ratio: "16:9" }
+    } else if (ratioNumber < 0.7) {
+        // Portrait taller than 3:4 → 9:16
+        return { width: 1024, height: 1792, ratio: "9:16" }
+    } else {
+        // Everything else → 1:1 (square)
+        return { width: 1024, height: 1024, ratio: "1:1" }
+    }
 }

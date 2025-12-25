@@ -8,15 +8,17 @@ import { Sparkles } from "lucide-react"
 
 // Studio Components
 import {
+    ApiKeyOnboardingModal,
     AspectRatioSelector,
     DimensionControls,
     ImageCanvas,
-    ImageGallery,
+    PersistentImageGallery as ImageGallery,
     ImageMetadata,
     ImageToolbar,
     ModelSelector,
     OptionsPanel,
     PromptComposer,
+    ReferenceImagePicker,
     SeedControl,
     StudioHeader,
     StudioLayout,
@@ -35,6 +37,7 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 import { useEnhancePrompt, useImageModels } from "@/hooks/queries"
 import { useStudioClientShell } from "@/hooks/use-studio-client-shell"
 import { setInputValueWithUndo } from "@/lib/utils/set-input-value-with-undo"
+import { useTheme } from "next-themes"
 import * as React from "react"
 
 interface StudioClientShellProps {
@@ -85,9 +88,12 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
         setIsFullscreen,
         handleModelChange,
         aspectRatios,
+        referenceImage,
+        setReferenceImage,
     } = useStudioClientShell()
 
     const { models, isLoading: isLoadingModels } = useImageModels()
+    const { theme, setTheme } = useTheme()
 
     // Refs for textareas - used for undo-friendly value setting
     const promptTextareaRef = React.useRef<HTMLTextAreaElement>(null)
@@ -219,6 +225,15 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
 
                     <Separator className="bg-border/50" />
 
+                    {/* Reference Image */}
+                    <ReferenceImagePicker
+                        selectedImage={referenceImage}
+                        onSelect={setReferenceImage}
+                        disabled={isGenerating}
+                    />
+
+                    <Separator className="bg-border/50" />
+
                     {/* Seed */}
                     <SeedControl
                         seed={seed}
@@ -292,7 +307,6 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
     const galleryContent = (
         <div className="h-full bg-card/50 backdrop-blur-sm border-l border-border/50">
             <ImageGallery
-                images={images}
                 activeImageId={currentImage?.id}
                 onSelectImage={setCurrentImage}
                 onRemoveImage={handleRemoveImage}
@@ -317,6 +331,8 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
                 onToggleLeftSidebar={() => setShowLeftSidebar((prev: boolean) => !prev)}
                 rightPanelOpen={showGallery}
                 onToggleRightPanel={() => setShowGallery((prev: boolean) => !prev)}
+                theme={theme === "light" ? "light" : "dark"}
+                onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
             />
 
             {/* Main Layout */}
@@ -332,6 +348,9 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
                     defaultLayout={defaultLayout}
                 />
             </main>
+
+            {/* API Key Onboarding Modal - shows when user doesn't have a key */}
+            <ApiKeyOnboardingModal />
 
             {/* Fullscreen Preview Modal */}
             <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>

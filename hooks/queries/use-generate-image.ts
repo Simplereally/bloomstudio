@@ -8,6 +8,8 @@
  */
 
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation as useConvexMutation } from "convex/react"
+import { api } from "@/convex/_generated/api"
 import { queryKeys } from "@/lib/query"
 import type {
     ImageGenerationParams,
@@ -146,6 +148,7 @@ export function useGenerateImage(
     options: UseGenerateImageOptions = {}
 ): UseGenerateImageReturn {
     const queryClient = useQueryClient()
+    const createGeneratedImage = useConvexMutation(api.generatedImages.create)
 
     const mutation = useMutation<
         GeneratedImage,
@@ -158,7 +161,7 @@ export function useGenerateImage(
             await options.onMutate?.(params)
         },
 
-        onSuccess: (image, params) => {
+        onSuccess: async (image, params) => {
             // Invalidate image-related queries
             queryClient.invalidateQueries({
                 queryKey: queryKeys.images.all,
@@ -169,6 +172,26 @@ export function useGenerateImage(
                 queryKeys.images.history,
                 (old = []) => [image, ...old].slice(0, MAX_HISTORY_SIZE)
             )
+
+            // Store in Convex if r2Key is present (indicates successful storage)
+            if (image.r2Key) {
+                try {
+                    await createGeneratedImage({
+                        visibility: "unlisted", // Default to unlisted
+                        r2Key: image.r2Key,
+                        url: image.url,
+                        filename: image.id,
+                        contentType: image.contentType || "image/jpeg",
+                        sizeBytes: image.sizeBytes || 0,
+                        prompt: image.prompt,
+                        model: params.model || "flux",
+                        seed: image.params.seed, // Use the seed from the result
+                        generationParams: image.params,
+                    })
+                } catch (error) {
+                    console.error("Failed to store image metadata in Convex:", error)
+                }
+            }
 
             options.onSuccess?.(image, params)
         },

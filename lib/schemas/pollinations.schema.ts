@@ -63,10 +63,18 @@ export const VideoGenerationParamsSchema = ImageGenerationParamsSchema.extend({
 // Generated image result
 export const GeneratedImageSchema = z.object({
     id: z.string(),
-    url: z.url(),
+    url: z.string().url(),
     prompt: z.string(),
     params: ImageGenerationParamsSchema,
     timestamp: z.number(),
+    // Storage metadata fields (populated when image is stored in R2)
+    r2Key: z.string().optional(),
+    sizeBytes: z.number().optional(),
+    contentType: z.string().optional(),
+    visibility: z.enum(["public", "unlisted"]).optional(),
+    // Convex fields
+    _id: z.string().optional(),
+    _creationTime: z.number().optional(),
 });
 
 // Model pricing schema

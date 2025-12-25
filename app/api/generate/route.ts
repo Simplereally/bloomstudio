@@ -1,6 +1,8 @@
 // to-do: investigate 400 errors using zimage 16:9 and 9:16, params error
 // to-do: investigate 400 errors using turbo 16:9, 524 error from pollinations
+import { auth } from "@clerk/nextjs/server"
 import { getAuthorizationHeader, hasSecretKey } from "@/lib/auth"
+import { uploadImage, generateImageKey } from "@/lib/storage"
 import { PollinationsApiError } from "@/lib/errors"
 import { PollinationsAPI } from "@/lib/pollinations-api"
 import {
@@ -84,17 +86,45 @@ export async function POST(request: NextRequest): Promise<NextResponse<ServerGen
         // Without this, the client may get a 401 when trying to load the image
         // because it hasn't been cached for unauthenticated access yet.
         const imageBuffer = await response.arrayBuffer()
-        const base64Image = Buffer.from(imageBuffer).toString("base64")
         const contentType = response.headers.get("content-type") || "image/jpeg"
-        const dataUrl = `data:${contentType};base64,${base64Image}`
+        const imageData = Buffer.from(imageBuffer)
 
-        // Build the generated image response
+        // Get user ID from Clerk session for R2 storage
+        const { userId } = await auth()
+        if (!userId) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: {
+                        code: "UNAUTHORIZED",
+                        message: "Not authenticated",
+                    },
+                },
+                { status: 401 }
+            )
+        }
+
+        // Generate unique R2 key and upload to storage
+        const r2Key = generateImageKey(userId, "generated", contentType)
+        const uploadResult = await uploadImage({
+            data: imageData,
+            contentType,
+            key: r2Key,
+        })
+
+        console.log(`[/api/generate] Uploaded to R2: ${r2Key}`)
+
+        // Build the generated image response with R2 URL
         const generatedImage = GeneratedImageSchema.parse({
             id: `img_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-            url: dataUrl,
+            url: uploadResult.url, // Permanent R2 URL instead of base64
             prompt: validatedParams.prompt,
             params: validatedParams,
             timestamp: Date.now(),
+            // Include R2 storage metadata for client-side Convex storage
+            r2Key: uploadResult.key,
+            sizeBytes: uploadResult.sizeBytes,
+            contentType,
         })
 
         return NextResponse.json({

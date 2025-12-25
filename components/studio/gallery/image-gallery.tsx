@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import type { GeneratedImage } from "@/types/pollinations"
-import { CheckSquare, ImageOff, Square, Trash2 } from "lucide-react"
+import { CheckSquare, ImageOff, Loader2, Square, Trash2 } from "lucide-react"
 import * as React from "react"
 import { GalleryThumbnail } from "./gallery-thumbnail"
 
@@ -42,6 +42,10 @@ export interface ImageGalleryProps {
     thumbnailSize?: "sm" | "md" | "lg"
     /** Additional class names */
     className?: string
+    /** Callback to load more images */
+    onLoadMore?: () => void
+    /** Whether more images are being loaded */
+    isLoadingMore?: boolean
 }
 
 export const ImageGallery = React.memo(function ImageGallery({
@@ -59,6 +63,8 @@ export const ImageGallery = React.memo(function ImageGallery({
     direction = "vertical",
     thumbnailSize = "md",
     className,
+    onLoadMore,
+    isLoadingMore = false,
 }: ImageGalleryProps) {
     const handleCheckedChange = (imageId: string, checked: boolean) => {
         const newSelection = new Set(selectedIds)
@@ -191,6 +197,23 @@ export const ImageGallery = React.memo(function ImageGallery({
                         />
                     ))}
                 </div>
+
+                {onLoadMore && (
+                    <div className="p-4 flex justify-center border-t border-border/10">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={onLoadMore}
+                            disabled={isLoadingMore}
+                            className="text-xs text-muted-foreground"
+                        >
+                            {isLoadingMore ? (
+                                <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                            ) : null}
+                            Load More
+                        </Button>
+                    </div>
+                )}
             </ScrollArea>
         </div>
     )

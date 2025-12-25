@@ -15,6 +15,7 @@ export { ModelSelector, type ModelSelectorProps } from "./controls/model-selecto
 export { AspectRatioSelector, type AspectRatioSelectorProps } from "./controls/aspect-ratio-selector"
 export { DimensionControls, type DimensionControlsProps } from "./controls/dimension-controls"
 export { SeedControl, type SeedControlProps } from "./controls/seed-control"
+export { ReferenceImagePicker } from "./controls/reference-image-picker"
 export { OptionsPanel, type OptionsPanelProps, type GenerationOptions } from "./controls/options-panel"
 
 // Canvas Components
@@ -24,4 +25,8 @@ export { ImageMetadata, type ImageMetadataProps } from "./canvas/image-metadata"
 
 // Gallery Components
 export { ImageGallery, type ImageGalleryProps } from "./gallery/image-gallery"
+export { PersistentImageGallery } from "./gallery/persistent-image-gallery"
 export { GalleryThumbnail, type GalleryThumbnailProps } from "./gallery/gallery-thumbnail"
+
+// Onboarding Components
+export { ApiKeyOnboardingModal } from "./api-key-onboarding-modal"

@@ -35,6 +35,8 @@ export type AspectRatio =
 export interface ModelConstraints {
   /** Maximum total pixels allowed (width × height must be < this value) */
   readonly maxPixels: number
+  /** Minimum total pixels required (width × height must be >= this value) */
+  readonly minPixels: number
   /** Minimum dimension for width or height */
   readonly minDimension: number
   /** Maximum dimension for a single axis */

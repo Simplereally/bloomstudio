@@ -11,8 +11,10 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Trash2, Copy, Download } from "lucide-react";
+import { Trash2, Copy, Download, Eye, EyeOff } from "lucide-react";
 import type { GeneratedImage } from "@/types/pollinations";
+import { VisibilityToggle } from "@/components/gallery/visibility-toggle";
+import { Id } from "@/convex/_generated/dataModel";
 
 export interface GalleryThumbnailProps {
   /** Image to display */
@@ -148,6 +150,22 @@ export function GalleryThumbnail({
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="top">Remove</TooltipContent>
+            </Tooltip>
+          )}
+
+          {image._id && image.visibility && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <VisibilityToggle
+                    imageId={image._id as Id<"generatedImages">}
+                    currentVisibility={image.visibility as "public" | "unlisted"}
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                {image.visibility === "public" ? "Visible to public" : "Private image"}
+              </TooltipContent>
             </Tooltip>
           )}
         </div>

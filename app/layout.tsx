@@ -3,7 +3,8 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { ClerkProvider } from "@clerk/nextjs"
-import { QueryProvider } from "@/components/providers"
+import { ConvexClientProvider, QueryProvider } from "@/components/providers"
+import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 import "./globals.css"
 
@@ -41,15 +42,25 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      <QueryProvider>
-        <html lang="en" className="dark" suppressHydrationWarning>
-          <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased`}>
-            {children}
-            <Toaster position="bottom-right" richColors closeButton />
-            <Analytics />
-          </body>
-        </html>
-      </QueryProvider>
+      <ConvexClientProvider>
+        <QueryProvider>
+          <html lang="en" suppressHydrationWarning>
+            <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased`}>
+              <ThemeProvider
+                attribute="class"
+                defaultTheme="dark"
+                enableSystem
+                disableTransitionOnChange
+              >
+                {children}
+                <Toaster position="bottom-right" richColors closeButton />
+              </ThemeProvider>
+              <Analytics />
+            </body>
+          </html>
+        </QueryProvider>
+      </ConvexClientProvider>
     </ClerkProvider>
   )
 }
+
