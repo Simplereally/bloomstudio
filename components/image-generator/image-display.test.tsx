@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen } from "@testing-library/react"
-import userEvent from "@testing-library/user-event"
-import { ImageDisplay } from "./image-display"
 import { useImageDisplay } from "@/hooks/use-image-display"
 import type { GeneratedImage } from "@/types/pollinations"
+import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+import { ImageDisplay } from "./image-display"
 
 // Mock the hook
 vi.mock("@/hooks/use-image-display", () => ({
@@ -43,6 +43,7 @@ describe("ImageDisplay", () => {
     const mockHookReturn = {
         copiedUrl: null,
         isImageLoading: false,
+        isDownloading: false,
         setIsImageLoading: vi.fn(),
         handleDownload: vi.fn(),
         handleCopyUrl: vi.fn(),
@@ -50,7 +51,7 @@ describe("ImageDisplay", () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-            ; (useImageDisplay as any).mockReturnValue(mockHookReturn)
+        vi.mocked(useImageDisplay).mockReturnValue(mockHookReturn)
     })
 
     it("renders empty state when no image is selected", () => {
@@ -66,7 +67,7 @@ describe("ImageDisplay", () => {
     })
 
     it("renders loading state when hook says image is loading", () => {
-        ; (useImageDisplay as any).mockReturnValue({
+        vi.mocked(useImageDisplay).mockReturnValue({
             ...mockHookReturn,
             isImageLoading: true,
         })
@@ -86,10 +87,10 @@ describe("ImageDisplay", () => {
 
     it("calls handleDownload when download button is clicked", async () => {
         const handleDownload = vi.fn()
-            ; (useImageDisplay as any).mockReturnValue({
-                ...mockHookReturn,
-                handleDownload,
-            })
+        vi.mocked(useImageDisplay).mockReturnValue({
+            ...mockHookReturn,
+            handleDownload,
+        })
         render(<ImageDisplay {...defaultProps} currentImage={mockImage} />)
 
         const downloadButton = screen.getByTestId("download-button")
@@ -100,10 +101,10 @@ describe("ImageDisplay", () => {
 
     it("calls handleCopyUrl when copy button is clicked", async () => {
         const handleCopyUrl = vi.fn()
-            ; (useImageDisplay as any).mockReturnValue({
-                ...mockHookReturn,
-                handleCopyUrl,
-            })
+        vi.mocked(useImageDisplay).mockReturnValue({
+            ...mockHookReturn,
+            handleCopyUrl,
+        })
         render(<ImageDisplay {...defaultProps} currentImage={mockImage} />)
 
         const copyButton = screen.getByTestId("copy-button")

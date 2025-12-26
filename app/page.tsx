@@ -1,18 +1,17 @@
 "use client"
 
-import { Suspense, useState } from "react"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowRight, Sparkles, Wand2, Palette, Sliders } from "lucide-react"
-import Link from "next/link"
-import dynamic from "next/dynamic"
+import { Button } from "@/components/ui/button"
 import { Leva } from "leva"
+import { ArrowRight, Palette, Sliders, Sparkles, Wand2 } from "lucide-react"
+import dynamic from "next/dynamic"
+import Link from "next/link"
+import { Suspense, useState } from "react"
 
 const GL = dynamic(() => import("@/components/gl/gl").then((mod) => ({ default: mod.GL })), {
   ssr: false,
   loading: () => (
-    <div className="absolute inset-0 bg-background flex items-center justify-center">
-      <div className="text-muted-foreground">Loading experience...</div>
+<div className="flex flex-col h-svh justify-between relative overflow-hidden">
     </div>
   ),
 })

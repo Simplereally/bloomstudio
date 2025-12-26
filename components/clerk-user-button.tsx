@@ -6,20 +6,20 @@
  * so we delay rendering until the component is mounted on the client.
  */
 
-import { useEffect, useState } from "react"
+import { useSyncExternalStore } from "react"
 import { UserButton } from "@clerk/nextjs"
 import { Skeleton } from "@/components/ui/skeleton"
+
+const emptySubscribe = () => () => {}
+const getSnapshot = () => true
+const getServerSnapshot = () => false
 
 interface ClerkUserButtonProps {
     afterSignOutUrl?: string
 }
 
 export function ClerkUserButton({ afterSignOutUrl = "/" }: ClerkUserButtonProps) {
-    const [mounted, setMounted] = useState(false)
-
-    useEffect(() => {
-        setMounted(true)
-    }, [])
+    const mounted = useSyncExternalStore(emptySubscribe, getSnapshot, getServerSnapshot)
 
     if (!mounted) {
         return <Skeleton data-testid="clerk-user-button-skeleton" className="h-8 w-8 rounded-full" />

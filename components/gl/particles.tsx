@@ -1,13 +1,13 @@
 "use client"
 
-import * as THREE from "three"
-import { useMemo, useState, useRef } from "react"
-import { createPortal, useFrame } from "@react-three/fiber"
 import { useFBO } from "@react-three/drei"
+import { createPortal, useFrame } from "@react-three/fiber"
+import { useMemo, useRef, useState } from "react"
+import * as THREE from "three"
 
+import * as easing from "maath/easing"
 import { DofPointsMaterial } from "./shaders/dof-points-material"
 import { SimulationMaterial } from "./shaders/simulation-material"
-import * as easing from "maath/easing"
 
 export function Particles({
   speed,
@@ -61,7 +61,8 @@ export function Particles({
     m.uniforms.positions.value = target.texture
     m.uniforms.initialPositions.value = simulationMaterial.uniforms.positions.value
     return m
-  }, [simulationMaterial])
+     
+  }, [simulationMaterial, target.texture])
 
   const [scene] = useState(() => new THREE.Scene())
   const [camera] = useState(() => new THREE.OrthographicCamera(-1, 1, 1, -1, 1 / Math.pow(2, 53), 1))
@@ -79,12 +80,12 @@ export function Particles({
     return particles
   }, [size])
 
+   
   useFrame((state, delta) => {
     if (!dofPointsMaterial || !simulationMaterial) return
 
     state.gl.setRenderTarget(target)
     state.gl.clear()
-    // @ts-ignore
     state.gl.render(scene, camera)
     state.gl.setRenderTarget(null)
 
@@ -111,6 +112,9 @@ export function Particles({
       setIsRevealing(false)
     }
 
+    // Three.js materials must have their uniforms mutated in the animation loop
+    // This is the standard pattern for R3F and is unavoidable
+    /* eslint-disable react-hooks/immutability */
     dofPointsMaterial.uniforms.uTime.value = currentTime
 
     dofPointsMaterial.uniforms.uFocus.value = focus
@@ -128,22 +132,20 @@ export function Particles({
     dofPointsMaterial.uniforms.uOpacity.value = opacity
     dofPointsMaterial.uniforms.uRevealFactor.value = revealFactor
     dofPointsMaterial.uniforms.uRevealProgress.value = easedProgress
+    /* eslint-enable react-hooks/immutability */
   })
 
   return (
     <>
       {createPortal(
-        // @ts-ignore
         <mesh material={simulationMaterial}>
           <bufferGeometry>
             <bufferAttribute attach="attributes-position" args={[positions, 3]} />
             <bufferAttribute attach="attributes-uv" args={[uvs, 2]} />
           </bufferGeometry>
         </mesh>,
-        // @ts-ignore
         scene,
       )}
-      {/* @ts-ignore */}
       <points material={dofPointsMaterial} {...props}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[particles, 3]} />

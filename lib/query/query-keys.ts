@@ -7,7 +7,7 @@
  * Pattern: https://tkdodo.eu/blog/effective-react-query-keys
  */
 
-import type { ImageGenerationParams, ImageModel } from "@/types/pollinations"
+import type { ImageGenerationParams, ImageModel } from "@/lib/schemas/pollinations.schema"
 
 /**
  * Query key factory for all application queries.
@@ -21,6 +21,9 @@ export const queryKeys = {
         /** Base key for all image queries */
         all: ["images"] as const,
 
+        /** Client-side generation history cache */
+        history: ["images", "history"] as const,
+
         /** List of generated images with optional filters */
         list: (filters?: { model?: ImageModel; limit?: number }) =>
             [...queryKeys.images.all, "list", filters] as const,
@@ -28,6 +31,10 @@ export const queryKeys = {
         /** Single image by ID */
         detail: (id: string) =>
             [...queryKeys.images.all, "detail", id] as const,
+
+        /** Image by prompt (for deduplication) */
+        byPrompt: (prompt: string) =>
+            [...queryKeys.images.all, "prompt", prompt] as const,
 
         /** Image generation with specific params (for optimistic updates) */
         generation: (params: ImageGenerationParams) =>
@@ -42,13 +49,24 @@ export const queryKeys = {
         all: ["models"] as const,
 
         /** List of available image models */
-        imageModels: () => [...queryKeys.models.all, "image"] as const,
+        image: ["models", "image"] as const,
 
         /** List of available text models */
-        textModels: () => [...queryKeys.models.all, "text"] as const,
+        text: ["models", "text"] as const,
 
         /** Single model details */
-        detail: (id: string) => [...queryKeys.models.all, "detail", id] as const,
+        detail: (name: string) => [...queryKeys.models.all, "detail", name] as const,
+    },
+
+    /**
+     * Generation-related queries
+     */
+    generation: {
+        /** Base key for all generation queries */
+        all: ["generation"] as const,
+
+        /** Pending generations */
+        pending: ["generation", "pending"] as const,
     },
 
     /**
@@ -90,15 +108,18 @@ export const queryKeys = {
 export type QueryKeys = typeof queryKeys
 
 /**
- * Helper to create invalidation patterns
+ * Patterns for bulk invalidation
  */
 export const invalidationPatterns = {
     /** Invalidate all image-related queries */
-    allImages: () => queryKeys.images.all,
+    allImages: { queryKey: queryKeys.images.all },
 
     /** Invalidate all user-related queries */
-    allUser: () => queryKeys.user.all,
+    allUser: { queryKey: queryKeys.user.all },
 
     /** Invalidate all model-related queries */
-    allModels: () => queryKeys.models.all,
+    allModels: { queryKey: queryKeys.models.all },
+
+    /** Invalidate all generation-related queries */
+    allGeneration: { queryKey: queryKeys.generation.all },
 } as const

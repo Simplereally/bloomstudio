@@ -1,22 +1,23 @@
 "use client"
 
 /**
- * DimensionControls - Linked width/height sliders with lock toggle
- * Follows SRP: Only manages dimension input UI
+ * DimensionControls - Model-aware linked width/height sliders with lock toggle
+ * Follows SRP: Only manages dimension input UI with model constraint awareness
  */
 
-import * as React from "react"
-import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
 import {
     Tooltip,
     TooltipContent,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { Link, Unlink, Ruler } from "lucide-react"
+import { useDimensionConstraints } from "@/hooks/use-dimension-constraints"
+import { cn } from "@/lib/utils"
+import { AlertTriangle, Link, Ruler, Unlink } from "lucide-react"
+import * as React from "react"
 
 export interface DimensionControlsProps {
     /** Current width value */
@@ -27,11 +28,13 @@ export interface DimensionControlsProps {
     onWidthChange: (width: number) => void
     /** Callback when height changes */
     onHeightChange: (height: number) => void
-    /** Minimum dimension value */
+    /** Model ID for constraint lookup */
+    modelId?: string
+    /** Minimum dimension value (deprecated - use modelId for constraints) */
     min?: number
-    /** Maximum dimension value */
+    /** Maximum dimension value (deprecated - use modelId for constraints) */
     max?: number
-    /** Step value for slider */
+    /** Step value for slider (deprecated - use modelId for constraints) */
     step?: number
     /** Whether inputs are disabled */
     disabled?: boolean
@@ -39,19 +42,40 @@ export interface DimensionControlsProps {
     className?: string
 }
 
-export function DimensionControls({
+export const DimensionControls = React.memo(function DimensionControls({
     width,
     height,
     onWidthChange,
     onHeightChange,
-    min = 64,
-    max = 2048,
-    step = 64,
+    modelId = "flux",
+    min: _min,
+    max: _max,
+    step: _step,
     disabled = false,
     className,
 }: DimensionControlsProps) {
     const [linked, setLinked] = React.useState(false)
     const aspectRatio = React.useRef(width / height)
+
+    // Get model-specific constraints
+    const {
+        constraints,
+        maxWidth,
+        maxHeight,
+        isEnabled,
+        pixelCount,
+        isOverLimit,
+        percentOfLimit,
+        hasPixelLimit,
+        handleWidthChange: constrainedWidthChange,
+        handleHeightChange: constrainedHeightChange,
+    } = useDimensionConstraints({
+        modelId,
+        width,
+        height,
+        onWidthChange,
+        onHeightChange,
+    })
 
     // Update aspect ratio when linking
     React.useEffect(() => {
@@ -60,50 +84,45 @@ export function DimensionControls({
         }
     }, [linked, width, height])
 
-    const roundToStep = (value: number) => {
-        return Math.round(value / step) * step
-    }
-
-    const handleWidthChange = (values: number[]) => {
-        const newWidth = roundToStep(values[0])
-        onWidthChange(newWidth)
+    const handleWidthSlider = (values: number[]) => {
+        const newWidth = values[0]
+        constrainedWidthChange(newWidth)
 
         if (linked) {
-            const newHeight = roundToStep(newWidth / aspectRatio.current)
-            const clampedHeight = Math.max(min, Math.min(max, newHeight))
-            onHeightChange(clampedHeight)
+            const newHeight = Math.round(newWidth / aspectRatio.current / constraints.step) * constraints.step
+            constrainedHeightChange(Math.max(constraints.minDimension, newHeight))
         }
     }
 
-    const handleHeightChange = (values: number[]) => {
-        const newHeight = roundToStep(values[0])
-        onHeightChange(newHeight)
+    const handleHeightSlider = (values: number[]) => {
+        const newHeight = values[0]
+        constrainedHeightChange(newHeight)
 
         if (linked) {
-            const newWidth = roundToStep(newHeight * aspectRatio.current)
-            const clampedWidth = Math.max(min, Math.min(max, newWidth))
-            onWidthChange(clampedWidth)
+            const newWidth = Math.round(newHeight * aspectRatio.current / constraints.step) * constraints.step
+            constrainedWidthChange(Math.max(constraints.minDimension, newWidth))
         }
     }
 
     const handleWidthInput = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = parseInt(e.target.value, 10)
         if (!isNaN(value)) {
-            const rounded = roundToStep(Math.max(min, Math.min(max, value)))
-            handleWidthChange([rounded])
+            handleWidthSlider([value])
         }
     }
 
     const handleHeightInput = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = parseInt(e.target.value, 10)
         if (!isNaN(value)) {
-            const rounded = roundToStep(Math.max(min, Math.min(max, value)))
-            handleHeightChange([rounded])
+            handleHeightSlider([value])
         }
     }
 
-    // Calculate megapixels
-    const megapixels = ((width * height) / 1_000_000).toFixed(2)
+    if (!isEnabled) {
+        return null
+    }
+
+    const megapixels = (pixelCount / 1_000_000).toFixed(2)
 
     return (
         <div className={cn("space-y-3", className)} data-testid="dimension-controls">
@@ -113,9 +132,26 @@ export function DimensionControls({
                     Dimensions
                 </Label>
                 <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground" data-testid="megapixels">
+                    <span
+                        className={cn(
+                            "text-xs",
+                            isOverLimit ? "text-destructive font-medium" : "text-muted-foreground"
+                        )}
+                        data-testid="megapixels"
+                    >
                         {megapixels} MP
+                        {hasPixelLimit && percentOfLimit !== null && ` (${percentOfLimit.toFixed(0)}%)`}
                     </span>
+                    {isOverLimit && (
+                        <Tooltip>
+                            <TooltipTrigger>
+                                <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                Exceeds model limit. Image will be auto-scaled.
+                            </TooltipContent>
+                        </Tooltip>
+                    )}
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <Button
@@ -153,9 +189,9 @@ export function DimensionControls({
                             type="number"
                             value={width}
                             onChange={handleWidthInput}
-                            min={min}
-                            max={max}
-                            step={step}
+                            min={constraints.minDimension}
+                            max={maxWidth}
+                            step={constraints.step}
                             disabled={disabled}
                             className="h-6 w-16 text-xs text-right px-1.5"
                             data-testid="width-input"
@@ -165,10 +201,10 @@ export function DimensionControls({
                 </div>
                 <Slider
                     value={[width]}
-                    onValueChange={handleWidthChange}
-                    min={min}
-                    max={max}
-                    step={step}
+                    onValueChange={handleWidthSlider}
+                    min={constraints.minDimension}
+                    max={constraints.maxDimension}
+                    step={constraints.step}
                     disabled={disabled}
                     className="py-1"
                     data-testid="width-slider"
@@ -187,9 +223,9 @@ export function DimensionControls({
                             type="number"
                             value={height}
                             onChange={handleHeightInput}
-                            min={min}
-                            max={max}
-                            step={step}
+                            min={constraints.minDimension}
+                            max={maxHeight}
+                            step={constraints.step}
                             disabled={disabled}
                             className="h-6 w-16 text-xs text-right px-1.5"
                             data-testid="height-input"
@@ -199,10 +235,10 @@ export function DimensionControls({
                 </div>
                 <Slider
                     value={[height]}
-                    onValueChange={handleHeightChange}
-                    min={min}
-                    max={max}
-                    step={step}
+                    onValueChange={handleHeightSlider}
+                    min={constraints.minDimension}
+                    max={constraints.maxDimension}
+                    step={constraints.step}
                     disabled={disabled}
                     className="py-1"
                     data-testid="height-slider"
@@ -210,4 +246,4 @@ export function DimensionControls({
             </div>
         </div>
     )
-}
+})

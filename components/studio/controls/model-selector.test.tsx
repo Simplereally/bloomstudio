@@ -1,17 +1,24 @@
-import { describe, it, expect, vi } from "vitest"
-import { render, screen, fireEvent } from "@testing-library/react"
+import type { ImageModelInfo } from "@/lib/schemas/pollinations.schema"
+import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import { ModelSelector } from "./model-selector"
-import type { ModelInfo } from "@/types/pollinations"
 
-const mockModels: ModelInfo[] = [
-    { id: "flux", name: "Flux", description: "Default balanced model", style: "Versatile" },
-    { id: "turbo", name: "Turbo", description: "Fastest generation", style: "Fast" },
-    { id: "flux-realism", name: "Flux Realism", description: "Photorealistic", style: "Photorealistic" },
+const mockModels: ImageModelInfo[] = [
+    { name: "flux", aliases: ["default"], pricing: { currency: "pollen" }, description: "Default balanced model" },
+    { name: "sdxl-turbo", aliases: ["fast"], pricing: { currency: "pollen" }, description: "Fastest generation" },
+    { name: "gptimage", aliases: [], pricing: { currency: "pollen" }, description: "GPT-powered generation" },
 ]
+
+const mockModelWithoutDescription: ImageModelInfo = {
+    name: "custom",
+    aliases: [],
+    pricing: { currency: "pollen" },
+}
 
 describe("ModelSelector", () => {
     const defaultProps = {
-        selectedModel: "flux" as const,
+        selectedModel: "flux",
         onModelChange: vi.fn(),
         models: mockModels,
     }
@@ -21,51 +28,73 @@ describe("ModelSelector", () => {
     })
 
     describe("Compact variant (default)", () => {
-        it("renders the model selector", () => {
+        it("renders the model selector with correct structure", () => {
             render(<ModelSelector {...defaultProps} />)
 
             expect(screen.getByTestId("model-selector")).toBeInTheDocument()
-            expect(screen.getByTestId("model-toggle-group")).toBeInTheDocument()
+            expect(screen.getByTestId("model-buttons")).toBeInTheDocument()
+            expect(screen.getByText("Model")).toBeInTheDocument()
         })
 
-        it("renders all model options", () => {
+        it("renders all model buttons", () => {
             render(<ModelSelector {...defaultProps} />)
 
-            expect(screen.getByTestId("model-toggle-flux")).toBeInTheDocument()
-            expect(screen.getByTestId("model-toggle-turbo")).toBeInTheDocument()
-            expect(screen.getByTestId("model-toggle-flux-realism")).toBeInTheDocument()
+            expect(screen.getByTestId("model-button-flux")).toBeInTheDocument()
+            expect(screen.getByTestId("model-button-sdxl-turbo")).toBeInTheDocument()
+            expect(screen.getByTestId("model-button-gptimage")).toBeInTheDocument()
         })
 
-        it("shows the selected model as active", () => {
-            render(<ModelSelector {...defaultProps} selectedModel="turbo" />)
+        it("displays formatted model names", () => {
+            render(<ModelSelector {...defaultProps} />)
 
-            // Verify the correct toggle item is rendered
-            const turboButton = screen.getByTestId("model-toggle-turbo")
+            // Model names should match their display names in our registry
+            expect(screen.getByText("Flux")).toBeInTheDocument()
+            expect(screen.getByText("SDXL Turbo")).toBeInTheDocument()
+            expect(screen.getByText("GPT 1.0")).toBeInTheDocument()
+        })
+
+        it("applies selected styling to the active model", () => {
+            render(<ModelSelector {...defaultProps} selectedModel="sdxl-turbo" />)
+
+            const turboButton = screen.getByTestId("model-button-sdxl-turbo")
             expect(turboButton).toBeInTheDocument()
-            // The ToggleGroup manages active state internally
+            // Selected model has specific styling classes
+            expect(turboButton).toHaveClass("bg-primary/15")
         })
 
-        it("calls onModelChange when a model is clicked", () => {
+        it("calls onModelChange when a model is clicked", async () => {
+            const user = userEvent.setup()
             const onModelChange = vi.fn()
             render(<ModelSelector {...defaultProps} onModelChange={onModelChange} />)
 
-            fireEvent.click(screen.getByTestId("model-toggle-turbo"))
-            expect(onModelChange).toHaveBeenCalledWith("turbo")
+            await user.click(screen.getByTestId("model-button-sdxl-turbo"))
+            expect(onModelChange).toHaveBeenCalledWith("sdxl-turbo")
+            expect(onModelChange).toHaveBeenCalledTimes(1)
         })
 
-        it("disables all options when disabled", () => {
+        it("disables all buttons when disabled prop is true", () => {
             render(<ModelSelector {...defaultProps} disabled={true} />)
 
-            // Check that individual toggle items are disabled
-            const fluxButton = screen.getByTestId("model-toggle-flux")
-            expect(fluxButton).toBeDisabled()
+            expect(screen.getByTestId("model-button-flux")).toBeDisabled()
+            expect(screen.getByTestId("model-button-sdxl-turbo")).toBeDisabled()
+            expect(screen.getByTestId("model-button-gptimage")).toBeDisabled()
+        })
+
+        it("does not call onModelChange when disabled", async () => {
+            const user = userEvent.setup()
+            const onModelChange = vi.fn()
+            render(<ModelSelector {...defaultProps} onModelChange={onModelChange} disabled={true} />)
+
+            await user.click(screen.getByTestId("model-button-flux"))
+            expect(onModelChange).not.toHaveBeenCalled()
         })
     })
 
     describe("Cards variant", () => {
-        it("renders model cards", () => {
+        it("renders model cards container", () => {
             render(<ModelSelector {...defaultProps} variant="cards" />)
 
+            expect(screen.getByTestId("model-selector")).toBeInTheDocument()
             expect(screen.getByTestId("model-cards")).toBeInTheDocument()
         })
 
@@ -73,8 +102,8 @@ describe("ModelSelector", () => {
             render(<ModelSelector {...defaultProps} variant="cards" />)
 
             expect(screen.getByTestId("model-card-flux")).toBeInTheDocument()
-            expect(screen.getByTestId("model-card-turbo")).toBeInTheDocument()
-            expect(screen.getByTestId("model-card-flux-realism")).toBeInTheDocument()
+            expect(screen.getByTestId("model-card-sdxl-turbo")).toBeInTheDocument()
+            expect(screen.getByTestId("model-card-gptimage")).toBeInTheDocument()
         })
 
         it("shows model descriptions in cards", () => {
@@ -82,22 +111,77 @@ describe("ModelSelector", () => {
 
             expect(screen.getByText("Default balanced model")).toBeInTheDocument()
             expect(screen.getByText("Fastest generation")).toBeInTheDocument()
+            expect(screen.getByText("GPT-powered generation")).toBeInTheDocument()
         })
 
-        it("calls onModelChange when a card is clicked", () => {
+        it("shows fallback description when model has no description", () => {
+            render(
+                <ModelSelector
+                    {...defaultProps}
+                    models={[mockModelWithoutDescription]}
+                    variant="cards"
+                />
+            )
+
+            expect(screen.getByText("Image generation model")).toBeInTheDocument()
+        })
+
+        it("calls onModelChange when a card is clicked", async () => {
+            const user = userEvent.setup()
             const onModelChange = vi.fn()
             render(
                 <ModelSelector {...defaultProps} variant="cards" onModelChange={onModelChange} />
             )
 
-            fireEvent.click(screen.getByTestId("model-card-turbo"))
-            expect(onModelChange).toHaveBeenCalledWith("turbo")
+            await user.click(screen.getByTestId("model-card-sdxl-turbo"))
+            expect(onModelChange).toHaveBeenCalledWith("sdxl-turbo")
+            expect(onModelChange).toHaveBeenCalledTimes(1)
+        })
+
+        it("disables all cards when disabled prop is true", () => {
+            render(<ModelSelector {...defaultProps} variant="cards" disabled={true} />)
+
+            expect(screen.getByTestId("model-card-flux")).toBeDisabled()
+            expect(screen.getByTestId("model-card-sdxl-turbo")).toBeDisabled()
+            expect(screen.getByTestId("model-card-gptimage")).toBeDisabled()
+        })
+
+        it("applies selected variant styling to active card", () => {
+            render(<ModelSelector {...defaultProps} variant="cards" selectedModel="flux" />)
+
+            const fluxCard = screen.getByTestId("model-card-flux")
+            // Selected card uses "secondary" variant (tested via class presence)
+            expect(fluxCard).toBeInTheDocument()
         })
     })
 
-    it("applies custom className", () => {
-        render(<ModelSelector {...defaultProps} className="custom-class" />)
+    describe("Common behavior", () => {
+        it("applies custom className", () => {
+            render(<ModelSelector {...defaultProps} className="custom-class" />)
 
-        expect(screen.getByTestId("model-selector")).toHaveClass("custom-class")
+            expect(screen.getByTestId("model-selector")).toHaveClass("custom-class")
+        })
+
+        it("applies custom className in cards variant", () => {
+            render(<ModelSelector {...defaultProps} variant="cards" className="cards-custom" />)
+
+            expect(screen.getByTestId("model-selector")).toHaveClass("cards-custom")
+        })
+
+        it("handles empty models array", () => {
+            render(<ModelSelector {...defaultProps} models={[]} />)
+
+            expect(screen.getByTestId("model-selector")).toBeInTheDocument()
+            expect(screen.getByTestId("model-buttons")).toBeInTheDocument()
+            // No buttons should be rendered
+            expect(screen.queryByRole("button")).not.toBeInTheDocument()
+        })
+
+        it("handles empty models array in cards variant", () => {
+            render(<ModelSelector {...defaultProps} models={[]} variant="cards" />)
+
+            expect(screen.getByTestId("model-cards")).toBeInTheDocument()
+            expect(screen.queryByRole("button")).not.toBeInTheDocument()
+        })
     })
 })

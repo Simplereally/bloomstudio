@@ -5,7 +5,7 @@
  * Following SRP - Single responsibility: API communication.
  */
 
-import { API_CONFIG, API_DEFAULTS, API_CONSTRAINTS, getApiKey } from "@/lib/config/api.config"
+import { API_CONFIG, API_CONSTRAINTS, API_DEFAULTS, getApiKey } from "@/lib/config/api.config"
 import type {
   ResolvedImageGenerationParams,
   ResolvedVideoGenerationParams,
@@ -24,8 +24,13 @@ export class PollinationsAPI {
 
     const queryParams = new URLSearchParams()
 
-    // Model - only include if different from default
-    if (options.model && options.model !== API_DEFAULTS.model) {
+    // Negative prompt
+    if (negativePrompt?.trim()) {
+      queryParams.append("negative_prompt", negativePrompt.trim())
+    }
+
+    // Model - always include (upstream API requires explicit model selection)
+    if (options.model) {
       queryParams.append("model", options.model)
     }
 
@@ -42,15 +47,8 @@ export class PollinationsAPI {
       queryParams.append("seed", options.seed.toString())
     }
 
-    // Negative prompt
-    if (negativePrompt?.trim()) {
-      queryParams.append("negative_prompt", negativePrompt.trim())
-    }
-
-    // Quality - only include if different from default
-    if (options.quality && options.quality !== API_DEFAULTS.quality) {
-      queryParams.append("quality", options.quality)
-    }
+    // Quality - just hardcode to highest
+    queryParams.append("quality", "high")
 
     // Guidance scale
     if (options.guidance_scale !== undefined) {
@@ -70,12 +68,7 @@ export class PollinationsAPI {
       queryParams.append("image", options.image)
     }
 
-    // Add API key if available
-    const apiKey = getApiKey()
-    if (apiKey) {
-      queryParams.append("key", apiKey)
-    }
-
+    // Note: API key is sent via Authorization header in getHeaders(), not in URL
     const query = queryParams.toString()
     return `${this.BASE_URL}/image/${encodedPrompt}${query ? `?${query}` : ""}`
   }
@@ -126,12 +119,9 @@ export class PollinationsAPI {
     return Math.round(clamped / step) * step
   }
 
-  /**
-   * Generates a random seed within valid range
-   */
   static generateRandomSeed(): number {
-    // Use safe integer range for JavaScript
-    return Math.floor(Math.random() * 2147483647)
+    // Generate a random integer between 0 and the max seed value (inclusive)
+    return Math.floor(Math.random() * (API_CONSTRAINTS.seed.max + 1))
   }
 
   /**

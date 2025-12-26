@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { renderHook, act, waitFor } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { act, renderHook, waitFor } from "@testing-library/react"
 import * as React from "react"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { useStudioClientShell } from "./use-studio-client-shell"
 
 // Mock PollinationsAPI
@@ -10,7 +10,16 @@ vi.mock("@/lib/pollinations-api", () => ({
     PollinationsAPI: {
         buildImageUrl: vi.fn(() => "https://pollinations.ai/p/mock-url"),
         generateRandomSeed: vi.fn(() => 12345),
+        getHeaders: vi.fn(() => ({})),
     }
+}))
+
+// Mock the delete mutation hook
+vi.mock("@/hooks/mutations/use-delete-image", () => ({
+    useDeleteGeneratedImage: () => ({
+        mutateAsync: vi.fn().mockResolvedValue(undefined),
+        isLoading: false,
+    })
 }))
 
 // Create a wrapper with QueryClientProvider for testing
@@ -34,13 +43,35 @@ describe("useStudioClientShell", () => {
         window.URL.createObjectURL = vi.fn()
         window.URL.revokeObjectURL = vi.fn()
 
-        // Mock fetch
-        global.fetch = vi.fn(() =>
-            Promise.resolve({
+        // Mock fetch to return proper server generate response
+        global.fetch = vi.fn((url: string) => {
+            // Mock /api/generate endpoint
+            if (typeof url === 'string' && url.includes('/api/generate')) {
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({
+                        success: true,
+                        data: {
+                            id: `img_${Date.now()}_test`,
+                            url: "https://pollinations.ai/p/mock-url",
+                            prompt: "A beautiful cat",
+                            params: {
+                                prompt: "A beautiful cat",
+                                width: 1024,
+                                height: 1024,
+                                model: "flux",
+                            },
+                            timestamp: Date.now(),
+                        }
+                    }),
+                })
+            }
+            // Default mock for other fetch calls (like image downloads)
+            return Promise.resolve({
                 ok: true,
                 blob: () => Promise.resolve(new Blob(["mock content"], { type: "image/jpeg" })),
             })
-        ) as unknown as typeof fetch
+        }) as unknown as typeof fetch
 
         // Mock window.open
         window.open = vi.fn()
@@ -62,7 +93,7 @@ describe("useStudioClientShell", () => {
             wrapper: createWrapper(),
         })
 
-        expect(result.current.prompt).toBe("")
+        // Prompt state is now managed by PromptSection component, not this hook
         expect(result.current.model).toBe("flux")
         expect(result.current.aspectRatio).toBe("1:1")
         expect(result.current.width).toBe(1024)
@@ -74,18 +105,18 @@ describe("useStudioClientShell", () => {
         expect(result.current.isDownloading).toBe(false)
     })
 
-    it("updates prompt and negative prompt", () => {
+    it("exposes addToPromptHistory function", () => {
         const { result } = renderHook(() => useStudioClientShell(), {
             wrapper: createWrapper(),
         })
 
+        expect(result.current.promptHistory).toEqual([])
+
         act(() => {
-            result.current.setPrompt("A sunny day")
-            result.current.setNegativePrompt("clouds")
+            result.current.addToPromptHistory("A sunny day")
         })
 
-        expect(result.current.prompt).toBe("A sunny day")
-        expect(result.current.negativePrompt).toBe("clouds")
+        expect(result.current.promptHistory).toContain("A sunny day")
     })
 
     it("handles aspect ratio change", () => {
@@ -125,18 +156,12 @@ describe("useStudioClientShell", () => {
             wrapper: createWrapper(),
         })
 
+        // handleGenerate now takes prompt as parameter
         act(() => {
-            result.current.setPrompt("A beautiful cat")
+            result.current.handleGenerate("A beautiful cat")
         })
 
-        act(() => {
-            result.current.handleGenerate()
-        })
-
-        // Should be generating
-        expect(result.current.isGenerating).toBe(true)
-
-        // Wait for mutation to complete
+        // Wait for mutation to complete (isGenerating may be briefly true or go straight to false)
         await waitFor(() => {
             expect(result.current.isGenerating).toBe(false)
         })
@@ -144,7 +169,7 @@ describe("useStudioClientShell", () => {
         expect(result.current.images.length).toBe(1)
         expect(result.current.images[0].prompt).toBe("A beautiful cat")
         expect(result.current.currentImage).toEqual(result.current.images[0])
-        expect(result.current.promptHistory).toContain("A beautiful cat")
+        // Note: addToPromptHistory should be called by the component, not tested here
     })
 
     it("removes an image", async () => {
@@ -152,12 +177,9 @@ describe("useStudioClientShell", () => {
             wrapper: createWrapper(),
         })
 
+        // handleGenerate now takes prompt as parameter
         act(() => {
-            result.current.setPrompt("Image 1")
-        })
-
-        act(() => {
-            result.current.handleGenerate()
+            result.current.handleGenerate("Image 1")
         })
 
         await waitFor(() => {
@@ -166,8 +188,9 @@ describe("useStudioClientShell", () => {
 
         const imageId = result.current.images[0].id
 
-        act(() => {
-            result.current.handleRemoveImage(imageId)
+        // handleRemoveImage is async now due to mutation
+        await act(async () => {
+            await result.current.handleRemoveImage(imageId)
         })
 
         expect(result.current.images.length).toBe(0)

@@ -2,20 +2,36 @@ import { describe, it, expect, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { StudioLayout } from "./studio-layout"
 
+interface MockPanelGroupProps {
+    children?: React.ReactNode
+    className?: string
+    "data-testid"?: string
+}
+
+interface MockPanelProps {
+    children?: React.ReactNode
+    "data-testid"?: string
+}
+
+interface MockHandleProps {
+    "data-testid"?: string
+}
+
 // Mock the resizable components to avoid complex DOM interactions in tests
+// Filter out all non-DOM props to prevent React warnings
 vi.mock("@/components/ui/resizable", () => ({
-    ResizablePanelGroup: ({ children, className, orientation: _o, ...props }: any) => (
-        <div data-testid="studio-layout" className={className} {...props}>
+    ResizablePanelGroup: ({ children, className, "data-testid": testId }: MockPanelGroupProps) => (
+        <div data-testid={testId ?? "studio-layout"} className={className}>
             {children}
         </div>
     ),
-    ResizablePanel: ({ children, panelRef: _pRef, collapsible: _c, collapsedSize: _cs, defaultSize: _ds, minSize: _min, maxSize: _max, ...props }: any) => (
-        <div data-testid={props["data-testid"]} {...props}>
+    ResizablePanel: ({ children, "data-testid": testId }: MockPanelProps) => (
+        <div data-testid={testId}>
             {children}
         </div>
     ),
-    ResizableHandle: ({ withHandle: _w, ...props }: any) => (
-        <div data-testid={props["data-testid"]} {...props} />
+    ResizableHandle: ({ "data-testid": testId }: MockHandleProps) => (
+        <div data-testid={testId} />
     ),
 }))
 

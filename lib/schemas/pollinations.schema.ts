@@ -7,14 +7,15 @@ export const QualitySchema = z.enum(["low", "medium", "high", "hd"]);
 // We define known models for reference, but allow any string to support dynamic models
 export const KnownImageModelSchema = z.enum([
     "flux",
+    "zimage",
     "turbo",
     "gptimage",
-    "kontext",
+    "gptimage-large",
     "seedream",
-    "seedream-pro",
+    "kontext",
     "nanobanana",
+    "seedream-pro",
     "nanobanana-pro",
-    "zimage",
 ]);
 
 export const ImageModelSchema = z.union([KnownImageModelSchema, z.string()]);
@@ -33,11 +34,11 @@ export const VideoAspectRatioSchema = z.enum(["16:9", "9:16"]);
 
 // Image generation parameters matching gen.pollinations.ai API
 export const ImageGenerationParamsSchema = z.object({
-    prompt: z.string().min(1, "Prompt is required"),
+    prompt: z.string().min(1, { error: "Prompt is required" }),
     negativePrompt: z.string().optional(),
     model: ImageModelSchema.optional().default("flux"),
-    width: z.number().int().min(64).max(2048).optional().default(1024),
-    height: z.number().int().min(64).max(2048).optional().default(1024),
+    width: z.number().int().min(64).max(2048).optional().default(768),
+    height: z.number().int().min(64).max(2048).optional().default(768),
     seed: z.number().int().min(0).max(1844674407370955).optional(),
     enhance: z.boolean().optional().default(false),
     quality: QualitySchema.optional().default("medium"),
@@ -67,6 +68,14 @@ export const GeneratedImageSchema = z.object({
     prompt: z.string(),
     params: ImageGenerationParamsSchema,
     timestamp: z.number(),
+    // Storage metadata fields (populated when image is stored in R2)
+    r2Key: z.string().optional(),
+    sizeBytes: z.number().optional(),
+    contentType: z.string().optional(),
+    visibility: z.enum(["public", "unlisted"]).optional(),
+    // Convex fields
+    _id: z.string().optional(),
+    _creationTime: z.number().optional(),
 });
 
 // Model pricing schema
@@ -99,15 +108,33 @@ export const ImageModelInfoSchema = z.object({
 export const ImageModelsResponseSchema = z.array(ImageModelInfoSchema);
 
 // Validation error details
-export const ValidationErrorDetailsSchema = z.object({
+export const ValidationErrorDetailsSchema = z.looseObject({
     name: z.string(),
     stack: z.string().optional(),
     formErrors: z.array(z.string()),
     fieldErrors: z.record(z.string(), z.array(z.string())),
 });
 
+// API error codes - these are the codes returned by the Pollinations API
+export const ApiErrorCodeSchema = z.enum([
+    "BAD_REQUEST",
+    "UNAUTHORIZED",
+    "INTERNAL_ERROR",
+]);
+
+// Client-side error codes - these are additional codes used by the client
+export const ClientErrorCodeSchema = z.enum([
+    "GENERATION_FAILED",
+    "VALIDATION_ERROR",
+    "NETWORK_ERROR",
+    "UNKNOWN_ERROR",
+]);
+
+// Combined error codes (API + Client)
+export const ErrorCodeSchema = z.union([ApiErrorCodeSchema, ClientErrorCodeSchema]);
+
 // Base error schema
-const BaseApiErrorSchema = z.object({
+const BaseApiErrorSchema = z.looseObject({
     message: z.string(),
     timestamp: z.string(),
     requestId: z.string().optional(),
@@ -115,38 +142,42 @@ const BaseApiErrorSchema = z.object({
 });
 
 // 400 Bad Request
-export const BadRequestErrorSchema = z.object({
+export const BadRequestErrorSchema = z.looseObject({
     status: z.literal(400),
     success: z.literal(false),
     error: BaseApiErrorSchema.extend({
         code: z.literal("BAD_REQUEST"),
-        details: ValidationErrorDetailsSchema,
+        details: ValidationErrorDetailsSchema.optional(),
     }),
 });
 
 // 401 Unauthorized
-export const UnauthorizedErrorSchema = z.object({
+export const UnauthorizedErrorSchema = z.looseObject({
     status: z.literal(401),
     success: z.literal(false),
     error: BaseApiErrorSchema.extend({
         code: z.literal("UNAUTHORIZED"),
-        details: z.object({
-            name: z.string(),
+        details: z.looseObject({
+            name: z.string().optional(),
             stack: z.string().optional(),
-        }),
+        }).optional(),
     }),
 });
 
 // 500 Internal Error
-export const InternalErrorSchema = z.object({
+export const InternalErrorSchema = z.looseObject({
     status: z.literal(500),
     success: z.literal(false),
     error: BaseApiErrorSchema.extend({
         code: z.literal("INTERNAL_ERROR"),
-        details: z.object({
-            name: z.string(),
+        message: z.union([
+            z.literal("Oh snap, something went wrong on our end. We're on it!"),
+            z.string(),
+        ]),
+        details: z.looseObject({
+            name: z.string().optional(),
             stack: z.string().optional(),
-        }),
+        }).optional(),
     }),
 });
 
@@ -176,3 +207,6 @@ export type BadRequestError = z.infer<typeof BadRequestErrorSchema>;
 export type UnauthorizedError = z.infer<typeof UnauthorizedErrorSchema>;
 export type InternalError = z.infer<typeof InternalErrorSchema>;
 export type ApiError = z.infer<typeof ApiErrorSchema>;
+export type ApiErrorCode = z.infer<typeof ApiErrorCodeSchema>;
+export type ClientErrorCode = z.infer<typeof ClientErrorCodeSchema>;
+export type ErrorCode = z.infer<typeof ErrorCodeSchema>;

@@ -1,4 +1,6 @@
-import { describe, it, expect } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+import * as apiConfig from "./config/api.config"
+import { API_CONSTRAINTS } from "./config/api.config"
 import { PollinationsAPI } from "./pollinations-api"
 
 
@@ -55,7 +57,7 @@ describe("PollinationsAPI", () => {
             expect(url).toContain("model=turbo")
         })
 
-        it("excludes model parameter when flux (default)", () => {
+        it("includes model parameter when flux (default)", () => {
             const url = PollinationsAPI.buildImageUrl({
                 prompt: "test",
                 model: "flux",
@@ -69,10 +71,11 @@ describe("PollinationsAPI", () => {
                 safe: false,
                 transparent: false,
             })
-            expect(url).not.toContain("model=")
+            // Model is always included - upstream API requires explicit model selection
+            expect(url).toContain("model=flux")
         })
 
-        it("includes quality parameter when not default", () => {
+        it("always includes quality parameter as high", () => {
             const url = PollinationsAPI.buildImageUrl({
                 prompt: "test",
                 model: "flux",
@@ -86,10 +89,11 @@ describe("PollinationsAPI", () => {
                 safe: false,
                 transparent: false,
             })
-            expect(url).toContain("quality=hd")
+            // API now always hardcodes quality=high
+            expect(url).toContain("quality=high")
         })
 
-        it("excludes quality parameter when medium (default)", () => {
+        it("includes quality parameter even when medium (always high)", () => {
             const url = PollinationsAPI.buildImageUrl({
                 prompt: "test",
                 model: "flux",
@@ -103,7 +107,8 @@ describe("PollinationsAPI", () => {
                 safe: false,
                 transparent: false,
             })
-            expect(url).not.toContain("quality=")
+            // API now always hardcodes quality=high regardless of input
+            expect(url).toContain("quality=high")
         })
 
         it("includes guidance_scale parameter", () => {
@@ -180,8 +185,8 @@ describe("PollinationsAPI", () => {
             const url = PollinationsAPI.buildImageUrl({
                 prompt: "test",
                 model: "flux",
-                width: 1024,
-                height: 1024,
+                width: 768,
+                height: 768,
                 enhance: false,
                 quality: "medium",
                 private: false,
@@ -199,7 +204,7 @@ describe("PollinationsAPI", () => {
                 prompt: "test",
                 model: "flux",
                 width: 512,
-                height: 768,
+                height: 1024,
                 enhance: false,
                 quality: "medium",
                 private: false,
@@ -209,7 +214,7 @@ describe("PollinationsAPI", () => {
                 transparent: false,
             })
             expect(url).toContain("width=512")
-            expect(url).toContain("height=768")
+            expect(url).toContain("height=1024")
         })
 
         it("includes seed when provided", () => {
@@ -390,6 +395,26 @@ describe("PollinationsAPI", () => {
             // Should have at least 2 unique values in 10 attempts
             expect(uniqueSeeds.size).toBeGreaterThan(1)
         })
+
+        it("stays within valid seed range", () => {
+            const seed = PollinationsAPI.generateRandomSeed()
+            expect(seed).toBeGreaterThanOrEqual(API_CONSTRAINTS.seed.min)
+            expect(seed).toBeLessThanOrEqual(API_CONSTRAINTS.seed.max)
+        })
+
+        it("handles edge cases for random generation", () => {
+            const mathSpy = vi.spyOn(Math, "random")
+
+            // Test minimum (Math.random() = 0)
+            mathSpy.mockReturnValue(0)
+            expect(PollinationsAPI.generateRandomSeed()).toBe(0)
+
+            // Test maximum (Math.random() is close to 1.0)
+            mathSpy.mockReturnValue(0.9999999999999999)
+            expect(PollinationsAPI.generateRandomSeed()).toBe(API_CONSTRAINTS.seed.max)
+
+            mathSpy.mockRestore()
+        })
     })
 
     describe("validateGuidanceScale", () => {
@@ -411,9 +436,22 @@ describe("PollinationsAPI", () => {
     })
 
     describe("getHeaders", () => {
+        beforeEach(() => {
+            vi.restoreAllMocks()
+        })
+
         it("returns empty headers when no API key", () => {
+            vi.spyOn(apiConfig, "getApiKey").mockReturnValue(undefined)
             const headers = PollinationsAPI.getHeaders()
             expect(headers).toEqual({})
+        })
+
+        it("returns Authorization header when API key is present", () => {
+            vi.spyOn(apiConfig, "getApiKey").mockReturnValue("test-api-key")
+            const headers = PollinationsAPI.getHeaders()
+            expect(headers).toEqual({
+                "Authorization": "Bearer test-api-key"
+            })
         })
     })
 })

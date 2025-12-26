@@ -1,6 +1,5 @@
 "use client"
 
-import * as React from "react"
 import { ClerkUserButton } from "@/components/clerk-user-button"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -9,35 +8,30 @@ import { Sparkles } from "lucide-react"
 
 // Studio Components
 import {
-    StudioLayout,
-    StudioHeader,
-    PromptComposer,
-    ModelSelector,
+    ApiKeyOnboardingModal,
     AspectRatioSelector,
     DimensionControls,
-    SeedControl,
-    OptionsPanel,
     ImageCanvas,
-    ImageToolbar,
+    PersistentImageGallery as ImageGallery,
     ImageMetadata,
-    ImageGallery,
-    type GenerationOptions,
+    ImageToolbar,
+    ModelSelector,
+    OptionsPanel,
+    PromptSection,
+    type PromptSectionAPI,
+    ReferenceImagePicker,
+    SeedControl,
+    StudioHeader,
+    StudioLayout,
 } from "@/components/studio"
-import {
-    Dialog,
-    DialogContent,
-    DialogOverlay,
-    DialogPortal,
-    DialogTitle,
-    DialogDescription,
-} from "@/components/ui/dialog"
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
+import { ImageLightbox } from "@/components/ui/image-lightbox"
 
 // Types and utilities
-import type { ImageGenerationParams, GeneratedImage, AspectRatio, ImageModel } from "@/types/pollinations"
-import { IMAGE_MODELS, ASPECT_RATIOS } from "@/lib/image-models"
-import { PollinationsAPI } from "@/lib/pollinations-api"
+import { GeneratedImage, useEnhancePrompt, useImageModels } from "@/hooks/queries"
 import { useStudioClientShell } from "@/hooks/use-studio-client-shell"
+import { getModelSupportsNegativePrompt } from "@/lib/config/models"
+import { useTheme } from "next-themes"
+import * as React from "react"
 
 interface StudioClientShellProps {
     defaultLayout?: Record<string, number>
@@ -45,10 +39,6 @@ interface StudioClientShellProps {
 
 export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
     const {
-        prompt,
-        setPrompt,
-        negativePrompt,
-        setNegativePrompt,
         model,
         setModel,
         aspectRatio,
@@ -73,6 +63,7 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
         currentImage,
         setCurrentImage,
         promptHistory,
+        addToPromptHistory,
         handleAspectRatioChange,
         handleWidthChange,
         handleHeightChange,
@@ -85,24 +76,111 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
         handleOpenInNewTab,
         isFullscreen,
         setIsFullscreen,
+        handleModelChange,
+        aspectRatios,
+        referenceImage,
+        setReferenceImage,
     } = useStudioClientShell()
+
+    const { models, isLoading: isLoadingModels } = useImageModels()
+    const { theme, setTheme } = useTheme()
+
+    // Ref for accessing prompt values without causing re-renders
+    const promptSectionRef = React.useRef<PromptSectionAPI>(null)
+    
+    // Local state for generate button - only updates when prompt content changes
+    const [hasPromptContent, setHasPromptContent] = React.useState(false)
+
+    // Prompt enhancement for main prompt
+    const {
+        enhance: enhanceMainPrompt,
+        cancel: cancelMainPromptEnhance,
+        isEnhancing: isEnhancingMainPrompt,
+    } = useEnhancePrompt({
+        onSuccess: (enhancedText: string) => {
+            promptSectionRef.current?.setPrompt(enhancedText)
+            setHasPromptContent(enhancedText.trim().length > 0)
+        },
+    })
+
+    // Prompt enhancement for negative prompt
+    const {
+        enhance: enhanceNegPrompt,
+        cancel: cancelNegPromptEnhance,
+        isEnhancing: isEnhancingNegPrompt,
+    } = useEnhancePrompt({
+        onSuccess: (enhancedText: string) => {
+            promptSectionRef.current?.setNegativePrompt(enhancedText)
+        },
+    })
+
+    // Handlers that read from ref (no state dependency on prompt values)
+    const handleEnhancePrompt = React.useCallback(() => {
+        const currentPrompt = promptSectionRef.current?.getPrompt() ?? ""
+        enhanceMainPrompt({ prompt: currentPrompt, type: "prompt" })
+    }, [enhanceMainPrompt])
+
+    const handleEnhanceNegativePrompt = React.useCallback(() => {
+        const currentPrompt = promptSectionRef.current?.getPrompt() ?? ""
+        const currentNegativePrompt = promptSectionRef.current?.getNegativePrompt() ?? ""
+        enhanceNegPrompt({ prompt: currentPrompt, negativePrompt: currentNegativePrompt, type: "negative" })
+    }, [enhanceNegPrompt])
+
+    // Handle history selection (updates prompt via ref)
+    const handleSelectHistory = React.useCallback((p: string) => {
+        promptSectionRef.current?.setPrompt(p)
+        setHasPromptContent(p.trim().length > 0)
+    }, [])
+
+    // Handle generate - reads prompt values from ref at submission time
+    const handleGenerateClick = React.useCallback(() => {
+        const currentPrompt = promptSectionRef.current?.getPrompt() ?? ""
+        const currentNegativePrompt = promptSectionRef.current?.getNegativePrompt() ?? ""
+        
+        if (!currentPrompt.trim()) return
+        
+        // Add to history
+        addToPromptHistory(currentPrompt.trim())
+        
+        // Call the generation handler with current prompt values
+        handleGenerate(currentPrompt.trim(), currentNegativePrompt.trim())
+    }, [handleGenerate, addToPromptHistory])
+
+    // Keyboard shortcut for Cmd/Ctrl + Enter to generate
+    React.useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !isGenerating) {
+                e.preventDefault()
+                handleGenerateClick()
+            }
+        }
+        window.addEventListener("keydown", handleKeyDown)
+        return () => window.removeEventListener("keydown", handleKeyDown)
+    }, [isGenerating, handleGenerateClick])
+
+    // Stable suggestions array
+    const suggestions = React.useMemo(() => ["cinematic lighting", "8k ultra HD", "detailed"], [])
 
     // Sidebar content
     const sidebarContent = (
         <div className="h-full flex flex-col bg-card/50 backdrop-blur-sm border-r border-border/50">
             <ScrollArea className="flex-1">
                 <div className="p-4 space-y-5">
-                    {/* Prompt Section */}
-                    <PromptComposer
-                        prompt={prompt}
-                        onPromptChange={setPrompt}
-                        negativePrompt={negativePrompt}
-                        onNegativePromptChange={setNegativePrompt}
+                    {/* Prompt Section - uses uncontrolled inputs internally */}
+                    <PromptSection
+                        apiRef={promptSectionRef}
                         isGenerating={isGenerating}
+                        showNegativePrompt={getModelSupportsNegativePrompt(model)}
                         promptHistory={promptHistory}
-                        onSelectHistory={setPrompt}
-                        suggestions={["cinematic lighting", "8k ultra HD", "detailed"]}
-                        onAddSuggestion={(s: string) => setPrompt((p: string) => `${p} ${s}`.trim())}
+                        onSelectHistory={handleSelectHistory}
+                        suggestions={suggestions}
+                        isEnhancingPrompt={isEnhancingMainPrompt}
+                        onEnhancePrompt={handleEnhancePrompt}
+                        onCancelEnhancePrompt={cancelMainPromptEnhance}
+                        isEnhancingNegativePrompt={isEnhancingNegPrompt}
+                        onEnhanceNegativePrompt={handleEnhanceNegativePrompt}
+                        onCancelEnhanceNegativePrompt={cancelNegPromptEnhance}
+                        onContentChange={setHasPromptContent}
                     />
 
                     <Separator className="bg-border/50" />
@@ -110,16 +188,16 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
                     {/* Model Selection */}
                     <ModelSelector
                         selectedModel={model}
-                        onModelChange={setModel}
-                        models={IMAGE_MODELS}
-                        disabled={isGenerating}
+                        onModelChange={handleModelChange}
+                        models={models}
+                        disabled={isGenerating || isLoadingModels}
                     />
 
                     {/* Aspect Ratio */}
                     <AspectRatioSelector
                         selectedRatio={aspectRatio}
                         onRatioChange={handleAspectRatioChange}
-                        ratios={ASPECT_RATIOS}
+                        ratios={aspectRatios}
                         disabled={isGenerating}
                     />
 
@@ -129,6 +207,16 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
                         height={height}
                         onWidthChange={handleWidthChange}
                         onHeightChange={handleHeightChange}
+                        modelId={model}
+                        disabled={isGenerating}
+                    />
+
+                    <Separator className="bg-border/50" />
+
+                    {/* Reference Image */}
+                    <ReferenceImagePicker
+                        selectedImage={referenceImage}
+                        onSelect={setReferenceImage}
                         disabled={isGenerating}
                     />
 
@@ -155,8 +243,8 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
             {/* Generate Button */}
             <div className="p-4 border-t border-border/50 bg-card/80">
                 <Button
-                    onClick={handleGenerate}
-                    disabled={isGenerating || !prompt.trim()}
+                    onClick={handleGenerateClick}
+                    disabled={isGenerating || !hasPromptContent}
                     className="w-full h-11 text-base font-semibold"
                     size="lg"
                 >
@@ -176,13 +264,19 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
         </div>
     )
 
+    const handleSelectGalleryImage = React.useCallback((image: GeneratedImage) => {
+        setCurrentImage(image)
+        setIsFullscreen(true)
+    }, [setCurrentImage, setIsFullscreen])
+
     // Canvas content with toolbar and metadata
     const canvasContent = (
-        <div className="h-full flex flex-col bg-background/50">
-            <div className="flex-1 relative group p-4">
+        <div className="h-full flex flex-col bg-background/50 overflow-hidden">
+            <div className="flex-1 min-h-0 relative group p-4 overflow-hidden">
                 <ImageCanvas
                     image={currentImage}
                     isGenerating={isGenerating}
+                    onImageClick={() => setIsFullscreen(true)}
                     className="h-full"
                 />
                 <ImageToolbar
@@ -207,9 +301,8 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
     const galleryContent = (
         <div className="h-full bg-card/50 backdrop-blur-sm border-l border-border/50">
             <ImageGallery
-                images={images}
                 activeImageId={currentImage?.id}
-                onSelectImage={setCurrentImage}
+                onSelectImage={handleSelectGalleryImage}
                 onRemoveImage={handleRemoveImage}
                 onDownloadImage={handleDownload}
                 onCopyImageUrl={handleCopyUrl}
@@ -232,6 +325,8 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
                 onToggleLeftSidebar={() => setShowLeftSidebar((prev: boolean) => !prev)}
                 rightPanelOpen={showGallery}
                 onToggleRightPanel={() => setShowGallery((prev: boolean) => !prev)}
+                theme={theme === "light" ? "light" : "dark"}
+                onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
             />
 
             {/* Main Layout */}
@@ -248,49 +343,15 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
                 />
             </main>
 
+            {/* API Key Onboarding Modal - shows when user doesn't have a key */}
+            <ApiKeyOnboardingModal />
+
             {/* Fullscreen Preview Modal */}
-            <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
-                <DialogPortal>
-                    <DialogOverlay className="bg-black/90 backdrop-blur-sm z-[100]" />
-                    <DialogContent
-                        className="!fixed !inset-0 !z-[101] !flex !items-center !justify-center !border-none !bg-transparent !p-0 !shadow-none !w-screen !h-screen !max-w-none !translate-x-0 !translate-y-0 !outline-none"
-                        showCloseButton={true}
-                    >
-                        <VisuallyHidden>
-                            <DialogTitle>Fullscreen Preview</DialogTitle>
-                            <DialogDescription>
-                                Previewing generated image in full size: {currentImage?.prompt}
-                            </DialogDescription>
-                        </VisuallyHidden>
-
-                        {currentImage && (
-                            <div className="relative w-full h-full flex items-center justify-center p-4" onClick={() => setIsFullscreen(false)}>
-                                <img
-                                    src={currentImage.url}
-                                    alt={currentImage.prompt}
-                                    className="max-w-full max-h-full object-contain drop-shadow-2xl"
-                                    onClick={(e) => e.stopPropagation()}
-                                />
-
-                                {/* Info overlay on hover/mobile */}
-                                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-md border border-white/10 px-6 py-3 rounded-full opacity-0 hover:opacity-100 transition-opacity duration-300 hidden md:flex items-center gap-4 text-white">
-                                    <p className="text-sm font-medium truncate max-w-md">
-                                        {currentImage.prompt}
-                                    </p>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs bg-white/20 px-2 py-0.5 rounded">
-                                            {currentImage.params.width}x{currentImage.params.height}
-                                        </span>
-                                        <span className="text-xs bg-white/20 px-2 py-0.5 rounded">
-                                            {currentImage.params.model}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </DialogContent>
-                </DialogPortal>
-            </Dialog>
+            <ImageLightbox 
+                image={currentImage} 
+                isOpen={isFullscreen} 
+                onClose={() => setIsFullscreen(false)} 
+            />
         </div>
     )
 }

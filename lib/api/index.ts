@@ -5,10 +5,7 @@
  */
 
 export {
-    generateImage,
-    downloadImage,
-    isApiError,
-    PollinationsApiError,
-    type GenerateImageResponse,
-} from "./image-api"
+    AllErrorCodes, ApiErrorCodeConst, ClientErrorCode,
+    ClientErrorCodeConst, PollinationsApiError, downloadImage, generateImage, isApiError, type GenerateImageResponse
+} from "./image-api";
 

@@ -106,7 +106,7 @@ export function StudioLayout({
             </ResizablePanel>
 
             {/* Right Gallery Panel */}
-            {gallery && (
+            {gallery && showGallery && (
                 <>
                     <ResizableHandle
                         withHandle

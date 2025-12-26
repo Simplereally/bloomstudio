@@ -1,7 +1,7 @@
-import { describe, it, expect, vi } from "vitest"
-import { render, screen, fireEvent } from "@testing-library/react"
-import { ImageCanvas } from "./image-canvas"
 import type { GeneratedImage } from "@/types/pollinations"
+import { fireEvent, render, screen } from "@testing-library/react"
+import { describe, expect, it, vi } from "vitest"
+import { ImageCanvas } from "./image-canvas"
 
 const mockImage: GeneratedImage = {
     id: "test-1",
@@ -75,7 +75,8 @@ describe("ImageCanvas", () => {
         const onImageClick = vi.fn()
         render(<ImageCanvas image={mockImage} onImageClick={onImageClick} />)
 
-        fireEvent.click(screen.getByTestId("image-canvas"))
+        // Click on the image wrapper, not the canvas container
+        fireEvent.click(screen.getByTestId("image-wrapper"))
         expect(onImageClick).toHaveBeenCalledTimes(1)
     })
 
@@ -83,7 +84,7 @@ describe("ImageCanvas", () => {
         const onImageClick = vi.fn()
         render(<ImageCanvas image={null} onImageClick={onImageClick} />)
 
-        fireEvent.click(screen.getByTestId("image-canvas"))
+        fireEvent.click(screen.getByTestId("canvas-container"))
         expect(onImageClick).not.toHaveBeenCalled()
     })
 
@@ -93,14 +94,19 @@ describe("ImageCanvas", () => {
         expect(screen.getByTestId("image-canvas")).toHaveClass("custom-class")
     })
 
-    it("sets aspect ratio based on image dimensions", () => {
+    it("constrains image dimensions with max-width and max-height", () => {
         const wideImage: GeneratedImage = {
             ...mockImage,
             params: { ...mockImage.params, width: 1920, height: 1080 },
         }
         render(<ImageCanvas image={wideImage} />)
 
-        const container = screen.getByTestId("canvas-container")
-        expect(container).toHaveStyle({ aspectRatio: "1920 / 1080" })
+        // The img element should have max-width and max-height constraints
+        // to prevent it from exceeding the container size
+        const image = screen.getByTestId("generated-image")
+        expect(image).toHaveStyle({ maxWidth: "100%" })
+        expect(image).toHaveStyle({ maxHeight: "100%" })
+        expect(image).toHaveStyle({ width: "auto" })
+        expect(image).toHaveStyle({ height: "auto" })
     })
 })

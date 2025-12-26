@@ -3,40 +3,55 @@
 /**
  * useGenerateImage Hook
  *
- * TanStack Query mutation hook for image generation.
- * Provides optimistic updates, error handling, and cache management.
+ * TanStack Query mutation hook for server-side image generation.
+ * Calls /api/generate which uses the secret key for authentication.
  */
 
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { generateImage, PollinationsApiError } from "@/lib/api"
+import { api } from "@/convex/_generated/api"
 import { queryKeys } from "@/lib/query"
-import type { ImageGenerationParams, GeneratedImage } from "@/types/pollinations"
+import type {
+    GeneratedImage,
+    ImageGenerationParams,
+} from "@/lib/schemas/pollinations.schema"
+import type {
+    ServerGenerateError,
+    ServerGenerateResponse,
+} from "@/lib/schemas/server-generate.schema"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation as useConvexMutation } from "convex/react"
+
+/**
+ * Custom error class for server generation errors
+ */
+export class ServerGenerationError extends Error {
+    constructor(
+        message: string,
+        public code: string,
+        public status?: number,
+        public details?: Record<string, unknown>
+    ) {
+        super(message)
+        this.name = "ServerGenerationError"
+    }
+}
 
 /**
  * Options for the useGenerateImage hook
  */
 export interface UseGenerateImageOptions {
-    /**
-     * Callback fired when generation starts
-     */
-    onMutate?: (params: ImageGenerationParams) => void
+    /** Callback fired when generation starts */
+    onMutate?: (params: ImageGenerationParams) => void | Promise<void>
 
-    /**
-     * Callback fired on successful generation
-     */
+    /** Callback fired on successful generation */
     onSuccess?: (image: GeneratedImage, params: ImageGenerationParams) => void
 
-    /**
-     * Callback fired on generation error
-     */
-    onError?: (error: PollinationsApiError, params: ImageGenerationParams) => void
+    /** Callback fired on generation error */
+    onError?: (error: ServerGenerationError, params: ImageGenerationParams) => void
 
-    /**
-     * Callback fired after mutation settles (success or error)
-     */
+    /** Callback fired after mutation settles (success or error) */
     onSettled?: (
         image: GeneratedImage | undefined,
-        error: PollinationsApiError | null,
+        error: ServerGenerationError | null,
         params: ImageGenerationParams
     ) => void
 }
@@ -45,54 +60,72 @@ export interface UseGenerateImageOptions {
  * Return type for useGenerateImage hook
  */
 export interface UseGenerateImageReturn {
-    /**
-     * Trigger image generation
-     */
+    /** Trigger image generation */
     generate: (params: ImageGenerationParams) => void
 
-    /**
-     * Trigger image generation and return a promise
-     */
+    /** Trigger image generation and return a promise */
     generateAsync: (params: ImageGenerationParams) => Promise<GeneratedImage>
 
-    /**
-     * Whether generation is in progress
-     */
+    /** Whether generation is in progress */
     isGenerating: boolean
 
-    /**
-     * Whether the last generation was successful
-     */
+    /** Whether the last generation was successful */
     isSuccess: boolean
 
-    /**
-     * Whether the last generation failed
-     */
+    /** Whether the last generation failed */
     isError: boolean
 
-    /**
-     * Error from the last failed generation
-     */
-    error: PollinationsApiError | null
+    /** Error from the last failed generation */
+    error: ServerGenerationError | null
 
-    /**
-     * The last successfully generated image
-     */
+    /** The last successfully generated image */
     data: GeneratedImage | undefined
 
-    /**
-     * Reset the mutation state
-     */
+    /** Reset the mutation state */
     reset: () => void
+
+    /** Generation progress percentage (for UI feedback) */
+    progress: number
+}
+
+/** Maximum number of images to keep in history */
+const MAX_HISTORY_SIZE = 50
+
+/**
+ * Generates an image via the server-side API route.
+ */
+async function generateImageServer(params: ImageGenerationParams): Promise<GeneratedImage> {
+    const response = await fetch("/api/generate", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(params),
+    })
+
+    const data: ServerGenerateResponse = await response.json()
+
+    if (!data.success) {
+        const errorData = data as ServerGenerateError
+        throw new ServerGenerationError(
+            errorData.error.message,
+            errorData.error.code,
+            response.status,
+            errorData.error.details as Record<string, unknown> | undefined
+        )
+    }
+
+    return data.data
 }
 
 /**
- * Hook for generating images with TanStack Query.
+ * Hook for generating images via the server-side API route.
  *
  * Provides:
+ * - Server-side generation using secret key
+ * - Unlimited rate limits (with secret key)
  * - Automatic loading state management
- * - Error handling with typed errors
- * - Optional callbacks for side effects
+ * - Error handling with typed ServerGenerationError
  * - Integration with the query cache
  *
  * @example
@@ -104,30 +137,61 @@ export interface UseGenerateImageReturn {
  * })
  *
  * // Trigger generation
- * generate({ prompt: 'A beautiful sunset', model: 'flux' })
+ * generate({
+ *   prompt: 'A beautiful sunset',
+ *   model: 'flux',
+ *   quality: 'hd'
+ * })
  * ```
  */
 export function useGenerateImage(
     options: UseGenerateImageOptions = {}
 ): UseGenerateImageReturn {
     const queryClient = useQueryClient()
+    const createGeneratedImage = useConvexMutation(api.generatedImages.create)
 
     const mutation = useMutation<
         GeneratedImage,
-        PollinationsApiError,
+        ServerGenerationError,
         ImageGenerationParams
     >({
-        mutationFn: generateImage,
+        mutationFn: generateImageServer,
 
-        onMutate: (params) => {
-            options.onMutate?.(params)
+        onMutate: async (params) => {
+            await options.onMutate?.(params)
         },
 
-        onSuccess: (image, params) => {
-            // Invalidate image list queries to include the new image
+        onSuccess: async (image, params) => {
+            // Invalidate image-related queries
             queryClient.invalidateQueries({
                 queryKey: queryKeys.images.all,
             })
+
+            // Add to generation history cache
+            queryClient.setQueryData<GeneratedImage[]>(
+                queryKeys.images.history,
+                (old = []) => [image, ...old].slice(0, MAX_HISTORY_SIZE)
+            )
+
+            // Store in Convex if r2Key is present (indicates successful storage)
+            if (image.r2Key) {
+                try {
+                    await createGeneratedImage({
+                        visibility: "public", // Default to public (listed)
+                        r2Key: image.r2Key,
+                        url: image.url,
+                        filename: image.id,
+                        contentType: image.contentType || "image/jpeg",
+                        sizeBytes: image.sizeBytes || 0,
+                        prompt: image.prompt,
+                        model: params.model || "flux",
+                        seed: image.params.seed, // Use the seed from the result
+                        generationParams: image.params,
+                    })
+                } catch (error) {
+                    console.error("Failed to store image metadata in Convex:", error)
+                }
+            }
 
             options.onSuccess?.(image, params)
         },
@@ -150,5 +214,13 @@ export function useGenerateImage(
         error: mutation.error,
         data: mutation.data,
         reset: mutation.reset,
+        progress: mutation.isPending ? -1 : mutation.isSuccess ? 100 : 0,
     }
+}
+
+/**
+ * Type guard for ServerGenerationError
+ */
+export function isServerGenerationError(error: unknown): error is ServerGenerationError {
+    return error instanceof ServerGenerationError
 }

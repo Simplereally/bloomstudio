@@ -5,33 +5,33 @@
  * Follows SRP: Only manages model selection UI
  */
 
-import * as React from "react"
-import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import {
     Tooltip,
     TooltipContent,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { getModel, getModelDisplayName } from "@/lib/config/models"
+import type { ImageModelInfo } from "@/lib/schemas/pollinations.schema"
 import {
-    Zap,
-    Sparkles,
     Camera,
-    Palette,
-    Box,
-    Moon,
+    Cloud,
+    PenTool,
+    Sparkles,
+    Video,
+    Wand2,
+    Zap,
 } from "lucide-react"
-import type { ImageModel, ModelInfo } from "@/types/pollinations"
+import * as React from "react"
 
 export interface ModelSelectorProps {
     /** Currently selected model */
-    selectedModel: ImageModel
+    selectedModel: string
     /** Callback when model changes */
-    onModelChange: (model: ImageModel) => void
+    onModelChange: (model: string) => void
     /** Available models */
-    models: ModelInfo[]
+    models: ImageModelInfo[]
     /** Whether selection is disabled */
     disabled?: boolean
     /** Display mode */
@@ -40,24 +40,28 @@ export interface ModelSelectorProps {
     className?: string
 }
 
-// Map model IDs to icons
-const MODEL_ICONS: Record<ImageModel, React.ComponentType<{ className?: string }>> = {
-    flux: Sparkles,
-    turbo: Zap,
-    "flux-realism": Camera,
-    "flux-anime": Palette,
-    "flux-3d": Box,
-    "any-dark": Moon,
+// Map icon names to Lucide components
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+    sparkles: Sparkles,
+    zap: Zap,
+    camera: Camera,
+    "pen-tool": PenTool,
+    cloud: Cloud,
+    video: Video,
 }
 
-// Map model IDs to style badges
-const MODEL_BADGES: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
-    turbo: { label: "Fast", variant: "secondary" },
-    "flux-realism": { label: "HD", variant: "default" },
-    "flux-anime": { label: "Art", variant: "outline" },
+/**
+ * Get icon component for a model
+ */
+function getModelIcon(modelId: string): React.ComponentType<{ className?: string }> {
+    const model = getModel(modelId)
+    if (model?.icon && ICON_MAP[model.icon]) {
+        return ICON_MAP[model.icon]
+    }
+    return Wand2
 }
 
-export function ModelSelector({
+export const ModelSelector = React.memo(function ModelSelector({
     selectedModel,
     onModelChange,
     models,
@@ -67,57 +71,36 @@ export function ModelSelector({
 }: ModelSelectorProps) {
     if (variant === "cards") {
         return (
-            <div className={cn("space-y-2", className)} data-testid="model-selector">
+            <div className={`space-y-2 ${className || ""}`} data-testid="model-selector">
                 <Label className="text-sm font-medium flex items-center gap-2">
                     <Sparkles className="h-3.5 w-3.5 text-primary" />
                     Model
                 </Label>
                 <div className="grid grid-cols-2 gap-2" data-testid="model-cards">
                     {models.map((model) => {
-                        const Icon = MODEL_ICONS[model.id] || Sparkles
-                        const badge = MODEL_BADGES[model.id]
-                        const isSelected = selectedModel === model.id
+                        const Icon = getModelIcon(model.name)
+                        const isSelected = selectedModel === model.name
+                        const displayName = getModelDisplayName(model.name)
 
                         return (
-                            <button
-                                key={model.id}
-                                type="button"
+                            <Button
+                                key={model.name}
+                                variant={isSelected ? "secondary" : "outline"}
+                                className="h-auto flex flex-col items-start gap-1 p-3 text-left transition-all"
+                                onClick={() => onModelChange(model.name)}
                                 disabled={disabled}
-                                onClick={() => onModelChange(model.id)}
-                                className={cn(
-                                    "relative flex flex-col items-start gap-1 p-3 rounded-lg border text-left",
-                                    "transition-all duration-200",
-                                    "hover:border-primary/50 hover:bg-primary/5",
-                                    isSelected
-                                        ? "border-primary bg-primary/10 ring-1 ring-primary/30"
-                                        : "border-border/50 bg-background/50",
-                                    disabled && "opacity-50 cursor-not-allowed"
-                                )}
-                                data-testid={`model-card-${model.id}`}
+                                data-testid={`model-card-${model.name}`}
                             >
                                 <div className="flex items-center gap-2 w-full">
-                                    <Icon
-                                        className={cn(
-                                            "h-4 w-4",
-                                            isSelected ? "text-primary" : "text-muted-foreground"
-                                        )}
-                                    />
+                                    <Icon className={`h-4 w-4 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
                                     <span className="text-sm font-medium truncate">
-                                        {model.name}
+                                        {displayName}
                                     </span>
-                                    {badge && (
-                                        <Badge
-                                            variant={badge.variant}
-                                            className="ml-auto text-[10px] px-1.5 py-0"
-                                        >
-                                            {badge.label}
-                                        </Badge>
-                                    )}
                                 </div>
                                 <span className="text-xs text-muted-foreground line-clamp-1">
-                                    {model.description}
+                                    {model.description || "Image generation model"}
                                 </span>
-                            </button>
+                            </Button>
                         )
                     })}
                 </div>
@@ -125,51 +108,44 @@ export function ModelSelector({
         )
     }
 
-    // Compact toggle group variant
+    // Compact variant using shadcn buttons
     return (
-        <div className={cn("space-y-2", className)} data-testid="model-selector">
+        <div className={`space-y-2 ${className || ""}`} data-testid="model-selector">
             <Label className="text-sm font-medium flex items-center gap-2">
                 <Sparkles className="h-3.5 w-3.5 text-primary" />
                 Model
             </Label>
-            <ToggleGroup
-                type="single"
-                value={selectedModel}
-                onValueChange={(value) => value && onModelChange(value as ImageModel)}
-                disabled={disabled}
-                className="flex flex-wrap gap-1"
-                data-testid="model-toggle-group"
-            >
+            <div className="flex flex-wrap gap-1" data-testid="model-buttons">
                 {models.map((model) => {
-                    const Icon = MODEL_ICONS[model.id] || Sparkles
+                    const Icon = getModelIcon(model.name)
+                    const isSelected = selectedModel === model.name
+                    const displayName = getModelDisplayName(model.name)
 
                     return (
-                        <Tooltip key={model.id}>
+                        <Tooltip key={model.name}>
                             <TooltipTrigger asChild>
-                                <ToggleGroupItem
-                                    value={model.id}
-                                    aria-label={model.name}
-                                    className={cn(
-                                        "flex items-center gap-1.5 px-3 h-8",
-                                        "data-[state=on]:bg-primary/15 data-[state=on]:text-primary",
-                                        "data-[state=on]:border-primary/30"
-                                    )}
-                                    data-testid={`model-toggle-${model.id}`}
+                                <Button
+                                    variant={isSelected ? "secondary" : "ghost"}
+                                    size="sm"
+                                    onClick={() => onModelChange(model.name)}
+                                    disabled={disabled}
+                                    className={`h-8 px-3 gap-1.5 transition-all ${isSelected ? "bg-primary/15 text-primary border-primary/30" : ""}`}
+                                    data-testid={`model-button-${model.name}`}
                                 >
                                     <Icon className="h-3.5 w-3.5" />
-                                    <span className="text-xs font-medium">{model.name}</span>
-                                </ToggleGroupItem>
+                                    <span className="text-xs font-medium">{displayName}</span>
+                                </Button>
                             </TooltipTrigger>
-                            <TooltipContent side="bottom" className="max-w-[200px]">
-                                <p className="font-medium">{model.name}</p>
+                            <TooltipContent side="bottom" className="flex flex-col items-center text-center">
+                                <p className="font-medium">{displayName}</p>
                                 <p className="text-xs text-muted-foreground">
-                                    {model.description}
+                                    {model.description || "Image generation model"}
                                 </p>
                             </TooltipContent>
                         </Tooltip>
                     )
                 })}
-            </ToggleGroup>
+            </div>
         </div>
     )
-}
+})
