@@ -32,3 +32,6 @@ next-env.d.ts
 
 # cache
 /.cache/
+
+# convex
+convex/_generated/
