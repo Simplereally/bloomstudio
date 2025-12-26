@@ -160,7 +160,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
         supportsNegativePrompt: false,
     },
 
-    turbo: {
+    "sdxl-turbo": {
         id: "sdxl-turbo",
         displayName: "SDXL Turbo",
         type: "image",

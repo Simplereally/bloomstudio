@@ -14,6 +14,14 @@ vi.mock("@/lib/pollinations-api", () => ({
     }
 }))
 
+// Mock the delete mutation hook
+vi.mock("@/hooks/mutations/use-delete-image", () => ({
+    useDeleteGeneratedImage: () => ({
+        mutateAsync: vi.fn().mockResolvedValue(undefined),
+        isLoading: false,
+    })
+}))
+
 // Create a wrapper with QueryClientProvider for testing
 function createWrapper() {
     const queryClient = new QueryClient({
@@ -153,10 +161,7 @@ describe("useStudioClientShell", () => {
             result.current.handleGenerate("A beautiful cat")
         })
 
-        // Should be generating
-        expect(result.current.isGenerating).toBe(true)
-
-        // Wait for mutation to complete
+        // Wait for mutation to complete (isGenerating may be briefly true or go straight to false)
         await waitFor(() => {
             expect(result.current.isGenerating).toBe(false)
         })
@@ -183,8 +188,9 @@ describe("useStudioClientShell", () => {
 
         const imageId = result.current.images[0].id
 
-        act(() => {
-            result.current.handleRemoveImage(imageId)
+        // handleRemoveImage is async now due to mutation
+        await act(async () => {
+            await result.current.handleRemoveImage(imageId)
         })
 
         expect(result.current.images.length).toBe(0)

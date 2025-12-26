@@ -4,8 +4,8 @@
  * Tests for the dimension constraints hook used in model-aware dimension controls.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest"
-import { renderHook, act } from "@testing-library/react"
+import { act, renderHook } from "@testing-library/react"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import { useDimensionConstraints } from "./use-dimension-constraints"
 
 describe("useDimensionConstraints", () => {
@@ -31,9 +31,9 @@ describe("useDimensionConstraints", () => {
             expect(result.current.constraints.step).toBe(32)
         })
 
-        it("should return Turbo constraints for turbo model (strict 768px limit)", () => {
+        it("should return SDXL Turbo constraints for sdxl-turbo model (strict 768px limit)", () => {
             const { result } = renderHook(() =>
-                useDimensionConstraints({ ...defaultProps, modelId: "turbo" })
+                useDimensionConstraints({ ...defaultProps, modelId: "sdxl-turbo" })
             )
 
             expect(result.current.constraints.maxPixels).toBe(589_825)
@@ -83,17 +83,17 @@ describe("useDimensionConstraints", () => {
             expect(result.current.maxHeight).toBe(2048)
         })
 
-        it("should return 768 maxDimension for turbo model", () => {
+        it("should return 768 maxDimension for sdxl-turbo model", () => {
             const { result } = renderHook(() =>
                 useDimensionConstraints({
                     ...defaultProps,
-                    modelId: "turbo",
+                    modelId: "sdxl-turbo",
                     width: 512,
                     height: 512,
                 })
             )
 
-            // Turbo has strict 768px max dimension
+            // SDXL Turbo has strict 768px max dimension
             expect(result.current.maxWidth).toBe(768)
             expect(result.current.maxHeight).toBe(768)
         })
@@ -188,9 +188,9 @@ describe("useDimensionConstraints", () => {
             expect(result.current.hasPixelLimit).toBe(false)
         })
 
-        it("should be true for turbo model (has 589,824 pixel limit)", () => {
+        it("should be true for sdxl-turbo model (has 589,824 pixel limit)", () => {
             const { result } = renderHook(() =>
-                useDimensionConstraints({ ...defaultProps, modelId: "turbo" })
+                useDimensionConstraints({ ...defaultProps, modelId: "sdxl-turbo" })
             )
 
             expect(result.current.hasPixelLimit).toBe(true)
@@ -319,7 +319,7 @@ describe("useDimensionConstraints", () => {
             expect(result.current.constraints.maxPixels).toBe(Infinity)
         })
 
-        it("should update constraints when switching to turbo", () => {
+        it("should update constraints when switching to sdxl-turbo", () => {
             const { result, rerender } = renderHook(
                 ({ modelId }) =>
                     useDimensionConstraints({
@@ -332,7 +332,7 @@ describe("useDimensionConstraints", () => {
             expect(result.current.constraints.maxPixels).toBe(1_048_575)
             expect(result.current.constraints.maxDimension).toBe(2048)
 
-            rerender({ modelId: "turbo" })
+            rerender({ modelId: "sdxl-turbo" })
 
             expect(result.current.constraints.maxPixels).toBe(589_825)
             expect(result.current.constraints.maxDimension).toBe(768)

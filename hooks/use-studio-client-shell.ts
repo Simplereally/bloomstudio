@@ -280,13 +280,22 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
     const deleteMutation = useDeleteGeneratedImage()
 
     // Handle image removal
+    // Note: For persistent images from PersistentImageGallery, the `id` IS the Convex _id
+    // For local session images, `id` is a separate field and `_id` may be the Convex ID
     const handleRemoveImage = React.useCallback(async (id: string) => {
-        const imageToDelete = images.find(img => img.id === id)
+        // First check if this image exists in local state
+        const imageInLocalState = images.find(img => img.id === id)
 
-        // If image has a Convex ID, delete it from the server
-        if (imageToDelete?._id) {
+        // Determine the Convex ID to use for deletion
+        // For persistent gallery: id IS the _id (mapped in PersistentImageGallery)
+        // For local images: use _id if available
+        const convexId = imageInLocalState?._id ?? id
+
+        // Try to delete from Convex if we have what looks like a Convex ID
+        // (Convex IDs are strings, not numeric)
+        if (convexId && typeof convexId === 'string') {
             try {
-                await deleteMutation.mutateAsync(imageToDelete._id as Id<"generatedImages">)
+                await deleteMutation.mutateAsync(convexId as Id<"generatedImages">)
             } catch (error) {
                 console.error("Failed to delete image from server:", error)
                 // Mutation hook already shows toast, but we should stop here
@@ -294,6 +303,7 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
             }
         }
 
+        // Also clean up local state if the image was there
         setImages((prev) => prev.filter((img) => img.id !== id))
         setCurrentImage((curr) => {
             if (curr?.id === id) {

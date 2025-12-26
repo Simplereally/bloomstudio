@@ -6,7 +6,7 @@ import { ModelSelector } from "./model-selector"
 
 const mockModels: ImageModelInfo[] = [
     { name: "flux", aliases: ["default"], pricing: { currency: "pollen" }, description: "Default balanced model" },
-    { name: "turbo", aliases: ["fast"], pricing: { currency: "pollen" }, description: "Fastest generation" },
+    { name: "sdxl-turbo", aliases: ["fast"], pricing: { currency: "pollen" }, description: "Fastest generation" },
     { name: "gptimage", aliases: [], pricing: { currency: "pollen" }, description: "GPT-powered generation" },
 ]
 
@@ -40,7 +40,7 @@ describe("ModelSelector", () => {
             render(<ModelSelector {...defaultProps} />)
 
             expect(screen.getByTestId("model-button-flux")).toBeInTheDocument()
-            expect(screen.getByTestId("model-button-turbo")).toBeInTheDocument()
+            expect(screen.getByTestId("model-button-sdxl-turbo")).toBeInTheDocument()
             expect(screen.getByTestId("model-button-gptimage")).toBeInTheDocument()
         })
 
@@ -49,14 +49,14 @@ describe("ModelSelector", () => {
 
             // Model names should match their display names in our registry
             expect(screen.getByText("Flux")).toBeInTheDocument()
-            expect(screen.getByText("Flux Turbo")).toBeInTheDocument()
+            expect(screen.getByText("SDXL Turbo")).toBeInTheDocument()
             expect(screen.getByText("GPT 1.0")).toBeInTheDocument()
         })
 
         it("applies selected styling to the active model", () => {
-            render(<ModelSelector {...defaultProps} selectedModel="turbo" />)
+            render(<ModelSelector {...defaultProps} selectedModel="sdxl-turbo" />)
 
-            const turboButton = screen.getByTestId("model-button-turbo")
+            const turboButton = screen.getByTestId("model-button-sdxl-turbo")
             expect(turboButton).toBeInTheDocument()
             // Selected model has specific styling classes
             expect(turboButton).toHaveClass("bg-primary/15")
@@ -67,8 +67,8 @@ describe("ModelSelector", () => {
             const onModelChange = vi.fn()
             render(<ModelSelector {...defaultProps} onModelChange={onModelChange} />)
 
-            await user.click(screen.getByTestId("model-button-turbo"))
-            expect(onModelChange).toHaveBeenCalledWith("turbo")
+            await user.click(screen.getByTestId("model-button-sdxl-turbo"))
+            expect(onModelChange).toHaveBeenCalledWith("sdxl-turbo")
             expect(onModelChange).toHaveBeenCalledTimes(1)
         })
 
@@ -76,7 +76,7 @@ describe("ModelSelector", () => {
             render(<ModelSelector {...defaultProps} disabled={true} />)
 
             expect(screen.getByTestId("model-button-flux")).toBeDisabled()
-            expect(screen.getByTestId("model-button-turbo")).toBeDisabled()
+            expect(screen.getByTestId("model-button-sdxl-turbo")).toBeDisabled()
             expect(screen.getByTestId("model-button-gptimage")).toBeDisabled()
         })
 
@@ -102,7 +102,7 @@ describe("ModelSelector", () => {
             render(<ModelSelector {...defaultProps} variant="cards" />)
 
             expect(screen.getByTestId("model-card-flux")).toBeInTheDocument()
-            expect(screen.getByTestId("model-card-turbo")).toBeInTheDocument()
+            expect(screen.getByTestId("model-card-sdxl-turbo")).toBeInTheDocument()
             expect(screen.getByTestId("model-card-gptimage")).toBeInTheDocument()
         })
 
@@ -133,8 +133,8 @@ describe("ModelSelector", () => {
                 <ModelSelector {...defaultProps} variant="cards" onModelChange={onModelChange} />
             )
 
-            await user.click(screen.getByTestId("model-card-turbo"))
-            expect(onModelChange).toHaveBeenCalledWith("turbo")
+            await user.click(screen.getByTestId("model-card-sdxl-turbo"))
+            expect(onModelChange).toHaveBeenCalledWith("sdxl-turbo")
             expect(onModelChange).toHaveBeenCalledTimes(1)
         })
 
@@ -142,7 +142,7 @@ describe("ModelSelector", () => {
             render(<ModelSelector {...defaultProps} variant="cards" disabled={true} />)
 
             expect(screen.getByTestId("model-card-flux")).toBeDisabled()
-            expect(screen.getByTestId("model-card-turbo")).toBeDisabled()
+            expect(screen.getByTestId("model-card-sdxl-turbo")).toBeDisabled()
             expect(screen.getByTestId("model-card-gptimage")).toBeDisabled()
         })
 

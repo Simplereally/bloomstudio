@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
-import { PollinationsAPI } from "./pollinations-api"
-import { API_CONSTRAINTS } from "./config/api.config"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import * as apiConfig from "./config/api.config"
+import { API_CONSTRAINTS } from "./config/api.config"
+import { PollinationsAPI } from "./pollinations-api"
 
 
 describe("PollinationsAPI", () => {
@@ -75,7 +75,7 @@ describe("PollinationsAPI", () => {
             expect(url).toContain("model=flux")
         })
 
-        it("includes quality parameter when not default", () => {
+        it("always includes quality parameter as high", () => {
             const url = PollinationsAPI.buildImageUrl({
                 prompt: "test",
                 model: "flux",
@@ -89,10 +89,11 @@ describe("PollinationsAPI", () => {
                 safe: false,
                 transparent: false,
             })
-            expect(url).toContain("quality=hd")
+            // API now always hardcodes quality=high
+            expect(url).toContain("quality=high")
         })
 
-        it("excludes quality parameter when medium (default)", () => {
+        it("includes quality parameter even when medium (always high)", () => {
             const url = PollinationsAPI.buildImageUrl({
                 prompt: "test",
                 model: "flux",
@@ -106,7 +107,8 @@ describe("PollinationsAPI", () => {
                 safe: false,
                 transparent: false,
             })
-            expect(url).not.toContain("quality=")
+            // API now always hardcodes quality=high regardless of input
+            expect(url).toContain("quality=high")
         })
 
         it("includes guidance_scale parameter", () => {

@@ -22,7 +22,7 @@ describe("Model Registry", () => {
             const expectedImageModels = [
                 "flux",
                 "zimage",
-                "turbo",
+                "sdxl-turbo",
                 "gptimage",
                 "gptimage-large",
                 "seedream",
@@ -50,7 +50,7 @@ describe("Model Registry", () => {
         it("should have correct display names", () => {
             expect(MODEL_REGISTRY["flux"].displayName).toBe("Flux")
             expect(MODEL_REGISTRY["zimage"].displayName).toBe("Z-Image-Turbo")
-            expect(MODEL_REGISTRY["turbo"].displayName).toBe("Flux Turbo")
+            expect(MODEL_REGISTRY["sdxl-turbo"].displayName).toBe("SDXL Turbo")
             expect(MODEL_REGISTRY["gptimage"].displayName).toBe("GPT 1.0")
             expect(MODEL_REGISTRY["gptimage-large"].displayName).toBe("GPT 1.5")
             expect(MODEL_REGISTRY["seedream"].displayName).toBe("Seedream 4.0")
@@ -180,7 +180,7 @@ describe("Model Constraints", () => {
 
     describe("Turbo", () => {
         it("should have 768px max dimension", () => {
-            const model = getModel("turbo")!
+            const model = getModel("sdxl-turbo")!
             expect(model.constraints.maxDimension).toBe(768)
             expect(model.constraints.defaultDimensions.width).toBe(768)
             expect(model.constraints.defaultDimensions.height).toBe(768)
@@ -229,7 +229,7 @@ describe("Aspect Ratio Presets", () => {
     })
 
     it("should have turbo presets within 768px limit", () => {
-        const ratios = getModelAspectRatios("turbo")!
+        const ratios = getModelAspectRatios("sdxl-turbo")!
         for (const ratio of ratios) {
             expect(ratio.width).toBeLessThanOrEqual(768)
             expect(ratio.height).toBeLessThanOrEqual(768)

@@ -14,7 +14,6 @@ export { AspectRatioSelector, type AspectRatioSelectorProps } from "./controls/a
 export { DimensionControls, type DimensionControlsProps } from "./controls/dimension-controls"
 export { ModelSelector, type ModelSelectorProps } from "./controls/model-selector"
 export { OptionsPanel, type GenerationOptions, type OptionsPanelProps } from "./controls/options-panel"
-export { PromptComposer, type PromptComposerProps } from "./controls/prompt-composer"
 export { PromptSection, type PromptSectionAPI, type PromptSectionProps } from "./controls/prompt-section"
 export { ReferenceImagePicker } from "./controls/reference-image-picker"
 export { SeedControl, type SeedControlProps } from "./controls/seed-control"
@@ -31,3 +30,4 @@ export { PersistentImageGallery } from "./gallery/persistent-image-gallery"
 
 // Onboarding Components
 export { ApiKeyOnboardingModal } from "./api-key-onboarding-modal"
+

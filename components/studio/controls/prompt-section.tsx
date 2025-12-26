@@ -286,17 +286,17 @@ export function PromptSection({
                 {/* Prompt History Dropdown */}
                 {showHistory && promptHistory.length > 0 && (
                     <div
-                        className="rounded-md border border-border bg-popover p-2 space-y-1"
+                        className="rounded-md border border-border bg-popover p-1 divide-y divide-border/50 max-w-sm"
                         data-testid="prompt-history"
                     >
                         {promptHistory.slice(0, 5).map((historyPrompt, index) => (
                             <Button
                                 key={index}
                                 variant="ghost"
-                                className="w-full justify-start text-left text-sm h-auto p-2"
+                                className="w-full justify-start text-left text-xs h-auto py-2 px-2 rounded-none first:rounded-t last:rounded-b"
                                 onClick={() => handleHistorySelect(historyPrompt)}
                             >
-                                <span className="line-clamp-2">{historyPrompt}</span>
+                                <span className="truncate block w-full">{historyPrompt}</span>
                             </Button>
                         ))}
                     </div>
