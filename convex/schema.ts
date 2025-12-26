@@ -17,6 +17,8 @@ export default defineSchema({
         email: v.optional(v.string()),
         /** User's full name from Clerk identity */
         name: v.optional(v.string()),
+        /** User's profile picture URL from Clerk identity */
+        pictureUrl: v.optional(v.string()),
         /** Encrypted Pollinations API key */
         pollinationsApiKey: v.optional(v.string()),
         /** Timestamp of record creation */

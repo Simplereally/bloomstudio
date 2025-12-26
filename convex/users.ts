@@ -30,12 +30,14 @@ export const getOrCreateUser = mutation({
             // Update user info if changed
             const needsUpdate =
                 existingUser.email !== identity.email ||
-                existingUser.name !== identity.name
+                existingUser.name !== identity.name ||
+                existingUser.pictureUrl !== identity.pictureUrl
 
             if (needsUpdate) {
                 await ctx.db.patch(existingUser._id, {
                     email: identity.email,
                     name: identity.name,
+                    pictureUrl: identity.pictureUrl,
                     updatedAt: Date.now(),
                 })
             }
@@ -48,6 +50,7 @@ export const getOrCreateUser = mutation({
             clerkId,
             email: identity.email,
             name: identity.name,
+            pictureUrl: identity.pictureUrl,
             createdAt: Date.now(),
             updatedAt: Date.now(),
         })

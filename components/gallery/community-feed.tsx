@@ -1,37 +1,42 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { ImageCard, type ImageCardData } from "@/components/ui/image-card"
+import { ImageLightbox } from "@/components/ui/image-lightbox"
+import { MasonryGrid } from "@/components/ui/masonry-grid"
 import { Skeleton } from "@/components/ui/skeleton"
 import { usePublicFeed } from "@/hooks/queries/use-image-history"
-import { Heart, Loader2, Share2 } from "lucide-react"
-import Image from "next/image"
-
-import { ImageLightbox } from "@/components/ui/image-lightbox"
+import { Loader2 } from "lucide-react"
+import Link from "next/link"
 import { useState } from "react"
 
 /**
  * Component to display the community feed of public AI-generated images.
+ * Uses a masonry grid layout similar to Leonardo AI and Kling.
  * Supports infinite scrolling with a "Load More" button.
  */
 export function CommunityFeed() {
     const { results, status, loadMore } = usePublicFeed()
-    const [selectedImage, setSelectedImage] = useState<any>(null)
+    const [selectedImage, setSelectedImage] = useState<ImageCardData | null>(null)
 
     const isLoading = status === "LoadingFirstPage"
     const isLoadingMore = status === "LoadingMore"
 
     if (isLoading) {
         return (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-4">
-                {Array.from({ length: 12 }).map((_, i) => (
-                    <div key={i} className="space-y-3">
-                        <Skeleton className="aspect-square rounded-2xl animate-pulse bg-muted" />
-                        <div className="space-y-2">
-                            <Skeleton className="h-4 w-3/4 animate-pulse bg-muted" />
-                            <Skeleton className="h-3 w-1/2 animate-pulse bg-muted opacity-50" />
-                        </div>
-                    </div>
-                ))}
+            <div className="px-1 md:px-2 max-w-[2400px] mx-auto">
+                <MasonryGrid minColumnWidth={260} gap={4}>
+                    {Array.from({ length: 20 }).map((_, i) => (
+                        <Skeleton
+                            key={i}
+                            className="rounded-lg animate-pulse bg-muted"
+                            style={{
+                                // Random aspect ratios for skeleton loading
+                                aspectRatio: [1, 0.75, 1.33, 0.56, 1.78][i % 5],
+                            }}
+                        />
+                    ))}
+                </MasonryGrid>
             </div>
         )
     }
@@ -56,66 +61,17 @@ export function CommunityFeed() {
     }
 
     return (
-        <div className="space-y-12 p-4 md:p-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+        <div className="space-y-12 px-1 md:px-2 max-w-[2400px] mx-auto">
+            <MasonryGrid minColumnWidth={360} gap={4}>
                 {results.map((image) => (
-                    <div
+                    <ImageCard
                         key={image._id}
-                        className="group flex flex-col space-y-4 rounded-3xl p-3 bg-card/40 backdrop-blur-sm border border-border/50 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/5 cursor-pointer hover:border-primary/20"
-                        onClick={() => setSelectedImage(image)}
-                    >
-                        <div className="relative aspect-square rounded-2xl overflow-hidden shadow-inner">
-                            <Image
-                                src={image.url}
-                                alt={image.prompt || "Generated image"}
-                                fill
-                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                className="object-cover transition-transform duration-700 group-hover:scale-105"
-                                loading="lazy"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
-                                <div className="flex items-center gap-2">
-                                    <Button 
-                                        size="icon" 
-                                        variant="ghost" 
-                                        className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md"
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            // Handle like logic here
-                                        }}
-                                    >
-                                        <Heart className="h-4 w-4" />
-                                    </Button>
-                                    <Button 
-                                        size="icon" 
-                                        variant="ghost" 
-                                        className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md"
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            // Handle share logic here
-                                        }}
-                                    >
-                                        <Share2 className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="px-1 space-y-2">
-                            <p className="text-sm font-medium line-clamp-2 leading-snug group-hover:text-primary transition-colors">
-                                {image.prompt}
-                            </p>
-                            <div className="flex items-center justify-between">
-                                <span className="text-[11px] text-muted-foreground bg-muted px-2 py-1 rounded-full font-mono">
-                                    {getModelDisplayName(image.model) || image.model}
-                                </span>
-                                <span className="text-[10px] text-muted-foreground/60">
-                                    {new Date(image.createdAt || image._creationTime).toLocaleDateString()}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
+                        image={image as ImageCardData}
+                        showUser={true}
+                        onClick={() => setSelectedImage(image as ImageCardData)}
+                    />
                 ))}
-            </div>
+            </MasonryGrid>
 
             {status === "CanLoadMore" && (
                 <div className="flex justify-center pb-12">
@@ -137,24 +93,11 @@ export function CommunityFeed() {
                 </div>
             )}
 
-            <ImageLightbox 
-                image={selectedImage ? {
-                    ...selectedImage,
-                    id: selectedImage._id,
-                    params: selectedImage.generationParams || {
-                        model: selectedImage.model,
-                        width: selectedImage.width || 1024,
-                        height: selectedImage.height || 1024,
-                        seed: selectedImage.seed
-                    }
-                } : null}
+            <ImageLightbox
+                image={selectedImage}
                 isOpen={!!selectedImage}
                 onClose={() => setSelectedImage(null)}
             />
         </div>
     )
 }
-
-import { getModelDisplayName } from "@/lib/config/models"
-import Link from "next/link"
-

@@ -7,18 +7,18 @@
  * Calls /api/generate which uses the secret key for authentication.
  */
 
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useMutation as useConvexMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { queryKeys } from "@/lib/query"
 import type {
-    ImageGenerationParams,
     GeneratedImage,
+    ImageGenerationParams,
 } from "@/lib/schemas/pollinations.schema"
 import type {
-    ServerGenerateResponse,
     ServerGenerateError,
+    ServerGenerateResponse,
 } from "@/lib/schemas/server-generate.schema"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation as useConvexMutation } from "convex/react"
 
 /**
  * Custom error class for server generation errors
@@ -177,7 +177,7 @@ export function useGenerateImage(
             if (image.r2Key) {
                 try {
                     await createGeneratedImage({
-                        visibility: "unlisted", // Default to unlisted
+                        visibility: "public", // Default to public (listed)
                         r2Key: image.r2Key,
                         url: image.url,
                         filename: image.id,

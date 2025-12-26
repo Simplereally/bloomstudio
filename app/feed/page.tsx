@@ -1,7 +1,7 @@
 import { CommunityFeed } from "@/components/gallery/community-feed"
+import { Button } from "@/components/ui/button"
 import { Sparkles } from "lucide-react"
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
 
 export default function FeedPage() {
     return (
@@ -27,14 +27,16 @@ export default function FeedPage() {
                 </div>
             </header>
 
-            <main className="container mx-auto py-12">
-                <div className="px-4 mb-12">
+            <main className="py-8">
+                {/* Title Section - Constrained for readability */}
+                <div className="container mx-auto px-4 mb-10">
                     <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">Community Feed</h1>
                     <p className="text-muted-foreground text-lg max-w-2xl">
                         Explore the latest creations from our community of artists. High-quality AI images generated with Pixelstream.
                     </p>
                 </div>
 
+                {/* Grid Section - Full width */}
                 <CommunityFeed />
             </main>
 

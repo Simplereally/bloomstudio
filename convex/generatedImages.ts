@@ -3,9 +3,9 @@
  *
  * Queries and mutations for managing AI-generated images.
  */
+import { paginationOptsValidator } from "convex/server"
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
-import { paginationOptsValidator } from "convex/server"
 
 /**
  * Create a new generated image record.
@@ -34,7 +34,7 @@ export const create = mutation({
 
         const imageId = await ctx.db.insert("generatedImages", {
             ownerId: identity.subject,
-            visibility: args.visibility ?? "unlisted",
+            visibility: args.visibility ?? "public",
             r2Key: args.r2Key,
             url: args.url,
             filename: args.filename,
@@ -110,17 +110,39 @@ export const getMyImages = query({
 
 /**
  * Get public images for the feed (paginated).
+ * Includes owner information for display in community feed.
  */
 export const getPublicFeed = query({
     args: {
         paginationOpts: paginationOptsValidator,
     },
     handler: async (ctx, args) => {
-        return await ctx.db
+        const paginatedResult = await ctx.db
             .query("generatedImages")
             .withIndex("by_visibility", (q) => q.eq("visibility", "public"))
             .order("desc")
             .paginate(args.paginationOpts)
+
+        // Enrich each image with owner info
+        const enrichedPage = await Promise.all(
+            paginatedResult.page.map(async (image) => {
+                const owner = await ctx.db
+                    .query("users")
+                    .withIndex("by_clerk_id", (q) => q.eq("clerkId", image.ownerId))
+                    .unique()
+
+                return {
+                    ...image,
+                    ownerName: owner?.name ?? "Anonymous",
+                    ownerPictureUrl: owner?.pictureUrl ?? null,
+                }
+            })
+        )
+
+        return {
+            ...paginatedResult,
+            page: enrichedPage,
+        }
     },
 })
 

@@ -54,8 +54,8 @@ const STANDARD_ASPECT_RATIOS: readonly AspectRatioOption[] = [
     { label: "Custom", value: "custom", width: 1000, height: 1000, icon: "sliders", category: "square" },
 ] as const
 
-/** Turbo-optimized aspect ratios (768px max dimension) */
-const TURBO_ASPECT_RATIOS: readonly AspectRatioOption[] = [
+/** SDXL Turbo-optimized aspect ratios (768px max dimension) */
+const SDXLTURBO_ASPECT_RATIOS: readonly AspectRatioOption[] = [
     { label: "Square", value: "1:1", width: 768, height: 768, icon: "square", category: "square" },
     { label: "Landscape", value: "16:9", width: 768, height: 432, icon: "rectangle-horizontal", category: "landscape" },
     { label: "Portrait", value: "9:16", width: 432, height: 768, icon: "rectangle-vertical", category: "portrait" },
@@ -161,8 +161,8 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     },
 
     turbo: {
-        id: "turbo",
-        displayName: "Flux Turbo",
+        id: "sdxl-turbo",
+        displayName: "SDXL Turbo",
         type: "image",
         icon: "zap",
         description: "Fast generation with 768px max dimension",
@@ -175,7 +175,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
             defaultDimensions: { width: 768, height: 768 },
             dimensionsEnabled: true,
         },
-        aspectRatios: TURBO_ASPECT_RATIOS,
+        aspectRatios: SDXLTURBO_ASPECT_RATIOS,
         supportsNegativePrompt: false,
     },
 

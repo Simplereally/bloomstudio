@@ -4,13 +4,38 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { getModelDisplayName } from "@/lib/config/models"
-import type { GeneratedImage } from "@/types/pollinations"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 import { Check, Copy } from "lucide-react"
 import * as React from "react"
 
+/**
+ * Flexible image type for the lightbox that works with both
+ * studio-generated images and community feed images from Convex.
+ */
+export interface LightboxImage {
+  url: string
+  prompt: string
+  // Can have params object (studio) or direct fields (feed)
+  params?: {
+    model?: string
+    width?: number
+    height?: number
+    seed?: number
+  }
+  model?: string
+  width?: number
+  height?: number
+  seed?: number
+  // Optional identifiers
+  id?: string
+  _id?: string
+  // Owner info for community feed
+  ownerName?: string
+  ownerPictureUrl?: string | null
+}
+
 interface ImageLightboxProps {
-  image: GeneratedImage | null
+  image: LightboxImage | null
   isOpen: boolean
   onClose: () => void
 }
