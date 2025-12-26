@@ -96,18 +96,18 @@ export function ImageLightbox({ image, isOpen, onClose }: ImageLightboxProps) {
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-black/50 border border-white/10 text-white/90">
                         <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                        <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">{getModelDisplayName(image.params?.model || (image as any).model) || (image.params?.model || (image as any).model)}</span>
+                        <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">{getModelDisplayName(image.params?.model || image.model) || (image.params?.model || image.model)}</span>
                       </div>
                       <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-black/50 border border-white/10 text-white/90 text-[10px] md:text-xs font-medium">
                         <span className="text-white/40">Size</span>
                         <span className="font-mono">
-                          {image.params?.width || (image as any).width}×{image.params?.height || (image as any).height}
+                          {image.params?.width || image.width}×{image.params?.height || image.height}
                         </span>
                       </div>
-                      {(image.params?.seed || (image as any).seed) && (image.params?.seed !== -1) && (
+                      {(image.params?.seed || image.seed) && (image.params?.seed !== -1 && image.seed !== -1) && (
                         <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-black/50 border border-white/10 text-white/90 text-[10px] md:text-xs font-medium">
                           <span className="text-white/40">Seed</span>
-                          <span className="font-mono">{image.params?.seed || (image as any).seed}</span>
+                          <span className="font-mono">{image.params?.seed || image.seed}</span>
                         </div>
                       )}
                     </div>

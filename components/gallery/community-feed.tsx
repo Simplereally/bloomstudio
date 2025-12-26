@@ -73,7 +73,7 @@ export function CommunityFeed() {
                 ))}
             </MasonryGrid>
 
-            {status === "CanLoadMore" && (
+            {(status === "CanLoadMore" || status === "LoadingMore") && (
                 <div className="flex justify-center pb-12">
                     <Button
                         variant="outline"

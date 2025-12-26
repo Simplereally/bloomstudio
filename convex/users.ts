@@ -27,17 +27,22 @@ export const getOrCreateUser = mutation({
             .unique()
 
         if (existingUser) {
-            // Update user info if changed
-            const needsUpdate =
-                existingUser.email !== identity.email ||
-                existingUser.name !== identity.name ||
-                existingUser.pictureUrl !== identity.pictureUrl
+            // Update user info if changed, but only for defined fields to avoid overwriting with undefined
+            const patch: Record<string, any> = {}
 
-            if (needsUpdate) {
+            if (identity.email !== undefined && identity.email !== existingUser.email) {
+                patch.email = identity.email
+            }
+            if (identity.name !== undefined && identity.name !== existingUser.name) {
+                patch.name = identity.name
+            }
+            if (identity.pictureUrl !== undefined && identity.pictureUrl !== existingUser.pictureUrl) {
+                patch.pictureUrl = identity.pictureUrl
+            }
+
+            if (Object.keys(patch).length > 0) {
                 await ctx.db.patch(existingUser._id, {
-                    email: identity.email,
-                    name: identity.name,
-                    pictureUrl: identity.pictureUrl,
+                    ...patch,
                     updatedAt: Date.now(),
                 })
             }
