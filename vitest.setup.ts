@@ -43,3 +43,23 @@ global.IntersectionObserver = class IntersectionObserver {
     thresholds = []
     takeRecords() { return [] }
 }
+
+// Global Convex Mock
+vi.mock('convex/react', async (importOriginal) => {
+    const original = await importOriginal<typeof import('convex/react')>()
+    return {
+        ...original,
+        useQuery: vi.fn(),
+        useMutation: vi.fn(() => {
+            const mock = vi.fn() as any
+            mock.withOptimisticUpdate = vi.fn().mockReturnValue(mock)
+            return mock
+        }),
+        usePaginatedQuery: vi.fn(() => ({
+            results: [],
+            status: 'CanLoadMore',
+            loadMore: vi.fn(),
+        })),
+        ConvexProvider: ({ children }: { children: React.ReactNode }) => children,
+    }
+})

@@ -3,17 +3,28 @@
  * 
  * Tests for useUploadReference Hook
  */
-import { describe, it, expect, vi, beforeEach } from "vitest"
-import { renderHook, waitFor } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { useUploadReference } from "./use-upload-reference"
-import { api } from "@/convex/_generated/api"
-import type { ReactNode } from "react"
+import { renderHook, waitFor } from "@testing-library/react"
 import { useMutation } from "convex/react"
+import type { ReactNode } from "react"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+import { useUploadReference } from "./use-upload-reference"
 
-// Mock fetch
-const mockFetch = vi.fn()
-global.fetch = mockFetch
+// Mock XMLHttpRequest
+const mockXHR = {
+    open: vi.fn(),
+    send: vi.fn(),
+    upload: {
+        addEventListener: vi.fn(),
+    },
+    addEventListener: vi.fn(),
+    status: 200,
+    responseText: "",
+}
+
+global.XMLHttpRequest = vi.fn(function () {
+    return mockXHR
+}) as any
 
 // Mock Convex
 vi.mock("convex/react", () => ({
@@ -47,12 +58,28 @@ function createWrapper() {
 }
 
 describe("useUploadReference", () => {
+    let xhrHandlers: Record<string, Function[]> = {}
+
     beforeEach(() => {
         vi.clearAllMocks()
+        xhrHandlers = {}
+
         vi.mocked(useMutation).mockImplementation(() => {
-            const fn = vi.fn() as any
+            const fn = vi.fn().mockImplementation(() => Promise.resolve()) as any
             fn.withOptimisticUpdate = vi.fn().mockReturnValue(fn)
             return fn
+        })
+
+        vi.mocked(mockXHR.addEventListener).mockImplementation((event: string, handler: Function) => {
+            if (!xhrHandlers[event]) xhrHandlers[event] = []
+            xhrHandlers[event].push(handler)
+        })
+
+        vi.mocked(mockXHR.send).mockImplementation(() => {
+            // Default behavior: trigger load event
+            if (xhrHandlers["load"]) {
+                xhrHandlers["load"].forEach(h => h())
+            }
         })
     })
 
@@ -67,10 +94,8 @@ describe("useUploadReference", () => {
             },
         }
 
-        mockFetch.mockResolvedValueOnce({
-            ok: true,
-            json: async () => mockUploadResponse,
-        })
+        mockXHR.status = 200
+        mockXHR.responseText = JSON.stringify(mockUploadResponse)
 
         const { result } = renderHook(() => useUploadReference(), {
             wrapper: createWrapper(),
@@ -80,13 +105,8 @@ describe("useUploadReference", () => {
 
         await result.current.mutateAsync(file)
 
-        expect(mockFetch).toHaveBeenCalledWith(
-            "/api/upload",
-            expect.objectContaining({
-                method: "POST",
-                body: expect.any(FormData),
-            })
-        )
+        expect(mockXHR.open).toHaveBeenCalledWith("POST", "/api/upload")
+        expect(mockXHR.send).toHaveBeenCalled()
 
         await waitFor(() => {
             expect(result.current.isSuccess).toBe(true)
@@ -102,10 +122,8 @@ describe("useUploadReference", () => {
             },
         }
 
-        mockFetch.mockResolvedValueOnce({
-            ok: false,
-            json: async () => mockErrorResponse,
-        })
+        mockXHR.status = 400 // or 500, etc.
+        mockXHR.responseText = JSON.stringify(mockErrorResponse)
 
         const { result } = renderHook(() => useUploadReference(), {
             wrapper: createWrapper(),

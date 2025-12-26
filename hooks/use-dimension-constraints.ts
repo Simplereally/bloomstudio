@@ -7,9 +7,20 @@
  * Automatically calculates dynamic slider bounds to prevent exceeding pixel limits.
  */
 
-import { useMemo, useCallback } from "react"
-import { getModelConstraints } from "@/lib/config/model-constraints"
+import { getModel } from "@/lib/config/models"
 import type { ModelConstraints } from "@/types/pollinations"
+import { useCallback, useMemo } from "react"
+
+/** Default constraints for unknown models */
+const DEFAULT_CONSTRAINTS: ModelConstraints = {
+    maxPixels: Infinity,
+    minPixels: 0,
+    minDimension: 64,
+    maxDimension: 2048,
+    step: 64,
+    defaultDimensions: { width: 1024, height: 1024 },
+    dimensionsEnabled: true,
+} as const
 
 interface UseDimensionConstraintsProps {
     /** Model ID for constraint lookup */
@@ -77,7 +88,10 @@ export function useDimensionConstraints({
     onHeightChange,
 }: UseDimensionConstraintsProps): DimensionConstraintsResult {
     // Memoize constraints lookup to avoid recalculating on every render
-    const constraints = useMemo(() => getModelConstraints(modelId), [modelId])
+    const constraints = useMemo(
+        () => getModel(modelId)?.constraints ?? DEFAULT_CONSTRAINTS,
+        [modelId]
+    )
 
     // Calculate derived values
     const { maxWidth, maxHeight, pixelCount, isOverLimit, percentOfLimit, hasLimit } = useMemo(() => {

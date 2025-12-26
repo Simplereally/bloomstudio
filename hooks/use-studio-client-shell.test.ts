@@ -85,7 +85,7 @@ describe("useStudioClientShell", () => {
             wrapper: createWrapper(),
         })
 
-        expect(result.current.prompt).toBe("")
+        // Prompt state is now managed by PromptSection component, not this hook
         expect(result.current.model).toBe("flux")
         expect(result.current.aspectRatio).toBe("1:1")
         expect(result.current.width).toBe(1024)
@@ -97,18 +97,18 @@ describe("useStudioClientShell", () => {
         expect(result.current.isDownloading).toBe(false)
     })
 
-    it("updates prompt and negative prompt", () => {
+    it("exposes addToPromptHistory function", () => {
         const { result } = renderHook(() => useStudioClientShell(), {
             wrapper: createWrapper(),
         })
 
+        expect(result.current.promptHistory).toEqual([])
+
         act(() => {
-            result.current.setPrompt("A sunny day")
-            result.current.setNegativePrompt("clouds")
+            result.current.addToPromptHistory("A sunny day")
         })
 
-        expect(result.current.prompt).toBe("A sunny day")
-        expect(result.current.negativePrompt).toBe("clouds")
+        expect(result.current.promptHistory).toContain("A sunny day")
     })
 
     it("handles aspect ratio change", () => {
@@ -148,12 +148,9 @@ describe("useStudioClientShell", () => {
             wrapper: createWrapper(),
         })
 
+        // handleGenerate now takes prompt as parameter
         act(() => {
-            result.current.setPrompt("A beautiful cat")
-        })
-
-        act(() => {
-            result.current.handleGenerate()
+            result.current.handleGenerate("A beautiful cat")
         })
 
         // Should be generating
@@ -167,7 +164,7 @@ describe("useStudioClientShell", () => {
         expect(result.current.images.length).toBe(1)
         expect(result.current.images[0].prompt).toBe("A beautiful cat")
         expect(result.current.currentImage).toEqual(result.current.images[0])
-        expect(result.current.promptHistory).toContain("A beautiful cat")
+        // Note: addToPromptHistory should be called by the component, not tested here
     })
 
     it("removes an image", async () => {
@@ -175,12 +172,9 @@ describe("useStudioClientShell", () => {
             wrapper: createWrapper(),
         })
 
+        // handleGenerate now takes prompt as parameter
         act(() => {
-            result.current.setPrompt("Image 1")
-        })
-
-        act(() => {
-            result.current.handleGenerate()
+            result.current.handleGenerate("Image 1")
         })
 
         await waitFor(() => {

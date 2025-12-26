@@ -6,27 +6,28 @@
  */
 
 // Layout Components
-export { StudioLayout, type StudioLayoutProps } from "./layout/studio-layout"
 export { StudioHeader, type StudioHeaderProps } from "./layout/studio-header"
+export { StudioLayout, type StudioLayoutProps } from "./layout/studio-layout"
 
 // Control Components
-export { PromptComposer, type PromptComposerProps } from "./controls/prompt-composer"
-export { ModelSelector, type ModelSelectorProps } from "./controls/model-selector"
 export { AspectRatioSelector, type AspectRatioSelectorProps } from "./controls/aspect-ratio-selector"
 export { DimensionControls, type DimensionControlsProps } from "./controls/dimension-controls"
-export { SeedControl, type SeedControlProps } from "./controls/seed-control"
+export { ModelSelector, type ModelSelectorProps } from "./controls/model-selector"
+export { OptionsPanel, type GenerationOptions, type OptionsPanelProps } from "./controls/options-panel"
+export { PromptComposer, type PromptComposerProps } from "./controls/prompt-composer"
+export { PromptSection, type PromptSectionAPI, type PromptSectionProps } from "./controls/prompt-section"
 export { ReferenceImagePicker } from "./controls/reference-image-picker"
-export { OptionsPanel, type OptionsPanelProps, type GenerationOptions } from "./controls/options-panel"
+export { SeedControl, type SeedControlProps } from "./controls/seed-control"
 
 // Canvas Components
 export { ImageCanvas, type ImageCanvasProps } from "./canvas/image-canvas"
-export { ImageToolbar, type ImageToolbarProps } from "./canvas/image-toolbar"
 export { ImageMetadata, type ImageMetadataProps } from "./canvas/image-metadata"
+export { ImageToolbar, type ImageToolbarProps } from "./canvas/image-toolbar"
 
 // Gallery Components
+export { GalleryThumbnail, type GalleryThumbnailProps } from "./gallery/gallery-thumbnail"
 export { ImageGallery, type ImageGalleryProps } from "./gallery/image-gallery"
 export { PersistentImageGallery } from "./gallery/persistent-image-gallery"
-export { GalleryThumbnail, type GalleryThumbnailProps } from "./gallery/gallery-thumbnail"
 
 // Onboarding Components
 export { ApiKeyOnboardingModal } from "./api-key-onboarding-modal"

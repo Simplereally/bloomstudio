@@ -11,7 +11,7 @@
  */
 export const OPENROUTER_MODELS = {
   /** Fast, cost-effective model for prompt enhancement */
-  PROMPT_ENHANCEMENT: "google/gemini-2.0-flash-001",
+  PROMPT_ENHANCEMENT: "xiaomi/mimo-v2-flash:free",
 } as const
 
 export type OpenRouterModel =

@@ -17,26 +17,19 @@ import {
     ImageToolbar,
     ModelSelector,
     OptionsPanel,
-    PromptComposer,
+    PromptSection,
+    type PromptSectionAPI,
     ReferenceImagePicker,
     SeedControl,
     StudioHeader,
     StudioLayout,
 } from "@/components/studio"
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogOverlay,
-    DialogPortal,
-    DialogTitle,
-} from "@/components/ui/dialog"
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
+import { ImageLightbox } from "@/components/ui/image-lightbox"
 
 // Types and utilities
-import { useEnhancePrompt, useImageModels } from "@/hooks/queries"
+import { GeneratedImage, useEnhancePrompt, useImageModels } from "@/hooks/queries"
 import { useStudioClientShell } from "@/hooks/use-studio-client-shell"
-import { setInputValueWithUndo } from "@/lib/utils/set-input-value-with-undo"
+import { getModelSupportsNegativePrompt } from "@/lib/config/models"
 import { useTheme } from "next-themes"
 import * as React from "react"
 
@@ -46,10 +39,6 @@ interface StudioClientShellProps {
 
 export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
     const {
-        prompt,
-        setPrompt,
-        negativePrompt,
-        setNegativePrompt,
         model,
         setModel,
         aspectRatio,
@@ -74,6 +63,7 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
         currentImage,
         setCurrentImage,
         promptHistory,
+        addToPromptHistory,
         handleAspectRatioChange,
         handleWidthChange,
         handleHeightChange,
@@ -95,9 +85,11 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
     const { models, isLoading: isLoadingModels } = useImageModels()
     const { theme, setTheme } = useTheme()
 
-    // Refs for textareas - used for undo-friendly value setting
-    const promptTextareaRef = React.useRef<HTMLTextAreaElement>(null)
-    const negativePromptTextareaRef = React.useRef<HTMLTextAreaElement>(null)
+    // Ref for accessing prompt values without causing re-renders
+    const promptSectionRef = React.useRef<PromptSectionAPI>(null)
+    
+    // Local state for generate button - only updates when prompt content changes
+    const [hasPromptContent, setHasPromptContent] = React.useState(false)
 
     // Prompt enhancement for main prompt
     const {
@@ -106,15 +98,8 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
         isEnhancing: isEnhancingMainPrompt,
     } = useEnhancePrompt({
         onSuccess: (enhancedText: string) => {
-            // Use setInputValueWithUndo to preserve browser's native Ctrl+Z undo
-            if (promptTextareaRef.current) {
-                setInputValueWithUndo(promptTextareaRef.current, enhancedText)
-                // Also update React state to keep it in sync
-                setPrompt(enhancedText)
-            } else {
-                // Fallback if ref is not available
-                setPrompt(enhancedText)
-            }
+            promptSectionRef.current?.setPrompt(enhancedText)
+            setHasPromptContent(enhancedText.trim().length > 0)
         },
     })
 
@@ -125,48 +110,55 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
         isEnhancing: isEnhancingNegPrompt,
     } = useEnhancePrompt({
         onSuccess: (enhancedText: string) => {
-            // Use setInputValueWithUndo to preserve browser's native Ctrl+Z undo
-            if (negativePromptTextareaRef.current) {
-                setInputValueWithUndo(negativePromptTextareaRef.current, enhancedText)
-                // Also update React state to keep it in sync
-                setNegativePrompt(enhancedText)
-            } else {
-                // Fallback if ref is not available
-                setNegativePrompt(enhancedText)
-            }
+            promptSectionRef.current?.setNegativePrompt(enhancedText)
         },
     })
 
+    // Handlers that read from ref (no state dependency on prompt values)
     const handleEnhancePrompt = React.useCallback(() => {
-        enhanceMainPrompt({ prompt, type: "prompt" })
-    }, [enhanceMainPrompt, prompt])
+        const currentPrompt = promptSectionRef.current?.getPrompt() ?? ""
+        enhanceMainPrompt({ prompt: currentPrompt, type: "prompt" })
+    }, [enhanceMainPrompt])
 
     const handleEnhanceNegativePrompt = React.useCallback(() => {
-        enhanceNegPrompt({ prompt, negativePrompt, type: "negative" })
-    }, [enhanceNegPrompt, prompt, negativePrompt])
+        const currentPrompt = promptSectionRef.current?.getPrompt() ?? ""
+        const currentNegativePrompt = promptSectionRef.current?.getNegativePrompt() ?? ""
+        enhanceNegPrompt({ prompt: currentPrompt, negativePrompt: currentNegativePrompt, type: "negative" })
+    }, [enhanceNegPrompt])
 
-    // Stable callbacks for PromptComposer - use refs to avoid recreating on every keystroke
-    const promptRef = React.useRef(prompt)
-    React.useEffect(() => {
-        promptRef.current = prompt
-    }, [prompt])
-
+    // Handle history selection (updates prompt via ref)
     const handleSelectHistory = React.useCallback((p: string) => {
-        if (promptTextareaRef.current) {
-            setInputValueWithUndo(promptTextareaRef.current, p)
-        }
-        setPrompt(p)
-    }, [setPrompt])
+        promptSectionRef.current?.setPrompt(p)
+        setHasPromptContent(p.trim().length > 0)
+    }, [])
 
-    const handleAddSuggestion = React.useCallback((s: string) => {
-        const newPrompt = `${promptRef.current} ${s}`.trim()
-        if (promptTextareaRef.current) {
-            setInputValueWithUndo(promptTextareaRef.current, newPrompt)
-        }
-        setPrompt(newPrompt)
-    }, [setPrompt])
+    // Handle generate - reads prompt values from ref at submission time
+    const handleGenerateClick = React.useCallback(() => {
+        const currentPrompt = promptSectionRef.current?.getPrompt() ?? ""
+        const currentNegativePrompt = promptSectionRef.current?.getNegativePrompt() ?? ""
+        
+        if (!currentPrompt.trim()) return
+        
+        // Add to history
+        addToPromptHistory(currentPrompt.trim())
+        
+        // Call the generation handler with current prompt values
+        handleGenerate(currentPrompt.trim(), currentNegativePrompt.trim())
+    }, [handleGenerate, addToPromptHistory])
 
-    // Stable suggestions array - avoid recreating on every render
+    // Keyboard shortcut for Cmd/Ctrl + Enter to generate
+    React.useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !isGenerating) {
+                e.preventDefault()
+                handleGenerateClick()
+            }
+        }
+        window.addEventListener("keydown", handleKeyDown)
+        return () => window.removeEventListener("keydown", handleKeyDown)
+    }, [isGenerating, handleGenerateClick])
+
+    // Stable suggestions array
     const suggestions = React.useMemo(() => ["cinematic lighting", "8k ultra HD", "detailed"], [])
 
     // Sidebar content
@@ -174,25 +166,21 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
         <div className="h-full flex flex-col bg-card/50 backdrop-blur-sm border-r border-border/50">
             <ScrollArea className="flex-1">
                 <div className="p-4 space-y-5">
-                    {/* Prompt Section */}
-                    <PromptComposer
-                        prompt={prompt}
-                        onPromptChange={setPrompt}
-                        negativePrompt={negativePrompt}
-                        onNegativePromptChange={setNegativePrompt}
+                    {/* Prompt Section - uses uncontrolled inputs internally */}
+                    <PromptSection
+                        apiRef={promptSectionRef}
                         isGenerating={isGenerating}
+                        showNegativePrompt={getModelSupportsNegativePrompt(model)}
                         promptHistory={promptHistory}
                         onSelectHistory={handleSelectHistory}
                         suggestions={suggestions}
-                        onAddSuggestion={handleAddSuggestion}
                         isEnhancingPrompt={isEnhancingMainPrompt}
                         onEnhancePrompt={handleEnhancePrompt}
                         onCancelEnhancePrompt={cancelMainPromptEnhance}
                         isEnhancingNegativePrompt={isEnhancingNegPrompt}
                         onEnhanceNegativePrompt={handleEnhanceNegativePrompt}
                         onCancelEnhanceNegativePrompt={cancelNegPromptEnhance}
-                        promptTextareaRef={promptTextareaRef}
-                        negativePromptTextareaRef={negativePromptTextareaRef}
+                        onContentChange={setHasPromptContent}
                     />
 
                     <Separator className="bg-border/50" />
@@ -255,8 +243,8 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
             {/* Generate Button */}
             <div className="p-4 border-t border-border/50 bg-card/80">
                 <Button
-                    onClick={handleGenerate}
-                    disabled={isGenerating || !prompt.trim()}
+                    onClick={handleGenerateClick}
+                    disabled={isGenerating || !hasPromptContent}
                     className="w-full h-11 text-base font-semibold"
                     size="lg"
                 >
@@ -276,13 +264,19 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
         </div>
     )
 
+    const handleSelectGalleryImage = React.useCallback((image: GeneratedImage) => {
+        setCurrentImage(image)
+        setIsFullscreen(true)
+    }, [setCurrentImage, setIsFullscreen])
+
     // Canvas content with toolbar and metadata
     const canvasContent = (
-        <div className="h-full flex flex-col bg-background/50">
-            <div className="flex-1 relative group p-4">
+        <div className="h-full flex flex-col bg-background/50 overflow-hidden">
+            <div className="flex-1 min-h-0 relative group p-4 overflow-hidden">
                 <ImageCanvas
                     image={currentImage}
                     isGenerating={isGenerating}
+                    onImageClick={() => setIsFullscreen(true)}
                     className="h-full"
                 />
                 <ImageToolbar
@@ -308,7 +302,7 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
         <div className="h-full bg-card/50 backdrop-blur-sm border-l border-border/50">
             <ImageGallery
                 activeImageId={currentImage?.id}
-                onSelectImage={setCurrentImage}
+                onSelectImage={handleSelectGalleryImage}
                 onRemoveImage={handleRemoveImage}
                 onDownloadImage={handleDownload}
                 onCopyImageUrl={handleCopyUrl}
@@ -353,49 +347,11 @@ export function StudioClientShell({ defaultLayout }: StudioClientShellProps) {
             <ApiKeyOnboardingModal />
 
             {/* Fullscreen Preview Modal */}
-            <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
-                <DialogPortal>
-                    <DialogOverlay className="bg-black/90 backdrop-blur-sm z-[100]" />
-                    <DialogContent
-                        className="!fixed !inset-0 !z-[101] !flex !items-center !justify-center !border-none !bg-transparent !p-0 !shadow-none !w-screen !h-screen !max-w-none !translate-x-0 !translate-y-0 !outline-none"
-                        showCloseButton={true}
-                    >
-                        <VisuallyHidden>
-                            <DialogTitle>Fullscreen Preview</DialogTitle>
-                            <DialogDescription>
-                                Previewing generated image in full size: {currentImage?.prompt}
-                            </DialogDescription>
-                        </VisuallyHidden>
-
-                        {currentImage && (
-                            <div className="relative w-full h-full flex items-center justify-center p-4" onClick={() => setIsFullscreen(false)}>
-                                {/* eslint-disable-next-line @next/next/no-img-element -- External generated image URLs */}
-                                <img
-                                    src={currentImage.url}
-                                    alt={currentImage.prompt}
-                                    className="max-w-full max-h-full object-contain drop-shadow-2xl"
-                                    onClick={(e) => e.stopPropagation()}
-                                />
-
-                                {/* Info overlay on hover/mobile */}
-                                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-md border border-white/10 px-6 py-3 rounded-full opacity-0 hover:opacity-100 transition-opacity duration-300 hidden md:flex items-center gap-4 text-white">
-                                    <p className="text-sm font-medium truncate max-w-md">
-                                        {currentImage.prompt}
-                                    </p>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs bg-white/20 px-2 py-0.5 rounded">
-                                            {currentImage.params.width}x{currentImage.params.height}
-                                        </span>
-                                        <span className="text-xs bg-white/20 px-2 py-0.5 rounded">
-                                            {currentImage.params.model}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </DialogContent>
-                </DialogPortal>
-            </Dialog>
+            <ImageLightbox 
+                image={currentImage} 
+                isOpen={isFullscreen} 
+                onClose={() => setIsFullscreen(false)} 
+            />
         </div>
     )
 }

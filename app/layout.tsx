@@ -1,11 +1,11 @@
-import type React from "react"
-import type { Metadata } from "next"
-import { Geist, Geist_Mono } from "next/font/google"
-import { Analytics } from "@vercel/analytics/next"
-import { ClerkProvider } from "@clerk/nextjs"
+import { ClerkThemeProvider } from "@/components/clerk-theme-provider"
 import { ConvexClientProvider, QueryProvider } from "@/components/providers"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
+import { Analytics } from "@vercel/analytics/next"
+import type { Metadata } from "next"
+import { Geist, Geist_Mono } from "next/font/google"
+import type React from "react"
 import "./globals.css"
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist-sans" })
@@ -41,26 +41,26 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <ClerkProvider>
-      <ConvexClientProvider>
-        <QueryProvider>
-          <html lang="en" suppressHydrationWarning>
-            <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased`}>
-              <ThemeProvider
-                attribute="class"
-                defaultTheme="dark"
-                enableSystem
-                disableTransitionOnChange
-              >
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased`}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <ClerkThemeProvider>
+            <ConvexClientProvider>
+              <QueryProvider>
                 {children}
                 <Toaster position="bottom-right" richColors closeButton />
-              </ThemeProvider>
-              <Analytics />
-            </body>
-          </html>
-        </QueryProvider>
-      </ConvexClientProvider>
-    </ClerkProvider>
+              </QueryProvider>
+            </ConvexClientProvider>
+          </ClerkThemeProvider>
+        </ThemeProvider>
+        <Analytics />
+      </body>
+    </html>
   )
 }
 

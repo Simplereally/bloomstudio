@@ -5,7 +5,6 @@
  * Follows SRP: Only manages model selection UI
  */
 
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import {
@@ -13,15 +12,14 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { getModel, getModelDisplayName } from "@/lib/config/models"
 import type { ImageModelInfo } from "@/lib/schemas/pollinations.schema"
 import {
-    Box,
     Camera,
     Cloud,
-    Moon,
-    Palette,
     PenTool,
     Sparkles,
+    Video,
     Wand2,
     Zap,
 } from "lucide-react"
@@ -42,34 +40,25 @@ export interface ModelSelectorProps {
     className?: string
 }
 
-// Map model names to icons
-const MODEL_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-    flux: Sparkles,
-    turbo: Zap,
-    gptimage: Camera,
-    kontext: PenTool,
-    seedream: Cloud,
-    "seedream-pro": Cloud,
-    // Legacy fallbacks
-    "flux-realism": Camera,
-    "flux-anime": Palette,
-    "flux-3d": Box,
-    "any-dark": Moon,
-}
-
-// Map model names to style badges
-const MODEL_BADGES: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
-    turbo: { label: "Fast", variant: "secondary" },
-    gptimage: { label: "GPT", variant: "default" },
-    "seedream-pro": { label: "Pro", variant: "default" },
+// Map icon names to Lucide components
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+    sparkles: Sparkles,
+    zap: Zap,
+    camera: Camera,
+    "pen-tool": PenTool,
+    cloud: Cloud,
+    video: Video,
 }
 
 /**
- * Get display name for a model
+ * Get icon component for a model
  */
-function getModelDisplayName(model: ImageModelInfo): string {
-    // Capitalize and format the model name
-    return model.name.charAt(0).toUpperCase() + model.name.slice(1)
+function getModelIcon(modelId: string): React.ComponentType<{ className?: string }> {
+    const model = getModel(modelId)
+    if (model?.icon && ICON_MAP[model.icon]) {
+        return ICON_MAP[model.icon]
+    }
+    return Wand2
 }
 
 export const ModelSelector = React.memo(function ModelSelector({
@@ -89,9 +78,9 @@ export const ModelSelector = React.memo(function ModelSelector({
                 </Label>
                 <div className="grid grid-cols-2 gap-2" data-testid="model-cards">
                     {models.map((model) => {
-                        const Icon = MODEL_ICONS[model.name] || Wand2
-                        const badge = MODEL_BADGES[model.name]
+                        const Icon = getModelIcon(model.name)
                         const isSelected = selectedModel === model.name
+                        const displayName = getModelDisplayName(model.name)
 
                         return (
                             <Button
@@ -105,16 +94,8 @@ export const ModelSelector = React.memo(function ModelSelector({
                                 <div className="flex items-center gap-2 w-full">
                                     <Icon className={`h-4 w-4 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
                                     <span className="text-sm font-medium truncate">
-                                        {getModelDisplayName(model)}
+                                        {displayName}
                                     </span>
-                                    {badge && (
-                                        <Badge
-                                            variant={badge.variant}
-                                            className="ml-auto text-[10px] px-1.5 py-0"
-                                        >
-                                            {badge.label}
-                                        </Badge>
-                                    )}
                                 </div>
                                 <span className="text-xs text-muted-foreground line-clamp-1">
                                     {model.description || "Image generation model"}
@@ -136,8 +117,9 @@ export const ModelSelector = React.memo(function ModelSelector({
             </Label>
             <div className="flex flex-wrap gap-1" data-testid="model-buttons">
                 {models.map((model) => {
-                    const Icon = MODEL_ICONS[model.name] || Wand2
+                    const Icon = getModelIcon(model.name)
                     const isSelected = selectedModel === model.name
+                    const displayName = getModelDisplayName(model.name)
 
                     return (
                         <Tooltip key={model.name}>
@@ -151,11 +133,11 @@ export const ModelSelector = React.memo(function ModelSelector({
                                     data-testid={`model-button-${model.name}`}
                                 >
                                     <Icon className="h-3.5 w-3.5" />
-                                    <span className="text-xs font-medium">{getModelDisplayName(model)}</span>
+                                    <span className="text-xs font-medium">{displayName}</span>
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent side="bottom" className="flex flex-col items-center text-center">
-                                <p className="font-medium">{getModelDisplayName(model)}</p>
+                                <p className="font-medium">{displayName}</p>
                                 <p className="text-xs text-muted-foreground">
                                     {model.description || "Image generation model"}
                                 </p>

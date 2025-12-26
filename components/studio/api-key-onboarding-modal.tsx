@@ -6,23 +6,22 @@
  * A sleek onboarding flow for users to set up their Pollinations API key.
  * Shows automatically when an authenticated user doesn't have an API key saved.
  */
-import * as React from "react"
-import { useQuery, useMutation } from "convex/react"
-import { api } from "@/convex/_generated/api"
+import { Button } from "@/components/ui/button"
 import {
     Dialog,
     DialogContent,
     DialogTitle,
 } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { api } from "@/convex/_generated/api"
+import { useConvexAuth, useMutation, useQuery } from "convex/react"
 import {
     ExternalLink,
     Key,
-    Check,
     Loader2,
-    Save,
+    Save
 } from "lucide-react"
+import * as React from "react"
 import { toast } from "sonner"
 
 interface ApiKeyOnboardingModalProps {
@@ -36,29 +35,43 @@ export function ApiKeyOnboardingModal({ onComplete }: ApiKeyOnboardingModalProps
     const [isOpen, setIsOpen] = React.useState(false)
 
     // Check if user has an API key
-    const existingApiKey = useQuery(api.users.getPollinationsApiKey)
+    const { isAuthenticated, isLoading: isLoadingAuth } = useConvexAuth()
+    const existingApiKey = useQuery(api.users.getPollinationsApiKey, isAuthenticated ? {} : "skip")
     const getOrCreateUser = useMutation(api.users.getOrCreateUser)
+
+    // Use ref to avoid dependency array issues with Convex mutations
+    const getOrCreateUserRef = React.useRef(getOrCreateUser)
+    React.useEffect(() => {
+        getOrCreateUserRef.current = getOrCreateUser
+    }, [getOrCreateUser])
 
     // Initialize user on mount and show modal if no API key
     React.useEffect(() => {
+        if (isLoadingAuth || !isAuthenticated) return
+
         const initUser = async () => {
             try {
-                await getOrCreateUser()
+                await getOrCreateUserRef.current()
             } catch (error) {
                 console.error("Error initializing user:", error)
             }
         }
         initUser()
-    }, [getOrCreateUser])
+    }, [isAuthenticated, isLoadingAuth])
 
     // Show modal if user doesn't have an API key
     React.useEffect(() => {
+        if (isLoadingAuth || !isAuthenticated) {
+            setIsOpen(false)
+            return
+        }
+
         if (existingApiKey === null) {
             setIsOpen(true)
         } else if (existingApiKey !== undefined) {
             setIsOpen(false)
         }
-    }, [existingApiKey])
+    }, [existingApiKey, isAuthenticated, isLoadingAuth])
 
     const handleSaveApiKey = async () => {
         if (!apiKey.trim()) {

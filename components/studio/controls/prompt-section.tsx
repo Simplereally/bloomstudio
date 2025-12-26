@@ -1,8 +1,16 @@
 "use client"
 
 /**
- * PromptComposer - Enhanced prompt input with negative prompt support
- * Follows SRP: Only manages prompt text input and composition
+ * PromptSection - Self-contained prompt input section
+ * 
+ * This component manages its own state internally to prevent re-render cascades.
+ * It uses uncontrolled inputs for maximum typing performance.
+ * 
+ * Design:
+ * - Uncontrolled inputs (uses defaultValue, not value)
+ * - Local state only for UI elements (character count)
+ * - Refs for reading values on-demand
+ * - Parent only needs to care about values at submission time
  */
 
 import { Badge } from "@/components/ui/badge"
@@ -29,19 +37,13 @@ import {
 } from "lucide-react"
 import * as React from "react"
 
-export interface PromptComposerProps {
-    /** Current prompt value */
-    prompt: string
-    /** Callback when prompt changes */
-    onPromptChange: (value: string) => void
-    /** Current negative prompt value */
-    negativePrompt?: string
-    /** Callback when negative prompt changes */
-    onNegativePromptChange?: (value: string) => void
-    /** Whether generation is in progress */
-    isGenerating?: boolean
+export interface PromptSectionProps {
     /** Maximum character limit for prompt */
     maxLength?: number
+    /** Whether generation is in progress */
+    isGenerating?: boolean
+    /** Whether to show the negative prompt section (model-dependent) */
+    showNegativePrompt?: boolean
     /** Recent prompts for history */
     promptHistory?: string[]
     /** Callback when a history item is selected */
@@ -50,8 +52,6 @@ export interface PromptComposerProps {
     suggestions?: string[]
     /** Callback when a suggestion is clicked */
     onAddSuggestion?: (suggestion: string) => void
-    /** Additional class names */
-    className?: string
     /** Whether the main prompt is being enhanced */
     isEnhancingPrompt?: boolean
     /** Callback to trigger prompt enhancement */
@@ -64,60 +64,153 @@ export interface PromptComposerProps {
     onEnhanceNegativePrompt?: () => void
     /** Callback to cancel negative prompt enhancement */
     onCancelEnhanceNegativePrompt?: () => void
-    /** Ref for the main prompt textarea (for undo-friendly value setting) */
-    promptTextareaRef?: React.RefObject<HTMLTextAreaElement | null>
-    /** Ref for the negative prompt textarea (for undo-friendly value setting) */
-    negativePromptTextareaRef?: React.RefObject<HTMLTextAreaElement | null>
+    /** Callback when prompt content changes (for enabling/disabling generate button) */
+    onContentChange?: (hasContent: boolean) => void
+    /** Additional class names */
+    className?: string
+    /** Ref to expose prompt reading functions to parent */
+    apiRef?: React.RefObject<PromptSectionAPI | null>
 }
 
-export const PromptComposer = React.memo(function PromptComposer({
-    prompt,
-    onPromptChange,
-    negativePrompt = "",
-    onNegativePromptChange,
-    isGenerating = false,
+export interface PromptSectionAPI {
+    getPrompt: () => string
+    getNegativePrompt: () => string
+    setPrompt: (value: string) => void
+    setNegativePrompt: (value: string) => void
+    focusPrompt: () => void
+}
+
+export function PromptSection({
     maxLength = 2000,
+    isGenerating = false,
+    showNegativePrompt = true,
     promptHistory = [],
     onSelectHistory,
     suggestions = [],
     onAddSuggestion,
-    className,
     isEnhancingPrompt = false,
     onEnhancePrompt,
     onCancelEnhancePrompt,
     isEnhancingNegativePrompt = false,
     onEnhanceNegativePrompt,
     onCancelEnhanceNegativePrompt,
-    promptTextareaRef,
-    negativePromptTextareaRef,
-}: PromptComposerProps) {
+    onContentChange,
+    className,
+    apiRef,
+}: PromptSectionProps) {
+    // UI-only state (doesn't affect parent)
     const [showNegative, setShowNegative] = React.useState(false)
     const [showHistory, setShowHistory] = React.useState(false)
-    const internalPromptRef = React.useRef<HTMLTextAreaElement>(null)
-    const internalNegativePromptRef = React.useRef<HTMLTextAreaElement>(null)
+    const [characterCount, setCharacterCount] = React.useState(0)
+    const [hasContent, setHasContent] = React.useState(false)
 
-    // Use provided refs or fall back to internal refs
-    const textareaRef = promptTextareaRef ?? internalPromptRef
-    const negativeTextareaRef = negativePromptTextareaRef ?? internalNegativePromptRef
+    // Refs for uncontrolled inputs
+    const promptRef = React.useRef<HTMLTextAreaElement>(null)
+    const negativePromptRef = React.useRef<HTMLTextAreaElement>(null)
 
-    const characterCount = prompt.length
+    // Debounce timer ref for parent notification
+    const debounceTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
+    // Debounced parent notification (300ms) - reduces re-renders of generate button
+    const notifyParentDebounced = React.useCallback((newHasContent: boolean) => {
+        if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current)
+        }
+        debounceTimerRef.current = setTimeout(() => {
+            onContentChange?.(newHasContent)
+        }, 300)
+    }, [onContentChange])
+
+    // Cleanup debounce timer on unmount
+    React.useEffect(() => {
+        return () => {
+            if (debounceTimerRef.current) {
+                clearTimeout(debounceTimerRef.current)
+            }
+        }
+    }, [])
+
+    // Immediate update for local UI, debounced for parent
+    const updateContentState = React.useCallback((newHasContent: boolean, length: number) => {
+        setCharacterCount(length)
+        setHasContent(newHasContent)
+        notifyParentDebounced(newHasContent)
+    }, [notifyParentDebounced])
+
+    // Immediate parent notification (for non-typing actions like history select, clear)
+    const updateContentStateImmediate = React.useCallback((newHasContent: boolean, length: number) => {
+        setCharacterCount(length)
+        setHasContent(newHasContent)
+        // Clear any pending debounce and notify immediately
+        if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current)
+        }
+        onContentChange?.(newHasContent)
+    }, [onContentChange])
+
+    // API exposed to parent via ref
+    React.useImperativeHandle(apiRef, () => ({
+        getPrompt: () => promptRef.current?.value ?? "",
+        getNegativePrompt: () => negativePromptRef.current?.value ?? "",
+        setPrompt: (value: string) => {
+            if (promptRef.current) {
+                promptRef.current.value = value
+                updateContentStateImmediate(value.length > 0, value.length)
+            }
+        },
+        setNegativePrompt: (value: string) => {
+            if (negativePromptRef.current) {
+                negativePromptRef.current.value = value
+            }
+        },
+        focusPrompt: () => promptRef.current?.focus(),
+    }), [updateContentStateImmediate])
+
     const isNearLimit = characterCount > maxLength * 0.9
+
+    // Handle input changes - update local UI state immediately, notify parent debounced
+    const handlePromptInput = React.useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const value = e.target.value
+        updateContentState(value.length > 0, value.length)
+    }, [updateContentState])
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         // Submit on Ctrl/Cmd + Enter
         if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
             e.preventDefault()
-            // Parent should handle submission
+            // Parent should handle submission via keyboard event listener
         }
     }
 
     const clearPrompt = () => {
-        onPromptChange("")
-        textareaRef.current?.focus()
+        if (promptRef.current) {
+            promptRef.current.value = ""
+            updateContentStateImmediate(false, 0)
+            promptRef.current.focus()
+        }
+    }
+
+    const handleHistorySelect = (historyPrompt: string) => {
+        if (promptRef.current) {
+            promptRef.current.value = historyPrompt
+            updateContentStateImmediate(historyPrompt.length > 0, historyPrompt.length)
+        }
+        onSelectHistory?.(historyPrompt)
+        setShowHistory(false)
+    }
+
+    const handleSuggestionClick = (suggestion: string) => {
+        if (promptRef.current) {
+            const current = promptRef.current.value
+            const newValue = `${current} ${suggestion}`.trim()
+            promptRef.current.value = newValue
+            updateContentStateImmediate(newValue.length > 0, newValue.length)
+        }
+        onAddSuggestion?.(suggestion)
     }
 
     return (
-        <div className={`space-y-3 ${className || ""}`} data-testid="prompt-composer">
+        <div className={`space-y-3 ${className || ""}`} data-testid="prompt-section">
             {/* Main Prompt */}
             <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -157,18 +250,18 @@ export const PromptComposer = React.memo(function PromptComposer({
 
                 <div className="relative">
                     <Textarea
-                        ref={textareaRef}
+                        ref={promptRef}
                         id="prompt"
                         placeholder="Describe the image you want to create..."
-                        value={prompt}
-                        onChange={(e) => onPromptChange(e.target.value)}
+                        defaultValue=""
+                        onChange={handlePromptInput}
                         onKeyDown={handleKeyDown}
                         disabled={isGenerating || isEnhancingPrompt}
                         maxLength={maxLength}
                         className="min-h-24 resize-none pr-8 pb-10 bg-background/50 border-border/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all duration-200"
                         data-testid="prompt-input"
                     />
-                    {prompt && !isGenerating && !isEnhancingPrompt && (
+                    {hasContent && !isGenerating && !isEnhancingPrompt && (
                         <Button
                             type="button"
                             variant="ghost"
@@ -183,7 +276,7 @@ export const PromptComposer = React.memo(function PromptComposer({
                     {onEnhancePrompt && onCancelEnhancePrompt && (
                         <EnhanceButton
                             isEnhancing={isEnhancingPrompt}
-                            disabled={!prompt.trim() || isGenerating}
+                            disabled={!hasContent || isGenerating}
                             onEnhance={onEnhancePrompt}
                             onCancel={onCancelEnhancePrompt}
                         />
@@ -201,10 +294,7 @@ export const PromptComposer = React.memo(function PromptComposer({
                                 key={index}
                                 variant="ghost"
                                 className="w-full justify-start text-left text-sm h-auto p-2"
-                                onClick={() => {
-                                    onSelectHistory?.(historyPrompt)
-                                    setShowHistory(false)
-                                }}
+                                onClick={() => handleHistorySelect(historyPrompt)}
                             >
                                 <span className="line-clamp-2">{historyPrompt}</span>
                             </Button>
@@ -221,7 +311,7 @@ export const PromptComposer = React.memo(function PromptComposer({
                                 key={index}
                                 variant="secondary"
                                 className="cursor-pointer hover:bg-primary/20 transition-colors text-xs"
-                                onClick={() => onAddSuggestion?.(suggestion)}
+                                onClick={() => handleSuggestionClick(suggestion)}
                             >
                                 + {suggestion}
                             </Badge>
@@ -230,8 +320,8 @@ export const PromptComposer = React.memo(function PromptComposer({
                 )}
             </div>
 
-            {/* Negative Prompt (Collapsible) */}
-            {onNegativePromptChange && (
+            {/* Negative Prompt (Collapsible) - Only shown for models that support it */}
+            {showNegativePrompt && (
                 <Collapsible open={showNegative} onOpenChange={setShowNegative}>
                     <CollapsibleTrigger asChild>
                         <Button
@@ -250,10 +340,9 @@ export const PromptComposer = React.memo(function PromptComposer({
                     <CollapsibleContent className="pt-2">
                         <div className="relative">
                             <Textarea
-                                ref={negativeTextareaRef}
+                                ref={negativePromptRef}
                                 placeholder="What to avoid in the image..."
-                                value={negativePrompt}
-                                onChange={(e) => onNegativePromptChange?.(e.target.value)}
+                                defaultValue=""
                                 disabled={isGenerating || isEnhancingNegativePrompt}
                                 className="min-h-16 resize-none pb-10 bg-background/50 border-border/50 text-sm"
                                 data-testid="negative-prompt-input"
@@ -261,7 +350,7 @@ export const PromptComposer = React.memo(function PromptComposer({
                             {onEnhanceNegativePrompt && onCancelEnhanceNegativePrompt && (
                                 <EnhanceButton
                                     isEnhancing={isEnhancingNegativePrompt}
-                                    disabled={!prompt.trim() || isGenerating}
+                                    disabled={!hasContent || isGenerating}
                                     onEnhance={onEnhanceNegativePrompt}
                                     onCancel={onCancelEnhanceNegativePrompt}
                                 />
@@ -272,4 +361,4 @@ export const PromptComposer = React.memo(function PromptComposer({
             )}
         </div>
     )
-})
+}

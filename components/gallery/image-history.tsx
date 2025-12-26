@@ -1,13 +1,14 @@
 "use client"
 
-import { useImageHistory } from "@/hooks/queries/use-image-history"
+import { VisibilityToggle } from "@/components/gallery/visibility-toggle"
+import { DeleteImageDialog } from "@/components/studio/delete-image-dialog"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import Image from "next/image"
-import { Loader2 } from "lucide-react"
 import { useDeleteGeneratedImage } from "@/hooks/mutations/use-delete-image"
-import { DeleteImageDialog } from "@/components/studio/delete-image-dialog"
-import { VisibilityToggle } from "@/components/gallery/visibility-toggle"
+import { useImageHistory } from "@/hooks/queries/use-image-history"
+import { getModelDisplayName } from "@/lib/config/models"
+import { Loader2 } from "lucide-react"
+import Image from "next/image"
 
 /**
  * Component to display the user's generated image history.
@@ -71,7 +72,7 @@ export function ImageHistory() {
                             </p>
                             <div className="flex items-center justify-between gap-2">
                                 <span className="text-[10px] text-white/60 font-mono truncate">
-                                    {image.model}
+                                    {getModelDisplayName(image.model) || image.model}
                                 </span>
                                 <div className="flex items-center gap-1">
                                     <VisibilityToggle

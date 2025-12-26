@@ -1,10 +1,13 @@
 "use client"
 
-import { usePublicFeed } from "@/hooks/queries/use-image-history"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { usePublicFeed } from "@/hooks/queries/use-image-history"
+import { Heart, Loader2, Share2 } from "lucide-react"
 import Image from "next/image"
-import { Loader2, Share2, Heart } from "lucide-react"
+
+import { ImageLightbox } from "@/components/ui/image-lightbox"
+import { useState } from "react"
 
 /**
  * Component to display the community feed of public AI-generated images.
@@ -12,6 +15,7 @@ import { Loader2, Share2, Heart } from "lucide-react"
  */
 export function CommunityFeed() {
     const { results, status, loadMore } = usePublicFeed()
+    const [selectedImage, setSelectedImage] = useState<any>(null)
 
     const isLoading = status === "LoadingFirstPage"
     const isLoadingMore = status === "LoadingMore"
@@ -58,6 +62,7 @@ export function CommunityFeed() {
                     <div
                         key={image._id}
                         className="group flex flex-col space-y-4 rounded-3xl p-3 bg-card/40 backdrop-blur-sm border border-border/50 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/5 cursor-pointer hover:border-primary/20"
+                        onClick={() => setSelectedImage(image)}
                     >
                         <div className="relative aspect-square rounded-2xl overflow-hidden shadow-inner">
                             <Image
@@ -70,10 +75,26 @@ export function CommunityFeed() {
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
                                 <div className="flex items-center gap-2">
-                                    <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md">
+                                    <Button 
+                                        size="icon" 
+                                        variant="ghost" 
+                                        className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md"
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            // Handle like logic here
+                                        }}
+                                    >
                                         <Heart className="h-4 w-4" />
                                     </Button>
-                                    <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md">
+                                    <Button 
+                                        size="icon" 
+                                        variant="ghost" 
+                                        className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md"
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            // Handle share logic here
+                                        }}
+                                    >
                                         <Share2 className="h-4 w-4" />
                                     </Button>
                                 </div>
@@ -85,7 +106,7 @@ export function CommunityFeed() {
                             </p>
                             <div className="flex items-center justify-between">
                                 <span className="text-[11px] text-muted-foreground bg-muted px-2 py-1 rounded-full font-mono">
-                                    {image.model}
+                                    {getModelDisplayName(image.model) || image.model}
                                 </span>
                                 <span className="text-[10px] text-muted-foreground/60">
                                     {new Date(image.createdAt || image._creationTime).toLocaleDateString()}
@@ -115,8 +136,25 @@ export function CommunityFeed() {
                     </Button>
                 </div>
             )}
+
+            <ImageLightbox 
+                image={selectedImage ? {
+                    ...selectedImage,
+                    id: selectedImage._id,
+                    params: selectedImage.generationParams || {
+                        model: selectedImage.model,
+                        width: selectedImage.width || 1024,
+                        height: selectedImage.height || 1024,
+                        seed: selectedImage.seed
+                    }
+                } : null}
+                isOpen={!!selectedImage}
+                onClose={() => setSelectedImage(null)}
+            />
         </div>
     )
 }
 
+import { getModelDisplayName } from "@/lib/config/models"
 import Link from "next/link"
+

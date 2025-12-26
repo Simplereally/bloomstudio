@@ -36,7 +36,7 @@ export const ASPECT_RATIOS: AspectRatioOption[] = [
  * for backwards compatibility with existing UI code.
  *
  * @see API_CONSTRAINTS in @/lib/config/api.config for the canonical source
- * @see getModelConstraints in @/lib/config/model-constraints for model-specific constraints
+ * @see getModelConstraints in @/lib/config/models for model-specific constraints
  */
 export const DEFAULT_DIMENSIONS = {
   MIN: 64,

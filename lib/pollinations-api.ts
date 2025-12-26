@@ -47,7 +47,8 @@ export class PollinationsAPI {
       queryParams.append("seed", options.seed.toString())
     }
 
-    queryParams.append("quality", "hd")
+    // Quality - just hardcode to highest
+    queryParams.append("quality", "high")
 
     // Guidance scale
     if (options.guidance_scale !== undefined) {

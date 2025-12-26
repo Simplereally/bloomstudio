@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, fireEvent } from "@testing-library/react"
-import userEvent from "@testing-library/user-event"
-import { ModelSelector } from "./model-selector"
 import type { ImageModelInfo } from "@/lib/schemas/pollinations.schema"
+import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+import { ModelSelector } from "./model-selector"
 
 const mockModels: ImageModelInfo[] = [
     { name: "flux", aliases: ["default"], pricing: { currency: "pollen" }, description: "Default balanced model" },
@@ -47,10 +47,10 @@ describe("ModelSelector", () => {
         it("displays formatted model names", () => {
             render(<ModelSelector {...defaultProps} />)
 
-            // Model names should be capitalized
+            // Model names should match their display names in our registry
             expect(screen.getByText("Flux")).toBeInTheDocument()
-            expect(screen.getByText("Turbo")).toBeInTheDocument()
-            expect(screen.getByText("Gptimage")).toBeInTheDocument()
+            expect(screen.getByText("Flux Turbo")).toBeInTheDocument()
+            expect(screen.getByText("GPT 1.0")).toBeInTheDocument()
         })
 
         it("applies selected styling to the active model", () => {
@@ -152,15 +152,6 @@ describe("ModelSelector", () => {
             const fluxCard = screen.getByTestId("model-card-flux")
             // Selected card uses "secondary" variant (tested via class presence)
             expect(fluxCard).toBeInTheDocument()
-        })
-
-        it("displays badges for specific models", () => {
-            render(<ModelSelector {...defaultProps} variant="cards" />)
-
-            // Turbo has "Fast" badge
-            expect(screen.getByText("Fast")).toBeInTheDocument()
-            // gptimage has "GPT" badge
-            expect(screen.getByText("GPT")).toBeInTheDocument()
         })
     })
 

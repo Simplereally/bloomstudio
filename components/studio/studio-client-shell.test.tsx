@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, fireEvent, within, act } from "@testing-library/react"
-import { StudioClientShell } from "./studio-client-shell"
 import { useStudioClientShell } from "@/hooks/use-studio-client-shell"
+import { act, fireEvent, render, screen, within } from "@testing-library/react"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+import { StudioClientShell } from "./studio-client-shell"
 
 // Mock the hook
 vi.mock("@/hooks/use-studio-client-shell", () => ({
@@ -38,6 +38,15 @@ vi.mock("@/components/ui/tooltip", () => ({
     TooltipTrigger: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
     TooltipContent: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
     TooltipProvider: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+}))
+
+// Mock components that use Convex
+vi.mock("@/components/studio/controls/reference-image-picker", () => ({
+    ReferenceImagePicker: () => <div data-testid="reference-image-picker" />
+}))
+
+vi.mock("@/components/studio/api-key-onboarding-modal", () => ({
+    ApiKeyOnboardingModal: () => <div data-testid="api-key-onboarding-modal" />
 }))
 
 // Mock hooks/queries

@@ -8,20 +8,15 @@
  */
 
 import type { GenerationOptions } from "@/components/studio"
-import { useDownloadImage, useGenerateImage } from "@/hooks/queries"
+import { Id } from "@/convex/_generated/dataModel"
 import { useDeleteGeneratedImage } from "@/hooks/mutations/use-delete-image"
+import { useDownloadImage, useGenerateImage } from "@/hooks/queries"
 import { useRandomSeed } from "@/hooks/use-random-seed"
 import {
+    getModel,
     getModelAspectRatios,
-    getModelConstraints,
-    isGPTImageModel,
-    isGPTImageLargeModel,
-    findNearestGPTImageSize,
-    findNearestGPTImageLargeSize
-} from "@/lib/config/model-constraints"
+} from "@/lib/config/models"
 import { showAuthRequiredToast, showErrorToast } from "@/lib/errors"
-import { toast } from "sonner"
-import { Id } from "@/convex/_generated/dataModel"
 import type {
     AspectRatio,
     AspectRatioOption,
@@ -30,16 +25,13 @@ import type {
     ImageModel,
 } from "@/types/pollinations"
 import * as React from "react"
+import { toast } from "sonner"
 
 /**
  * Return type for the useStudioClientShell hook
  */
 export interface UseStudioClientShellReturn {
-    // State
-    prompt: string
-    setPrompt: React.Dispatch<React.SetStateAction<string>>
-    negativePrompt: string
-    setNegativePrompt: React.Dispatch<React.SetStateAction<string>>
+    // State (prompt state now managed by PromptSection component)
     model: ImageModel
     setModel: React.Dispatch<React.SetStateAction<ImageModel>>
     aspectRatio: AspectRatio
@@ -67,6 +59,7 @@ export interface UseStudioClientShellReturn {
     currentImage: GeneratedImage | null
     setCurrentImage: React.Dispatch<React.SetStateAction<GeneratedImage | null>>
     promptHistory: string[]
+    addToPromptHistory: (prompt: string) => void
     isFullscreen: boolean
     setIsFullscreen: React.Dispatch<React.SetStateAction<boolean>>
     isDownloading: boolean
@@ -81,7 +74,8 @@ export interface UseStudioClientShellReturn {
     handleWidthChange: (newWidth: number) => void
     handleHeightChange: (newHeight: number) => void
     handleModelChange: (newModel: ImageModel) => void
-    handleGenerate: () => void
+    /** Generate image - prompt values passed as parameters */
+    handleGenerate: (prompt: string, negativePrompt?: string) => void
     handleRemoveImage: (id: string) => void
     handleDeleteSelected: () => void
     handleDownload: (image: GeneratedImage) => void
@@ -94,9 +88,7 @@ export interface UseStudioClientShellReturn {
 }
 
 export function useStudioClientShell(): UseStudioClientShellReturn {
-    // Generation state
-    const [prompt, setPrompt] = React.useState("")
-    const [negativePrompt, setNegativePrompt] = React.useState("")
+    // Generation state (prompt state moved to PromptSection component)
     const [model, setModel] = React.useState<ImageModel>("flux")
     const [aspectRatio, setAspectRatio] = React.useState<AspectRatio>("1:1")
     const [width, setWidth] = React.useState(1024)
@@ -179,35 +171,26 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
         setHeight(newHeight)
         setAspectRatio("custom")
     }, [])
-
     // Handle model change with dimension reset for pixel-limited models or fixed-size models
     const handleModelChange = React.useCallback((newModel: ImageModel) => {
         setModel(newModel)
 
-        const constraints = getModelConstraints(newModel)
-        const currentPixels = width * height
+        const modelDef = getModel(newModel)
+        if (!modelDef) return // Unknown model, no constraints to apply
 
-        // GPT Image Large (HD) requires fixed dimensions - map to nearest supported size
-        // Check this first since it's more specific than GPT Image
-        if (isGPTImageLargeModel(newModel)) {
-            const nearest = findNearestGPTImageLargeSize(aspectRatio, width, height)
-            setWidth(nearest.width)
-            setHeight(nearest.height)
-            setAspectRatio(nearest.ratio)
-            return
-        }
+        const { constraints, aspectRatios } = modelDef
 
-        // GPT Image requires fixed dimensions - map to nearest supported size
-        if (isGPTImageModel(newModel)) {
-            const nearest = findNearestGPTImageSize(aspectRatio, width, height)
-            setWidth(nearest.width)
-            setHeight(nearest.height)
-            setAspectRatio(nearest.ratio)
+        // For fixed-size models (dimensionsEnabled: false), use the first aspect ratio preset
+        if (!constraints.dimensionsEnabled && aspectRatios.length > 0) {
+            const firstRatio = aspectRatios[0]
+            setWidth(firstRatio.width)
+            setHeight(firstRatio.height)
+            setAspectRatio(firstRatio.value)
             return
         }
 
         // For other models, reset to defaults if current dimensions exceed model limit
-        // Check both pixel count AND individual dimension limits (important for Turbo's 768px max)
+        const currentPixels = width * height
         const exceedsPixelLimit = currentPixels >= constraints.maxPixels
         const exceedsDimensionLimit = width > constraints.maxDimension || height > constraints.maxDimension
 
@@ -216,19 +199,17 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
             setHeight(constraints.defaultDimensions.height)
             setAspectRatio("1:1")
         }
-    }, [width, height, aspectRatio])
+    }, [width, height])
 
     // Get model-specific aspect ratios for the selector
     const aspectRatios = React.useMemo(
-        () => getModelAspectRatios(model),
+        () => getModelAspectRatios(model) ?? [],
         [model]
     )
 
     // Refs for values that shouldn't trigger handleGenerate recreation
     // This prevents the keyboard shortcut effect from re-running on every keystroke
-    const promptRef = React.useRef(prompt)
-    const negativePromptRef = React.useRef(negativePrompt)
-    const promptHistoryRef = React.useRef(promptHistory)
+    // Note: prompt refs removed - prompts now passed as parameters to handleGenerate
     const modelRef = React.useRef(model)
     const widthRef = React.useRef(width)
     const heightRef = React.useRef(height)
@@ -237,15 +218,6 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
     const referenceImageRef = React.useRef(referenceImage)
 
     // Keep refs in sync with state
-    React.useEffect(() => {
-        promptRef.current = prompt
-    }, [prompt])
-    React.useEffect(() => {
-        negativePromptRef.current = negativePrompt
-    }, [negativePrompt])
-    React.useEffect(() => {
-        promptHistoryRef.current = promptHistory
-    }, [promptHistory])
     React.useEffect(() => {
         modelRef.current = model
     }, [model])
@@ -265,12 +237,19 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
         referenceImageRef.current = referenceImage
     }, [referenceImage])
 
+    // Add prompt to history
+    const addToPromptHistory = React.useCallback((prompt: string) => {
+        setPromptHistory((prev) => {
+            if (prev.includes(prompt)) return prev
+            return [prompt, ...prev.slice(0, 9)]
+        })
+    }, [])
+
     // Generate image using TanStack Query
-    // Uses refs to avoid recreating the callback on every state change
-    const handleGenerate = React.useCallback(() => {
-        const currentPrompt = promptRef.current
-        const currentNegativePrompt = negativePromptRef.current
-        const currentPromptHistory = promptHistoryRef.current
+    // Prompt values are now passed as parameters (not read from state)
+    const handleGenerate = React.useCallback((prompt: string, negativePrompt?: string) => {
+        if (!prompt.trim() || isGenerating) return
+
         const currentModel = modelRef.current
         const currentWidth = widthRef.current
         const currentHeight = heightRef.current
@@ -278,20 +257,13 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
         const currentOptions = optionsRef.current
         const currentReferenceImage = referenceImageRef.current
 
-        if (!currentPrompt.trim() || isGenerating) return
-
-        // Add to prompt history
-        if (!currentPromptHistory.includes(currentPrompt.trim())) {
-            setPromptHistory((prev) => [currentPrompt.trim(), ...prev.slice(0, 9)])
-        }
-
         // When seed is -1 (random mode), generate a fresh random seed for this request
         // This ensures each generation gets a unique seed, preventing cached results
         const effectiveSeed = currentSeed === -1 ? generateSeed() : currentSeed
 
         const params: ImageGenerationParams = {
-            prompt: currentPrompt.trim(),
-            negativePrompt: currentNegativePrompt.trim() || undefined,
+            prompt: prompt.trim(),
+            negativePrompt: negativePrompt?.trim() || undefined,
             model: currentModel,
             width: currentWidth,
             height: currentHeight,
@@ -331,16 +303,8 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
         })
     }, [images, deleteMutation])
 
-    // Update currentImage when removed image was selected
-    React.useEffect(() => {
-        if (currentImage && !images.find((img) => img.id === currentImage.id)) {
-            setCurrentImage(images[0] || null)
-        }
-    }, [images, currentImage])
-
     // Handle bulk delete
     const handleDeleteSelected = React.useCallback(async () => {
-        const idsToDelete = Array.from(selectedIds)
         const imagesToDelete = images.filter(img => selectedIds.has(img.id))
 
         // Delete all persistent images
@@ -350,8 +314,6 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
 
         if (persistentIds.length > 0) {
             try {
-                // Batch delete not available in hook, do them sequentially or concurrently
-                // For simplicity and toast handling, we'll do them concurrently
                 await Promise.all(persistentIds.map(dbId => deleteMutation.mutateAsync(dbId)))
                 toast.success(`Deleted ${persistentIds.length} images`)
             } catch (error) {
@@ -360,9 +322,12 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
         }
 
         setImages((prev) => prev.filter((img) => !selectedIds.has(img.id)))
+        if (currentImage && selectedIds.has(currentImage.id)) {
+            setCurrentImage(null)
+        }
         setSelectedIds(new Set())
         setSelectionMode(false)
-    }, [selectedIds, images, deleteMutation])
+    }, [selectedIds, images, deleteMutation, currentImage])
 
     // Download image using TanStack Query
     const handleDownload = React.useCallback(
@@ -384,20 +349,12 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
     )
 
     // Regenerate current image
-    const [shouldGenerate, setShouldGenerate] = React.useState(false)
+    // Now directly calls handleGenerate with the current image's prompt
     const triggerRegenerate = React.useCallback(() => {
         if (currentImage) {
-            setPrompt(currentImage.prompt)
-            setShouldGenerate(true)
+            handleGenerate(currentImage.prompt, currentImage.params.negativePrompt)
         }
-    }, [currentImage])
-
-    React.useEffect(() => {
-        if (shouldGenerate && !isGenerating) {
-            handleGenerate()
-            setShouldGenerate(false)
-        }
-    }, [shouldGenerate, isGenerating, handleGenerate])
+    }, [currentImage, handleGenerate])
 
     // Open in new tab
     const handleOpenInNewTab = React.useCallback(() => {
@@ -406,14 +363,10 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
         }
     }, [currentImage])
 
-    // Keyboard shortcuts
+    // Keyboard shortcuts (note: Cmd+Enter for generate is now handled by the component
+    // since it needs access to the prompt ref)
     React.useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            // Cmd/Ctrl + Enter to generate
-            if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !isGenerating) {
-                e.preventDefault()
-                handleGenerate()
-            }
             // Cmd/Ctrl + B to toggle sidebar
             if ((e.metaKey || e.ctrlKey) && e.key === "b") {
                 e.preventDefault()
@@ -428,14 +381,10 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
 
         window.addEventListener("keydown", handleKeyDown)
         return () => window.removeEventListener("keydown", handleKeyDown)
-    }, [isGenerating, handleGenerate])
+    }, [])
 
     return {
-        // State
-        prompt,
-        setPrompt,
-        negativePrompt,
-        setNegativePrompt,
+        // State (prompt state now managed by PromptSection component)
         model,
         setModel,
         aspectRatio,
@@ -463,6 +412,7 @@ export function useStudioClientShell(): UseStudioClientShellReturn {
         currentImage,
         setCurrentImage,
         promptHistory,
+        addToPromptHistory,
         isFullscreen,
         setIsFullscreen,
         isDownloading,

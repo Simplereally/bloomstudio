@@ -3,11 +3,12 @@
  * 
  * Tests for ReferenceImagePicker Component
  */
-import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, fireEvent } from "@testing-library/react"
-import { ReferenceImagePicker } from "./reference-image-picker"
-import { useReferenceImages } from "@/hooks/queries/use-reference-images"
+import { useDeleteReferenceImage } from "@/hooks/mutations/use-delete-image"
 import { useUploadReference } from "@/hooks/mutations/use-upload-reference"
+import { useReferenceImages } from "@/hooks/queries/use-reference-images"
+import { fireEvent, render, screen } from "@testing-library/react"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+import { ReferenceImagePicker } from "./reference-image-picker"
 
 // Mock next/image
 vi.mock("next/image", () => ({
@@ -23,6 +24,10 @@ vi.mock("@/hooks/mutations/use-upload-reference", () => ({
     useUploadReference: vi.fn(),
 }))
 
+vi.mock("@/hooks/mutations/use-delete-image", () => ({
+    useDeleteReferenceImage: vi.fn(),
+}))
+
 describe("ReferenceImagePicker", () => {
     const mockOnSelect = vi.fn()
     const mockRecentImages = [
@@ -34,6 +39,10 @@ describe("ReferenceImagePicker", () => {
         vi.clearAllMocks()
         vi.mocked(useReferenceImages).mockReturnValue(mockRecentImages as any)
         vi.mocked(useUploadReference).mockReturnValue({
+            mutateAsync: vi.fn(),
+            isPending: false,
+        } as any)
+        vi.mocked(useDeleteReferenceImage).mockReturnValue({
             mutateAsync: vi.fn(),
             isPending: false,
         } as any)

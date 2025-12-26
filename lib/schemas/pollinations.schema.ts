@@ -7,14 +7,15 @@ export const QualitySchema = z.enum(["low", "medium", "high", "hd"]);
 // We define known models for reference, but allow any string to support dynamic models
 export const KnownImageModelSchema = z.enum([
     "flux",
+    "zimage",
     "turbo",
     "gptimage",
-    "kontext",
+    "gptimage-large",
     "seedream",
-    "seedream-pro",
+    "kontext",
     "nanobanana",
+    "seedream-pro",
     "nanobanana-pro",
-    "zimage",
 ]);
 
 export const ImageModelSchema = z.union([KnownImageModelSchema, z.string()]);
