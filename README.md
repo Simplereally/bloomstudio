@@ -1,10 +1,10 @@
-<p align="center">
-  <img src="public/branding/bloom-studio_logo.png" alt="Bloom Studio" height="100" />
+<div align="center" style="display: flex; align-items: center; justify-content: center;">
+  <img src="public/branding/bloom-studio_logo.png" alt="Bloom Studio" height="150" />
   &nbsp;&nbsp;&nbsp;
-  <b><sub>✕</sub></b>
+  <span style="font-size: 20px;"><b>✕</b></span>
   &nbsp;&nbsp;&nbsp;
   <img src="public/branding/pollinations/logo-white.svg" alt="Pollinations AI" height="80" />
-</p>
+</div>
 
 <h1 align="center">Bloom Studio</h1>
 
@@ -41,29 +41,11 @@
 | **3D** | React Three Fiber |
 | **Testing** | Vitest + React Testing Library |
 
-## Getting Started
 
-```bash
-# Install dependencies
-bun install
+## Try it now
 
-# Start the Convex backend
-bunx convex dev
+🚀 **[Launch Bloom Studio](https://bloomstudio-mvp.vercel.app/)** — No setup required.
 
-# Start the dev server (separate terminal)
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) to view the app.
-
-## Scripts
-
-| Command | Description |
-|---------|-------------|
-| `bun dev` | Start development server |
-| `bun build` | Create production build |
-| `bun test` | Run test suite |
-| `bun lint` | Lint codebase |
 
 ## Acknowledgements
 
