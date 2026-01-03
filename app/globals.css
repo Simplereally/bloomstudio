@@ -1,0 +1,306 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Light mode (default) - cream and warm neutrals with orange ember accents */
+  --background: oklch(0.98 0.005 60);
+  --foreground: oklch(0.18 0.015 30);
+
+  --card: oklch(0.99 0.003 60);
+  --card-foreground: oklch(0.18 0.015 30);
+
+  --popover: oklch(0.995 0.003 60);
+  --popover-foreground: oklch(0.18 0.015 30);
+
+  /* Primary: Orange ember for energy and creativity */
+  --primary: oklch(0.58 0.18 45);
+  --primary-foreground: oklch(0.99 0.005 45);
+
+  --secondary: oklch(0.94 0.01 50);
+  --secondary-foreground: oklch(0.25 0.015 40);
+
+  --muted: oklch(0.95 0.008 50);
+  --muted-foreground: oklch(0.45 0.015 40);
+
+  /* Accent: Warm-tinted highlight for interactive selection hovers */
+  --accent: oklch(0.91 0.045 50);
+  --accent-foreground: oklch(0.18 0.015 30);
+
+  --destructive: oklch(0.50 0.22 20);
+  --destructive-foreground: oklch(0.99 0.005 20);
+
+  --border: oklch(0.88 0.01 50);
+  --input: oklch(0.92 0.008 50);
+  --ring: oklch(0.58 0.18 45);
+
+  --chart-1: oklch(0.58 0.18 45);
+  --chart-2: oklch(0.55 0.20 40);
+  --chart-3: oklch(0.50 0.15 50);
+  --chart-4: oklch(0.45 0.12 38);
+  --chart-5: oklch(0.62 0.16 48);
+
+  --radius: 0.75rem;
+
+  --sidebar: oklch(0.97 0.005 55);
+  --sidebar-foreground: oklch(0.18 0.015 30);
+  --sidebar-primary: oklch(0.58 0.18 45);
+  --sidebar-primary-foreground: oklch(0.99 0.005 45);
+  --sidebar-accent: oklch(0.94 0.01 50);
+  --sidebar-accent-foreground: oklch(0.25 0.015 40);
+  --sidebar-border: oklch(0.88 0.01 50);
+  --sidebar-ring: oklch(0.58 0.18 45);
+
+  /* Canvas texture */
+  --canvas-bg: oklch(0.94 0.008 50);
+  --canvas-dot: oklch(0.50 0.01 50 / 0.10);
+}
+
+.dark {
+  --background: oklch(0.14 0.015 30);
+  --foreground: oklch(0.97 0.005 50);
+  --card: oklch(0.19 0.018 35);
+  --card-foreground: oklch(0.97 0.005 50);
+  --popover: oklch(0.18 0.02 33);
+  --popover-foreground: oklch(0.97 0.005 50);
+  --primary: oklch(0.68 0.18 45);
+  --primary-foreground: oklch(0.14 0.015 45);
+  --secondary: oklch(0.28 0.02 40);
+  --secondary-foreground: oklch(0.95 0.005 40);
+  --muted: oklch(0.25 0.015 35);
+  --muted-foreground: oklch(0.58 0.01 40);
+  /* Accent: Warm-tinted highlight for interactive selection hovers */
+  --accent: oklch(0.28 0.045 45);
+  --accent-foreground: oklch(0.95 0.005 40);
+  --destructive: oklch(0.55 0.22 15);
+  --destructive-foreground: oklch(0.98 0.005 15);
+  --border: oklch(0.32 0.02 38);
+  --input: oklch(0.29 0.02 35);
+  --ring: oklch(0.68 0.18 45);
+  --chart-1: oklch(0.68 0.18 45);
+  --chart-2: oklch(0.62 0.22 35);
+  --chart-3: oklch(0.55 0.15 50);
+  --chart-4: oklch(0.48 0.12 38);
+  --chart-5: oklch(0.72 0.16 48);
+  --sidebar: oklch(0.17 0.018 35);
+  --sidebar-foreground: oklch(0.97 0.005 50);
+  --sidebar-primary: oklch(0.68 0.18 45);
+  --sidebar-primary-foreground: oklch(0.14 0.015 45);
+  --sidebar-accent: oklch(0.28 0.02 40);
+  --sidebar-accent-foreground: oklch(0.95 0.005 40);
+  --sidebar-border: oklch(0.32 0.02 38);
+  --sidebar-ring: oklch(0.68 0.18 45);
+
+  /* Canvas texture - much darker in dark mode */
+  --canvas-bg: oklch(0.10 0.01 30);
+  --canvas-dot: oklch(0.40 0.01 45 / 0.15);
+}
+
+@theme inline {
+  --font-sans: "Geist", "Geist Fallback";
+  --font-mono: "Geist Mono", "Geist Mono Fallback";
+  --font-brand: var(--font-bricolage);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --animate-pulse-glow: pulse-glow 3s ease-in-out infinite;
+
+  @keyframes pulse-glow {
+
+    0%,
+    100% {
+      opacity: 0.3;
+      transform: scale(0.95);
+      filter: blur(40px);
+    }
+
+    50% {
+      opacity: 0.7;
+      transform: scale(1.05);
+      filter: blur(60px);
+    }
+  }
+
+  --animate-lightbulb-glow: lightbulb-glow 1.5s ease-in-out infinite;
+
+  @keyframes lightbulb-glow {
+
+    0%,
+    100% {
+      filter: drop-shadow(0 0 4px rgba(250, 204, 21, 0.6));
+      opacity: 0.8;
+    }
+
+    50% {
+      filter: drop-shadow(0 0 12px rgba(250, 204, 21, 1));
+      opacity: 1;
+    }
+  }
+
+  --animate-float: float 6s ease-in-out infinite;
+
+  @keyframes float {
+
+    0%,
+    100% {
+      transform: translateY(0px);
+    }
+
+    50% {
+      transform: translateY(-20px);
+    }
+  }
+
+  --animate-shimmer: shimmer 2s linear infinite;
+
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+}
+
+@utility glass-effect {
+  background-color: rgba(255, 255, 255, 0.09);
+  backdrop-filter: blur(50px) saturate(80%);
+  -webkit-backdrop-filter: blur(50px) saturate(80%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+@utility glass-effect-home {
+  background-color: rgba(2, 2, 2, 0.8);
+  backdrop-filter: blur(50px) saturate(80%);
+  -webkit-backdrop-filter: blur(50px) saturate(80%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@utility container {
+  margin-inline: auto;
+  padding-inline: 1rem;
+
+  @media (width >=768px) {
+    padding-inline: 2rem;
+  }
+
+  @media (width >=1280px) {
+    padding-inline: 3rem;
+  }
+}
+
+#webgl {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+}
+
+#webgl canvas {
+  width: 100%;
+  height: 100%;
+}
+
+/* Global Scrollbar Reset */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted) transparent;
+}
+
+/* Custom Scrollbar Styling for Webkit Browsers */
+::-webkit-scrollbar {
+  width: 6px;
+  /* Vertical scrollbar width */
+  height: 6px;
+  /* Horizontal scrollbar height */
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--muted);
+  border-radius: 20px;
+  border: 2px solid transparent;
+  /* Creates padding effect if used with background-clip */
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Performance optimization: Disable expensive effects during panel resize */
+/* These effects cause significant jank in Chromium browsers when resizing */
+body[data-resizing="true"] * {
+  /* Disable backdrop blur effects during resize - major performance impact in Chrome */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  /* Disable transitions to prevent layout thrashing */
+  transition: none !important;
+}
+
+/* Also disable scale transforms on hover during resize */
+body[data-resizing="true"] .group-hover\:scale-105:hover {
+  transform: none !important;
+}

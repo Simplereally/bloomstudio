@@ -1,0 +1,248 @@
+// @vitest-environment jsdom
+import { render, screen } from "@testing-library/react"
+import * as React from "react"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+import { ControlsView, type ControlsViewProps } from "./controls-view"
+
+// Mock studio components
+vi.mock("@/components/studio", () => ({
+    AspectRatioSelector: ({ selectedRatio }: { selectedRatio: string }) => (
+        <div data-testid="aspect-ratio-selector">{selectedRatio}</div>
+    ),
+    CollapsibleSection: ({ children, title, testId, rightContent, collapsedContent }: { 
+        children: React.ReactNode; 
+        title: string; 
+        testId: string;
+        rightContent?: React.ReactNode;
+        collapsedContent?: React.ReactNode;
+    }) => (
+        <div data-testid={testId}>
+            <div>{title}</div>
+            {collapsedContent && <div data-testid={`${testId}-collapsed-content`}>{collapsedContent}</div>}
+            {rightContent}
+            {children}
+        </div>
+    ),
+    DimensionControls: ({ width, height }: { width: number; height: number }) => (
+        <div data-testid="dimension-controls">
+            {width}x{height}
+        </div>
+    ),
+    DimensionHeaderControls: ({ megapixels, isOverLimit }: { megapixels: string; isOverLimit: boolean }) => (
+        <div data-testid="dimension-header">
+            <span data-testid="megapixels">{megapixels}</span>
+            <span data-testid="is-over-limit">{String(isOverLimit)}</span>
+        </div>
+    ),
+    ModelSelector: ({ selectedModel }: { selectedModel: string }) => (
+        <div data-testid="model-selector">{selectedModel}</div>
+    ),
+    ReferenceImagePicker: ({ selectedImage }: { selectedImage?: string }) => (
+        <div data-testid="reference-image-picker">{selectedImage || "none"}</div>
+    ),
+    SeedControl: ({ seed, isLocked }: { seed: number; isLocked: boolean }) => (
+        <div data-testid="seed-control">
+            <span data-testid="seed-value">{seed}</span>
+            <span data-testid="seed-locked">{String(isLocked)}</span>
+        </div>
+    ),
+    OptionsPanel: ({ options }: { options: { enhance: boolean; private: boolean; safe: boolean } }) => (
+        <div data-testid="options-panel">
+            <span data-testid="enhance">{String(options.enhance)}</span>
+            <span data-testid="private">{String(options.private)}</span>
+            <span data-testid="safe">{String(options.safe)}</span>
+        </div>
+    ),
+    BatchModePanel: ({ settings }: { settings: { enabled: boolean; count: number } }) => (
+        <div data-testid="batch-mode-panel">
+            <span data-testid="batch-enabled">{String(settings.enabled)}</span>
+            <span data-testid="batch-count">{settings.count}</span>
+        </div>
+    ),
+}))
+
+vi.mock("@/components/ui/button", () => ({
+    Button: ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
+        <button onClick={onClick}>{children}</button>
+    ),
+}))
+
+vi.mock("@/components/ui/separator", () => ({
+    Separator: () => <hr data-testid="separator" />,
+}))
+
+describe("ControlsView", () => {
+    const defaultProps: ControlsViewProps = {
+        // Model
+        model: "flux",
+        onModelChange: vi.fn(),
+        models: [],
+        isLoadingModels: false,
+        isGenerating: false,
+
+        // Aspect ratio
+        aspectRatio: "1:1",
+        onAspectRatioChange: vi.fn(),
+        aspectRatios: [],
+
+        // Dimensions
+        width: 1024,
+        height: 1024,
+        onWidthChange: vi.fn(),
+        onHeightChange: vi.fn(),
+        dimensionsEnabled: true,
+        dimensionsLinked: false,
+        onDimensionsLinkedChange: vi.fn(),
+        megapixels: "1.05",
+        isOverLimit: false,
+        percentOfLimit: 50,
+        hasPixelLimit: true,
+
+        // Reference image
+        referenceImage: undefined,
+        onReferenceImageChange: vi.fn(),
+
+        // Seed
+        seed: -1,
+        onSeedChange: vi.fn(),
+        seedLocked: false,
+        onSeedLockedChange: vi.fn(),
+
+        // Options
+        options: { enhance: false, private: false, safe: false },
+        onOptionsChange: vi.fn(),
+
+        // Batch mode
+        batchSettings: { enabled: false, count: 10 },
+        onBatchSettingsChange: vi.fn(),
+        isBatchActive: false,
+    }
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+    })
+
+    it("renders all control sections", () => {
+        render(<ControlsView {...defaultProps} />)
+
+        expect(screen.getByTestId("model-section")).toBeInTheDocument()
+        expect(screen.getByTestId("aspect-ratio-section")).toBeInTheDocument()
+        expect(screen.getByTestId("dimensions-section")).toBeInTheDocument()
+        expect(screen.getByTestId("reference-image-section")).toBeInTheDocument()
+        expect(screen.getByTestId("seed-section")).toBeInTheDocument()
+        expect(screen.getByTestId("options-panel")).toBeInTheDocument()
+        expect(screen.getByTestId("batch-mode-panel")).toBeInTheDocument()
+    })
+
+    it("renders model selector with correct model", () => {
+        render(<ControlsView {...defaultProps} model="turbo" />)
+
+        expect(screen.getByTestId("model-selector")).toHaveTextContent("turbo")
+    })
+
+    it("renders aspect ratio selector with correct ratio", () => {
+        render(<ControlsView {...defaultProps} aspectRatio="16:9" />)
+
+        expect(screen.getByTestId("aspect-ratio-selector")).toHaveTextContent("16:9")
+    })
+
+    it("renders dimension controls with correct dimensions", () => {
+        render(<ControlsView {...defaultProps} width={1536} height={864} />)
+
+        expect(screen.getByTestId("dimension-controls")).toHaveTextContent("1536x864")
+    })
+
+    it("renders seed control with correct values", () => {
+        render(<ControlsView {...defaultProps} seed={12345} seedLocked={true} />)
+
+        expect(screen.getByTestId("seed-value")).toHaveTextContent("12345")
+        expect(screen.getByTestId("seed-locked")).toHaveTextContent("true")
+    })
+
+    it("renders options panel with correct options", () => {
+        render(
+            <ControlsView
+                {...defaultProps}
+                options={{ enhance: true, private: true, safe: false }}
+            />
+        )
+
+        expect(screen.getByTestId("enhance")).toHaveTextContent("true")
+        expect(screen.getByTestId("private")).toHaveTextContent("true")
+        expect(screen.getByTestId("safe")).toHaveTextContent("false")
+    })
+
+    it("renders batch mode panel with correct settings", () => {
+        render(
+            <ControlsView
+                {...defaultProps}
+                batchSettings={{ enabled: true, count: 5 }}
+            />
+        )
+
+        expect(screen.getByTestId("batch-enabled")).toHaveTextContent("true")
+        expect(screen.getByTestId("batch-count")).toHaveTextContent("5")
+    })
+
+    it("renders dimension header controls with pixel info", () => {
+        render(<ControlsView {...defaultProps} megapixels="2.1" isOverLimit={true} />)
+
+        expect(screen.getByTestId("dimension-header")).toBeInTheDocument()
+        expect(screen.getByTestId("megapixels")).toHaveTextContent("2.1")
+        expect(screen.getByTestId("is-over-limit")).toHaveTextContent("true")
+    })
+
+    it("renders reference image picker", () => {
+        render(
+            <ControlsView
+                {...defaultProps}
+                referenceImage="https://example.com/ref.jpg"
+            />
+        )
+
+        expect(screen.getByTestId("reference-image-picker")).toHaveTextContent(
+            "https://example.com/ref.jpg"
+        )
+    })
+
+    it("renders dimensions collapsed content with dimension and megapixel badges", () => {
+        render(
+            <ControlsView
+                {...defaultProps}
+                width={1536}
+                height={864}
+                megapixels="1.33"
+                percentOfLimit={75}
+                hasPixelLimit={true}
+            />
+        )
+
+        const collapsedContent = screen.getByTestId("dimensions-section-collapsed-content")
+        expect(collapsedContent).toBeInTheDocument()
+        // Should contain dimensions
+        expect(collapsedContent).toHaveTextContent("1536×864")
+        // Should contain megapixels and percentage (1 decimal place)
+        expect(collapsedContent).toHaveTextContent("1.33")
+        expect(collapsedContent).toHaveTextContent("75.0%")
+    })
+
+    it("does not render megapixels badge when hasPixelLimit is false", () => {
+        render(
+            <ControlsView
+                {...defaultProps}
+                width={1024}
+                height={1024}
+                megapixels="1.05"
+                percentOfLimit={50}
+                hasPixelLimit={false}
+            />
+        )
+
+        const collapsedContent = screen.getByTestId("dimensions-section-collapsed-content")
+        expect(collapsedContent).toBeInTheDocument()
+        // Should contain dimensions
+        expect(collapsedContent).toHaveTextContent("1024×1024")
+        // Should NOT contain percentage (no pixel limit)
+        expect(collapsedContent).not.toHaveTextContent("50%")
+    })
+})
