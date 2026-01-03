@@ -1,9 +1,9 @@
-<div align="center" style="display: flex; align-items: center; justify-content: center;">
-  <img src="public/branding/bloom-studio_logo.png" alt="Bloom Studio" height="150" />
+<div align="center">
+  <img src="public/branding/bloom-studio_logo.png" alt="Bloom Studio" height="150" style="vertical-align: middle;" />
   &nbsp;&nbsp;&nbsp;
-  <span style="font-size: 20px;"><b>✕</b></span>
+  <span style="font-size: 30px; vertical-align: middle;"><b>✕</b></span>
   &nbsp;&nbsp;&nbsp;
-  <img src="public/branding/pollinations/logo-white.svg" alt="Pollinations AI" height="80" />
+  <img src="public/branding/pollinations/logo-white.svg" alt="Pollinations AI" height="80" style="vertical-align: middle;" />
 </div>
 
 <h1 align="center">Bloom Studio</h1>
