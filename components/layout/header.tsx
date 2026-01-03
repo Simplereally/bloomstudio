@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ApiKeyOnboardingModal } from "@/components/studio/api-key-onboarding-modal"
 import { UpgradeModal } from "@/components/studio/upgrade-modal"
-import { cn } from "@/lib/utils"
+import { cn, isLocalhost } from "@/lib/utils"
 import { UserButton, useUser } from "@clerk/nextjs"
 import { Crown, Heart, HelpCircle, History, Key, Menu, Moon, Settings, Sparkles, Sun, Users, X } from "lucide-react"
 import { useTheme } from "next-themes"
@@ -36,16 +36,19 @@ export function Header() {
     const { theme, setTheme } = useTheme()
     const [upgradeModalOpen, setUpgradeModalOpen] = useState(false)
     const [onboardingModalOpen, setOnboardingModalOpen] = useState(false)
-    
+
     // Prevent hydration mismatch by only showing auth-dependent UI after mount
     const [mounted, setMounted] = useState(false)
+    const [isLocalDev, setIsLocalDev] = useState(false)
+
     useEffect(() => {
         setMounted(true)
+        setIsLocalDev(isLocalhost())
     }, [])
 
     // Don't render on landing page or auth pages
     if (pathname === "/" || pathname.startsWith("/sign-in") || pathname.startsWith("/sign-up")) return null
-    
+
     // Auth state is only reliable after mount + Clerk load
     const showAuthUI = mounted && isLoaded
 
@@ -77,7 +80,7 @@ export function Header() {
                                         size="sm"
                                         className={cn(
                                             "gap-2 font-medium",
-                                            isActive 
+                                            isActive
                                                 ? "bg-primary/10 text-primary hover:bg-primary/15"
                                                 : "hover:bg-muted hover:text-foreground"
                                         )}
@@ -94,27 +97,30 @@ export function Header() {
                 {/* Right Side: Settings & Auth */}
                 <div className="flex-1 flex justify-end">
                     <div className="flex items-center gap-2">
-                        {/* Test Upgrade Modal Button */}
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 hover:bg-muted hover:text-foreground text-primary"
-                            onClick={() => setUpgradeModalOpen(true)}
-                            title="Test Upgrade Modal"
-                        >
-                            <Crown className="h-4 w-4" />
-                        </Button>
+                        {/* Test Upgrade Modal Button - Dev Only */}
+                        {isLocalDev && (
+                            <>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 hover:bg-muted hover:text-foreground text-primary"
+                                    onClick={() => setUpgradeModalOpen(true)}
+                                    title="Test Upgrade Modal"
+                                >
+                                    <Crown className="h-4 w-4" />
+                                </Button>
 
-                        {/* Test Onboarding Modal Button */}
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 hover:bg-muted hover:text-foreground text-amber-500"
-                            onClick={() => setOnboardingModalOpen(true)}
-                            title="Test Onboarding Modal"
-                        >
-                            <Key className="h-4 w-4" />
-                        </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 hover:bg-muted hover:text-foreground text-amber-500"
+                                    onClick={() => setOnboardingModalOpen(true)}
+                                    title="Test Onboarding Modal"
+                                >
+                                    <Key className="h-4 w-4" />
+                                </Button>
+                            </>
+                        )}
 
                         {/* Settings Dropdown */}
                         <DropdownMenu>
@@ -212,7 +218,7 @@ export function Header() {
                                         variant={isActive ? "secondary" : "ghost"}
                                         className={cn(
                                             "w-full justify-start gap-3",
-                                            isActive 
+                                            isActive
                                                 ? "bg-primary/10 text-primary"
                                                 : "hover:bg-muted hover:text-foreground"
                                         )}
@@ -227,18 +233,20 @@ export function Header() {
                 </div>
             )}
 
-            {/* Upgrade Modal for testing */}
-            <UpgradeModal 
-                isOpen={upgradeModalOpen} 
-                onClose={() => setUpgradeModalOpen(false)} 
-            />
-
-            {/* Onboarding Modal for testing */}
-            <ApiKeyOnboardingModal 
-                forceOpen={onboardingModalOpen}
-                onClose={() => setOnboardingModalOpen(false)}
-            />
+            {/* Dev-only Modals */}
+            {isLocalDev && (
+                <>
+                    <UpgradeModal
+                        isOpen={upgradeModalOpen}
+                        onClose={() => setUpgradeModalOpen(false)}
+                    />
+                    <ApiKeyOnboardingModal
+                        forceOpen={onboardingModalOpen}
+                        onClose={() => setOnboardingModalOpen(false)}
+                    />
+                </>
+            )}
         </header>
-    )
+    );
 }
 

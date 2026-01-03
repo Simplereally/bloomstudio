@@ -131,7 +131,7 @@ export default function LandingPage() {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-12">
-            <Link className="contents" href="/pricing#compare">
+            <Link className="contents" href="/pricing">
               <Button
                 size="lg"
                 variant="default"
