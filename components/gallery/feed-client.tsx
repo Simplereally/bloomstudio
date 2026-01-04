@@ -5,7 +5,7 @@ import { PaginatedImageGrid } from "@/components/gallery/paginated-image-grid"
 import { Button } from "@/components/ui/button"
 import { useFeed } from "@/hooks/queries/use-image-history"
 import type { FeedType } from "@/lib/feed-types"
-import { ImageOffIcon, Loader2 } from "lucide-react"
+import { ImageOffIcon, ScanSearch } from "lucide-react"
 import Link from "next/link"
 import * as React from "react"
 
@@ -51,7 +51,7 @@ function PublicEmptyState() {
     return (
         <div className="flex flex-col items-center justify-center py-32 text-center px-4">
             <div className="bg-primary/5 rounded-full p-8 mb-6 border border-primary/10">
-                <Loader2 className="h-10 w-10 text-primary/40" />
+                <ScanSearch className="h-10 w-10 text-primary/40" />
             </div>
             <h3 className="text-2xl font-bold mb-3">Feed is quiet...</h3>
             <p className="text-muted-foreground max-w-sm">
