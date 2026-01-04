@@ -56,6 +56,7 @@ vi.mock('convex/react', async (importOriginal) => {
             mock.withOptimisticUpdate = vi.fn().mockReturnValue(mock)
             return mock
         }),
+        useAction: vi.fn(),
         usePaginatedQuery: vi.fn(() => ({
             results: [],
             status: 'CanLoadMore',

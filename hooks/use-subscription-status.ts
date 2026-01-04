@@ -1,68 +1,70 @@
 "use client"
 
-/**
- * useSubscriptionStatus Hook
- * 
- * Client-side hook for checking the user's subscription status.
- * Returns whether they're on Pro, in trial, or expired.
- */
-
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
+import { useState, useEffect, useMemo } from "react"
 
 export type SubscriptionStatus = "pro" | "trial" | "expired"
 
 export interface UseSubscriptionStatusReturn {
     /** The user's subscription status */
-    status: SubscriptionStatus
+    status: SubscriptionStatus | undefined
     /** Whether the query is still loading */
     isLoading: boolean
     /** When the trial expires (only set for trial users) */
     trialExpiresAt?: number
-    /** Time remaining in trial (ms), or undefined if not in trial */
-    trialTimeRemaining?: number
+    /** Formatted time remaining string (e.g., "2h 30m") */
+    timeLeft?: string
     /** Whether the user can generate images */
     canGenerate: boolean
 }
 
 /**
  * Hook for checking the current user's subscription status.
- * 
- * @example
- * ```tsx
- * const { status, canGenerate, trialTimeRemaining } = useSubscriptionStatus()
- * 
- * if (!canGenerate) {
- *   return <UpgradePrompt />
- * }
- * 
- * if (status === "trial" && trialTimeRemaining) {
- *   const hoursLeft = Math.ceil(trialTimeRemaining / (1000 * 60 * 60))
- *   return <TrialBanner hoursLeft={hoursLeft} />
- * }
- * ```
+ * Handles trial timer logic internally for efficient re-renders.
  */
 export function useSubscriptionStatus(): UseSubscriptionStatusReturn {
     const result = useQuery(api.stripe.getUserSubscriptionStatus)
+    const [timeLeft, setTimeLeft] = useState<string | undefined>(undefined)
 
-    if (result === undefined) {
-        return {
-            status: "expired",
-            isLoading: true,
-            canGenerate: false,
+    useEffect(() => {
+        if (result?.status === "trial" && result.trialExpiresAt) {
+            const updateTimer = () => {
+                const now = Date.now()
+                const diff = result.trialExpiresAt! - now
+
+                if (diff <= 0) {
+                    setTimeLeft("Expired")
+                    return
+                }
+
+                const hours = Math.floor(diff / (60 * 60 * 1000))
+                const minutes = Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000))
+
+                if (hours > 0) {
+                    setTimeLeft(`${hours}h ${minutes}m`)
+                } else {
+                    setTimeLeft(`${minutes}m`)
+                }
+            }
+
+            updateTimer()
+            const interval = setInterval(updateTimer, 60000)
+            return () => clearInterval(interval)
+        } else {
+            setTimeLeft(undefined)
         }
-    }
+    }, [result?.status, result?.trialExpiresAt])
 
-    const now = Date.now()
-    const trialTimeRemaining = result.trialExpiresAt
-        ? Math.max(0, result.trialExpiresAt - now)
-        : undefined
+    const status = result?.status
+    const isLoading = result === undefined
+    const canGenerate = status === "pro" || status === "trial"
 
-    return {
-        status: result.status,
-        isLoading: false,
-        trialExpiresAt: result.trialExpiresAt,
-        trialTimeRemaining,
-        canGenerate: result.status === "pro" || result.status === "trial",
-    }
+    return useMemo(() => ({
+        status,
+        isLoading,
+        trialExpiresAt: result?.trialExpiresAt,
+        timeLeft,
+        canGenerate,
+    }), [status, isLoading, result?.trialExpiresAt, timeLeft, canGenerate])
 }

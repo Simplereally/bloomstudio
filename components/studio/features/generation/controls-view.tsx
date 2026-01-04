@@ -184,11 +184,10 @@ export const ControlsView = React.memo(function ControlsView({
                                 {width}×{height}
                             </span>
                             {hasPixelLimit && (
-                                <span className={`flex items-center justify-center px-2 h-5 rounded-full text-xs font-medium tabular-nums ${
-                                    isOverLimit 
-                                        ? "bg-destructive/15 text-destructive" 
-                                        : "bg-muted text-muted-foreground"
-                                }`}>
+                                <span className={`flex items-center justify-center px-2 h-5 rounded-full text-xs font-medium tabular-nums ${isOverLimit
+                                    ? "bg-destructive/15 text-destructive"
+                                    : "bg-muted text-muted-foreground"
+                                    }`}>
                                     {megapixels} ({percentOfLimit.toFixed(1)}%)
                                 </span>
                             )}

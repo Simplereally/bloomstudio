@@ -11,6 +11,7 @@ import {
 import { ApiKeyOnboardingModal } from "@/components/studio/api-key-onboarding-modal"
 import { UpgradeModal } from "@/components/studio/upgrade-modal"
 import { cn, isLocalhost } from "@/lib/utils"
+import { SubscriptionBadge } from "@/components/subscription/subscription-badge"
 import { UserButton, useUser } from "@clerk/nextjs"
 import { Crown, Heart, HelpCircle, History, Key, Menu, Moon, Settings, Sparkles, Sun, Users, X } from "lucide-react"
 import { useTheme } from "next-themes"
@@ -37,7 +38,7 @@ export function Header() {
     const [upgradeModalOpen, setUpgradeModalOpen] = useState(false)
     const [onboardingModalOpen, setOnboardingModalOpen] = useState(false)
 
-    // Prevent hydration mismatch by only showing auth-dependent UI after mount
+    // Prevent hydration mismatch
     const [mounted, setMounted] = useState(false)
     const [isLocalDev, setIsLocalDev] = useState(false)
 
@@ -46,48 +47,48 @@ export function Header() {
         setIsLocalDev(isLocalhost())
     }, [])
 
-    // Don't render on landing page or auth pages
     if (pathname === "/" || pathname.startsWith("/sign-in") || pathname.startsWith("/sign-up")) return null
 
-    // Auth state is only reliable after mount + Clerk load
     const showAuthUI = mounted && isLoaded
 
     return (
-        <header className="sticky top-0 z-10 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
-            <div className="container mx-auto flex h-14 items-center px-4">
+        <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/60 backdrop-blur-xl supports-[backdrop-filter]:bg-background/40">
+            <div className="container mx-auto flex h-14 items-center px-6">
                 {/* Left Side: Logo */}
                 <div className="flex-1 flex justify-start">
-                    <Link href="/" className="flex items-center gap-2 group">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                            <Sparkles className="h-4 w-4 text-primary" />
+                    <Link href="/" className="flex items-center gap-2.5 group">
+                        <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-primary/20 group-hover:bg-primary/30 transition-all duration-300 overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 to-transparent animate-pulse" />
+                            <Sparkles className="h-4.5 w-4.5 text-primary relative z-10" />
                         </div>
-                        <span className="text-2xl font-bold text-primary font-brand tracking-tight -skew-x-10">
+                        <span className="text-xl font-bold text-foreground font-brand tracking-tight transition-colors group-hover:text-primary">
                             Bloom Studio
                         </span>
                     </Link>
                 </div>
 
-                {/* Center: Desktop Navigation - Only show when signed in */}
+                {/* Center: Desktop Navigation - Pill Style */}
                 {showAuthUI && isSignedIn && (
-                    <nav className="hidden md:flex items-center gap-1">
+                    <nav className="hidden md:flex items-center p-1 rounded-full bg-muted/30 border border-border/50 shadow-inner backdrop-blur-md">
                         {navItems.map((item) => {
                             const isActive = pathname.startsWith(item.href)
                             const Icon = item.icon
                             return (
                                 <Link key={item.href} href={item.href}>
-                                    <Button
-                                        variant={isActive ? "secondary" : "ghost"}
-                                        size="sm"
+                                    <div
                                         className={cn(
-                                            "gap-2 font-medium",
+                                            "relative px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-300 flex items-center gap-2",
                                             isActive
-                                                ? "bg-primary/10 text-primary hover:bg-primary/15"
-                                                : "hover:bg-muted hover:text-foreground"
+                                                ? "text-primary bg-primary/10 shadow-sm"
+                                                : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
                                         )}
                                     >
-                                        <Icon className="h-4 w-4" />
+                                        <Icon className={cn("h-4 w-4", isActive ? "text-primary" : "text-muted-foreground")} />
                                         {item.label}
-                                    </Button>
+                                        {isActive && (
+                                            <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 bg-primary rounded-full blur-[1px]" />
+                                        )}
+                                    </div>
                                 </Link>
                             )
                         })}
@@ -95,116 +96,123 @@ export function Header() {
                 )}
 
                 {/* Right Side: Settings & Auth */}
-                <div className="flex-1 flex justify-end">
-                    <div className="flex items-center gap-2">
-                        {/* Test Upgrade Modal Button - Dev Only */}
+                <div className="flex-1 flex justify-end items-center gap-3">
+                    <div className="flex items-center gap-1.5 p-1 rounded-full bg-muted/30 border border-border/50">
+                        {/* Test Modals - Dev Only */}
                         {isLocalDev && (
-                            <>
+                            <div className="flex items-center gap-1 mr-1 pr-1 border-r border-border/50">
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-8 w-8 hover:bg-muted hover:text-foreground text-primary"
+                                    className="h-7 w-7 rounded-full hover:bg-accent text-primary"
                                     onClick={() => setUpgradeModalOpen(true)}
-                                    title="Test Upgrade Modal"
                                 >
-                                    <Crown className="h-4 w-4" />
+                                    <Crown className="h-3.5 w-3.5" />
                                 </Button>
-
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-8 w-8 hover:bg-muted hover:text-foreground text-amber-500"
+                                    className="h-7 w-7 rounded-full hover:bg-accent text-amber-500"
                                     onClick={() => setOnboardingModalOpen(true)}
-                                    title="Test Onboarding Modal"
                                 >
-                                    <Key className="h-4 w-4" />
+                                    <Key className="h-3.5 w-3.5" />
                                 </Button>
-                            </>
+                            </div>
                         )}
 
-                        {/* Settings Dropdown */}
+                        {/* Settings */}
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-8 w-8 hover:bg-muted hover:text-foreground"
+                                    className="h-8 w-8 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-all"
                                 >
                                     <Settings className="h-4 w-4" />
                                     <span className="sr-only">Settings</span>
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                                <DropdownMenuItem onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+                            <DropdownMenuContent align="end" className="w-52 mt-2 border-border bg-popover/90 backdrop-blur-xl">
+                                <DropdownMenuItem onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="focus:bg-accent">
                                     {theme === "dark" ? (
                                         <>
-                                            <Sun className="mr-2 h-4 w-4" />
+                                            <Sun className="mr-2 h-4 w-4 text-amber-500" />
                                             Light Mode
                                         </>
                                     ) : (
                                         <>
-                                            <Moon className="mr-2 h-4 w-4" />
+                                            <Moon className="mr-2 h-4 w-4 text-primary" />
                                             Dark Mode
                                         </>
                                     )}
                                 </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem asChild>
+                                <DropdownMenuSeparator className="bg-border/50" />
+                                <DropdownMenuItem asChild className="focus:bg-accent">
                                     <Link href="/settings" className="flex w-full items-center">
                                         <Settings className="mr-2 h-4 w-4" />
                                         Settings
                                     </Link>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem>
+                                <DropdownMenuItem className="focus:bg-accent">
                                     <HelpCircle className="mr-2 h-4 w-4" />
                                     Help & Support
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
 
-                        {/* Clerk User Button - Profile & Sign Out */}
+                        {/* Subscription Tier Badge */}
                         {showAuthUI && isSignedIn && (
-                            <UserButton
-                                afterSignOutUrl="/"
-                                appearance={{
-                                    elements: {
-                                        avatarBox: "h-8 w-8"
-                                    }
-                                }}
-                            />
+                            <div className="hidden sm:block">
+                                <SubscriptionBadge />
+                            </div>
                         )}
 
-                        {showAuthUI && !isSignedIn && (
-                            <Link href="/sign-in">
-                                <Button variant="ghost" size="sm" className="hover:bg-muted hover:text-foreground">
-                                    Sign In
-                                </Button>
-                            </Link>
-                        )}
-
-                        {/* Mobile menu toggle - Only show when signed in */}
+                        {/* User Button */}
                         {showAuthUI && isSignedIn && (
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="md:hidden hover:bg-muted hover:text-foreground"
-                                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                            >
-                                {mobileMenuOpen ? (
-                                    <X className="h-5 w-5" />
-                                ) : (
-                                    <Menu className="h-5 w-5" />
-                                )}
-                            </Button>
+                            <div className="pl-1 border-l border-border/50 ml-1">
+                                <UserButton
+                                    afterSignOutUrl="/"
+                                    appearance={{
+                                        elements: {
+                                            avatarBox: "h-8 w-8 ring-2 ring-border/50 hover:ring-primary/40 transition-all duration-300"
+                                        }
+                                    }}
+                                />
+                            </div>
                         )}
                     </div>
+
+                    {showAuthUI && !isSignedIn && (
+                        <Link href="/sign-in">
+                            <Button variant="outline" size="sm" className="rounded-full border-border hover:bg-accent">
+                                Sign In
+                            </Button>
+                        </Link>
+                    )}
+
+                    {/* Mobile menu toggle */}
+                    {showAuthUI && isSignedIn && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="md:hidden h-9 w-9 rounded-full bg-muted/30 border border-border/50"
+                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                        >
+                            <span className="sr-only">Toggle menu</span>
+                            {mobileMenuOpen ? (
+                                <X className="h-4 w-4" />
+                            ) : (
+                                <Menu className="h-4 w-4" />
+                            )}
+                        </Button>
+                    )}
                 </div>
             </div>
 
-            {/* Mobile Navigation - Only show when signed in */}
+            {/* Mobile Navigation */}
             {showAuthUI && isSignedIn && mobileMenuOpen && (
-                <div className="md:hidden border-t border-border/40 bg-background/95 backdrop-blur-xl">
-                    <nav className="container mx-auto px-4 py-4 flex flex-col gap-2">
+                <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-2xl animate-in slide-in-from-top-1 duration-200">
+                    <nav className="container mx-auto px-6 py-6 flex flex-col gap-2">
                         {navItems.map((item) => {
                             const isActive = pathname.startsWith(item.href)
                             const Icon = item.icon
@@ -217,13 +225,13 @@ export function Header() {
                                     <Button
                                         variant={isActive ? "secondary" : "ghost"}
                                         className={cn(
-                                            "w-full justify-start gap-3",
+                                            "w-full justify-start gap-4 h-12 rounded-xl text-base font-medium transition-all",
                                             isActive
-                                                ? "bg-primary/10 text-primary"
-                                                : "hover:bg-muted hover:text-foreground"
+                                                ? "bg-primary/10 text-primary border border-primary/20"
+                                                : "text-muted-foreground hover:bg-accent hover:text-foreground"
                                         )}
                                     >
-                                        <Icon className="h-4 w-4" />
+                                        <Icon className="h-5 w-5" />
                                         {item.label}
                                     </Button>
                                 </Link>
@@ -247,6 +255,6 @@ export function Header() {
                 </>
             )}
         </header>
-    );
+    )
 }
 

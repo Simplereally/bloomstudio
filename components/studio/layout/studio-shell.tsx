@@ -52,6 +52,7 @@ import { useGenerationSettings } from "@/hooks/use-generation-settings"
 import { useImageGalleryState } from "@/hooks/use-image-gallery-state"
 import { usePromptManager } from "@/hooks/use-prompt-manager"
 import { useStudioUI } from "@/hooks/use-studio-ui"
+import { useSubscriptionStatus } from "@/hooks/use-subscription-status"
 import { getModelSupportsNegativePrompt } from "@/lib/config/models"
 import { isTrialExpiredError, showAuthRequiredToast, showErrorToast } from "@/lib/errors"
 import { isLocalhost } from "@/lib/utils"
@@ -104,7 +105,7 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
     }, [])
 
     // Subscription status for post-upgrade verification
-    const subscriptionStatus = useQuery(api.stripe.getUserSubscriptionStatus)
+    const { status: subscriptionStatus } = useSubscriptionStatus()
 
     // Handle successful upgrade redirect
     React.useEffect(() => {
@@ -112,7 +113,7 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
 
         // If we have the upgraded param but subscription isn't active yet, show loading state
         if (isUpgraded) {
-            if (subscriptionStatus?.status === "pro") {
+            if (subscriptionStatus === "pro") {
                 toast.dismiss("upgrade-loading")
                 toast.success("Welcome to Pro!", {
                     id: "upgrade-success", // Prevent duplicate toasts
@@ -166,7 +167,7 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
         if (!prompt) return
 
         // Prevent generation if we're waiting for upgrade verification
-        if (searchParams.get("upgraded") === "true" && subscriptionStatus?.status !== "pro") {
+        if (searchParams.get("upgraded") === "true" && subscriptionStatus !== "pro") {
             toast.info("Please wait while we confirm your subscription...", {
                 id: "upgrade-pending-block"
             })
