@@ -76,15 +76,16 @@ export const API_CONFIG = {
 } as const
 
 /**
- * Get API key from environment
+ * Get API key from environment (client-side only)
  * Returns undefined if no key is configured (anonymous access)
+ * 
+ * Note: Server-side generation uses user-specific keys stored in Convex,
+ * not environment variables. This function is only for client-side operations
+ * like model fetching where a publishable key may be used.
  */
 export function getApiKey(): string | undefined {
-    if (typeof window === "undefined") {
-        // Server-side: use secret key
-        return process.env.POLLINATIONS_SECRET_KEY
-    }
-    // Client-side: use publishable key
+    // Only return the publishable key for client-side use
+    // Server-side generation uses user-specific keys from Convex
     return process.env.NEXT_PUBLIC_POLLINATIONS_KEY
 }
 

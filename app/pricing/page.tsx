@@ -177,8 +177,9 @@ function PricingContent() {
 
         // Check Stripe configuration
         if (!isStripeConfigured()) {
-            toast.error("Stripe not configured", {
-                description: "Please set NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID in environment variables.",
+            console.error("Stripe configuration missing: NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID not set")
+            toast.error("Payment unavailable", {
+                description: "Please try again later or contact support.",
             })
             return
         }

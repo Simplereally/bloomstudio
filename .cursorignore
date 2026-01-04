@@ -1,1 +1,9 @@
 # Add directories or file patterns to ignore during indexing (e.g. foo/ or *.csv)
+
+# Allow Cursor to read .env files (they're in .gitignore but we want Cursor to access them)
+!.env
+!.env.local
+!.env.development
+!.env.production
+!.env.test
+!.env.*

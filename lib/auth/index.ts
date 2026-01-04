@@ -9,7 +9,6 @@ export {
     getPollinationsAuth,
     getRateLimitInfo,
     getAuthorizationHeader,
-    hasSecretKey,
     hasPublishableKey,
     ApiKeyTypeSchema,
     AuthStateSchema,

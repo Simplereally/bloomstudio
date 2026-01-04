@@ -130,21 +130,6 @@ export function getAuthorizationHeader(key?: string): string | undefined {
 }
 
 /**
- * Checks if the current environment has a secret key configured.
- * Secret keys should only be used server-side.
- *
- * @returns true if a secret key is available
- */
-export function hasSecretKey(): boolean {
-    // Only check server-side environment variable
-    if (typeof window !== "undefined") {
-        return false
-    }
-    const key = process.env.POLLINATIONS_SECRET_KEY
-    return validateApiKeyType(key) === "secret"
-}
-
-/**
  * Checks if the current environment has a publishable key configured.
  *
  * @returns true if a publishable key is available

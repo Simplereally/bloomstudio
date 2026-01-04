@@ -9,7 +9,6 @@ import {
     getPollinationsAuth,
     getRateLimitInfo,
     getAuthorizationHeader,
-    hasSecretKey,
     hasPublishableKey,
 } from "./pollinations-auth"
 
@@ -26,7 +25,6 @@ describe("pollinations-auth", () => {
     beforeEach(() => {
         vi.clearAllMocks()
         // Reset environment variables
-        delete process.env.POLLINATIONS_SECRET_KEY
         delete process.env.NEXT_PUBLIC_POLLINATIONS_KEY
     })
 
@@ -146,24 +144,6 @@ describe("pollinations-auth", () => {
             const header = getAuthorizationHeader()
 
             expect(header).toBeUndefined()
-        })
-    })
-
-    describe("hasSecretKey", () => {
-        it("returns true when secret key is in environment", () => {
-            process.env.POLLINATIONS_SECRET_KEY = "sk_test_secret"
-
-            expect(hasSecretKey()).toBe(true)
-        })
-
-        it("returns false when no secret key", () => {
-            expect(hasSecretKey()).toBe(false)
-        })
-
-        it("returns false when key has wrong prefix", () => {
-            process.env.POLLINATIONS_SECRET_KEY = "pk_wrong_prefix"
-
-            expect(hasSecretKey()).toBe(false)
         })
     })
 
