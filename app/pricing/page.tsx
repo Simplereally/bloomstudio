@@ -202,7 +202,7 @@ function PricingContent() {
         } catch (error) {
             console.error("Checkout error:", error)
             toast.error("Checkout failed", {
-                description: error instanceof Error ? error.message : "Please try again",
+                description: "Please try again later or contact support.",
             })
         } finally {
             setLoadingTier(null)

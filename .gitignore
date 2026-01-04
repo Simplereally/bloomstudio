@@ -36,3 +36,4 @@ next-env.d.ts
 # convex
 convex/_generated/
 .DS_Store
+.env*.local
