@@ -15,6 +15,8 @@ export const createSubscriptionCheckout = action({
     args: {
         priceId: v.string(),
         isAnnual: v.boolean(),
+        successUrl: v.optional(v.string()),
+        cancelUrl: v.optional(v.string()),
     },
     returns: v.object({
         sessionId: v.string(),
@@ -34,7 +36,9 @@ export const createSubscriptionCheckout = action({
         })
 
         // Determine success/cancel URLs
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+        // Use provided URLs or fallback to environment (mostly for backward compatibility/prod)
+        const successUrl = args.successUrl || `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/studio?upgraded=true`
+        const cancelUrl = args.cancelUrl || `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/pricing?canceled=true`
 
         // Create checkout session using raw Stripe SDK for promotion code support
         const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -50,8 +54,8 @@ export const createSubscriptionCheckout = action({
                     quantity: 1,
                 },
             ],
-            success_url: `${baseUrl}/studio?upgraded=true`,
-            cancel_url: `${baseUrl}/pricing?canceled=true`,
+            success_url: successUrl,
+            cancel_url: cancelUrl,
             allow_promotion_codes: true, // 🎉 Enable promo codes!
             subscription_data: {
                 metadata: {
@@ -104,17 +108,20 @@ export const getUserSubscriptionStatus = query({
  * Create a customer portal session for managing billing
  */
 export const createPortalSession = action({
-    args: {},
+    args: {
+        returnUrl: v.optional(v.string()),
+    },
     returns: v.object({
         url: v.string(),
     }),
-    handler: async (ctx) => {
+    handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity()
         if (!identity) {
             throw new Error("Not authenticated")
         }
 
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+        const returnUrl = args.returnUrl || `${baseUrl}/pricing`
 
         // Get customer for user
         const customer = await stripeClient.getOrCreateCustomer(ctx, {
@@ -126,7 +133,7 @@ export const createPortalSession = action({
         // Create portal session
         const session = await stripeClient.createCustomerPortalSession(ctx, {
             customerId: customer.customerId,
-            returnUrl: `${baseUrl}/pricing`,
+            returnUrl,
         })
 
         return { url: session.url }

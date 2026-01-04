@@ -191,6 +191,8 @@ function PricingContent() {
             const { url } = await createCheckout({
                 priceId: STRIPE_CONFIG.prices.proMonthly,
                 isAnnual: false,
+                successUrl: `${window.location.origin}/studio?upgraded=true`,
+                cancelUrl: `${window.location.origin}/pricing?canceled=true`,
             })
 
             // Redirect to Stripe Checkout
