@@ -3,11 +3,13 @@ import { components } from "./_generated/api"
 import { StripeSubscriptions } from "@convex-dev/stripe"
 import { v } from "convex/values"
 import { getSubscriptionStatus } from "./lib/subscription"
+import Stripe from "stripe"
 
 const stripeClient = new StripeSubscriptions(components.stripe, {})
 
 /**
  * Create a checkout session for a Pro subscription
+ * Uses raw Stripe SDK to enable promotion codes support
  */
 export const createSubscriptionCheckout = action({
     args: {
@@ -24,7 +26,7 @@ export const createSubscriptionCheckout = action({
             throw new Error("Not authenticated")
         }
 
-        // Get or create a Stripe customer
+        // Get or create a Stripe customer (still use the component for this)
         const customer = await stripeClient.getOrCreateCustomer(ctx, {
             userId: identity.subject,
             email: identity.email,
@@ -34,18 +36,35 @@ export const createSubscriptionCheckout = action({
         // Determine success/cancel URLs
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
 
-        // Create checkout session
-        return await stripeClient.createCheckoutSession(ctx, {
-            priceId: args.priceId,
-            customerId: customer.customerId,
+        // Create checkout session using raw Stripe SDK for promotion code support
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+            apiVersion: "2025-12-15.clover",
+        })
+
+        const session = await stripe.checkout.sessions.create({
             mode: "subscription",
-            successUrl: `${baseUrl}/studio?upgraded=true`,
-            cancelUrl: `${baseUrl}/pricing?canceled=true`,
-            subscriptionMetadata: {
-                userId: identity.subject,
-                isAnnual: args.isAnnual.toString(),
+            customer: customer.customerId,
+            line_items: [
+                {
+                    price: args.priceId,
+                    quantity: 1,
+                },
+            ],
+            success_url: `${baseUrl}/studio?upgraded=true`,
+            cancel_url: `${baseUrl}/pricing?canceled=true`,
+            allow_promotion_codes: true, // 🎉 Enable promo codes!
+            subscription_data: {
+                metadata: {
+                    userId: identity.subject,
+                    isAnnual: args.isAnnual.toString(),
+                },
             },
         })
+
+        return {
+            sessionId: session.id,
+            url: session.url,
+        }
     },
 })
 
