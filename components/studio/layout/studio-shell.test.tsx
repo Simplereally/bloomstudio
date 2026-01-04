@@ -2,7 +2,29 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { StudioShell, type StudioShellProps } from "./studio-shell"
+import { useQuery } from "convex/react"
 import type { GeneratedImage } from "@/types/pollinations"
+import { toast } from "sonner"
+
+// Mock sonner
+vi.mock("sonner", () => ({
+    toast: {
+        success: vi.fn(),
+        error: vi.fn(),
+        loading: vi.fn(),
+        dismiss: vi.fn(),
+        info: vi.fn(),
+    },
+}))
+
+// Mock API
+vi.mock("@/convex/_generated/api", () => ({
+    api: {
+        stripe: {
+            getUserSubscriptionStatus: "getUserSubscriptionStatus",
+        },
+    },
+}))
 
 // Mock all feature components
 vi.mock("@/components/studio/features/prompt", () => ({
@@ -236,7 +258,7 @@ vi.mock("convex/react", () => ({
         isLoading: false,
     })),
     useMutation: vi.fn(() => vi.fn()),
-    useQuery: vi.fn(),
+    useQuery: vi.fn(() => ({ status: "pro" })), // Default to pro for existing tests
 }))
 
 // Mock UI components
@@ -258,11 +280,10 @@ vi.mock("@/lib/utils", () => ({
     cn: (...inputs: string[]) => inputs.filter(Boolean).join(" "),
 }))
 
-// Mock next/navigation
+// Mock next/navigation with mutable search params
+const mockSearchParams = new URLSearchParams()
 vi.mock("next/navigation", () => ({
-    useSearchParams: vi.fn(() => ({
-        get: vi.fn(() => null),
-    })),
+    useSearchParams: vi.fn(() => mockSearchParams),
 }))
 
 describe("StudioShell", () => {
@@ -386,5 +407,61 @@ describe("StudioShell", () => {
         render(<StudioShell {...defaultProps} />)
 
         expect(screen.getByTestId("generate-button")).toHaveTextContent("Generate Image")
+    })
+
+    describe("Upgrade Verification Flow", () => {
+
+
+        beforeEach(() => {
+            mockSearchParams.delete("upgraded")
+        })
+
+        it("shows success toast when upgraded=true and status is pro", () => {
+            mockSearchParams.set("upgraded", "true")
+            vi.mocked(useQuery).mockReturnValueOnce({ status: "pro" })
+
+            render(<StudioShell {...defaultProps} />)
+
+            expect(toast.success).toHaveBeenCalledWith("Welcome to Pro!", expect.any(Object))
+            expect(toast.dismiss).toHaveBeenCalledWith("upgrade-loading")
+        })
+
+        it("shows loading toast when upgraded=true but status is still syncing", () => {
+            mockSearchParams.set("upgraded", "true")
+            vi.mocked(useQuery).mockReturnValueOnce({ status: "expired" }) // Not pro yet
+
+            render(<StudioShell {...defaultProps} />)
+
+            expect(toast.loading).toHaveBeenCalledWith("Finalizing your upgrade...", expect.any(Object))
+        })
+
+        it("blocks generation and shows info toast when status is syncing", () => {
+            mockSearchParams.set("upgraded", "true")
+            vi.mocked(useQuery).mockReturnValueOnce({ status: "expired" }) // Not pro yet
+
+            render(<StudioShell {...defaultProps} />)
+
+            fireEvent.click(screen.getByTestId("generate-button"))
+
+            expect(toast.info).toHaveBeenCalledWith(
+                "Please wait while we confirm your subscription...",
+                expect.any(Object)
+            )
+            // Should NOT trigger generation
+            expect(mockPromptManager.addToPromptHistory).not.toHaveBeenCalled()
+        })
+
+        it("allows generation when status becomes pro", async () => {
+            mockSearchParams.set("upgraded", "true")
+            vi.mocked(useQuery).mockReturnValueOnce({ status: "pro" })
+
+            render(<StudioShell {...defaultProps} />)
+
+            fireEvent.click(screen.getByTestId("generate-button"))
+
+            await waitFor(() => {
+                expect(mockPromptManager.addToPromptHistory).toHaveBeenCalledWith("Test prompt")
+            })
+        })
     })
 })

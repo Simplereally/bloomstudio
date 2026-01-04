@@ -20,6 +20,8 @@
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Pause, Play, Sparkles, X } from "lucide-react"
+import { useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
 
 // Studio Components
 import { ImageLightbox } from "@/components/images/image-lightbox"
@@ -101,16 +103,32 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
         setIsLocalDev(isLocalhost())
     }, [])
 
+    // Subscription status for post-upgrade verification
+    const subscriptionStatus = useQuery(api.stripe.getUserSubscriptionStatus)
+
     // Handle successful upgrade redirect
     React.useEffect(() => {
-        if (searchParams.get("upgraded") === "true") {
-            toast.success("Welcome to Pro!", {
-                description: "Your account has been upgraded. Start creating!",
-            })
-            // Clean up URL without reload
-            window.history.replaceState({}, "", "/studio")
+        const isUpgraded = searchParams.get("upgraded") === "true"
+
+        // If we have the upgraded param but subscription isn't active yet, show loading state
+        if (isUpgraded) {
+            if (subscriptionStatus?.status === "pro") {
+                toast.dismiss("upgrade-loading")
+                toast.success("Welcome to Pro!", {
+                    id: "upgrade-success", // Prevent duplicate toasts
+                    description: "Your account has been upgraded. Start creating!",
+                })
+                // Clean up URL without reload
+                window.history.replaceState({}, "", "/studio")
+            } else {
+                // Still processing webhook or loading
+                toast.loading("Finalizing your upgrade...", {
+                    id: "upgrade-loading",
+                    description: "Syncing your subscription status with Stripe."
+                })
+            }
         }
-    }, [searchParams])
+    }, [searchParams, subscriptionStatus])
 
     // Batch mode (depends on generation settings and gallery)
     const batchMode = useBatchMode({
@@ -146,6 +164,14 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
         const { prompt, negativePrompt } = promptManager.getPromptValues()
 
         if (!prompt) return
+
+        // Prevent generation if we're waiting for upgrade verification
+        if (searchParams.get("upgraded") === "true" && subscriptionStatus?.status !== "pro") {
+            toast.info("Please wait while we confirm your subscription...", {
+                id: "upgrade-pending-block"
+            })
+            return
+        }
 
         // Add to history
         promptManager.addToPromptHistory(prompt)
@@ -193,7 +219,9 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
         promptManager,
         generationSettings,
         batchMode,
-        generate
+        generate,
+        searchParams,
+        subscriptionStatus
     ])
 
     // ========================================
