@@ -4,6 +4,7 @@ import { ConvexClientProvider, QueryProvider } from "@/components/providers"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 import { Analytics } from "@vercel/analytics/next"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 import type { Metadata } from "next"
 import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google"
 import type React from "react"
@@ -57,6 +58,7 @@ export default function RootLayout({
                 <Header />
                 {children}
                 <Toaster position="bottom-right" richColors closeButton />
+                <SpeedInsights />
               </QueryProvider>
             </ConvexClientProvider>
           </ClerkThemeProvider>
