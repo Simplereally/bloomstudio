@@ -103,8 +103,20 @@ export default function LandingPage() {
                   return (
                     <div
                       key={model.id}
-                      className="group flex items-center gap-2.5 p-2 px-4 rounded-2xl glass-effect-home border border-white/5 hover:border-primary/40 transition-all duration-300 hover:bg-white/5 hover:-translate-y-0.5"
+                      className="group relative flex items-center gap-2.5 p-2 px-4 rounded-2xl glass-effect-home border border-white/5 transition-all duration-300 overflow-hidden"
                     >
+                      <div
+                        className="absolute inset-0 rounded-2xl pointer-events-none"
+                        style={{
+                          mask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                          maskComposite: "exclude",
+                          WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                          WebkitMaskComposite: "xor",
+                          padding: "1px",
+                        }}
+                      >
+                        <div className="absolute inset-[-100%] bg-[conic-gradient(transparent,transparent,var(--primary))] opacity-0 group-hover:opacity-100 transition-opacity duration-300 animate-[spin_3s_linear_infinite]" />
+                      </div>
                       {model.logo ? (
                         <div className="relative w-5 h-5">
                           <Image

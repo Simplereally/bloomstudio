@@ -378,19 +378,14 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
                 />
             </main>
 
-            {/* Dev-only Modals - API Key Onboarding & Upgrade are for local testing only */}
-            {isLocalDev && (
-                <>
-                    {/* API Key Onboarding Modal - shows when user doesn't have a key */}
-                    <ApiKeyOnboardingModal />
+            {/* API Key Onboarding Modal - shows when authenticated user doesn't have a key */}
+            <ApiKeyOnboardingModal />
 
-                    {/* Upgrade Modal - shows when trial has expired */}
-                    <UpgradeModal
-                        isOpen={showUpgradeModal}
-                        onClose={() => setShowUpgradeModal(false)}
-                    />
-                </>
-            )}
+            {/* Upgrade Modal - shows when trial has expired */}
+            <UpgradeModal
+                isOpen={showUpgradeModal}
+                onClose={() => setShowUpgradeModal(false)}
+            />
 
             {/* Fullscreen Preview Modal */}
             <ImageLightbox
