@@ -8,6 +8,7 @@
  */
 
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3"
+import crypto from "crypto"
 
 // ============================================================
 // Types
@@ -30,13 +31,14 @@ export interface R2UploadResult {
  * 
  * @param userId - Owner's user ID (Clerk subject)
  * @param contentType - MIME type of the image
- * @returns Unique object key in the format: generated/{userId}/{timestamp}-{randomId}.{ext}
+ * @returns Unique object key in the format: generated/{hash(userId)}/{timestamp}-{uuid}.{ext}
  */
 export function generateR2Key(userId: string, contentType: string): string {
     const ext = contentType.split("/")[1] || "jpg"
     const timestamp = Date.now()
-    const randomId = Math.random().toString(36).substring(2, 10)
-    return `generated/${userId}/${timestamp}-${randomId}.${ext}`
+    const randomId = crypto.randomUUID()
+    const userHash = crypto.createHash("sha256").update(userId).digest("hex")
+    return `generated/${userHash}/${timestamp}-${randomId}.${ext}`
 }
 
 // ============================================================

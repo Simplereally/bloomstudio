@@ -67,11 +67,19 @@ export async function GET(): Promise<NextResponse> {
 
         // Build authorization header
         const authHeader = getAuthorizationHeader(apiKey)
-        
-        // Debug: log that we're making the request (mask the key)
-        const maskedKey = apiKey ? `${apiKey.substring(0, 6)}...${apiKey.substring(apiKey.length - 4)}` : 'undefined'
-        console.log(`[/api/user/balance] Fetching balance with key: ${maskedKey}`)
-        console.log(`[/api/user/balance] Authorization header present: ${!!authHeader}`)
+
+        // Safely mask the API key for logging (only in development)
+        // Handles edge cases: short keys, empty keys, malformed keys
+        const maskApiKey = (key: string | undefined): string => {
+            if (!key) return "[none]"
+            if (key.length <= 8) return "****" // Don't expose any part of very short keys
+            return `${key.slice(0, 4)}...${key.slice(-4)}`
+        }
+
+        // Only log in development to avoid leaking any info in production
+        if (process.env.NODE_ENV === "development") {
+            console.log(`[/api/user/balance] Fetching balance with key: ${maskApiKey(apiKey)}`)
+        }
 
         // Fetch balance from Pollinations API
         const response = await fetch(POLLINATIONS_BALANCE_URL, {

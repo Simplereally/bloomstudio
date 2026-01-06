@@ -56,7 +56,8 @@ import { useSubscriptionStatus } from "@/hooks/use-subscription-status"
 import { getModelSupportsNegativePrompt } from "@/lib/config/models"
 import { isTrialExpiredError, showAuthRequiredToast, showErrorToast } from "@/lib/errors"
 import { isLocalhost } from "@/lib/utils"
-import type { GeneratedImage, ImageGenerationParams } from "@/types/pollinations"
+import type { ImageGenerationParams } from "@/types/pollinations"
+import type { ThumbnailData } from "@/components/studio/gallery/image-gallery"
 import { useConvexAuth } from "convex/react"
 import { useSearchParams } from "next/navigation"
 import * as React from "react"
@@ -242,7 +243,7 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
     // ========================================
     // Gallery Image Selection Handler
     // ========================================
-    const handleSelectGalleryImage = React.useCallback((image: GeneratedImage) => {
+    const handleSelectGalleryImage = React.useCallback((image: ThumbnailData) => {
         studioUI.openLightbox(image)
     }, [studioUI])
 
@@ -375,7 +376,6 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
         <GalleryFeature
             activeImageId={galleryState.currentImage?.id}
             onSelectImage={handleSelectGalleryImage}
-            onRemoveImage={galleryState.handleRemoveImage}
             thumbnailSize="md"
         />
     )

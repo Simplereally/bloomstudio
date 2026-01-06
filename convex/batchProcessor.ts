@@ -134,9 +134,11 @@ export const processBatchItem = internalAction({
         }
 
         try {
-            // Generate a unique seed for each image in the batch
-            const seed = batchJob.generationParams.seed ?? Math.floor(Math.random() * 2147483647)
-            
+            // Pollinations API only accepts seeds up to int32 max (2147483647)
+            const INT32_MAX = 2147483647
+            const rawSeed = batchJob.generationParams.seed ?? Math.floor(Math.random() * INT32_MAX)
+            const seed = Math.min(rawSeed, INT32_MAX)
+
             // Build the generation URL
             const generationUrl = buildPollinationsUrl({
                 prompt: batchJob.generationParams.prompt,
@@ -151,7 +153,8 @@ export const processBatchItem = internalAction({
                 image: batchJob.generationParams.image,
             })
 
-            console.log(`${logger} Calling Pollinations: ${generationUrl}`)
+            // Log generation request without prompt (which may contain PII)
+            console.log(`${logger} Generating with model=${batchJob.generationParams.model}, size=${batchJob.generationParams.width}x${batchJob.generationParams.height}, seed=${seed}`)
 
             // Call Pollinations API with retry logic
             const result = await fetchWithRetry(
@@ -188,7 +191,7 @@ export const processBatchItem = internalAction({
             // Upload to R2
             const r2Key = generateR2Key(batchJob.ownerId, contentType)
             console.log(`${logger} Uploading to R2: ${r2Key}`)
-            
+
             const uploadResult = await uploadToR2(imageBuffer, r2Key, contentType)
             console.log(`${logger} Upload complete: ${uploadResult.url}`)
 

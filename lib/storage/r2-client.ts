@@ -11,6 +11,7 @@ import {
     HeadObjectCommand,
 } from "@aws-sdk/client-s3"
 import { withRetry, isRetryableError } from "./retry"
+import crypto from "crypto"
 
 // Validate required environment variables
 function getEnvVar(name: string): string {
@@ -132,9 +133,10 @@ export function generateImageKey(
 ): string {
     const ext = contentType.split("/")[1] || "jpg"
     const timestamp = Date.now()
-    const randomId = Math.random().toString(36).substring(2, 10)
+    const randomId = crypto.randomUUID()
+    const userHash = crypto.createHash("sha256").update(userId).digest("hex")
 
-    return `${type}/${userId}/${timestamp}-${randomId}.${ext}`
+    return `${type}/${userHash}/${timestamp}-${randomId}.${ext}`
 }
 
 /**

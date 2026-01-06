@@ -3,10 +3,17 @@
  *
  * Server-side endpoint for generating contextual prompt suggestions.
  * Designed for high-frequency, low-latency calls.
+ *
+ * Security:
+ * - Requires authentication (returns 401 if not authenticated)
+ * - Rate limited to 20 requests per minute per user (returns 429 if exceeded)
  */
 
+import { auth } from "@clerk/nextjs/server"
+import { fetchMutation } from "convex/nextjs"
 import { generateSuggestions } from "@/lib/prompt-enhancement"
 import { NextRequest, NextResponse } from "next/server"
+import { api } from "@/convex/_generated/api"
 
 /**
  * Request body schema
@@ -49,6 +56,48 @@ export async function POST(
   request: NextRequest
 ): Promise<NextResponse<SuggestionsResponse>> {
   try {
+    // Authentication check
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "UNAUTHORIZED",
+            message: "Authentication required",
+          },
+        },
+        { status: 401 }
+      )
+    }
+
+    // Rate limit check
+    const rateLimitResult = await fetchMutation(api.rateLimits.checkRateLimit, {
+      userId,
+      endpoint: "suggestions",
+    })
+
+    if (!rateLimitResult.allowed) {
+      const retryAfter = Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000)
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "RATE_LIMIT_EXCEEDED",
+            message: "Too many requests. Please try again later.",
+          },
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(retryAfter),
+            "X-RateLimit-Remaining": "0",
+            "X-RateLimit-Reset": String(rateLimitResult.resetAt),
+          },
+        }
+      )
+    }
+
     const body = (await request.json()) as SuggestionsRequest
 
     // Validate request - allow empty prompt (returns empty suggestions)
@@ -59,12 +108,20 @@ export async function POST(
       abortSignal: request.signal,
     })
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        suggestions: result.suggestions,
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          suggestions: result.suggestions,
+        },
       },
-    })
+      {
+        headers: {
+          "X-RateLimit-Remaining": String(rateLimitResult.remaining),
+          "X-RateLimit-Reset": String(rateLimitResult.resetAt),
+        },
+      }
+    )
   } catch (error) {
     // Handle cancellation
     if (error instanceof Error && error.name === "AbortError") {
@@ -90,3 +147,4 @@ export async function POST(
     })
   }
 }
+

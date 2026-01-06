@@ -192,7 +192,7 @@ export function ApiKeyOnboardingModal({ onComplete, forceOpen, onClose }: ApiKey
                                     <div className="flex items-start gap-2">
                                         <ArrowRight className="w-3.5 h-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
                                         <span className="text-foreground/80">
-                                            Click <span className="font-medium text-foreground">"Generate API Key"</span>, select <span className="font-medium text-foreground">"Secret Key"</span>, and copy it
+                                            Click <span className="font-medium text-foreground">"Create API Key"</span>, select <span className="font-medium text-foreground">"Secret Key"</span>, then generate and copy it
                                         </span>
                                     </div>
                                 </div>

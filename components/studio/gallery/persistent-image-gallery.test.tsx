@@ -150,10 +150,10 @@ describe("PersistentImageGallery", () => {
             // Enter selection mode
             await user.click(screen.getByTestId("toggle-selection"))
 
-            // Select items by clicking checkboxes
-            const checkboxes = screen.getAllByTestId("thumbnail-checkbox")
-            await user.click(checkboxes[0])
-            await user.click(checkboxes[1])
+            // Select items by clicking thumbnails (whole card toggles selection in selection mode)
+            const thumbnails = screen.getAllByTestId("gallery-thumbnail")
+            await user.click(thumbnails[0])
+            await user.click(thumbnails[1])
 
             // Open bulk actions menu
             await user.click(screen.getByTestId("bulk-actions-menu"))
@@ -177,9 +177,9 @@ describe("PersistentImageGallery", () => {
             // Enter selection mode
             await user.click(screen.getByTestId("toggle-selection"))
 
-            // Select first item
-            const checkboxes = screen.getAllByTestId("thumbnail-checkbox")
-            await user.click(checkboxes[0])
+            // Select first item by clicking thumbnail
+            const thumbnails = screen.getAllByTestId("gallery-thumbnail")
+            await user.click(thumbnails[0])
 
             // Open bulk actions menu
             await user.click(screen.getByTestId("bulk-actions-menu"))
@@ -203,12 +203,12 @@ describe("PersistentImageGallery", () => {
             // Enter selection mode
             await user.click(screen.getByTestId("toggle-selection"))
 
-            // Select first item
-            const checkboxes = screen.getAllByTestId("thumbnail-checkbox")
-            await user.click(checkboxes[0])
+            // Select first item by clicking thumbnail
+            const thumbnails = screen.getAllByTestId("gallery-thumbnail")
+            await user.click(thumbnails[0])
 
-            // Verify item is selected
-            expect(screen.getByText("Actions (1)")).toBeInTheDocument()
+            // Verify item is selected (label shows selection count)
+            expect(screen.getByText("1 selected")).toBeInTheDocument()
 
             // Open bulk actions menu
             await user.click(screen.getByTestId("bulk-actions-menu"))
@@ -218,11 +218,11 @@ describe("PersistentImageGallery", () => {
 
             // After action, selection should be cleared and mode exited
             await waitFor(() => {
-                expect(screen.queryByText("Actions")).not.toBeInTheDocument()
+                expect(screen.queryByText("1 selected")).not.toBeInTheDocument()
             })
         })
 
-        it("does not show bulk actions menu when no items selected", async () => {
+        it("disables bulk actions menu when no items selected", async () => {
             const user = userEvent.setup()
 
             render(<PersistentImageGallery />)
@@ -230,8 +230,9 @@ describe("PersistentImageGallery", () => {
             // Enter selection mode
             await user.click(screen.getByTestId("toggle-selection"))
 
-            // No bulk actions menu should appear when nothing is selected
-            expect(screen.queryByTestId("bulk-actions-menu")).not.toBeInTheDocument()
+            // Bulk actions menu should be present but disabled when nothing is selected
+            expect(screen.getByTestId("bulk-actions-menu")).toBeInTheDocument()
+            expect(screen.getByTestId("bulk-actions-menu")).toBeDisabled()
         })
 
         it("handles mutation error gracefully", async () => {
@@ -244,9 +245,9 @@ describe("PersistentImageGallery", () => {
             // Enter selection mode
             await user.click(screen.getByTestId("toggle-selection"))
 
-            // Select first item
-            const checkboxes = screen.getAllByTestId("thumbnail-checkbox")
-            await user.click(checkboxes[0])
+            // Select first item by clicking thumbnail
+            const thumbnails = screen.getAllByTestId("gallery-thumbnail")
+            await user.click(thumbnails[0])
 
             // Open bulk actions menu
             await user.click(screen.getByTestId("bulk-actions-menu"))

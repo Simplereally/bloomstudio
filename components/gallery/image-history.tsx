@@ -5,7 +5,7 @@ import { DeleteImageDialog } from "@/components/studio/delete-image-dialog"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useDeleteGeneratedImage } from "@/hooks/mutations/use-delete-image"
-import { useImageHistory } from "@/hooks/queries/use-image-history"
+import { useImageHistoryWithDisplayData } from "@/hooks/queries/use-image-history"
 import { getModelDisplayName } from "@/lib/config/models"
 import { Loader2 } from "lucide-react"
 import Image from "next/image"
@@ -15,7 +15,7 @@ import Image from "next/image"
  * Supports infinite scrolling with a "Load More" button.
  */
 export function ImageHistory() {
-    const { results, status, loadMore } = useImageHistory()
+    const { results, status, loadMore } = useImageHistoryWithDisplayData()
     const deleteMutation = useDeleteGeneratedImage()
 
     const isLoading = status === "LoadingFirstPage"

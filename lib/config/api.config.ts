@@ -18,6 +18,8 @@ const schemaDefaults = ImageGenerationParamsSchema.parse({ prompt: "placeholder"
 export const API_DEFAULTS = {
     model: schemaDefaults.model,
     quality: schemaDefaults.quality,
+    width: schemaDefaults.width,
+    height: schemaDefaults.height,
     enhance: schemaDefaults.enhance,
     safe: schemaDefaults.safe,
     private: schemaDefaults.private,
@@ -42,7 +44,7 @@ export const API_CONSTRAINTS = {
     },
     seed: {
         min: 0,
-        max: 1844674407370955,
+        max: 2147483647, // int32 max - Pollinations API limit
     },
     guidanceScale: {
         min: 1,

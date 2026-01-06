@@ -60,7 +60,7 @@ describe("useRandomSeed", () => {
 
             expect(result.current.isRandomMode(0)).toBe(false)
             expect(result.current.isRandomMode(12345)).toBe(false)
-            expect(result.current.isRandomMode(1844674407370955)).toBe(false)
+            expect(result.current.isRandomMode(2147483647)).toBe(false)
         })
 
         it("RANDOM_SEED constant is -1", () => {
@@ -75,43 +75,16 @@ describe("useRandomSeed", () => {
             expect(result.current.MIN_SEED).toBe(0)
         })
 
-        it("MAX_SEED is 1844674407370955 for zimage", () => {
+        it("MAX_SEED is 2147483647 (int32 max) for all models", () => {
             const { result } = renderHook(() => useRandomSeed("zimage"))
 
-            expect(result.current.MAX_SEED).toBe(1844674407370955)
-        })
-    })
-
-    describe("hook with Seedream model (int32 max)", () => {
-        it("MAX_SEED is 2147483647 for seedream", () => {
-            const { result } = renderHook(() => useRandomSeed("seedream"))
-
             expect(result.current.MAX_SEED).toBe(2147483647)
-        })
-
-        it("MAX_SEED is 2147483647 for seedream-pro", () => {
-            const { result } = renderHook(() => useRandomSeed("seedream-pro"))
-
-            expect(result.current.MAX_SEED).toBe(2147483647)
-        })
-
-        it("generateSeed returns values within int32 range for seedream", () => {
-            const { result } = renderHook(() => useRandomSeed("seedream"))
-
-            // Generate multiple seeds and verify they're all within int32 range
-            for (let i = 0; i < 20; i++) {
-                const seed = result.current.generateSeed()
-                expect(seed).toBeLessThanOrEqual(2147483647)
-            }
         })
     })
 
     describe("getMaxSeedForModel utility", () => {
-        it("returns correct max seed for zimage", () => {
-            expect(getMaxSeedForModel("zimage")).toBe(1844674407370955)
-        })
-
-        it("returns int32 max for seedream", () => {
+        it("returns int32 max (2147483647) for all models", () => {
+            expect(getMaxSeedForModel("zimage")).toBe(2147483647)
             expect(getMaxSeedForModel("seedream")).toBe(2147483647)
         })
 
@@ -123,16 +96,8 @@ describe("useRandomSeed", () => {
     })
 
     describe("standalone utilities", () => {
-        it("generateRandomSeed returns a valid integer for zimage", () => {
+        it("generateRandomSeed returns a valid integer within int32 range", () => {
             const seed = generateRandomSeed("zimage")
-
-            expect(Number.isInteger(seed)).toBe(true)
-            expect(seed).toBeGreaterThanOrEqual(0)
-            expect(seed).toBeLessThanOrEqual(1844674407370955)
-        })
-
-        it("generateRandomSeed returns value within int32 for seedream", () => {
-            const seed = generateRandomSeed("seedream")
 
             expect(Number.isInteger(seed)).toBe(true)
             expect(seed).toBeGreaterThanOrEqual(0)

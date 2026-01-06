@@ -21,6 +21,7 @@ import type * as lib_r2 from "../lib/r2.js";
 import type * as lib_retry from "../lib/retry.js";
 import type * as lib_subscription from "../lib/subscription.js";
 import type * as promptLibrary from "../promptLibrary.js";
+import type * as rateLimits from "../rateLimits.js";
 import type * as referenceImages from "../referenceImages.js";
 import type * as singleGeneration from "../singleGeneration.js";
 import type * as singleGenerationProcessor from "../singleGenerationProcessor.js";
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   "lib/retry": typeof lib_retry;
   "lib/subscription": typeof lib_subscription;
   promptLibrary: typeof promptLibrary;
+  rateLimits: typeof rateLimits;
   referenceImages: typeof referenceImages;
   singleGeneration: typeof singleGeneration;
   singleGenerationProcessor: typeof singleGenerationProcessor;

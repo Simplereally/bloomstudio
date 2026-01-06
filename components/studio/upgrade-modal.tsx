@@ -35,7 +35,7 @@ interface UpgradeModalProps {
 }
 
 const proFeatures = [
-    { icon: Images, label: "900", description: "images per month" },
+    { icon: Images, label: "900", description: "NanoBanana images/month" },
     { icon: Palette, label: "10+", description: "AI models included" },
     { icon: RefreshCw, label: "Daily", description: "quota refresh" },
 ]
