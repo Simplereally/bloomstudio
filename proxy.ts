@@ -4,7 +4,10 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server"
  * Route matcher for protected routes that require authentication.
  * These routes will redirect to sign-in if accessed while unauthenticated.
  */
-const isProtectedRoute = createRouteMatcher([
+/**
+ * Route matcher for protected routes that require authentication.
+ */
+export const isProtectedRoute = createRouteMatcher([
   '/studio(.*)',
   '/settings(.*)',
   '/history(.*)',
