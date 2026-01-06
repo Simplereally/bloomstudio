@@ -46,8 +46,8 @@ export interface UseStudioUIReturn {
 }
 
 /**
- * Hook for managing Studio UI state.
- * 
+ * Manage Studio UI state for sidebar, gallery, and fullscreen/lightbox with stable callbacks.
+ *
  * @example
  * ```tsx
  * const {
@@ -56,13 +56,15 @@ export interface UseStudioUIReturn {
  *     showGallery,
  *     openLightbox,
  * } = useStudioUI()
- * 
+ *
  * // Toggle sidebar
  * <Button onClick={toggleLeftSidebar}>Toggle Sidebar</Button>
- * 
+ *
  * // Open lightbox
  * <ImageThumbnail onClick={() => openLightbox(image)} />
  * ```
+ *
+ * @returns An object exposing sidebar and gallery visibility (`showLeftSidebar`, `showGallery`) with their setters and toggle callbacks, fullscreen state (`isFullscreen`) with its setter, the current `lightboxImage` with its setter, and `openLightbox` / `closeLightbox` handlers.
  */
 export function useStudioUI(): UseStudioUIReturn {
     // ========================================

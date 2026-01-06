@@ -11,8 +11,11 @@ import { Loader2 } from "lucide-react"
 import Image from "next/image"
 
 /**
- * Component to display the user's generated image history.
- * Supports infinite scrolling with a "Load More" button.
+ * Render the user's generated image history as a responsive grid with controls for visibility, deletion, and pagination.
+ *
+ * Displays skeleton placeholders while the first page is loading, an empty state when there are no images, and a grid of image cards otherwise. Each card shows the prompt and model name and provides a visibility toggle and delete action. When additional pages are available, a "Load More" button is shown to fetch more items.
+ *
+ * @returns The React element representing the image history UI
  */
 export function ImageHistory() {
     const { results, status, loadMore } = useImageHistoryWithDisplayData()

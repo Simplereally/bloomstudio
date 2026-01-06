@@ -117,6 +117,14 @@ export const metadata: Metadata = {
   },
 }
 
+/**
+ * Root application layout that wraps pages with global providers, theming, fonts, and shared UI.
+ *
+ * Wraps `children` with HTML/body and a hierarchy of providers (theme, auth, data, query), renders the site header, toast container, performance insights, and analytics.
+ *
+ * @param children - The page content to render inside the layout
+ * @returns The root HTML element containing global providers and the rendered page content
+ */
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -147,4 +155,3 @@ export default function RootLayout({
     </html>
   )
 }
-

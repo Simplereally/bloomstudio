@@ -13,7 +13,13 @@ import {
 import { withRetry, isRetryableError } from "./retry"
 import crypto from "crypto"
 
-// Validate required environment variables
+/**
+ * Retrieve a required environment variable by name.
+ *
+ * @param name - The environment variable key to read from process.env
+ * @returns The value of the environment variable
+ * @throws Error if the environment variable is not set or is empty
+ */
 function getEnvVar(name: string): string {
     const value = process.env[name]
     if (!value) {
@@ -122,9 +128,16 @@ export async function imageExists(key: string): Promise<boolean> {
 }
 
 /**
- * Generate a unique object key for an image
+ * Generate a unique storage key for an image.
  *
- * Format: {type}/{userId}/{timestamp}-{randomId}.{ext}
+ * The key is formatted as `{type}/{userHash}/{timestamp}-{randomId}.{ext}` where `userHash`
+ * is the SHA-256 hash of `userId`, `timestamp` is milliseconds since the Unix epoch,
+ * `randomId` is a UUID, and `ext` is derived from `contentType` (defaults to `jpg` if absent).
+ *
+ * @param userId - The identifier for the user; its SHA-256 hash is used in the key
+ * @param type - Top-level path segment, either `"generated"` or `"reference"`
+ * @param contentType - MIME type used to derive the file extension (e.g., `"image/png"`)
+ * @returns The generated object key string
  */
 export function generateImageKey(
     userId: string,

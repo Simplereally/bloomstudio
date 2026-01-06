@@ -26,6 +26,26 @@ interface UseImageLightboxProps {
   isOpen: boolean
 }
 
+/**
+ * Provides state and event handlers for displaying and interacting with an image lightbox.
+ *
+ * Manages copy-to-clipboard state for the image prompt, zooming, natural vs rendered image sizes,
+ * and drag-to-scroll behavior when zoomed; also exposes a scroll container ref.
+ *
+ * @param image - The image object shown in the lightbox (may be null); its optional `prompt` is used by copy behavior.
+ * @param isOpen - Whether the lightbox is currently open; used to reset transient state when changed.
+ * @returns An object with:
+ *  - `copied`: `true` when the image prompt was recently copied to the clipboard.
+ *  - `isZoomed`: `true` when the image is displayed zoomed in.
+ *  - `naturalSize`: The image's natural `{ width, height }` in pixels.
+ *  - `isDragging`: `true` while a drag-to-scroll operation is active.
+ *  - `scrollContainerRef`: Ref to the scrollable container element.
+ *  - `canZoom`: `true` when the image's natural size is sufficiently larger than its rendered size.
+ *  - `handleCopyPrompt`: Click handler that copies the image prompt to the clipboard.
+ *  - `handleImageLoad`: Image load handler that updates natural and rendered sizes.
+ *  - `toggleZoom`: Click handler that toggles zoom state (centers content when enabling zoom).
+ *  - `handleMouseDown`, `handleMouseMove`, `handleMouseUp`, `handleMouseLeave`: Mouse handlers for drag-to-scroll when zoomed.
+ */
 export function useImageLightbox({ image, isOpen }: UseImageLightboxProps) {
   const [copied, setCopied] = React.useState(false)
   const [isZoomed, setIsZoomed] = React.useState(false)

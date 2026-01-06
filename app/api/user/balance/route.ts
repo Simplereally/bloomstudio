@@ -17,10 +17,13 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
 const POLLINATIONS_BALANCE_URL = "https://gen.pollinations.ai/api/usage?limit=100"
 
 /**
- * GET /api/user/balance
+ * Retrieve the authenticated user's Pollinations pending spend/balance.
  *
- * Fetches the user's pending spend/balance from Pollinations API.
- * Requires authentication and a stored Pollinations API key.
+ * Proxies a request to the Pollinations balance endpoint using the user's stored (and decrypted) Pollinations API key.
+ * Requires the requester to be authenticated; responds with appropriate HTTP status codes for authentication failures,
+ * missing API key, decryption or unexpected errors, or with the original Pollinations API status when that request fails.
+ *
+ * @returns A NextResponse containing the Pollinations balance JSON on success, or a JSON error payload with an appropriate HTTP status (`401`, `404`, `500`, or the Pollinations API's status code) on failure.
  */
 export async function GET(): Promise<NextResponse> {
     try {

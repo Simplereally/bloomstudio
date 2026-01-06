@@ -132,6 +132,13 @@ const featureComparison = [
     { feature: "NSFW Generations", starter: true, pro: true, competitors: false },
 ]
 
+/**
+ * Render the pricing page UI and coordinate user checkout and Stripe redirect feedback.
+ *
+ * Renders the full pricing experience (hero/value proposition, tier cards with CTAs, feature comparison table, FAQs, final CTA, and footer). Handles CTA actions and checkout flows: redirects immediately for the Starter trial, shows an informational message for Competitors, requires sign-in before starting a paid subscription, verifies Stripe configuration, initiates a Pro checkout session via the Convex action, redirects to Stripe Checkout, and shows toast notifications for Stripe success or cancellation redirects.
+ *
+ * @returns The React element for the pricing page UI.
+ */
 function PricingContent() {
     const [loadingTier, setLoadingTier] = useState<TierName | null>(null)
     const { isSignedIn } = useUser()

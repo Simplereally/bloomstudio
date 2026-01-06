@@ -36,6 +36,18 @@ interface ApiKeyOnboardingModalProps {
     onClose?: () => void
 }
 
+/**
+ * Displays a modal that guides authenticated users through obtaining and saving a Pollinations API key.
+ *
+ * The modal can operate in automatic mode (opens for authenticated users who do not yet have a saved API key)
+ * or in controlled mode when `forceOpen` is provided. It validates the entered key, posts it to the server,
+ * and invokes callbacks on completion or close.
+ *
+ * @param onComplete - Optional callback invoked after a key is successfully saved.
+ * @param forceOpen - When provided, forces the modal's open state (enables controlled mode).
+ * @param onClose - Optional callback invoked when the modal is closed (used in controlled mode).
+ * @returns The onboarding modal JSX; in automatic mode returns `null` when the modal should not be shown. 
+ */
 export function ApiKeyOnboardingModal({ onComplete, forceOpen, onClose }: ApiKeyOnboardingModalProps) {
     const [apiKey, setApiKey] = React.useState("")
     const [isSaving, setIsSaving] = React.useState(false)

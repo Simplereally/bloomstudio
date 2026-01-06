@@ -24,15 +24,14 @@ export interface GalleryFeatureProps {
 }
 
 /**
- * GalleryFeature component - composes hook logic with view
- * 
- * @example
- * ```tsx
- * <GalleryFeature 
- *     activeImageId={currentImage?.id}
- *     onSelectImage={handleSelectGalleryImage}
- * />
- * ```
+ * Render a gallery UI by forwarding gallery-related props to GalleryView.
+ *
+ * Renders the GalleryView component with the provided active image, selection callback, and thumbnail size.
+ *
+ * @param activeImageId - ID of the currently active/highlighted image, if any
+ * @param onSelectImage - Callback invoked with the selected thumbnail's data when a thumbnail is chosen
+ * @param thumbnailSize - Size of thumbnails to display ("sm", "md", or "lg")
+ * @returns The gallery view element
  */
 export function GalleryFeature({
     activeImageId,

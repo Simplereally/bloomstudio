@@ -68,18 +68,11 @@ export interface StudioShellProps {
 }
 
 /**
- * StudioShell - The main Studio composition component
- * 
- * This component:
- * 1. Initializes all feature hooks at the top level
- * 2. Provides contexts for cross-feature communication
- * 3. Handles generation orchestration (combining prompt + settings)
- * 4. Renders the layout with composed features
- * 
- * @example
- * ```tsx
- * <StudioShell defaultLayout={{ sidebar: 22, gallery: 18 }} />
- * ```
+ * Compose and render the Studio interface while wiring feature hooks, cross-feature contexts, and image generation orchestration.
+ *
+ * Initializes prompt, generation, UI, and gallery hooks; coordinates single and batch image generation flows; manages upgrade and keyboard shortcuts; and renders the header, sidebar, canvas, gallery, and associated modals (API key onboarding, upgrade modal, and image lightbox).
+ *
+ * @param defaultLayout - Optional mapping of layout regions to their default sizes (e.g., `{ sidebar: 22, gallery: 18 }`) used to seed the studio layout
  */
 export function StudioShell({ defaultLayout }: StudioShellProps) {
     // ========================================

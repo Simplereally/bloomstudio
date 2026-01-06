@@ -6,6 +6,13 @@ import { CheckIcon, MinusIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * A styled checkbox that wraps Radix UI's Checkbox root and shows a check or minus icon for indeterminate state.
+ *
+ * @param className - Optional additional CSS class names to apply to the root element
+ * @param props - All other props are forwarded to Radix UI's Checkbox root (for example: `checked`, `disabled`, `onCheckedChange`)
+ * @returns The rendered CheckboxPrimitive.Root element with an indicator that shows a minus icon when `checked` is `"indeterminate"` and a check icon otherwise
+ */
 function Checkbox({
   className,
   ...props

@@ -47,11 +47,12 @@ interface SuggestionsErrorResponse {
 type SuggestionsResponse = SuggestionsSuccessResponse | SuggestionsErrorResponse
 
 /**
- * POST /api/suggestions
+ * Produce contextual prompt suggestions for an authenticated user based on the request body.
  *
- * Generates contextual prompt suggestions based on user input.
- * Optimized for speed with minimal processing.
- */
+ * Enforces authentication and per-user rate limiting; includes rate-limit headers on responses.
+ * Empty prompts produce an empty suggestions array. If suggestion generation is cancelled, returns a 499 CANCELLED error; on unexpected errors returns an empty suggestions array (`success: true`) to avoid disrupting the UI.
+ *
+ * @returns A SuggestionsResponse: on success (`success: true`) contains `data.suggestions` (string[]); on failure (`success: false`) contains `error` with `code` and `message`. Rate-limit and authentication failures are returned with appropriate HTTP status codes and accompanying headers.
 export async function POST(
   request: NextRequest
 ): Promise<NextResponse<SuggestionsResponse>> {
@@ -147,4 +148,3 @@ export async function POST(
     })
   }
 }
-
