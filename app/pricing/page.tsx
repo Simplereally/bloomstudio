@@ -251,9 +251,9 @@ function PricingContent() {
                 <div className="max-w-3xl mx-auto mb-6">
                     <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">vs Leonardo.ai (at 140 tokens per image)</p>
                     <div className="grid grid-cols-4 gap-2 sm:gap-3">
-                        {/* PixelStream */}
+                        {/* Bloom Studio */}
                         <div className="p-3 sm:p-4 rounded-xl bg-primary/10 border border-primary/30">
-                            <div className="font-semibold text-primary mb-2 text-sm">PixelStream</div>
+                            <div className="font-semibold text-primary mb-2 text-sm">Bloom Studio</div>
                             <div className="text-2xl sm:text-3xl font-black text-foreground leading-none">900 <span className="text-sm font-medium text-muted-foreground">images</span></div>
                             <div className="text-base font-semibold text-foreground mt-2">$5/mo</div>
                             <div className="text-xs font-bold text-primary mt-1">Best Value</div>

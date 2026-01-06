@@ -7,6 +7,7 @@
  * Clerk middleware behavior which is handled by Clerk's library.
  */
 import { describe, it, expect } from "vitest"
+import { config } from "./proxy"
 
 /**
  * Route matcher patterns used in proxy.ts
@@ -108,20 +109,14 @@ describe("proxy route protection", () => {
 })
 
 describe("proxy matcher configuration", () => {
-    const MATCHER_PATTERNS = [
-        '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-        '/(api|trpc)(.*)',
-    ]
-
     /**
      * Check if a path should be processed by proxy
      */
     function shouldProcessPath(pathname: string): boolean {
-        // Static files pattern - should be skipped
-        const staticFilePattern = /^\/(?!_next|[^?]*\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*$/
-        const apiPattern = /^\/(api|trpc)/
-
-        return staticFilePattern.test(pathname) || apiPattern.test(pathname)
+        return config.matcher.some(pattern => {
+            const regex = new RegExp(`^${pattern}$`)
+            return regex.test(pathname)
+        })
     }
 
     it("processes regular page routes", () => {
@@ -139,12 +134,12 @@ describe("proxy matcher configuration", () => {
     it("skips Next.js internal routes", () => {
         // _next should be skipped but our simplified test returns true
         // The actual proxy config handles this correctly
-        expect(MATCHER_PATTERNS[0]).toContain("_next")
+        expect(config.matcher[0]).toContain("_next")
     })
 
     it("includes patterns for common static file extensions", () => {
         // The pattern uses regex shorthand, e.g., jpe?g matches both jpg and jpeg
-        const pattern = MATCHER_PATTERNS[0]
+        const pattern = config.matcher[0]
 
         expect(pattern).toContain("html")
         expect(pattern).toContain("css")

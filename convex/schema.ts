@@ -281,5 +281,6 @@ export default defineSchema({
         count: v.number(),
         /** Timestamp when the current window started */
         windowStart: v.number(),
-    }).index("by_key", ["key"]),
+    }).index("by_key", ["key"])
+        .index("by_windowStart", ["windowStart"]),
 })

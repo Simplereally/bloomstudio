@@ -14,6 +14,7 @@ import { useAuth } from "@clerk/nextjs"
 // Environment variable validation
 const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL
 const CLERK_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+const CONVEX_DEPLOYMENT = process.env.CONVEX_DEPLOYMENT
 
 /**
  * Detect true production environment.
@@ -44,10 +45,10 @@ if (IS_VERCEL_PRODUCTION) {
         )
     }
 
-    // Validate Convex URL doesn't contain development indicators
-    if (CONVEX_URL.includes(".convex.cloud") && CONVEX_URL.includes("-dev-")) {
+    // Validate Convex Deployment is not a dev instance in production
+    if (CONVEX_DEPLOYMENT?.startsWith("dev:")) {
         console.warn(
-            "[Security Warning] Convex URL appears to be a development instance. " +
+            "[Security Warning] Convex Deployment appears to be a development instance. " +
             "Ensure this is intentional for this production deployment."
         )
     }

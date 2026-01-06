@@ -6,7 +6,7 @@
  * while providing reliable rate limiting.
  */
 import { v } from "convex/values"
-import { mutation, query } from "./_generated/server"
+import { internalMutation, mutation, query } from "./_generated/server"
 
 /**
  * Rate limit configuration for different endpoints.
@@ -154,7 +154,7 @@ export const getRateLimitStatus = query({
  * Clean up expired rate limit records.
  * Should be called periodically (e.g., via a cron job) to prevent table bloat.
  */
-export const cleanupExpiredLimits = mutation({
+export const cleanupExpiredLimits = internalMutation({
     args: {},
     returns: v.object({
         deleted: v.number(),
@@ -167,14 +167,17 @@ export const cleanupExpiredLimits = mutation({
         const cutoff = Date.now() - maxWindowMs * 2 // Keep some buffer
 
         // Query all records and filter/delete expired ones
-        const allRecords = await ctx.db.query("rateLimits").collect()
+        // Query records older than cutoff using the specific index
+        const expiredRecords = await ctx.db
+            .query("rateLimits")
+            .withIndex("by_windowStart", (q) => q.lt("windowStart", cutoff))
+            .collect()
+
         let deleted = 0
 
-        for (const record of allRecords) {
-            if (record.windowStart < cutoff) {
-                await ctx.db.delete(record._id)
-                deleted++
-            }
+        for (const record of expiredRecords) {
+            await ctx.db.delete(record._id)
+            deleted++
         }
 
         return { deleted }
