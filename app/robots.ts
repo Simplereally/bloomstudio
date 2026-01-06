@@ -1,5 +1,11 @@
 import type { MetadataRoute } from "next"
 
+/**
+ * Generates the robots.txt metadata for search engine crawlers.
+ * Defines allow/disallow rules and points to the sitemap.
+ * 
+ * @returns {MetadataRoute.Robots} The robots configuration object.
+ */
 export default function robots(): MetadataRoute.Robots {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://bloomstudio.fun"
 

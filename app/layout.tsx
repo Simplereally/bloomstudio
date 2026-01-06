@@ -14,6 +14,10 @@ const geist = Geist({ subsets: ["latin"], variable: "--font-geist-sans" })
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" })
 const bricolage = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-bricolage" })
 
+/**
+ * Viewport configuration for the application.
+ * Controls scaling, theme colors, and layout behavior on different devices.
+ */
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -24,6 +28,10 @@ export const viewport: Viewport = {
   ],
 }
 
+/**
+ * Global metadata configuration for the application.
+ * Includes title, description, OpenGraph, Twitter, and other SEO-related tags.
+ */
 export const metadata: Metadata = {
   title: {
     default: "Bloom Studio - Powerful AI Image Generation",
@@ -117,6 +125,13 @@ export const metadata: Metadata = {
   },
 }
 
+/**
+ * Root layout component that wraps all pages in the application.
+ * Provides global providers (Theme, Clerk, Convex, React Query) and basic HTML structure.
+ * 
+ * @param props - Component props
+ * @param props.children - The child components to render within the layout
+ */
 export default function RootLayout({
   children,
 }: Readonly<{

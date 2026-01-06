@@ -10,14 +10,28 @@ import type { GeneratedImage } from "@/types/pollinations"
 import { Badge } from "@/components/ui/badge"
 import { useImageDisplay } from "@/hooks/use-image-display"
 
+/**
+ * Props for the ImageDisplay component.
+ */
 interface ImageDisplayProps {
+  /** List of generated images to display in the gallery history */
   images: GeneratedImage[]
+  /** The currently selected/displayed image */
   currentImage: GeneratedImage | null
+  /** Callback to remove an image from history */
   onRemove: (id: string) => void
+  /** Callback when an image is selected from history */
   onSelect: (image: GeneratedImage) => void
+  /** Whether generation is currently in progress */
   isGenerating: boolean
 }
 
+/**
+ * Image Display Component.
+ * 
+ * Renders the main generated image with loading states (animations) and action buttons.
+ * Also renders the history gallery below the main image.
+ */
 export function ImageDisplay({ images, currentImage, onRemove, onSelect, isGenerating }: ImageDisplayProps) {
   const {
     copiedUrl,

@@ -20,6 +20,12 @@ const GL = dynamic(() => import("@/components/gl/gl").then((mod) => ({ default: 
   ),
 })
 
+/**
+ * Landing Page Component
+ * 
+ * The main entry point for the application. Displays the hero section,
+ * WebGL background, and value proposition.
+ */
 export default function LandingPage() {
   const [hovering, setHovering] = useState(false)
   const { isSignedIn, isLoaded } = useUser()

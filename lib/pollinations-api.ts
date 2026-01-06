@@ -119,6 +119,11 @@ export class PollinationsAPI {
     return Math.round(clamped / step) * step
   }
 
+  /**
+     * Generates a random seed for reproducible generations.
+     * 
+     * @returns A random integer between 0 and MAX_SEED.
+     */
   static generateRandomSeed(): number {
     // Generate a random integer between 0 and the max seed value (inclusive)
     return Math.floor(Math.random() * (API_CONSTRAINTS.seed.max + 1))

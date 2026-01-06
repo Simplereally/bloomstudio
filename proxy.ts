@@ -4,9 +4,6 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server"
  * Route matcher for protected routes that require authentication.
  * These routes will redirect to sign-in if accessed while unauthenticated.
  */
-/**
- * Route matcher for protected routes that require authentication.
- */
 export const isProtectedRoute = createRouteMatcher([
   '/studio(.*)',
   '/settings(.*)',
@@ -28,6 +25,10 @@ export default clerkMiddleware(async (auth, req) => {
   if (isProtectedRoute(req)) await auth.protect()
 })
 
+/**
+ * Middleware configuration object.
+ * Defines the matcher patterns for routes where the middleware should execute.
+ */
 export const config = {
   matcher: [
     // Skip Next.js internals and all static files, unless found in search params

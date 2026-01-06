@@ -12,6 +12,9 @@ import { uploadImage, generateImageKey } from "@/lib/storage"
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"]
 
+/**
+ * Succcesful upload response schema.
+ */
 interface UploadResponse {
     success: true
     data: {
@@ -22,6 +25,9 @@ interface UploadResponse {
     }
 }
 
+/**
+ * Error response schema.
+ */
 interface UploadError {
     success: false
     error: {
@@ -30,6 +36,10 @@ interface UploadError {
     }
 }
 
+/**
+ * Handles image upload requests.
+ * Validates file type and size, then uploads to Cloudflare R2.
+ */
 export async function POST(
     request: NextRequest
 ): Promise<NextResponse<UploadResponse | UploadError>> {

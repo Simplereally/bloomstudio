@@ -1,6 +1,13 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
+/**
+ * Merges Tailwind CSS classes with clsx.
+ * This is the standard utility for conditional class merging in shadcn/ui.
+ * 
+ * @param inputs - Class names or conditional class objects
+ * @returns Merged class string
+ */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }

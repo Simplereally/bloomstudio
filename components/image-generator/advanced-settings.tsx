@@ -67,6 +67,9 @@ interface SettingToggleProps {
     disabled?: boolean
 }
 
+/**
+ * Individual switch toggle with label and description.
+ */
 function SettingToggle({
     id,
     label,
@@ -94,6 +97,12 @@ function SettingToggle({
     )
 }
 
+/**
+ * Advanced Settings Panel Component.
+ * 
+ * Provides controls for negative prompts, guidance scale, and various boolean flags
+ * (transparency, watermark, enhance, private, safe mode).
+ */
 export function AdvancedSettings({
     open,
     onOpenChange,
@@ -141,9 +150,8 @@ export function AdvancedSettings({
                 >
                     <span className="text-sm font-medium">Advanced Settings</span>
                     <ChevronDown
-                        className={`h-4 w-4 transition-transform duration-200 ${
-                            open ? "rotate-180" : ""
-                        }`}
+                        className={`h-4 w-4 transition-transform duration-200 ${open ? "rotate-180" : ""
+                            }`}
                     />
                 </Button>
             </CollapsibleTrigger>
@@ -167,10 +175,10 @@ export function AdvancedSettings({
                         <EnhanceButton
                             isEnhancing={isEnhancingNegative}
                             disabled={!mainPrompt.trim() || disabled}
-                            onEnhance={() => enhanceNegativePromptText({ 
-                                prompt: mainPrompt, 
+                            onEnhance={() => enhanceNegativePromptText({
+                                prompt: mainPrompt,
                                 negativePrompt,
-                                type: "negative" 
+                                type: "negative"
                             })}
                             onCancel={cancelNegativeEnhance}
                         />

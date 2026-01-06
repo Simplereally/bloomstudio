@@ -40,6 +40,10 @@ const proFeatures = [
     { icon: RefreshCw, label: "Daily", description: "quota refresh" },
 ]
 
+/**
+ * Modal dialog for upgrading to Pro subscription.
+ * Displayed when trial limits are reached or user explicitly requests upgrade.
+ */
 export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
     const [isLoading, setIsLoading] = React.useState(false)
     const createCheckout = useAction(api.stripe.createSubscriptionCheckout)

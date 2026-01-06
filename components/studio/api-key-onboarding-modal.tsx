@@ -36,6 +36,12 @@ interface ApiKeyOnboardingModalProps {
     onClose?: () => void
 }
 
+/**
+ * Modal for guiding users through the API key setup process.
+ * 
+ * Handles checking for existing keys, generating new keys via external portal,
+ * and saving the key securely. Supports both automatic (on-mount) and controlled modes.
+ */
 export function ApiKeyOnboardingModal({ onComplete, forceOpen, onClose }: ApiKeyOnboardingModalProps) {
     const [apiKey, setApiKey] = React.useState("")
     const [isSaving, setIsSaving] = React.useState(false)
