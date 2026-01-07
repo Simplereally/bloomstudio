@@ -4,7 +4,7 @@ import * as React from "react"
 
 export interface LightboxImage {
   url: string
-  prompt: string
+  prompt?: string
   params?: {
     model?: string
     width?: number
@@ -31,9 +31,9 @@ export function useImageLightbox({ image, isOpen }: UseImageLightboxProps) {
   const [isZoomed, setIsZoomed] = React.useState(false)
   const [naturalSize, setNaturalSize] = React.useState({ width: 0, height: 0 })
   const [renderedSize, setRenderedSize] = React.useState({ width: 0, height: 0 })
-  
+
   const scrollContainerRef = React.useRef<HTMLDivElement>(null)
-  
+
   // Drag-to-scroll state
   const [isDragging, setIsDragging] = React.useState(false)
   const dragStart = React.useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 })
@@ -98,7 +98,7 @@ export function useImageLightbox({ image, isOpen }: UseImageLightboxProps) {
     // Only allow left click dragging
     if (e.button !== 0) return
     if (!isZoomed || !scrollContainerRef.current) return
-    
+
     setIsDragging(true)
     hasDragged.current = false
     dragStart.current = {
@@ -111,15 +111,15 @@ export function useImageLightbox({ image, isOpen }: UseImageLightboxProps) {
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging || !scrollContainerRef.current) return
-    
+
     const dx = e.clientX - dragStart.current.x
     const dy = e.clientY - dragStart.current.y
-    
+
     // Mark as dragged if moved more than 5px
     if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
       hasDragged.current = true
     }
-    
+
     scrollContainerRef.current.scrollLeft = dragStart.current.scrollLeft - dx
     scrollContainerRef.current.scrollTop = dragStart.current.scrollTop - dy
   }

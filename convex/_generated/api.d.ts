@@ -10,6 +10,7 @@
 
 import type * as batchGeneration from "../batchGeneration.js";
 import type * as batchProcessor from "../batchProcessor.js";
+import type * as crons from "../crons.js";
 import type * as favorites from "../favorites.js";
 import type * as follows from "../follows.js";
 import type * as generatedImages from "../generatedImages.js";
@@ -21,6 +22,7 @@ import type * as lib_r2 from "../lib/r2.js";
 import type * as lib_retry from "../lib/retry.js";
 import type * as lib_subscription from "../lib/subscription.js";
 import type * as promptLibrary from "../promptLibrary.js";
+import type * as rateLimits from "../rateLimits.js";
 import type * as referenceImages from "../referenceImages.js";
 import type * as singleGeneration from "../singleGeneration.js";
 import type * as singleGenerationProcessor from "../singleGenerationProcessor.js";
@@ -37,6 +39,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   batchGeneration: typeof batchGeneration;
   batchProcessor: typeof batchProcessor;
+  crons: typeof crons;
   favorites: typeof favorites;
   follows: typeof follows;
   generatedImages: typeof generatedImages;
@@ -48,6 +51,7 @@ declare const fullApi: ApiFromModules<{
   "lib/retry": typeof lib_retry;
   "lib/subscription": typeof lib_subscription;
   promptLibrary: typeof promptLibrary;
+  rateLimits: typeof rateLimits;
   referenceImages: typeof referenceImages;
   singleGeneration: typeof singleGeneration;
   singleGenerationProcessor: typeof singleGenerationProcessor;

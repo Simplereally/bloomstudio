@@ -1,16 +1,9 @@
 
 import type { GeneratedImage } from "@/types/pollinations"
-import { fireEvent, render, screen } from "@testing-library/react"
+import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import { GalleryThumbnail } from "./gallery-thumbnail"
-
-// Mock dependencies
-vi.mock("@/components/gallery/visibility-toggle", () => ({
-    VisibilityToggle: ({ currentVisibility }: { currentVisibility: string }) => (
-        <div data-testid="visibility-toggle">{currentVisibility}</div>
-    ),
-}))
 
 const mockImage: GeneratedImage = {
     id: "test-1",
@@ -39,7 +32,7 @@ describe("GalleryThumbnail", () => {
         expect(screen.getByTestId("gallery-thumbnail")).toBeInTheDocument()
     })
 
-    it("calls onClick when clicked", async () => {
+    it("calls onClick when clicked (not in selection mode)", async () => {
         const onClick = vi.fn()
         render(<GalleryThumbnail image={mockImage} onClick={onClick} />)
 
@@ -47,7 +40,7 @@ describe("GalleryThumbnail", () => {
         expect(onClick).toHaveBeenCalledTimes(1)
     })
 
-    it("shows active indicator when isActive", () => {
+    it("shows active indicator when isActive and not in selection mode", () => {
         render(<GalleryThumbnail image={mockImage} isActive={true} />)
 
         expect(screen.getByTestId("active-indicator")).toBeInTheDocument()
@@ -59,73 +52,84 @@ describe("GalleryThumbnail", () => {
         expect(screen.queryByTestId("active-indicator")).not.toBeInTheDocument()
     })
 
-    it("shows checkbox when showCheckbox is true", () => {
+    it("does not show active indicator in selection mode even when active", () => {
+        render(<GalleryThumbnail image={mockImage} isActive={true} showCheckbox={true} />)
+
+        expect(screen.queryByTestId("active-indicator")).not.toBeInTheDocument()
+    })
+
+    it("shows selection indicator when showCheckbox is true", () => {
         render(<GalleryThumbnail image={mockImage} showCheckbox={true} />)
 
-        expect(screen.getByTestId("thumbnail-checkbox")).toBeInTheDocument()
+        expect(screen.getByTestId("selection-indicator")).toBeInTheDocument()
     })
 
-    it("does not show checkbox by default", () => {
+    it("does not show selection indicator by default", () => {
         render(<GalleryThumbnail image={mockImage} />)
 
-        expect(screen.queryByTestId("thumbnail-checkbox")).not.toBeInTheDocument()
+        expect(screen.queryByTestId("selection-indicator")).not.toBeInTheDocument()
     })
 
-    it("shows remove action when onRemove is provided", async () => {
-        const onRemove = vi.fn()
-        render(<GalleryThumbnail image={mockImage} onRemove={onRemove} />)
+    describe("selection mode behavior", () => {
+        it("toggles selection when clicked in selection mode", async () => {
+            const onCheckedChange = vi.fn()
+            render(
+                <GalleryThumbnail
+                    image={mockImage}
+                    showCheckbox={true}
+                    isChecked={false}
+                    onCheckedChange={onCheckedChange}
+                />
+            )
 
-        // Hover to show overlay
-        fireEvent.mouseEnter(screen.getByTestId("gallery-thumbnail"))
-        expect(screen.getByTestId("remove-action")).toBeInTheDocument()
-    })
+            await userEvent.click(screen.getByTestId("gallery-thumbnail"))
+            expect(onCheckedChange).toHaveBeenCalledWith(true)
+        })
 
-    it("calls onRemove when remove button is clicked", async () => {
-        const onRemove = vi.fn()
-        render(<GalleryThumbnail image={mockImage} onRemove={onRemove} />)
+        it("toggles selection off when clicked while checked", async () => {
+            const onCheckedChange = vi.fn()
+            render(
+                <GalleryThumbnail
+                    image={mockImage}
+                    showCheckbox={true}
+                    isChecked={true}
+                    onCheckedChange={onCheckedChange}
+                />
+            )
 
-        fireEvent.mouseEnter(screen.getByTestId("gallery-thumbnail"))
-        await userEvent.click(screen.getByTestId("remove-action"))
-        expect(onRemove).toHaveBeenCalledTimes(1)
-    })
+            await userEvent.click(screen.getByTestId("gallery-thumbnail"))
+            expect(onCheckedChange).toHaveBeenCalledWith(false)
+        })
 
-    it("shows copy action when onCopy is provided", async () => {
-        const onCopy = vi.fn()
-        render(<GalleryThumbnail image={mockImage} onCopy={onCopy} />)
+        it("does not call onClick in selection mode", async () => {
+            const onClick = vi.fn()
+            const onCheckedChange = vi.fn()
+            render(
+                <GalleryThumbnail
+                    image={mockImage}
+                    showCheckbox={true}
+                    onClick={onClick}
+                    onCheckedChange={onCheckedChange}
+                />
+            )
 
-        fireEvent.mouseEnter(screen.getByTestId("gallery-thumbnail"))
-        expect(screen.getByTestId("copy-action")).toBeInTheDocument()
-    })
+            await userEvent.click(screen.getByTestId("gallery-thumbnail"))
+            expect(onClick).not.toHaveBeenCalled()
+            expect(onCheckedChange).toHaveBeenCalled()
+        })
 
-    it("calls onCopy when copy button is clicked", async () => {
-        const onCopy = vi.fn()
-        render(<GalleryThumbnail image={mockImage} onCopy={onCopy} />)
+        it("applies selected styling when checked", () => {
+            render(
+                <GalleryThumbnail
+                    image={mockImage}
+                    showCheckbox={true}
+                    isChecked={true}
+                />
+            )
 
-        fireEvent.mouseEnter(screen.getByTestId("gallery-thumbnail"))
-        await userEvent.click(screen.getByTestId("copy-action"))
-        expect(onCopy).toHaveBeenCalledTimes(1)
-    })
-
-    it("shows download action when onDownload is provided", async () => {
-        const onDownload = vi.fn()
-        render(<GalleryThumbnail image={mockImage} onDownload={onDownload} />)
-
-        fireEvent.mouseEnter(screen.getByTestId("gallery-thumbnail"))
-        expect(screen.getByTestId("download-action")).toBeInTheDocument()
-    })
-
-    it("calls onCheckedChange when checkbox is clicked", async () => {
-        const onCheckedChange = vi.fn()
-        render(
-            <GalleryThumbnail
-                image={mockImage}
-                showCheckbox={true}
-                onCheckedChange={onCheckedChange}
-            />
-        )
-
-        await userEvent.click(screen.getByTestId("thumbnail-checkbox"))
-        expect(onCheckedChange).toHaveBeenCalledWith(true)
+            const thumbnail = screen.getByTestId("gallery-thumbnail")
+            expect(thumbnail).toHaveClass("border-primary")
+        })
     })
 
     it("applies custom className", () => {
@@ -141,27 +145,5 @@ describe("GalleryThumbnail", () => {
 
         rerender(<GalleryThumbnail image={mockImage} size="lg" />)
         expect(screen.getByTestId("gallery-thumbnail")).toHaveClass("w-32", "h-32")
-    })
-
-    it("shows visibility toggle when _id and visibility are provided", async () => {
-        const imageWithVisibility = {
-            ...mockImage,
-            _id: "test-id-123",
-            visibility: "public" as const
-        }
-        
-        render(<GalleryThumbnail image={imageWithVisibility} />)
-        
-        // Hover to show overlay
-        fireEvent.mouseEnter(screen.getByTestId("gallery-thumbnail"))
-        expect(screen.getByTestId("visibility-toggle")).toBeInTheDocument()
-        expect(screen.getByText("public")).toBeInTheDocument()
-    })
-
-    it("does not show visibility toggle when visibility is missing", () => {
-        render(<GalleryThumbnail image={mockImage} />)
-        
-        fireEvent.mouseEnter(screen.getByTestId("gallery-thumbnail"))
-        expect(screen.queryByTestId("visibility-toggle")).not.toBeInTheDocument()
     })
 })

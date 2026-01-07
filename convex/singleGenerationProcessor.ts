@@ -123,7 +123,10 @@ export const processGeneration = internalAction({
 
         try {
             const params = generation.generationParams
-            const seed = params.seed ?? Math.floor(Math.random() * 2147483647)
+            // Pollinations API only accepts seeds up to int32 max (2147483647)
+            const INT32_MAX = 2147483647
+            const rawSeed = params.seed ?? Math.floor(Math.random() * INT32_MAX)
+            const seed = Math.min(rawSeed, INT32_MAX)
 
             // Build the generation URL
             const generationUrl = buildPollinationsUrl({

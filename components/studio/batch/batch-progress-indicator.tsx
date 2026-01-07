@@ -7,7 +7,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import type { BatchJob } from "@/hooks/queries/use-batch-generation"
+import type { BatchJob, BatchJobStatus } from "@/hooks/queries/use-batch-generation"
 import { Loader2, X } from "lucide-react"
 import * as React from "react"
 
@@ -40,17 +40,19 @@ export const BatchProgressIndicator = React.memo(function BatchProgressIndicator
         ? `${estimatedMinutes}m remaining`
         : `${(estimatedMinutes / 60).toFixed(1)}h remaining`
 
-    const statusText = {
+    const statusText: Record<BatchJobStatus, string> = {
         pending: "Starting...",
         processing: `${completedCount}/${totalCount} complete`,
+        paused: `Paused (${completedCount}/${totalCount})`,
         completed: `Completed (${completedCount}/${totalCount})`,
         cancelled: `Cancelled (${completedCount}/${totalCount})`,
         failed: `Failed (${failedCount} errors)`,
     }
 
-    const statusColor = {
+    const statusColor: Record<BatchJobStatus, string> = {
         pending: "text-muted-foreground",
         processing: "text-primary",
+        paused: "text-amber-500",
         completed: "text-emerald-500",
         cancelled: "text-yellow-500",
         failed: "text-destructive",

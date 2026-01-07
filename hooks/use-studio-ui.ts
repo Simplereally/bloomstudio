@@ -17,7 +17,7 @@
  */
 
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
-import type { GeneratedImage } from "@/types/pollinations"
+import type { LightboxImage } from "@/hooks/use-image-lightbox"
 import * as React from "react"
 
 /**
@@ -37,11 +37,11 @@ export interface UseStudioUIReturn {
     // Fullscreen/Lightbox state
     isFullscreen: boolean
     setIsFullscreen: React.Dispatch<React.SetStateAction<boolean>>
-    lightboxImage: GeneratedImage | null
-    setLightboxImage: React.Dispatch<React.SetStateAction<GeneratedImage | null>>
+    lightboxImage: LightboxImage | null
+    setLightboxImage: React.Dispatch<React.SetStateAction<LightboxImage | null>>
 
     // Open lightbox with specific image
-    openLightbox: (image: GeneratedImage | null) => void
+    openLightbox: (image: LightboxImage | null) => void
     closeLightbox: () => void
 }
 
@@ -75,7 +75,7 @@ export function useStudioUI(): UseStudioUIReturn {
     // Fullscreen/Lightbox State
     // ========================================
     const [isFullscreen, setIsFullscreen] = React.useState(false)
-    const [lightboxImage, setLightboxImage] = React.useState<GeneratedImage | null>(null)
+    const [lightboxImage, setLightboxImage] = React.useState<LightboxImage | null>(null)
 
     // ========================================
     // Stable Toggle Callbacks
@@ -91,7 +91,7 @@ export function useStudioUI(): UseStudioUIReturn {
     // ========================================
     // Lightbox Handlers
     // ========================================
-    const openLightbox = React.useCallback((image: GeneratedImage | null) => {
+    const openLightbox = React.useCallback((image: LightboxImage | null) => {
         setLightboxImage(image)
         setIsFullscreen(true)
     }, [])

@@ -9,16 +9,10 @@ vi.mock("./gallery-view", () => ({
     GalleryView: ({
         activeImageId,
         onSelectImage,
-        onRemoveImage,
-        onDownloadImage,
-        onCopyImageUrl,
         thumbnailSize,
     }: {
         activeImageId?: string
         onSelectImage?: (image: GeneratedImage) => void
-        onRemoveImage?: (id: string) => void
-        onDownloadImage?: (image: GeneratedImage) => void
-        onCopyImageUrl?: (image: GeneratedImage) => void
         thumbnailSize?: string
     }) => {
         const mockImage: GeneratedImage = {
@@ -39,39 +33,9 @@ vi.mock("./gallery-view", () => ({
                 >
                     Select
                 </button>
-                <button
-                    data-testid="remove-btn"
-                    onClick={() => onRemoveImage?.("test-id")}
-                >
-                    Remove
-                </button>
-                <button
-                    data-testid="download-btn"
-                    onClick={() => onDownloadImage?.(mockImage)}
-                >
-                    Download
-                </button>
-                <button
-                    data-testid="copy-btn"
-                    onClick={() => onCopyImageUrl?.(mockImage)}
-                >
-                    Copy URL
-                </button>
             </div>
         )
     },
-}))
-
-// Mock useDownloadImage
-const mockDownload = vi.fn()
-vi.mock("@/hooks/queries", () => ({
-    useDownloadImage: () => ({
-        download: mockDownload,
-    }),
-}))
-
-vi.mock("@/lib/errors", () => ({
-    showErrorToast: vi.fn(),
 }))
 
 describe("GalleryFeature", () => {
@@ -79,12 +43,6 @@ describe("GalleryFeature", () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        // Mock clipboard API
-        Object.assign(navigator, {
-            clipboard: {
-                writeText: vi.fn().mockResolvedValue(undefined),
-            },
-        })
     })
 
     it("renders GalleryView", () => {
@@ -125,36 +83,6 @@ describe("GalleryFeature", () => {
 
         expect(onSelectImage).toHaveBeenCalledWith(
             expect.objectContaining({ id: "test-id" })
-        )
-    })
-
-    it("calls onRemoveImage when remove button clicked", async () => {
-        const onRemoveImage = vi.fn().mockResolvedValue(undefined)
-        render(<GalleryFeature {...defaultProps} onRemoveImage={onRemoveImage} />)
-
-        fireEvent.click(screen.getByTestId("remove-btn"))
-
-        expect(onRemoveImage).toHaveBeenCalledWith("test-id")
-    })
-
-    it("calls download function when download button clicked", () => {
-        render(<GalleryFeature {...defaultProps} />)
-
-        fireEvent.click(screen.getByTestId("download-btn"))
-
-        expect(mockDownload).toHaveBeenCalledWith({
-            url: "https://example.com/image.jpg",
-            filename: "bloomstudio-test-id.jpg",
-        })
-    })
-
-    it("copies URL to clipboard when copy button clicked", async () => {
-        render(<GalleryFeature {...defaultProps} />)
-
-        fireEvent.click(screen.getByTestId("copy-btn"))
-
-        expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-            "https://example.com/image.jpg"
         )
     })
 })

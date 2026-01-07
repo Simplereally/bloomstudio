@@ -221,7 +221,7 @@ describe("ImageGallery", () => {
     })
 
     describe("bulk actions dropdown", () => {
-        it("shows bulk actions dropdown when items are selected", async () => {
+        it("shows bulk actions dropdown in selection mode", async () => {
             render(
                 <ImageGallery
                     images={mockImages}
@@ -233,10 +233,10 @@ describe("ImageGallery", () => {
             )
 
             expect(screen.getByTestId("bulk-actions-menu")).toBeInTheDocument()
-            expect(screen.getByText("Actions (2)")).toBeInTheDocument()
+            expect(screen.getByText("Actions")).toBeInTheDocument()
         })
 
-        it("does not show bulk actions dropdown when no items selected", () => {
+        it("disables bulk actions dropdown when no items selected", () => {
             render(
                 <ImageGallery
                     images={mockImages}
@@ -247,7 +247,8 @@ describe("ImageGallery", () => {
                 />
             )
 
-            expect(screen.queryByTestId("bulk-actions-menu")).not.toBeInTheDocument()
+            expect(screen.getByTestId("bulk-actions-menu")).toBeInTheDocument()
+            expect(screen.getByTestId("bulk-actions-menu")).toBeDisabled()
         })
 
         it("calls onDeleteSelected when delete option clicked", async () => {

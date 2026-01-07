@@ -86,7 +86,12 @@ export function Header() {
                                         <Icon className={cn("h-4 w-4", isActive ? "text-primary" : "text-muted-foreground")} />
                                         {item.label}
                                         {isActive && (
-                                            <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 bg-primary rounded-full blur-[1px]" />
+                                            <span
+                                                className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-[2px] w-[80%]"
+                                                style={{
+                                                    background: "linear-gradient(90deg, transparent 0%, #f97316 30%, #f97316 70%, transparent 100%)"
+                                                }}
+                                            />
                                         )}
                                     </div>
                                 </Link>

@@ -139,7 +139,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
             step: 32,
             defaultDimensions: { width: 1000, height: 1000 },
             dimensionsEnabled: true,
-            maxSeed: 1_844_674_407_370_955,
+            maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
         },
         aspectRatios: STANDARD_ASPECT_RATIOS,
         supportsNegativePrompt: false,
@@ -160,7 +160,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
             step: 32,
             defaultDimensions: { width: 2048, height: 2048 },
             dimensionsEnabled: true,
-            maxSeed: 1_844_674_407_370_955,
+            maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
         },
         aspectRatios: ZIMAGE_ASPECT_RATIOS,
         supportsNegativePrompt: false,
@@ -181,7 +181,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
             step: 64,
             defaultDimensions: { width: 768, height: 768 },
             dimensionsEnabled: true,
-            maxSeed: 1_844_674_407_370_955,
+            maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
         },
         aspectRatios: SDXLTURBO_ASPECT_RATIOS,
         supportsNegativePrompt: false,
@@ -202,7 +202,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
             step: 1,
             defaultDimensions: { width: 1024, height: 1024 },
             dimensionsEnabled: false,
-            maxSeed: 1_844_674_407_370_955,
+            maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
         },
         aspectRatios: GPTIMAGE_ASPECT_RATIOS,
         supportsNegativePrompt: false,
@@ -223,7 +223,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
             step: 1,
             defaultDimensions: { width: 1024, height: 1024 },
             dimensionsEnabled: false,
-            maxSeed: 1_844_674_407_370_955,
+            maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
         },
         aspectRatios: GPTIMAGE_LARGE_ASPECT_RATIOS,
         supportsNegativePrompt: false,
@@ -286,7 +286,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
             step: 32,
             defaultDimensions: { width: 1024, height: 1024 },
             dimensionsEnabled: true,
-            maxSeed: 1_844_674_407_370_955,
+            maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
         },
         aspectRatios: STANDARD_ASPECT_RATIOS,
         supportsNegativePrompt: false,
@@ -307,7 +307,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
             step: 32,
             defaultDimensions: { width: 1024, height: 1024 },
             dimensionsEnabled: true,
-            maxSeed: 1_844_674_407_370_955,
+            maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
         },
         aspectRatios: STANDARD_ASPECT_RATIOS,
         supportsNegativePrompt: false,
@@ -331,7 +331,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
             step: 1,
             defaultDimensions: { width: 1920, height: 1080 },
             dimensionsEnabled: false,
-            maxSeed: 1_844_674_407_370_955,
+            maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
         },
         aspectRatios: VIDEO_ASPECT_RATIOS,
         supportsNegativePrompt: false,
@@ -351,7 +351,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
             step: 1,
             defaultDimensions: { width: 1920, height: 1080 },
             dimensionsEnabled: false,
-            maxSeed: 1_844_674_407_370_955,
+            maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
         },
         aspectRatios: VIDEO_ASPECT_RATIOS,
         supportsNegativePrompt: false,
@@ -372,7 +372,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
             step: 1,
             defaultDimensions: { width: 1920, height: 1080 },
             dimensionsEnabled: false,
-            maxSeed: 1_844_674_407_370_955,
+            maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
         },
         aspectRatios: VIDEO_ASPECT_RATIOS,
         supportsNegativePrompt: false,

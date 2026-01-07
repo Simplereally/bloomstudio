@@ -269,4 +269,18 @@ export default defineSchema({
         .index("by_user", ["userId", "createdAt"])
         .index("by_prompt", ["promptId"])
         .index("by_user_prompt", ["userId", "promptId"]),
+
+    /**
+     * Rate limits table - tracks API rate limiting per user/endpoint
+     * Uses a sliding window algorithm to count requests within a time window.
+     */
+    rateLimits: defineTable({
+        /** Unique key combining endpoint and user ID, e.g. "enhance-prompt:user_123" */
+        key: v.string(),
+        /** Number of requests made in the current window */
+        count: v.number(),
+        /** Timestamp when the current window started */
+        windowStart: v.number(),
+    }).index("by_key", ["key"])
+        .index("by_windowStart", ["windowStart"]),
 })

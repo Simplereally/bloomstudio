@@ -9,6 +9,7 @@
  */
 
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -19,7 +20,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { useVirtualizer } from "@tanstack/react-virtual"
-import { CheckSquare, Eye, EyeOff, ImageOff, Loader2, MoreHorizontal, Square, Trash2 } from "lucide-react"
+import { Eye, EyeOff, ImageOff, Loader2, MoreHorizontal, Trash2 } from "lucide-react"
 import * as React from "react"
 import { GalleryThumbnail } from "./gallery-thumbnail"
 
@@ -47,9 +48,6 @@ interface ThumbnailItemProps {
     isActive: boolean
     isChecked: boolean
     onSelect: (image: ThumbnailData) => void
-    onRemove?: (id: string) => void
-    onCopy?: (image: ThumbnailData) => void
-    onDownload?: (image: ThumbnailData) => void
     onCheckedChange: (id: string, checked: boolean) => void
     showCheckbox: boolean
     size: "sm" | "md" | "lg"
@@ -60,9 +58,6 @@ const ThumbnailItem = React.memo(function ThumbnailItem({
     isActive,
     isChecked,
     onSelect,
-    onRemove,
-    onCopy,
-    onDownload,
     onCheckedChange,
     showCheckbox,
     size,
@@ -71,18 +66,6 @@ const ThumbnailItem = React.memo(function ThumbnailItem({
     const handleClick = React.useCallback(() => {
         onSelect(image)
     }, [onSelect, image])
-
-    const handleRemove = React.useMemo(() => 
-        onRemove ? () => onRemove(image.id) : undefined,
-    [onRemove, image.id])
-
-    const handleCopy = React.useMemo(() =>
-        onCopy ? () => onCopy(image) : undefined,
-    [onCopy, image])
-
-    const handleDownload = React.useMemo(() =>
-        onDownload ? () => onDownload(image) : undefined,
-    [onDownload, image])
 
     const handleChecked = React.useCallback((checked: boolean) => {
         onCheckedChange(image.id, checked)
@@ -94,9 +77,6 @@ const ThumbnailItem = React.memo(function ThumbnailItem({
             isActive={isActive}
             isChecked={isChecked}
             onClick={handleClick}
-            onRemove={handleRemove}
-            onCopy={handleCopy}
-            onDownload={handleDownload}
             onCheckedChange={handleChecked}
             showCheckbox={showCheckbox}
             size={size}
@@ -133,9 +113,6 @@ interface VirtualizedGalleryGridProps {
     selectionMode: boolean
     thumbnailSize: "sm" | "md" | "lg"
     onSelect: (image: ThumbnailData) => void
-    onRemove?: (id: string) => void
-    onCopy?: (image: ThumbnailData) => void
-    onDownload?: (image: ThumbnailData) => void
     onCheckedChange: (id: string, checked: boolean) => void
 }
 
@@ -146,9 +123,6 @@ const VirtualizedGalleryGrid = React.memo(function VirtualizedGalleryGrid({
     selectionMode,
     thumbnailSize,
     onSelect,
-    onRemove,
-    onCopy,
-    onDownload,
     onCheckedChange,
 }: VirtualizedGalleryGridProps) {
     const parentRef = React.useRef<HTMLDivElement>(null)
@@ -209,9 +183,6 @@ const VirtualizedGalleryGrid = React.memo(function VirtualizedGalleryGrid({
                                         isActive={activeImageId === image.id}
                                         isChecked={selectedIds.has(image.id)}
                                         onSelect={onSelect}
-                                        onRemove={onRemove}
-                                        onCopy={onCopy}
-                                        onDownload={onDownload}
                                         onCheckedChange={onCheckedChange}
                                         showCheckbox={selectionMode}
                                         size={thumbnailSize}
@@ -231,14 +202,8 @@ export interface ImageGalleryProps {
     images: ThumbnailData[]
     /** Currently active/selected image ID */
     activeImageId?: string
-    /** Callback when an image is selected */
+    /** Callback when an image is selected (clicked to view in canvas) */
     onSelectImage?: (image: ThumbnailData) => void
-    /** Callback when an image is removed */
-    onRemoveImage?: (id: string) => void
-    /** Callback to download an image */
-    onDownloadImage?: (image: ThumbnailData) => void
-    /** Callback to copy image URL */
-    onCopyImageUrl?: (image: ThumbnailData) => void
     /** Whether bulk selection mode is enabled */
     selectionMode?: boolean
     /** Set of selected image IDs */
@@ -277,9 +242,6 @@ export const ImageGallery = React.memo(function ImageGallery({
     images,
     activeImageId,
     onSelectImage,
-    onRemoveImage,
-    onDownloadImage,
-    onCopyImageUrl,
     selectionMode = false,
     selectedIds = new Set(),
     onSelectionChange,
@@ -326,22 +288,10 @@ export const ImageGallery = React.memo(function ImageGallery({
         onSelectionChange?.(new Set())
     }, [onSelectionChange])
 
-    // Memoized handlers for individual thumbnails - avoid creating new functions in the map
+    // Memoized handler for individual thumbnails - avoid creating new functions in the map
     const handleImageClick = React.useCallback((image: ThumbnailData) => {
         onSelectImage?.(image)
     }, [onSelectImage])
-
-    const handleImageRemove = React.useCallback((id: string) => {
-        onRemoveImage?.(id)
-    }, [onRemoveImage])
-
-    const handleImageCopy = React.useCallback((image: ThumbnailData) => {
-        onCopyImageUrl?.(image)
-    }, [onCopyImageUrl])
-
-    const handleImageDownload = React.useCallback((image: ThumbnailData) => {
-        onDownloadImage?.(image)
-    }, [onDownloadImage])
 
     // Loading state component - displayed inline within the gallery
     const loadingState = (
@@ -394,77 +344,85 @@ export const ImageGallery = React.memo(function ImageGallery({
                     <span className="text-xs font-medium text-muted-foreground">
                         History ({images.length})
                     </span>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                         {selectionMode ? (
                             <>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 px-2 text-xs"
-                                    onClick={selectedIds.size === images.length ? deselectAll : selectAll}
-                                    data-testid="select-all"
-                                    disabled={images.length === 0}
+                                <label 
+                                    className="flex items-center gap-1.5 cursor-pointer select-none"
+                                    data-testid="select-all-label"
                                 >
-                                    {selectedIds.size === images.length ? (
-                                        <>
-                                            <Square className="h-3 w-3 mr-1" />
-                                            None
-                                        </>
-                                    ) : (
-                                        <>
-                                            <CheckSquare className="h-3 w-3 mr-1" />
-                                            All
-                                        </>
-                                    )}
-                                </Button>
-                                {selectedIds.size > 0 && (
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button
-                                                variant="secondary"
-                                                size="sm"
-                                                className="h-6 px-2 text-xs"
-                                                data-testid="bulk-actions-menu"
+                                    <Checkbox
+                                        checked={
+                                            images.length === 0 
+                                                ? false 
+                                                : selectedIds.size === images.length 
+                                                    ? true 
+                                                    : selectedIds.size > 0 
+                                                        ? "indeterminate" 
+                                                        : false
+                                        }
+                                        onCheckedChange={(checked) => {
+                                            if (checked) {
+                                                selectAll()
+                                            } else {
+                                                deselectAll()
+                                            }
+                                        }}
+                                        data-testid="select-all"
+                                        disabled={images.length === 0}
+                                        className="h-3.5 w-3.5"
+                                    />
+                                    <span className="text-xs text-muted-foreground">
+                                        {selectedIds.size > 0 ? `${selectedIds.size} selected` : "Select all"}
+                                    </span>
+                                </label>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            className="h-6 px-2 text-xs"
+                                            data-testid="bulk-actions-menu"
+                                            disabled={selectedIds.size === 0}
+                                        >
+                                            <MoreHorizontal className="h-3 w-3 mr-1" />
+                                            Actions
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-48">
+                                        {onMakeSelectedPublic && (
+                                            <DropdownMenuItem
+                                                onClick={onMakeSelectedPublic}
+                                                data-testid="make-public"
                                             >
-                                                <MoreHorizontal className="h-3 w-3 mr-1" />
-                                                Actions ({selectedIds.size})
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="w-48">
-                                            {onMakeSelectedPublic && (
-                                                <DropdownMenuItem
-                                                    onClick={onMakeSelectedPublic}
-                                                    data-testid="make-public"
-                                                >
-                                                    <Eye className="h-4 w-4 mr-2" />
-                                                    Make Public
-                                                </DropdownMenuItem>
-                                            )}
-                                            {onMakeSelectedPrivate && (
-                                                <DropdownMenuItem
-                                                    onClick={onMakeSelectedPrivate}
-                                                    data-testid="make-private"
-                                                >
-                                                    <EyeOff className="h-4 w-4 mr-2" />
-                                                    Make Private
-                                                </DropdownMenuItem>
-                                            )}
-                                            {(onMakeSelectedPublic || onMakeSelectedPrivate) && onDeleteSelected && (
-                                                <DropdownMenuSeparator />
-                                            )}
-                                            {onDeleteSelected && (
-                                                <DropdownMenuItem
-                                                    onClick={onDeleteSelected}
-                                                    variant="destructive"
-                                                    data-testid="delete-selected"
-                                                >
-                                                    <Trash2 className="h-4 w-4 mr-2" />
-                                                    Delete Selected
-                                                </DropdownMenuItem>
-                                            )}
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                )}
+                                                <Eye className="h-4 w-4 mr-2" />
+                                                Make Public
+                                            </DropdownMenuItem>
+                                        )}
+                                        {onMakeSelectedPrivate && (
+                                            <DropdownMenuItem
+                                                onClick={onMakeSelectedPrivate}
+                                                data-testid="make-private"
+                                            >
+                                                <EyeOff className="h-4 w-4 mr-2" />
+                                                Make Private
+                                            </DropdownMenuItem>
+                                        )}
+                                        {(onMakeSelectedPublic || onMakeSelectedPrivate) && onDeleteSelected && (
+                                            <DropdownMenuSeparator />
+                                        )}
+                                        {onDeleteSelected && (
+                                            <DropdownMenuItem
+                                                onClick={onDeleteSelected}
+                                                variant="destructive"
+                                                data-testid="delete-selected"
+                                            >
+                                                <Trash2 className="h-4 w-4 mr-2" />
+                                                Delete Selected
+                                            </DropdownMenuItem>
+                                        )}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </>
                         ) : null}
                         {onToggleSelectionMode && (
@@ -497,9 +455,6 @@ export const ImageGallery = React.memo(function ImageGallery({
                             selectionMode={selectionMode}
                             thumbnailSize={thumbnailSize}
                             onSelect={handleImageClick}
-                            onRemove={onRemoveImage ? handleImageRemove : undefined}
-                            onCopy={onCopyImageUrl ? handleImageCopy : undefined}
-                            onDownload={onDownloadImage ? handleImageDownload : undefined}
                             onCheckedChange={handleCheckedChange}
                         />
                         {onLoadMore && (
@@ -543,9 +498,6 @@ export const ImageGallery = React.memo(function ImageGallery({
                                     isActive={activeImageId === image.id}
                                     isChecked={deferredSelectedIds.has(image.id)}
                                     onSelect={handleImageClick}
-                                    onRemove={onRemoveImage ? handleImageRemove : undefined}
-                                    onCopy={onCopyImageUrl ? handleImageCopy : undefined}
-                                    onDownload={onDownloadImage ? handleImageDownload : undefined}
                                     onCheckedChange={handleCheckedChange}
                                     showCheckbox={selectionMode}
                                     size={thumbnailSize}

@@ -35,11 +35,15 @@ interface UpgradeModalProps {
 }
 
 const proFeatures = [
-    { icon: Images, label: "900", description: "images per month" },
+    { icon: Images, label: "900", description: "NanoBanana images/month" },
     { icon: Palette, label: "10+", description: "AI models included" },
     { icon: RefreshCw, label: "Daily", description: "quota refresh" },
 ]
 
+/**
+ * Modal dialog for upgrading to Pro subscription.
+ * Displayed when trial limits are reached or user explicitly requests upgrade.
+ */
 export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
     const [isLoading, setIsLoading] = React.useState(false)
     const createCheckout = useAction(api.stripe.createSubscriptionCheckout)

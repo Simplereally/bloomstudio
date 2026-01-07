@@ -36,6 +36,12 @@ interface ApiKeyOnboardingModalProps {
     onClose?: () => void
 }
 
+/**
+ * Modal for guiding users through the API key setup process.
+ * 
+ * Handles checking for existing keys, generating new keys via external portal,
+ * and saving the key securely. Supports both automatic (on-mount) and controlled modes.
+ */
 export function ApiKeyOnboardingModal({ onComplete, forceOpen, onClose }: ApiKeyOnboardingModalProps) {
     const [apiKey, setApiKey] = React.useState("")
     const [isSaving, setIsSaving] = React.useState(false)
@@ -192,7 +198,7 @@ export function ApiKeyOnboardingModal({ onComplete, forceOpen, onClose }: ApiKey
                                     <div className="flex items-start gap-2">
                                         <ArrowRight className="w-3.5 h-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
                                         <span className="text-foreground/80">
-                                            Click <span className="font-medium text-foreground">"Generate API Key"</span>, select <span className="font-medium text-foreground">"Secret Key"</span>, and copy it
+                                            Click <span className="font-medium text-foreground">"Create API Key"</span>, select <span className="font-medium text-foreground">"Secret Key"</span>, then generate and copy it
                                         </span>
                                     </div>
                                 </div>

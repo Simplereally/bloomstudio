@@ -11,20 +11,14 @@
  */
 
 import { PersistentImageGallery } from "@/components/studio"
-import type { GeneratedImage } from "@/types/pollinations"
+import type { ThumbnailData } from "@/components/studio/gallery/image-gallery"
 import * as React from "react"
 
 export interface GalleryViewProps {
     /** Currently active image ID (for highlighting) */
     activeImageId?: string
-    /** Handle image selection */
-    onSelectImage?: (image: GeneratedImage) => void
-    /** Handle image removal */
-    onRemoveImage?: (id: string) => void
-    /** Handle image download */
-    onDownloadImage?: (image: GeneratedImage) => void
-    /** Handle copy image URL */
-    onCopyImageUrl?: (image: GeneratedImage) => void
+    /** Handle image selection (opens in canvas/lightbox) */
+    onSelectImage?: (image: ThumbnailData) => void
     /** Thumbnail size */
     thumbnailSize?: "sm" | "md" | "lg"
 }
@@ -32,9 +26,6 @@ export interface GalleryViewProps {
 export const GalleryView = React.memo(function GalleryView({
     activeImageId,
     onSelectImage,
-    onRemoveImage,
-    onDownloadImage,
-    onCopyImageUrl,
     thumbnailSize = "md",
 }: GalleryViewProps) {
     return (
@@ -42,9 +33,6 @@ export const GalleryView = React.memo(function GalleryView({
             <PersistentImageGallery
                 activeImageId={activeImageId}
                 onSelectImage={onSelectImage}
-                onRemoveImage={onRemoveImage}
-                onDownloadImage={onDownloadImage}
-                onCopyImageUrl={onCopyImageUrl}
                 thumbnailSize={thumbnailSize}
             />
         </div>
