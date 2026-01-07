@@ -56,7 +56,7 @@ import { useSubscriptionStatus } from "@/hooks/use-subscription-status"
 import { getModelSupportsNegativePrompt } from "@/lib/config/models"
 import { isTrialExpiredError, showAuthRequiredToast, showErrorToast } from "@/lib/errors"
 import { isLocalhost } from "@/lib/utils"
-import type { ImageGenerationParams } from "@/types/pollinations"
+import type { ImageGenerationParams, VideoGenerationParams } from "@/types/pollinations"
 import type { ThumbnailData } from "@/components/studio/gallery/image-gallery"
 import { useConvexAuth } from "convex/react"
 import { useSearchParams } from "next/navigation"
@@ -192,6 +192,11 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
                     private: generationSettings.options.private,
                     safe: generationSettings.options.safe,
                     image: generationSettings.referenceImage,
+                    // Video-specific parameters
+                    duration: generationSettings.videoSettings.duration,
+                    audio: generationSettings.videoSettings.audio,
+                    aspectRatio: generationSettings.aspectRatio,
+                    lastFrameImage: generationSettings.videoReferenceImages.lastFrame,
                 },
                 batchMode.batchSettings.count
             )
@@ -203,7 +208,7 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
             ? generationSettings.generateSeed()
             : generationSettings.seed
 
-        const params: ImageGenerationParams = {
+        const params: any = {
             prompt,
             negativePrompt: negativePrompt || undefined,
             model: generationSettings.model,
@@ -214,6 +219,11 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
             private: generationSettings.options.private,
             safe: generationSettings.options.safe,
             image: generationSettings.referenceImage,
+            // Video-specific parameters
+            duration: generationSettings.videoSettings.duration,
+            audio: generationSettings.videoSettings.audio,
+            aspectRatio: generationSettings.aspectRatio, // Use current aspect ratio string
+            lastFrameImage: generationSettings.videoReferenceImages.lastFrame,
         }
 
         generate(params)

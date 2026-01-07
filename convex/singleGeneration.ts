@@ -30,6 +30,11 @@ const generationParamsValidator = v.object({
     private: v.optional(v.boolean()),
     safe: v.optional(v.boolean()),
     image: v.optional(v.string()),
+    // Video-specific parameters
+    duration: v.optional(v.number()),
+    audio: v.optional(v.boolean()),
+    aspectRatio: v.optional(v.string()),
+    lastFrameImage: v.optional(v.string()),
 })
 
 // ============================================================
@@ -203,7 +208,7 @@ export const storeGeneratedImage = internalMutation({
     },
     handler: async (ctx, args) => {
         const now = Date.now()
-        
+
         const imageId = await ctx.db.insert("generatedImages", {
             ownerId: args.ownerId,
             r2Key: args.r2Key,

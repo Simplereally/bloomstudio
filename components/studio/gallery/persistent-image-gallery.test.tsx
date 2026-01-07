@@ -83,6 +83,16 @@ describe("PersistentImageGallery", () => {
     beforeEach(() => {
         vi.clearAllMocks()
 
+        Object.defineProperty(window, "localStorage", {
+            value: {
+                getItem: vi.fn(),
+                setItem: vi.fn(),
+                removeItem: vi.fn(),
+                clear: vi.fn(),
+            },
+            writable: true,
+        })
+
         mockVisibilityMutateAsync = vi.fn().mockResolvedValue({ success: true, successCount: 1 })
         mockDeleteMutateAsync = vi.fn().mockResolvedValue({ success: true })
 

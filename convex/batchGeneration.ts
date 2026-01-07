@@ -30,8 +30,14 @@ const MAX_BATCH_SIZE = 1000
 /** Minimum batch size */
 const MIN_BATCH_SIZE = 1
 
-/** Interval between generations in milliseconds (5 seconds) */
-const BATCH_INTERVAL_MS = 5_000
+/** Base delay between generations in milliseconds (100ms = 10 req/s) */
+const BASE_RATE_LIMIT_DELAY_MS = 100
+
+/** Min jitter to add (20ms) */
+const MIN_JITTER_MS = 20
+
+/** Max jitter to add (100ms) */
+const MAX_JITTER_MS = 100
 
 /**
  * Generation params validator (shared between functions)
@@ -156,10 +162,65 @@ export const storeGeneratedImage = internalMutation({
 })
 
 /**
- * Internal mutation to record a batch item result and schedule the next item.
- * This is a mutation (not action) to ensure atomic updates to the database.
+ * Schedule the next item in the batch.
+ * Should be called at the START of processing an item to pipeline requests.
  */
-export const recordBatchItemAndScheduleNext = internalMutation({
+export const scheduleNextBatchItem = internalMutation({
+    args: {
+        batchJobId: v.id("batchJobs"),
+        currentItemIndex: v.number(),
+    },
+    handler: async (ctx, args) => {
+        const batchJob = await ctx.db.get(args.batchJobId)
+        if (!batchJob) {
+            throw new Error("Batch job not found")
+        }
+
+        // Don't schedule if cancelled or paused
+        // Note: We check this at the moment of scheduling.
+        // If the user pauses *during* the delay, the next action (processBatchItem)
+        // mimics this check and will abort.
+        if (batchJob.status !== "pending" && batchJob.status !== "processing") {
+            return { seeded: false }
+        }
+
+        const nextIndex = args.currentItemIndex + 1
+
+        // Stop if we've reached the end
+        if (nextIndex >= batchJob.totalCount) {
+            return { seeded: false }
+        }
+
+        // Update current index to point to the one we are about to schedule
+        // access control/consistency: This mutation is sequential so it's safe.
+        // We only update if we are moving forward.
+        if (nextIndex > batchJob.currentIndex) {
+            await ctx.db.patch(args.batchJobId, {
+                currentIndex: nextIndex,
+                updatedAt: Date.now(),
+            })
+        }
+
+        // Calculate delay with jitter
+        // 100ms base + 20-100ms jitter
+        const jitter = Math.floor(Math.random() * (MAX_JITTER_MS - MIN_JITTER_MS + 1)) + MIN_JITTER_MS
+        const delay = BASE_RATE_LIMIT_DELAY_MS + jitter
+
+        await ctx.scheduler.runAfter(delay, internal.batchProcessor.processBatchItem, {
+            batchJobId: args.batchJobId,
+            itemIndex: nextIndex,
+        })
+
+        return { seeded: true, nextIndex, delay }
+    },
+})
+
+/**
+ * Record the result of a batch item processing.
+ * Called at the END of processing an item.
+ * Does NOT schedule the next item (that's done by scheduleNextBatchItem).
+ */
+export const recordBatchItemResult = internalMutation({
     args: {
         batchJobId: v.id("batchJobs"),
         itemIndex: v.number(),
@@ -174,25 +235,13 @@ export const recordBatchItemAndScheduleNext = internalMutation({
             throw new Error("Batch job not found")
         }
 
-        // Don't update if cancelled
-        if (batchJob.status === "cancelled") {
-            return { shouldContinue: false }
-        }
-
-        // Don't update if paused (but allow the current item to complete)
-        // The next item will not be scheduled if paused
-        const isPaused = batchJob.status === "paused"
-
         const now = Date.now()
-        const nextIndex = args.itemIndex + 1
-        const isComplete = nextIndex >= batchJob.totalCount
 
         // Prepare updates
         const updates: Partial<Doc<"batchJobs">> = {
-            currentIndex: nextIndex,
             updatedAt: now,
-            // Reset retry count for the next item
-            currentItemRetryCount: 0,
+            // Reset retry count for the next item logic isn't relevant here anymore
+            // as we track retries per item in memory during action
         }
 
         if (args.success) {
@@ -205,29 +254,26 @@ export const recordBatchItemAndScheduleNext = internalMutation({
         }
 
         // Track the retry count for the completed item (for metrics/debugging)
+        // We might want to store this better but for now overwriting is "okay" as a last-seen metric
         if (args.retryCount !== undefined && args.retryCount > 0) {
             updates.currentItemRetryCount = args.retryCount
         }
 
-        // Update status
-        if (isComplete) {
+        // Check completion status
+        // Note: Since we have parallel processing, we can't just check if `nextIndex >= totalCount`
+        // We should check if `completedCount + failedCount >= totalCount`
+        const totalProcessed = (updates.completedCount ?? batchJob.completedCount) + (updates.failedCount ?? batchJob.failedCount)
+
+        if (totalProcessed >= batchJob.totalCount) {
             updates.status = "completed"
-        } else if (!isPaused && batchJob.status === "pending") {
+        } else if (batchJob.status === "pending") {
+            // If this was the first result, ensure we are "processing"
             updates.status = "processing"
         }
-        // Keep status as "paused" if it was paused
 
         await ctx.db.patch(args.batchJobId, updates)
 
-        // Schedule next item if not complete and not paused
-        if (!isComplete && !isPaused) {
-            await ctx.scheduler.runAfter(BATCH_INTERVAL_MS, internal.batchProcessor.processBatchItem, {
-                batchJobId: args.batchJobId,
-                itemIndex: nextIndex,
-            })
-        }
-
-        return { shouldContinue: !isComplete && !isPaused }
+        return { success: true }
     },
 })
 

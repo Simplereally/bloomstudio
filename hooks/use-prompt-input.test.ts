@@ -38,7 +38,6 @@ describe("usePromptInput", () => {
         const { result } = renderHook(() => usePromptInput())
 
         const textarea = document.createElement("textarea")
-        // @ts-expect-error - Manually attaching ref for testing
         result.current.promptRef.current = textarea
 
         act(() => {
@@ -53,7 +52,6 @@ describe("usePromptInput", () => {
         const { result } = renderHook(() => usePromptInput())
 
         const textarea = document.createElement("textarea")
-        // @ts-expect-error - Manually attaching ref for testing
         result.current.promptRef.current = textarea
         textarea.value = "Direct DOM change"
 

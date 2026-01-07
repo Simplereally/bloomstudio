@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { isVideoContent } from "@/components/ui/media-player"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
@@ -10,7 +11,7 @@ import { getClampedAspectRatio } from "@/lib/image-models"
 import { cn } from "@/lib/utils"
 import { useUser } from "@clerk/nextjs"
 import { useMutation, useQuery } from "convex/react"
-import { Check, Copy, Heart } from "lucide-react"
+import { Check, Copy, Heart, Play } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import * as React from "react"
@@ -34,6 +35,8 @@ export interface ImageCardData {
     // Owner info for community feed
     ownerName?: string
     ownerPictureUrl?: string | null
+    /** MIME type of the content (e.g., "video/mp4", "image/jpeg") */
+    contentType?: string
 }
 
 interface ImageCardProps {
@@ -159,17 +162,36 @@ export const ImageCard = React.memo(function ImageCard({
                 </div>
             )}
 
-            {/* Image */}
-            <Image
-                src={image.url}
-                alt={image.prompt || "Generated image"}
-                width={width}
-                height={height}
-                className="w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-                style={{ aspectRatio: clampedAspectRatio }}
-                loading="lazy"
-                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1536px) 33vw, 25vw"
-            />
+            {/* Image or Video Thumbnail */}
+            {isVideoContent(image.contentType, image.url) ? (
+                <>
+                    <video
+                        src={image.url}
+                        muted
+                        playsInline
+                        preload="metadata"
+                        className="w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                        style={{ aspectRatio: clampedAspectRatio }}
+                    />
+                    {/* Video play indicator */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="bg-black/60 rounded-full p-3 backdrop-blur-sm">
+                            <Play className="h-6 w-6 text-white fill-white" />
+                        </div>
+                    </div>
+                </>
+            ) : (
+                <Image
+                    src={image.url}
+                    alt={image.prompt || "Generated image"}
+                    width={width}
+                    height={height}
+                    className="w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                    style={{ aspectRatio: clampedAspectRatio }}
+                    loading="lazy"
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1536px) 33vw, 25vw"
+                />
+            )}
 
             {/* User badge - top left (only on community feed) */}
             {showUser && image.ownerName && (

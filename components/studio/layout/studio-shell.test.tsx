@@ -174,6 +174,10 @@ const mockGenerationSettings = {
     setOptions: vi.fn(),
     referenceImage: undefined,
     setReferenceImage: vi.fn(),
+    videoSettings: { duration: 5, audio: false },
+    setVideoSettings: vi.fn(),
+    videoReferenceImages: { firstFrame: undefined, lastFrame: undefined },
+    setVideoReferenceImages: vi.fn(),
 }
 
 const mockBatchMode = {

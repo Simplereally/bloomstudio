@@ -148,6 +148,8 @@ type ThumbnailImage = {
     createdAt: number
     // Include model for filtering badge display (small field)
     model: string
+    // Include contentType for video detection
+    contentType: string
 }
 
 /**
@@ -162,6 +164,7 @@ function toThumbnails(images: Doc<"generatedImages">[]): ThumbnailImage[] {
         visibility: img.visibility,
         createdAt: img.createdAt,
         model: img.model,
+        contentType: img.contentType,
     }))
 }
 
@@ -289,6 +292,7 @@ type DisplayImage = {
     width: number | undefined
     height: number | undefined
     seed: number | undefined
+    contentType: string
 }
 
 /**
@@ -307,6 +311,7 @@ function toDisplayImages(images: Doc<"generatedImages">[]): DisplayImage[] {
         width: img.width,
         height: img.height,
         seed: img.seed,
+        contentType: img.contentType,
     }))
 }
 

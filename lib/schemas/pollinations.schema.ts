@@ -60,12 +60,18 @@ export const VideoGenerationParamsSchema = ImageGenerationParamsSchema.extend({
     audio: z.boolean().optional().default(false), // veo only
 });
 
+// Combined parameter schema for generated results
+export const GenerationParamsSchema = z.union([
+    VideoGenerationParamsSchema,
+    ImageGenerationParamsSchema,
+]);
+
 // Generated image result
 export const GeneratedImageSchema = z.object({
     id: z.string(),
     url: z.string().url(),
     prompt: z.string(),
-    params: ImageGenerationParamsSchema,
+    params: GenerationParamsSchema,
     timestamp: z.number(),
     // Storage metadata fields (populated when image is stored in R2)
     r2Key: z.string().optional(),

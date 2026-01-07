@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
 import { CanvasFeature, type CanvasFeatureProps } from "./canvas-feature"
 import type { GeneratedImage } from "@/types/pollinations"
+import { createMockImage } from "@/lib/test-utils"
 
 // Mock CanvasView
 vi.mock("./canvas-view", () => ({
@@ -52,17 +53,17 @@ vi.mock("@/lib/errors", () => ({
 }))
 
 describe("CanvasFeature", () => {
-    const mockImage: GeneratedImage = {
+    const mockImage = createMockImage({
         id: "test-image-1",
         url: "https://example.com/image.jpg",
         prompt: "A beautiful sunset",
-        timestamp: Date.now(),
         params: {
+            prompt: "A beautiful sunset",
             model: "flux",
             width: 1024,
             height: 1024,
-        },
-    }
+        } as any
+    })
 
     const defaultProps: CanvasFeatureProps = {
         currentImage: null,

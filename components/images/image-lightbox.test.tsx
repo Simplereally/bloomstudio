@@ -1,7 +1,17 @@
+// @vitest-environment jsdom
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ImageLightbox } from './image-lightbox'
+
+// Mock react-zoom-pan-pinch
+vi.mock('react-zoom-pan-pinch', () => ({
+    TransformWrapper: ({ children, onTransformed }: any) => {
+        // Simulate zoom callback availability if needed
+        return <div>{children({ zoomIn: vi.fn(), zoomOut: vi.fn(), resetTransform: vi.fn(), state: { scale: 1 } })}</div>
+    },
+    TransformComponent: ({ children }: any) => <div data-testid="transform-component">{children}</div>
+}))
 
 // Mock React hooks that the component uses
 const mockHandleInsert = vi.fn()
@@ -45,13 +55,14 @@ vi.mock('@/hooks/use-image-lightbox', () => ({
     useImageLightbox: () => ({
         copied: false,
         isZoomed: false,
+        toggleZoom: vi.fn(),
+        handleCopyPrompt: vi.fn(),
+        handleImageLoad: vi.fn(),
+        canZoom: true,
+        // Legacy/unused props that might be destructured
         naturalSize: { width: 1000, height: 1000 },
         isDragging: false,
         scrollContainerRef: { current: null },
-        canZoom: false,
-        handleCopyPrompt: vi.fn(),
-        handleImageLoad: vi.fn(),
-        toggleZoom: vi.fn(),
         handleMouseDown: vi.fn(),
         handleMouseMove: vi.fn(),
         handleMouseUp: vi.fn(),
@@ -64,7 +75,19 @@ vi.mock('@/hooks/queries/use-image-history', () => ({
     useImageDetails: () => null
 }))
 
-// Mock Next.js Image
+// Mock MediaPlayer
+vi.mock('@/components/ui/media-player', () => ({
+    MediaPlayer: ({ url, alt, contentType, onLoadedMetadata, onLoad }: any) => {
+        const isVideo = contentType?.startsWith('video/') || url?.match(/\.(mp4|webm|mov)$/i);
+        if (isVideo) {
+            return <video src={url} aria-label={alt} data-testid="video-player" onLoadedMetadata={onLoadedMetadata} />;
+        }
+        return <img src={url} alt={alt} onLoad={onLoad} data-testid="image-player" />;
+    },
+    isVideoContent: (contentType: string, url: string) => contentType?.startsWith('video/') || url?.match(/\.(mp4|webm|mov)$/i)
+}))
+
+// Mock Next.js Image - not used anymore but keep for compatibility if needed
 vi.mock('next/image', () => ({
     default: ({ src, alt, ...props }: any) => <img src={src} alt={alt} {...props} />
 }))
@@ -171,13 +194,13 @@ describe('ImageLightbox - Prompt Library Integration', () => {
 
     it('renders the lightbox with the image when open', () => {
         render(<ImageLightbox image={mockImage} isOpen={true} onClose={vi.fn()} />)
-        
+
         expect(screen.getByTestId('dialog')).toBeInTheDocument()
     })
 
     it('shows the save to library button when prompt is available', () => {
         render(<ImageLightbox image={mockImage} isOpen={true} onClose={vi.fn()} />)
-        
+
         expect(screen.getByTestId('bookmark-icon')).toBeInTheDocument()
     })
 
@@ -241,11 +264,11 @@ describe('ImageLightbox - Prompt Library Integration', () => {
         it('should call onInsertPrompt with prompt content when insert is triggered', async () => {
             const user = userEvent.setup()
             const onInsertPrompt = vi.fn()
-            
+
             render(
-                <ImageLightbox 
-                    image={mockImage} 
-                    isOpen={true} 
+                <ImageLightbox
+                    image={mockImage}
+                    isOpen={true}
                     onClose={vi.fn()}
                     onInsertPrompt={onInsertPrompt}
                 />
@@ -270,12 +293,12 @@ describe('ImageLightbox - Prompt Library Integration', () => {
 
         it('does not fail if onInsertPrompt is not provided', async () => {
             const user = userEvent.setup()
-            
+
             // Render without onInsertPrompt - should not throw
             render(
-                <ImageLightbox 
-                    image={mockImage} 
-                    isOpen={true} 
+                <ImageLightbox
+                    image={mockImage}
+                    isOpen={true}
                     onClose={vi.fn()}
                 />
             )
@@ -292,6 +315,30 @@ describe('ImageLightbox - Prompt Library Integration', () => {
             // Click insert - should not throw even without the callback
             const insertButton = screen.getByTestId('insert-prompt-btn')
             await expect(user.click(insertButton)).resolves.not.toThrow()
+        })
+    })
+
+    describe('video support', () => {
+        const mockVideo = {
+            url: 'https://example.com/test-video.mp4',
+            prompt: 'A beautiful video',
+            model: 'veo',
+            contentType: 'video/mp4'
+        }
+
+        it('renders a video player when content is video', () => {
+            render(<ImageLightbox image={mockVideo} isOpen={true} onClose={vi.fn()} />)
+
+            expect(screen.getByTestId('video-player')).toBeInTheDocument()
+            expect(screen.getByTestId('video-player')).toHaveAttribute('src', mockVideo.url)
+            expect(screen.queryByTestId('image-player')).not.toBeInTheDocument()
+        })
+
+        it('does not show zoom indicator for video content', () => {
+            render(<ImageLightbox image={mockVideo} isOpen={true} onClose={vi.fn()} />)
+
+            expect(screen.queryByTestId('zoom-indicator')).not.toBeInTheDocument()
+            expect(screen.queryByText('🔍')).not.toBeInTheDocument()
         })
     })
 })

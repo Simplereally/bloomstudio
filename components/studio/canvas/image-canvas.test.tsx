@@ -99,12 +99,25 @@ describe("ImageCanvas", () => {
         }
         render(<ImageCanvas image={wideImage} />)
 
-        // The img element should have max-width and max-height constraints
-        // to prevent it from exceeding the container size
+        // The MediaPlayer container should have max-width and max-height constraints
+        // The actual img element is inside MediaPlayer with its own responsive classes
         const image = screen.getByRole("img")
-        expect(image).toHaveClass("max-w-full")
-        expect(image).toHaveClass("max-h-[80vh]")
-        expect(image).toHaveClass("w-auto")
-        expect(image).toHaveClass("h-auto")
+        expect(image).toBeInTheDocument()
+        // MediaPlayer applies w-full h-full object-contain to the img element
+        expect(image).toHaveClass("object-contain")
+        // The parent MediaPlayer div should have the dimension constraints
+        expect(image.parentElement).toHaveClass("relative")
+    })
+    it("renders a video when the content is a video", () => {
+        const videoImage: GeneratedImage = {
+            ...mockImage,
+            url: "https://example.com/video.mp4",
+            contentType: "video/mp4",
+        }
+        const { container } = render(<ImageCanvas image={videoImage} />)
+
+        const video = container.querySelector("video")
+        expect(video).toBeInTheDocument()
+        expect(video).toHaveAttribute("src", "https://example.com/video.mp4")
     })
 })

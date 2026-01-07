@@ -38,7 +38,7 @@ describe("production key validation", () => {
 
         it("handles undefined key gracefully", () => {
             const key: string | undefined = undefined
-            expect(key?.startsWith("pk_test_")).toBeFalsy()
+            expect((key as string | undefined)?.startsWith("pk_test_")).toBeFalsy()
         })
 
         it("handles empty string key", () => {

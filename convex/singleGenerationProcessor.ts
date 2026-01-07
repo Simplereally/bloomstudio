@@ -140,6 +140,11 @@ export const processGeneration = internalAction({
                 private: params.private,
                 safe: params.safe,
                 image: params.image,
+                // Video-specific parameters
+                duration: params.duration,
+                audio: params.audio,
+                aspectRatio: params.aspectRatio,
+                lastFrameImage: params.lastFrameImage,
             })
 
             console.log(`${logger} Calling Pollinations: ${generationUrl}`)
@@ -187,7 +192,7 @@ export const processGeneration = internalAction({
             // Upload to R2
             const r2Key = generateR2Key(generation.ownerId, contentType)
             console.log(`${logger} Uploading to R2: ${r2Key}`)
-            
+
             const uploadResult = await uploadToR2(imageBuffer, r2Key, contentType)
             console.log(`${logger} Upload complete: ${uploadResult.url}`)
 

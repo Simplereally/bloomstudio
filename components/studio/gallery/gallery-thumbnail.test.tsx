@@ -146,4 +146,19 @@ describe("GalleryThumbnail", () => {
         rerender(<GalleryThumbnail image={mockImage} size="lg" />)
         expect(screen.getByTestId("gallery-thumbnail")).toHaveClass("w-32", "h-32")
     })
+
+    it("renders a video element for video content", () => {
+        const videoImage = {
+            ...mockImage,
+            url: "https://example.com/video.mp4",
+            contentType: "video/mp4"
+        }
+        const { container } = render(<GalleryThumbnail image={videoImage} />)
+
+        const video = container.querySelector("video")
+        expect(video).toBeInTheDocument()
+        expect(video).toHaveAttribute("src", videoImage.url)
+        // Check for play icon
+        expect(container.querySelector(".bg-black\\/50")).toBeInTheDocument()
+    })
 })

@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
 import { GalleryFeature, type GalleryFeatureProps } from "./gallery-feature"
 import type { GeneratedImage } from "@/types/pollinations"
+import { createMockImage } from "@/lib/test-utils"
 
 // Mock GalleryView
 vi.mock("./gallery-view", () => ({
@@ -15,13 +16,11 @@ vi.mock("./gallery-view", () => ({
         onSelectImage?: (image: GeneratedImage) => void
         thumbnailSize?: string
     }) => {
-        const mockImage: GeneratedImage = {
+        const mockImage = createMockImage({
             id: "test-id",
             url: "https://example.com/image.jpg",
             prompt: "Test prompt",
-            timestamp: Date.now(),
-            params: {},
-        }
+        })
 
         return (
             <div data-testid="gallery-view">

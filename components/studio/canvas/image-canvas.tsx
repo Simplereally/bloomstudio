@@ -5,6 +5,7 @@
  */
 
 import { Card } from "@/components/ui/card"
+import { isVideoContent, MediaPlayer } from "@/components/ui/media-player"
 import { cn } from "@/lib/utils"
 import type { GeneratedImage } from "@/types/pollinations"
 import { AnimatePresence, motion, type Variants } from "framer-motion"
@@ -325,15 +326,20 @@ export const ImageCanvas = React.memo(function ImageCanvas({
                                 <div
                                     className={cn(
                                         "relative rounded-2xl overflow-hidden border border-white/5 transition-all duration-500",
-                                        onImageClick && "cursor-pointer"
+                                        onImageClick && !isVideoContent(image.contentType, image.url) && "cursor-pointer"
                                     )}
-                                    onClick={onImageClick}
+                                    onClick={isVideoContent(image.contentType, image.url) ? undefined : onImageClick}
                                 >
-                                    <img
-                                        src={image.url}
+                                    <MediaPlayer
+                                        url={image.url}
                                         alt={image.prompt}
+                                        contentType={image.contentType}
+                                        controls={isVideoContent(image.contentType, image.url)}
+                                        autoPlay={false}
+                                        loop={false}
+                                        muted={true}
                                         className={cn(
-                                            "max-w-full max-h-[80vh] w-auto h-auto object-contain transition-all duration-700",
+                                            "max-w-full max-h-[80vh] w-auto h-auto transition-all duration-700",
                                             imageLoaded ? "opacity-100 scale-100" : "opacity-0 scale-98 blur-lg"
                                         )}
                                         onLoad={handleImageLoad}
@@ -341,7 +347,7 @@ export const ImageCanvas = React.memo(function ImageCanvas({
                                     />
 
                                     <AnimatePresence>
-                                        {!imageLoaded && (
+                                        {!imageLoaded && !isVideoContent(image.contentType, image.url) && (
                                             <div className="absolute inset-0 bg-background/20 backdrop-blur-md flex items-center justify-center">
                                                 <div className="relative">
                                                     <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />

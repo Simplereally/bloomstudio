@@ -78,6 +78,19 @@ export const processBatchItem = internalAction({
     handler: async (ctx, args) => {
         const logger = `[BatchProcessor]`
 
+        // 1. Fire-and-forget scheduling of the NEXT item immediately
+        // This ensures high throughput (10 req/s) by pipelining requests
+        // independent of how long the current generation takes.
+        try {
+            await ctx.runMutation(internal.batchGeneration.scheduleNextBatchItem, {
+                batchJobId: args.batchJobId,
+                currentItemIndex: args.itemIndex,
+            })
+        } catch (error) {
+            console.error(`${logger} Failed to schedule next item:`, error)
+            // Continue processing current item even if scheduling next fails
+        }
+
         // Get the batch job to check status and get params
         const batchJob = await ctx.runQuery(internal.batchGeneration.getBatchJobInternal, {
             batchJobId: args.batchJobId,
@@ -89,14 +102,10 @@ export const processBatchItem = internalAction({
         }
 
         // Don't process if cancelled, paused, completed, or failed
+        // Note: We check this AFTER scheduling next, so we might have scheduled one more
+        // but that one will also check status and stop.
         if (batchJob.status !== "pending" && batchJob.status !== "processing") {
             console.log(`${logger} Batch ${args.batchJobId} status is ${batchJob.status}, stopping`)
-            return
-        }
-
-        // Don't process if we've already processed this or a later item (duplicate prevention)
-        if (args.itemIndex < batchJob.currentIndex) {
-            console.log(`${logger} Item ${args.itemIndex} already processed, skipping`)
             return
         }
 
@@ -109,7 +118,7 @@ export const processBatchItem = internalAction({
 
         if (!encryptedApiKey) {
             console.error(`${logger} User has no Pollinations API key configured`)
-            await ctx.runMutation(internal.batchGeneration.recordBatchItemAndScheduleNext, {
+            await ctx.runMutation(internal.batchGeneration.recordBatchItemResult, {
                 batchJobId: args.batchJobId,
                 itemIndex: args.itemIndex,
                 success: false,
@@ -124,7 +133,7 @@ export const processBatchItem = internalAction({
             pollinationsApiKey = decryptApiKey(encryptedApiKey)
         } catch (error) {
             console.error(`${logger} Failed to decrypt API key:`, error)
-            await ctx.runMutation(internal.batchGeneration.recordBatchItemAndScheduleNext, {
+            await ctx.runMutation(internal.batchGeneration.recordBatchItemResult, {
                 batchJobId: args.batchJobId,
                 itemIndex: args.itemIndex,
                 success: false,
@@ -177,7 +186,7 @@ export const processBatchItem = internalAction({
 
             if (!result.success || !result.data) {
                 console.error(`${logger} Pollinations API error after ${result.attemptsMade} attempts:`, result.error)
-                await ctx.runMutation(internal.batchGeneration.recordBatchItemAndScheduleNext, {
+                await ctx.runMutation(internal.batchGeneration.recordBatchItemResult, {
                     batchJobId: args.batchJobId,
                     itemIndex: args.itemIndex,
                     success: false,
@@ -221,8 +230,8 @@ export const processBatchItem = internalAction({
 
             console.log(`${logger} Item ${args.itemIndex + 1} completed successfully${result.attemptsMade > 1 ? ` (after ${result.attemptsMade} attempts)` : ""}`)
 
-            // Record the result and schedule next item
-            await ctx.runMutation(internal.batchGeneration.recordBatchItemAndScheduleNext, {
+            // Record the result
+            await ctx.runMutation(internal.batchGeneration.recordBatchItemResult, {
                 batchJobId: args.batchJobId,
                 itemIndex: args.itemIndex,
                 success: true,
@@ -232,7 +241,7 @@ export const processBatchItem = internalAction({
 
         } catch (error) {
             console.error(`${logger} Error processing item ${args.itemIndex}:`, error)
-            await ctx.runMutation(internal.batchGeneration.recordBatchItemAndScheduleNext, {
+            await ctx.runMutation(internal.batchGeneration.recordBatchItemResult, {
                 batchJobId: args.batchJobId,
                 itemIndex: args.itemIndex,
                 success: false,

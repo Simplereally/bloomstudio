@@ -40,21 +40,18 @@ describe("useIsMobile", () => {
     })
 
     it("should return false for desktop widths initially", () => {
-        // @ts-expect-error - innerWidth is read-only but we mocked it to be writable
         window.innerWidth = 1024
         const { result } = renderHook(() => useIsMobile())
         expect(result.current).toBe(false)
     })
 
     it("should return true for mobile widths initially", () => {
-        // @ts-expect-error - innerWidth is read-only but we mocked it to be writable
         window.innerWidth = 375
         const { result } = renderHook(() => useIsMobile())
         expect(result.current).toBe(true)
     })
 
     it("should update when the media query triggers a change", () => {
-        // @ts-expect-error - innerWidth is read-only but we mocked it to be writable
         window.innerWidth = 1024
         const { result } = renderHook(() => useIsMobile())
         expect(result.current).toBe(false)
@@ -70,7 +67,6 @@ describe("useIsMobile", () => {
         }
 
         act(() => {
-            // @ts-expect-error - innerWidth is read-only but we mocked it to be writable
             window.innerWidth = 375
             onChangeCallback()
         })
@@ -78,7 +74,6 @@ describe("useIsMobile", () => {
         expect(result.current).toBe(true)
 
         act(() => {
-            // @ts-expect-error - innerWidth is read-only but we mocked it to be writable
             window.innerWidth = 1024
             onChangeCallback()
         })

@@ -66,7 +66,6 @@ describe("useUploadReference", () => {
 
         vi.mocked(useMutation).mockImplementation(() => {
             const fn = vi.fn().mockImplementation(() => Promise.resolve()) as unknown as ReturnType<typeof useMutation>
-            // @ts-expect-error - Mocking optimistic update
             fn.withOptimisticUpdate = vi.fn().mockReturnValue(fn)
             return fn
         })

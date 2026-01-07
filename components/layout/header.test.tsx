@@ -110,7 +110,7 @@ describe("Header", () => {
         // Force mobile view logic by mocking screen size if necessary, 
         // but here the toggle is just hidden by CSS, so it should be in the DOM.
         render(<Header />)
-        const toggle = screen.getByRole("button", { name: /toggle/i || /menu/i })
+        const toggle = screen.getByRole("button", { name: /toggle|menu/i })
 
         fireEvent.click(toggle)
 

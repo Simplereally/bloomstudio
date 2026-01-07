@@ -65,7 +65,7 @@ describe("/api/enhance-prompt", () => {
 
     describe("Authentication", () => {
         it("should return 401 when user is not authenticated", async () => {
-            ; (auth as Mock).mockResolvedValue({ userId: null })
+            vi.mocked(auth).mockResolvedValue({ userId: null } as any)
 
             const request = createMockRequest({ prompt: "test", type: "prompt" })
             const response = await POST(request)
@@ -82,7 +82,7 @@ describe("/api/enhance-prompt", () => {
         })
 
         it("should proceed when user is authenticated", async () => {
-            ; (auth as Mock).mockResolvedValue({ userId: "user_123" })
+            vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any)
                 ; (fetchMutation as Mock).mockResolvedValue({
                     allowed: true,
                     remaining: 9,
@@ -100,7 +100,7 @@ describe("/api/enhance-prompt", () => {
     describe("Rate Limiting", () => {
         it("should return 429 when rate limit is exceeded", async () => {
             const resetAt = Date.now() + 30000
-                ; (auth as Mock).mockResolvedValue({ userId: "user_123" })
+                ; vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any)
                 ; (fetchMutation as Mock).mockResolvedValue({
                     allowed: false,
                     remaining: 0,
@@ -125,7 +125,7 @@ describe("/api/enhance-prompt", () => {
 
         it("should include rate limit headers on successful response", async () => {
             const resetAt = Date.now() + 60000
-                ; (auth as Mock).mockResolvedValue({ userId: "user_123" })
+                ; vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any)
                 ; (fetchMutation as Mock).mockResolvedValue({
                     allowed: true,
                     remaining: 9,
@@ -143,7 +143,7 @@ describe("/api/enhance-prompt", () => {
 
     describe("Validation", () => {
         beforeEach(() => {
-            ; (auth as Mock).mockResolvedValue({ userId: "user_123" })
+            ; vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any)
                 ; (fetchMutation as Mock).mockResolvedValue({
                     allowed: true,
                     remaining: 9,
@@ -183,7 +183,7 @@ describe("/api/enhance-prompt", () => {
 
     describe("Prompt Enhancement", () => {
         beforeEach(() => {
-            ; (auth as Mock).mockResolvedValue({ userId: "user_123" })
+            ; vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any)
                 ; (fetchMutation as Mock).mockResolvedValue({
                     allowed: true,
                     remaining: 9,
@@ -221,7 +221,7 @@ describe("/api/enhance-prompt", () => {
 
     describe("Error Handling", () => {
         beforeEach(() => {
-            ; (auth as Mock).mockResolvedValue({ userId: "user_123" })
+            ; vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any)
                 ; (fetchMutation as Mock).mockResolvedValue({
                     allowed: true,
                     remaining: 9,
