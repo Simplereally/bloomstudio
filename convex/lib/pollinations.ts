@@ -29,6 +29,15 @@ export interface PollinationsUrlParams {
     private?: boolean
     safe?: boolean
     image?: string
+    // Video-specific parameters
+    /** Video duration in seconds */
+    duration?: number
+    /** Enable audio generation (veo only) */
+    audio?: boolean
+    /** Video aspect ratio (16:9 or 9:16) */
+    aspectRatio?: string
+    /** Second reference image for video interpolation (veo) */
+    lastFrameImage?: string
 }
 
 /** Result of error classification */
@@ -66,15 +75,30 @@ export function buildPollinationsUrl(params: PollinationsUrlParams): string {
     if (params.seed !== undefined && params.seed >= 0) {
         queryParams.append("seed", params.seed.toString())
     }
-    
+
     // Always use high quality
     queryParams.append("quality", "high")
-    
+
     // Boolean flags
     if (params.enhance) queryParams.append("enhance", "true")
     if (params.safe) queryParams.append("safe", "true")
     if (params.private) queryParams.append("private", "true")
     if (params.image) queryParams.append("image", params.image)
+
+    // Video-specific parameters
+    if (params.duration !== undefined && params.duration > 0) {
+        queryParams.append("duration", params.duration.toString())
+    }
+    if (params.aspectRatio) {
+        queryParams.append("aspectRatio", params.aspectRatio)
+    }
+    if (params.audio) {
+        queryParams.append("audio", "true")
+    }
+    // Second image for video interpolation (veo) - appended as another image param
+    if (params.lastFrameImage) {
+        queryParams.append("image", params.lastFrameImage)
+    }
 
     const query = queryParams.toString()
     return `${POLLINATIONS_BASE_URL}/image/${encodedPrompt}${query ? `?${query}` : ""}`
@@ -105,32 +129,32 @@ export function classifyHttpError(status: number): ErrorClassification {
     if (status === 429) {
         return { isRetryable: true, reason: "rate_limited" }
     }
-    
+
     // Server errors - retryable
     if (status >= 500) {
         return { isRetryable: true, reason: "server_error" }
     }
-    
+
     // Authentication/authorization errors - not retryable
     if (status === 401 || status === 403) {
         return { isRetryable: false, reason: "auth_error" }
     }
-    
+
     // Bad request (validation) - not retryable
     if (status === 400) {
         return { isRetryable: false, reason: "validation_error" }
     }
-    
+
     // Not found - not retryable
     if (status === 404) {
         return { isRetryable: false, reason: "not_found" }
     }
-    
+
     // Other 4xx errors - not retryable
     if (status >= 400 && status < 500) {
         return { isRetryable: false, reason: "client_error" }
     }
-    
+
     // Unknown status - default to not retryable
     return { isRetryable: false, reason: "unknown" }
 }
@@ -144,12 +168,12 @@ export function classifyHttpError(status: number): ErrorClassification {
  */
 export function isFluxModelUnavailable(errorText: string): boolean {
     const pattern = "No active flux servers available"
-    
+
     // Direct match
     if (errorText.includes(pattern)) {
         return true
     }
-    
+
     // Try parsing as JSON (Pollinations sometimes returns nested JSON)
     try {
         const parsed = JSON.parse(errorText)
@@ -162,7 +186,7 @@ export function isFluxModelUnavailable(errorText: string): boolean {
     } catch {
         // Not JSON, that's fine
     }
-    
+
     return false
 }
 
@@ -179,7 +203,7 @@ export function classifyApiError(status: number, errorText: string): ErrorClassi
     if (isFluxModelUnavailable(errorText)) {
         return { isRetryable: true, reason: "model_unavailable" }
     }
-    
+
     // Fall back to HTTP status classification
     return classifyHttpError(status)
 }

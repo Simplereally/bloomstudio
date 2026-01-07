@@ -19,6 +19,7 @@ import { useDimensionInfo } from "@/hooks/use-dimension-info"
 import { useGenerationSettings, type UseGenerationSettingsReturn } from "@/hooks/use-generation-settings"
 import { useBatchMode, type UseBatchModeReturn } from "@/hooks/use-batch-mode"
 import { useImageGalleryState } from "@/hooks/use-image-gallery-state"
+import { getModel } from "@/lib/config/models"
 import { ControlsView } from "./controls-view"
 import * as React from "react"
 
@@ -71,16 +72,19 @@ function ControlsFeatureView({
     batchMode: UseBatchModeReturn
     isGenerating: boolean
 }) {
-    // Models data (always fetched fresh - not stateful)
-    const { models, isLoading: isLoadingModels } = useImageModels()
+    // Models data - fetch all types (image + video) - always fetched fresh
+    const { models, isLoading: isLoadingModels } = useImageModels({ type: "all" })
+
+    // Get current model definition for video-specific properties
+    const currentModelDef = getModel(generationSettings.model)
 
     // Compute dimension info for limit display (derived from settings)
-    const { 
-        megapixels, 
-        isOverLimit, 
-        percentOfLimit, 
-        hasPixelLimit, 
-        isEnabled: dimensionsEnabled 
+    const {
+        megapixels,
+        isOverLimit,
+        percentOfLimit,
+        hasPixelLimit,
+        isEnabled: dimensionsEnabled
     } = useDimensionInfo({
         modelId: generationSettings.model,
         width: generationSettings.width,
@@ -95,12 +99,12 @@ function ControlsFeatureView({
             models={models}
             isLoadingModels={isLoadingModels}
             isGenerating={isGenerating}
-            
+
             // Aspect ratio
             aspectRatio={generationSettings.aspectRatio}
             onAspectRatioChange={generationSettings.handleAspectRatioChange}
             aspectRatios={generationSettings.aspectRatios}
-            
+
             // Dimensions
             width={generationSettings.width}
             height={generationSettings.height}
@@ -113,25 +117,35 @@ function ControlsFeatureView({
             isOverLimit={isOverLimit}
             percentOfLimit={percentOfLimit ?? 0}
             hasPixelLimit={hasPixelLimit}
-            
-            // Reference image
+
+            // Reference image (for non-video models)
             referenceImage={generationSettings.referenceImage}
             onReferenceImageChange={generationSettings.setReferenceImage}
-            
+
             // Seed
             seed={generationSettings.seed}
             onSeedChange={generationSettings.setSeed}
             seedLocked={generationSettings.seedLocked}
             onSeedLockedChange={generationSettings.setSeedLocked}
-            
+
             // Options
             options={generationSettings.options}
             onOptionsChange={generationSettings.setOptions}
-            
+
             // Batch mode
             batchSettings={batchMode.batchSettings}
             onBatchSettingsChange={batchMode.setBatchSettings}
             isBatchActive={batchMode.isBatchActive}
+
+            // Video-specific settings
+            isVideoModel={generationSettings.isVideoModel}
+            videoSettings={generationSettings.videoSettings}
+            onVideoSettingsChange={generationSettings.setVideoSettings}
+            videoReferenceImages={generationSettings.videoReferenceImages}
+            onVideoReferenceImagesChange={generationSettings.setVideoReferenceImages}
+            durationConstraints={currentModelDef?.durationConstraints}
+            supportsAudio={currentModelDef?.supportsAudio ?? false}
+            supportsInterpolation={currentModelDef?.supportsInterpolation ?? false}
         />
     )
 }
@@ -139,14 +153,14 @@ function ControlsFeatureView({
 /**
  * Standalone ControlsFeature that creates its own state
  */
-function ControlsFeatureStandalone({ 
+function ControlsFeatureStandalone({
     isGenerating,
 }: {
     isGenerating: boolean
 }) {
     // Create own generation settings
     const generationSettings = useGenerationSettings()
-    
+
     // Gallery state for batch mode (to add images)
     const { addImage } = useImageGalleryState()
 
@@ -188,7 +202,7 @@ function ControlsFeatureStandalone({
  * </GenerationSettingsContext.Provider>
  * ```
  */
-export function ControlsFeature({ 
+export function ControlsFeature({
     isGenerating = false,
 }: ControlsFeatureProps) {
     const existingSettings = React.useContext(GenerationSettingsContext)

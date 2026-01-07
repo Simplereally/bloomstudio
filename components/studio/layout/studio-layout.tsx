@@ -31,6 +31,10 @@ export interface StudioLayoutProps {
     minSidebarSize?: number | string
     /** Maximum size of sidebar as percentage or pixels (default: "35%") */
     maxSidebarSize?: number | string
+    /** Minimum size of gallery as percentage or pixels (default: "12%") */
+    minGallerySize?: number | string
+    /** Maximum size of gallery as percentage or pixels (default: "30%") */
+    maxGallerySize?: number | string
     /** Whether the sidebar panel is visible */
     showSidebar?: boolean
     /** Whether the gallery panel is visible */
@@ -49,6 +53,8 @@ export function StudioLayout({
     defaultGallerySize = "18%",
     minSidebarSize = "15%",
     maxSidebarSize = "35%",
+    minGallerySize = "12%",
+    maxGallerySize = 295,
     showSidebar = true,
     showGallery = true,
     defaultLayout,
@@ -64,7 +70,7 @@ export function StudioLayout({
     // Debounced persistence logic for cookies (Next.js compatible)
     // Avoids excessive cookie writes during drag operations
     const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
-    
+
     const handleLayoutChange = React.useCallback((newLayout: Record<string, number>) => {
         // Clear any pending write
         if (timeoutRef.current) {
@@ -75,10 +81,10 @@ export function StudioLayout({
             document.cookie = `studio-layout-v1=${JSON.stringify(newLayout)}; path=/; max-age=31536000`
         }, 300)
     }, [])
-    
+
     // Track active drag count to handle multiple handles
     const dragCountRef = React.useRef(0)
-    
+
     // Handle drag state - sets data attribute on body to disable expensive effects
     const handleDragging = React.useCallback((isDragging: boolean) => {
         if (isDragging) {
@@ -91,7 +97,7 @@ export function StudioLayout({
             }
         }
     }, [])
-    
+
     // Cleanup timeout and data attribute on unmount
     React.useEffect(() => {
         return () => {
@@ -155,8 +161,8 @@ export function StudioLayout({
                         id="gallery"
                         panelRef={galleryRef}
                         defaultSize={defaultGallerySize}
-                        minSize="12%"
-                        maxSize="30%"
+                        minSize={minGallerySize}
+                        maxSize={maxGallerySize}
                         collapsible
                         collapsedSize={0}
                         className="bg-card/50"

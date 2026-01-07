@@ -14,6 +14,18 @@ import type { AspectRatioOption, ModelConstraints } from "@/types/pollinations"
 /** Model type - image generation or video generation */
 export type ModelType = "image" | "video"
 
+/** Duration constraints for video models */
+export interface VideoDurationConstraints {
+    /** Minimum duration in seconds */
+    readonly min: number
+    /** Maximum duration in seconds */
+    readonly max: number
+    /** Fixed duration options (if not provided, any value in range is allowed) */
+    readonly fixedOptions?: readonly number[]
+    /** Default duration in seconds */
+    readonly defaultDuration: number
+}
+
 /** Complete model definition with all configuration */
 export interface ModelDefinition {
     /** API ID - used in API requests to Pollinations */
@@ -34,6 +46,12 @@ export interface ModelDefinition {
     readonly description: string
     /** Whether this model supports negative prompts */
     readonly supportsNegativePrompt: boolean
+    /** Whether this model supports audio generation (video models only) */
+    readonly supportsAudio?: boolean
+    /** Duration constraints for video models */
+    readonly durationConstraints?: VideoDurationConstraints
+    /** Whether this model supports reference image interpolation (first/last frame) */
+    readonly supportsInterpolation?: boolean
 }
 
 // ============================================================================
@@ -322,7 +340,8 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
         displayName: "Seedance",
         type: "video",
         icon: "video",
-        description: "Video generation",
+        logo: "/image-models/bytedance.svg",
+        description: "Video generation with flexible duration",
         constraints: {
             maxPixels: Infinity,
             minPixels: 0,
@@ -335,6 +354,11 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
         },
         aspectRatios: VIDEO_ASPECT_RATIOS,
         supportsNegativePrompt: false,
+        durationConstraints: {
+            min: 2,
+            max: 10,
+            defaultDuration: 5,
+        },
     },
 
     "seedance-pro": {
@@ -342,7 +366,8 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
         displayName: "Seedance Pro",
         type: "video",
         icon: "video",
-        description: "Pro video generation",
+        logo: "/image-models/bytedance.svg",
+        description: "Pro video generation with enhanced quality",
         constraints: {
             maxPixels: Infinity,
             minPixels: 0,
@@ -355,6 +380,11 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
         },
         aspectRatios: VIDEO_ASPECT_RATIOS,
         supportsNegativePrompt: false,
+        durationConstraints: {
+            min: 2,
+            max: 10,
+            defaultDuration: 5,
+        },
     },
 
     veo: {
@@ -363,7 +393,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
         type: "video",
         icon: "video",
         logo: "/image-models/google.svg",
-        description: "Google Veo video generation",
+        description: "Google Veo video with audio and frame interpolation",
         constraints: {
             maxPixels: Infinity,
             minPixels: 0,
@@ -376,6 +406,14 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
         },
         aspectRatios: VIDEO_ASPECT_RATIOS,
         supportsNegativePrompt: false,
+        supportsAudio: true,
+        supportsInterpolation: true,
+        durationConstraints: {
+            min: 4,
+            max: 8,
+            fixedOptions: [4, 6, 8],
+            defaultDuration: 4,
+        },
     },
 } as const
 

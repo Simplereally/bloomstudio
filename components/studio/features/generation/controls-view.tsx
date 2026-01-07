@@ -26,14 +26,18 @@ import {
     OptionsPanel,
     ReferenceImagePicker,
     SeedControl,
+    VideoSettingsPanel,
+    VideoReferenceImagePicker,
     type GenerationOptions,
+    type VideoSettings,
+    type VideoReferenceImages,
 } from "@/components/studio"
 import type { BatchModeSettings } from "@/components/studio/batch"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import type { ModelDefinition } from "@/lib/config/models"
+import type { ModelDefinition, VideoDurationConstraints } from "@/lib/config/models"
 import type { AspectRatio, AspectRatioOption } from "@/types/pollinations"
-import { Dice6, Frame, Image as ImageIcon, Ruler, Sparkles, X } from "lucide-react"
+import { Dice6, Frame, Image as ImageIcon, Ruler, Sparkles, Video, X } from "lucide-react"
 import * as React from "react"
 
 export interface ControlsViewProps {
@@ -80,6 +84,16 @@ export interface ControlsViewProps {
     batchSettings: BatchModeSettings
     onBatchSettingsChange: (settings: BatchModeSettings) => void
     isBatchActive?: boolean
+
+    // Video-specific props
+    isVideoModel?: boolean
+    videoSettings?: VideoSettings
+    onVideoSettingsChange?: (settings: VideoSettings) => void
+    videoReferenceImages?: VideoReferenceImages
+    onVideoReferenceImagesChange?: (images: VideoReferenceImages) => void
+    durationConstraints?: VideoDurationConstraints
+    supportsAudio?: boolean
+    supportsInterpolation?: boolean
 }
 
 export const ControlsView = React.memo(function ControlsView({
@@ -126,7 +140,20 @@ export const ControlsView = React.memo(function ControlsView({
     batchSettings,
     onBatchSettingsChange,
     isBatchActive = false,
+
+    // Video settings
+    isVideoModel = false,
+    videoSettings,
+    onVideoSettingsChange,
+    videoReferenceImages,
+    onVideoReferenceImagesChange,
+    durationConstraints,
+    supportsAudio = false,
+    supportsInterpolation = false,
 }: ControlsViewProps) {
+    // Calculate frame count for video reference display
+    const videoFrameCount = (videoReferenceImages?.firstFrame ? 1 : 0) + (videoReferenceImages?.lastFrame ? 1 : 0)
+
     return (
         <>
             {/* Model Selection */}
@@ -257,6 +284,44 @@ export const ControlsView = React.memo(function ControlsView({
                 <Separator className="bg-border/50" />
             </CollapsibleSection>
 
+            {/* Video Frames (video models only) */}
+            {isVideoModel && videoSettings && onVideoSettingsChange && videoReferenceImages && onVideoReferenceImagesChange && (
+                <CollapsibleSection
+                    title="Video Frames"
+                    icon={<Video className="h-3.5 w-3.5" />}
+                    testId="video-frames-section"
+                    collapsedContent={
+                        videoFrameCount > 0 ? (
+                            <span className="flex items-center justify-center px-2 h-5 rounded-full text-xs font-medium bg-primary/15 text-primary">
+                                {videoFrameCount} frame{videoFrameCount !== 1 ? "s" : ""}
+                            </span>
+                        ) : undefined
+                    }
+                    rightContent={
+                        videoFrameCount > 0 && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => onVideoReferenceImagesChange({ firstFrame: undefined, lastFrame: undefined })}
+                                className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-destructive flex items-center gap-1"
+                            >
+                                <X className="h-3 w-3" />
+                                Clear
+                            </Button>
+                        )
+                    }
+                >
+                    <VideoReferenceImagePicker
+                        selectedImages={videoReferenceImages}
+                        onImagesChange={onVideoReferenceImagesChange}
+                        supportsInterpolation={supportsInterpolation}
+                        disabled={isGenerating}
+                        hideHeader
+                    />
+                    <Separator className="bg-border/50" />
+                </CollapsibleSection>
+            )}
+
             {/* Seed */}
             <CollapsibleSection
                 title="Seed"
@@ -285,6 +350,17 @@ export const ControlsView = React.memo(function ControlsView({
                 onOptionsChange={onOptionsChange}
                 disabled={isGenerating}
             />
+
+            {/* Video Settings (video models only) */}
+            {isVideoModel && videoSettings && onVideoSettingsChange && durationConstraints && (
+                <VideoSettingsPanel
+                    settings={videoSettings}
+                    onSettingsChange={onVideoSettingsChange}
+                    durationConstraints={durationConstraints}
+                    supportsAudio={supportsAudio}
+                    disabled={isGenerating}
+                />
+            )}
 
             {/* Batch Mode */}
             <BatchModePanel

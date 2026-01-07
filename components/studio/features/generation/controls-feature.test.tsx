@@ -62,6 +62,12 @@ const mockGenerationSettings = {
     setOptions: vi.fn(),
     referenceImage: undefined,
     setReferenceImage: vi.fn(),
+    // Video-specific settings
+    isVideoModel: false,
+    videoSettings: { duration: 5, audio: false },
+    setVideoSettings: vi.fn(),
+    videoReferenceImages: { firstFrame: undefined, lastFrame: undefined },
+    setVideoReferenceImages: vi.fn(),
 }
 
 const mockBatchMode = {
@@ -211,7 +217,7 @@ describe("ControlsFeature", () => {
 
 describe("useGenerationSettingsContext", () => {
     it("throws error when used outside provider", () => {
-        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => { })
 
         const TestComponent = () => {
             useGenerationSettingsContext()
@@ -245,7 +251,7 @@ describe("useGenerationSettingsContext", () => {
 
 describe("useBatchModeContext", () => {
     it("throws error when used outside provider", () => {
-        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => { })
 
         const TestComponent = () => {
             useBatchModeContext()

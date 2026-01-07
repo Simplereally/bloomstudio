@@ -21,6 +21,8 @@ export { PromptHeaderControls, type PromptHeaderControlsProps } from "./controls
 export { PromptSection, type PromptSectionAPI, type PromptSectionProps } from "./controls/prompt-section"
 export { ReferenceImagePicker } from "./controls/reference-image-picker"
 export { SeedControl, type SeedControlProps } from "./controls/seed-control"
+export { VideoSettingsPanel, type VideoSettings, type VideoSettingsPanelProps } from "./controls/video-settings-panel"
+export { VideoReferenceImagePicker, type VideoReferenceImages } from "./controls/video-reference-image-picker"
 
 // Canvas Components
 export { ImageCanvas, type ImageCanvasProps } from "./canvas/image-canvas"
@@ -31,10 +33,10 @@ export { ImageToolbar, type ImageToolbarProps } from "./canvas/image-toolbar"
 export { GalleryThumbnail, type GalleryThumbnailProps } from "./gallery/gallery-thumbnail"
 export { ImageGallery, type ImageGalleryProps } from "./gallery/image-gallery"
 export { PersistentImageGallery } from "./gallery/persistent-image-gallery"
-export { 
-    SelectionProvider, 
-    useSelection, 
-    useSelectionMode, 
+export {
+    SelectionProvider,
+    useSelection,
+    useSelectionMode,
     useIsSelected,
     type SelectionContextValue,
     type SelectionProviderProps,

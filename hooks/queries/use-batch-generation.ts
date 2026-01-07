@@ -29,6 +29,15 @@ export interface BatchGenerationParams {
     private?: boolean
     safe?: boolean
     image?: string
+    // Video-specific parameters
+    /** Video duration in seconds */
+    duration?: number
+    /** Enable audio generation (veo only) */
+    audio?: boolean
+    /** Video aspect ratio (16:9 or 9:16) */
+    aspectRatio?: string
+    /** Second reference image for video interpolation (veo) */
+    lastFrameImage?: string
 }
 
 /**

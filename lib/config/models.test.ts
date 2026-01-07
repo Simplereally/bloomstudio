@@ -236,3 +236,65 @@ describe("Aspect Ratio Presets", () => {
         }
     })
 })
+
+describe("Video Model Properties", () => {
+    describe("Veo", () => {
+        it("should have duration constraints with fixed options", () => {
+            const model = getModel("veo")!
+            expect(model.durationConstraints).toBeDefined()
+            expect(model.durationConstraints!.min).toBe(4)
+            expect(model.durationConstraints!.max).toBe(8)
+            expect(model.durationConstraints!.fixedOptions).toEqual([4, 6, 8])
+            expect(model.durationConstraints!.defaultDuration).toBe(4)
+        })
+
+        it("should support audio", () => {
+            const model = getModel("veo")!
+            expect(model.supportsAudio).toBe(true)
+        })
+
+        it("should support interpolation", () => {
+            const model = getModel("veo")!
+            expect(model.supportsInterpolation).toBe(true)
+        })
+    })
+
+    describe("Seedance", () => {
+        it("should have duration constraints with range", () => {
+            const model = getModel("seedance")!
+            expect(model.durationConstraints).toBeDefined()
+            expect(model.durationConstraints!.min).toBe(2)
+            expect(model.durationConstraints!.max).toBe(10)
+            expect(model.durationConstraints!.fixedOptions).toBeUndefined()
+            expect(model.durationConstraints!.defaultDuration).toBe(5)
+        })
+
+        it("should not support audio", () => {
+            const model = getModel("seedance")!
+            expect(model.supportsAudio).toBeUndefined()
+        })
+    })
+
+    describe("Seedance Pro", () => {
+        it("should have same duration constraints as Seedance", () => {
+            const model = getModel("seedance-pro")!
+            expect(model.durationConstraints).toBeDefined()
+            expect(model.durationConstraints!.min).toBe(2)
+            expect(model.durationConstraints!.max).toBe(10)
+        })
+    })
+
+    describe("Video aspect ratios", () => {
+        it("should only support 16:9 and 9:16 for video models", () => {
+            const veoRatios = getModelAspectRatios("veo")!
+            const seedanceRatios = getModelAspectRatios("seedance")!
+
+            expect(veoRatios.length).toBe(2)
+            expect(veoRatios.map(r => r.value)).toEqual(["16:9", "9:16"])
+
+            expect(seedanceRatios.length).toBe(2)
+            expect(seedanceRatios.map(r => r.value)).toEqual(["16:9", "9:16"])
+        })
+    })
+})
+

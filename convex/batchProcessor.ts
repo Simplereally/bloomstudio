@@ -151,6 +151,11 @@ export const processBatchItem = internalAction({
                 private: batchJob.generationParams.private,
                 safe: batchJob.generationParams.safe,
                 image: batchJob.generationParams.image,
+                // Video-specific parameters
+                duration: batchJob.generationParams.duration,
+                audio: batchJob.generationParams.audio,
+                aspectRatio: batchJob.generationParams.aspectRatio,
+                lastFrameImage: batchJob.generationParams.lastFrameImage,
             })
 
             // Log generation request without prompt (which may contain PII)

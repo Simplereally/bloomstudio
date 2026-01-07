@@ -17,7 +17,7 @@
  * This hook follows the "Headless UI" pattern - pure logic with stable callbacks.
  */
 
-import type { GenerationOptions } from "@/components/studio"
+import type { GenerationOptions, VideoSettings, VideoReferenceImages } from "@/components/studio"
 import { useRandomSeed } from "@/hooks/use-random-seed"
 import {
     getModel,
@@ -69,6 +69,13 @@ export interface UseGenerationSettingsReturn {
     // Reference image
     referenceImage: string | undefined
     setReferenceImage: React.Dispatch<React.SetStateAction<string | undefined>>
+
+    // Video-specific settings
+    isVideoModel: boolean
+    videoSettings: VideoSettings
+    setVideoSettings: React.Dispatch<React.SetStateAction<VideoSettings>>
+    videoReferenceImages: VideoReferenceImages
+    setVideoReferenceImages: React.Dispatch<React.SetStateAction<VideoReferenceImages>>
 }
 
 /**
@@ -123,8 +130,23 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
     const [referenceImage, setReferenceImage] = React.useState<string | undefined>(undefined)
 
     // ========================================
+    // Video-specific State
+    // ========================================
+    const [videoSettings, setVideoSettings] = React.useState<VideoSettings>({
+        duration: 5,
+        audio: false,
+    })
+    const [videoReferenceImages, setVideoReferenceImages] = React.useState<VideoReferenceImages>({
+        firstFrame: undefined,
+        lastFrame: undefined,
+    })
+
+    // ========================================
     // Model-specific Data
     // ========================================
+    const modelDef = React.useMemo(() => getModel(model), [model])
+    const isVideoModel = modelDef?.type === "video"
+
     const aspectRatios = React.useMemo(
         () => getModelAspectRatios(model) ?? [],
         [model]
@@ -161,10 +183,10 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
     const handleModelChange = React.useCallback((newModel: ImageModel) => {
         setModel(newModel)
 
-        const modelDef = getModel(newModel)
-        if (!modelDef) return // Unknown model, no constraints to apply
+        const newModelDef = getModel(newModel)
+        if (!newModelDef) return // Unknown model, no constraints to apply
 
-        const { constraints, aspectRatios: ratios } = modelDef
+        const { constraints, aspectRatios: ratios } = newModelDef
 
         // For fixed-size models (dimensionsEnabled: false), use the first aspect ratio preset
         if (!constraints.dimensionsEnabled && ratios.length > 0) {
@@ -172,19 +194,31 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
             setWidth(firstRatio.width)
             setHeight(firstRatio.height)
             setAspectRatio(firstRatio.value)
-            return
+        } else {
+            // For other models, reset to defaults if current dimensions exceed model limit
+            const currentPixels = width * height
+            const exceedsPixelLimit = currentPixels > constraints.maxPixels
+            const exceedsDimensionLimit =
+                width > constraints.maxDimension || height > constraints.maxDimension
+
+            if (exceedsPixelLimit || exceedsDimensionLimit) {
+                setWidth(constraints.defaultDimensions.width)
+                setHeight(constraints.defaultDimensions.height)
+                setAspectRatio("1:1")
+            }
         }
 
-        // For other models, reset to defaults if current dimensions exceed model limit
-        const currentPixels = width * height
-        const exceedsPixelLimit = currentPixels > constraints.maxPixels
-        const exceedsDimensionLimit =
-            width > constraints.maxDimension || height > constraints.maxDimension
-
-        if (exceedsPixelLimit || exceedsDimensionLimit) {
-            setWidth(constraints.defaultDimensions.width)
-            setHeight(constraints.defaultDimensions.height)
-            setAspectRatio("1:1")
+        // Reset video settings to model defaults when switching to a video model
+        if (newModelDef.type === "video" && newModelDef.durationConstraints) {
+            setVideoSettings({
+                duration: newModelDef.durationConstraints.defaultDuration,
+                audio: false,
+            })
+            // Clear video reference images when switching models
+            setVideoReferenceImages({
+                firstFrame: undefined,
+                lastFrame: undefined,
+            })
         }
     }, [width, height])
 
@@ -234,5 +268,12 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
         // Reference image
         referenceImage,
         setReferenceImage,
+
+        // Video-specific settings
+        isVideoModel,
+        videoSettings,
+        setVideoSettings,
+        videoReferenceImages,
+        setVideoReferenceImages,
     }
 }
