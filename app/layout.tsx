@@ -34,25 +34,29 @@ export const viewport: Viewport = {
  */
 export const metadata: Metadata = {
   title: {
-    default: "Bloom Studio - Powerful AI Image Generation",
+    default: "Bloom Studio - Cheap and Powerful AI Image & Video Generator",
     template: "%s | Bloom Studio",
   },
   description:
-    "Create stunning AI-generated images with Bloom Studio. Configure models, dimensions, and advanced parameters for free. Experience the next generation of creative tools.",
+    "Bloom Studio, a cheap and powerful AI image generator and video generator studio. Featuring NanoBanana, Veo, GPT 1.5, Seedream 4.5 and more. Try for free.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://bloomstudio.fun"),
   applicationName: "Bloom Studio",
   authors: [{ name: "Bloom Studio Team" }],
   generator: "Next.js",
   keywords: [
-    "AI",
+    "AI Image Generator",
+    "Free AI Image Generator",
+    "Free AI Video Generator",
     "Image Generation",
+    "Video Generation",
     "Stable Diffusion",
+    "Best AI Image Generator",
+    "Best AI Video Generator",
     "Flux",
-    "Art",
     "Creative",
     "Kling",
     "Image Gen",
-    "Chatgpt",
+    "Leonardo AI",
     "Bloom Studio",
     "Midjourney",
   ],
@@ -73,30 +77,14 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/",
   },
-  icons: {
-    icon: [
-      {
-        url: "/icon-light-32x32.png",
-        media: "(prefers-color-scheme: light)",
-      },
-      {
-        url: "/icon-dark-32x32.png",
-        media: "(prefers-color-scheme: dark)",
-      },
-      {
-        url: "/icon.svg",
-        type: "image/svg+xml",
-      },
-    ],
-    apple: "/apple-icon.png",
-  },
+  /* icons are handled by file conventions in /app directory */
   openGraph: {
     type: "website",
     locale: "en_US",
     url: "/",
-    title: "Bloom Studio - Powerful AI Image Generation",
+    title: "Bloom Studio - Cheap and Powerful AI Image & Video Generator",
     description:
-      "Create stunning AI-generated images with Bloom Studio. Configure models, dimensions, and advanced parameters for free.",
+      "Bloom Studio, a cheap and powerful AI image generator and video generator studio. Featuring NanoBanana, Veo, GPT 1.5, Seedream 4.5 and more. Try for free.",
     siteName: "Bloom Studio",
     images: [
       {
@@ -109,9 +97,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Bloom Studio - Powerful AI Image Generation",
+    title: "Bloom Studio - Cheap and Powerful AI Image & Video Generator",
     description:
-      "Create stunning AI-generated images with Bloom Studio. Configure models, dimensions, and advanced parameters for free.",
+      "Bloom Studio, a cheap and powerful AI image generator and video generator studio. Featuring NanoBanana, Veo, GPT 1.5, Seedream 4.5 and more. Try for free.",
     images: ["/branding/bloom-studio_logo.png"],
     creator: "@bloomstudio",
   },
