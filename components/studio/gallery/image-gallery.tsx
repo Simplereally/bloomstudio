@@ -133,14 +133,11 @@ const VirtualizedGalleryGrid = React.memo(function VirtualizedGalleryGrid({
     
     // Calculate number of rows
     const rowCount = Math.ceil(images.length / columns)
-
-    const estimateSize = React.useCallback(() => rowHeight, [rowHeight])
     
-    // eslint-disable-next-line react-hooks/incompatible-library -- virtualizer is required
     const virtualizer = useVirtualizer({
         count: rowCount,
         getScrollElement: () => parentRef.current,
-        estimateSize,
+        estimateSize: () => rowHeight,
         overscan: 3, // Render 3 extra rows above/below viewport
     })
     
@@ -468,6 +465,7 @@ export const ImageGallery = React.memo(function ImageGallery({
                                     onClick={onLoadMore}
                                     disabled={isLoadingMore}
                                     className="text-xs text-muted-foreground"
+                                    data-testid="load-more-button"
                                 >
                                     {isLoadingMore ? (
                                         <Loader2 className="h-3 w-3 mr-2 animate-spin" />
@@ -479,43 +477,45 @@ export const ImageGallery = React.memo(function ImageGallery({
                     </div>
                 ) : (
                     // Standard grid for smaller datasets or horizontal layout
-                    <ScrollArea className="flex-1" data-testid="gallery-scroll">
-                        <div
-                            className={cn(
-                                "p-2",
-                                direction === "horizontal"
-                                    ? "flex gap-2 overflow-x-auto"
-                                    : "grid gap-2",
-                                direction === "vertical" && {
-                                    "grid-cols-2": thumbnailSize === "lg",
-                                    "grid-cols-3": thumbnailSize === "md",
-                                    "grid-cols-4": thumbnailSize === "sm",
-                                }
-                            )}
-                            data-testid="gallery-grid"
-                        >
-                            {images.map((image) => (
-                                <ThumbnailItem
-                                    key={image.id}
-                                    image={image}
-                                    isActive={activeImageId === image.id}
-                                    isChecked={deferredSelectedIds.has(image.id)}
-                                    onSelect={handleImageClick}
-                                    onCheckedChange={handleCheckedChange}
-                                    showCheckbox={selectionMode}
-                                    size={thumbnailSize}
-                                />
-                            ))}
-                        </div>
-
+                    <div className="flex-1 flex flex-col min-h-0">
+                        <ScrollArea className="flex-1" data-testid="gallery-scroll">
+                            <div
+                                className={cn(
+                                    "p-2",
+                                    direction === "horizontal"
+                                        ? "flex gap-2 overflow-x-auto"
+                                        : "grid gap-2",
+                                    direction === "vertical" && {
+                                        "grid-cols-2": thumbnailSize === "lg",
+                                        "grid-cols-3": thumbnailSize === "md",
+                                        "grid-cols-4": thumbnailSize === "sm",
+                                    }
+                                )}
+                                data-testid="gallery-grid"
+                            >
+                                {images.map((image) => (
+                                    <ThumbnailItem
+                                        key={image.id}
+                                        image={image}
+                                        isActive={activeImageId === image.id}
+                                        isChecked={deferredSelectedIds.has(image.id)}
+                                        onSelect={handleImageClick}
+                                        onCheckedChange={handleCheckedChange}
+                                        showCheckbox={selectionMode}
+                                        size={thumbnailSize}
+                                    />
+                                ))}
+                            </div>
+                        </ScrollArea>
                         {onLoadMore && (
-                            <div className="p-4 flex justify-center border-t border-border/10">
+                            <div className="p-4 flex justify-center border-t border-border/10 flex-shrink-0">
                                 <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={onLoadMore}
                                     disabled={isLoadingMore}
                                     className="text-xs text-muted-foreground"
+                                    data-testid="load-more-button"
                                 >
                                     {isLoadingMore ? (
                                         <Loader2 className="h-3 w-3 mr-2 animate-spin" />
@@ -524,7 +524,7 @@ export const ImageGallery = React.memo(function ImageGallery({
                                 </Button>
                             </div>
                         )}
-                    </ScrollArea>
+                    </div>
                 )
             )}
         </div>

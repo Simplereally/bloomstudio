@@ -115,7 +115,7 @@ export const GalleryThumbnail = React.memo(function GalleryThumbnail({
             playsInline
             preload="metadata"
             className={cn(
-              "absolute inset-0 w-full h-full object-cover transition-all duration-500 ease-out group-hover:scale-110",
+              "absolute inset-0 w-full h-full object-cover transition-all duration-500 ease-out",
               isLoaded ? "opacity-100 scale-100" : "opacity-0 scale-105 blur-sm"
             )}
             onLoadedData={() => setIsLoaded(true)}
@@ -134,7 +134,7 @@ export const GalleryThumbnail = React.memo(function GalleryThumbnail({
           alt={image.prompt || "Generated image"}
           fill
           className={cn(
-            "object-cover transition-all duration-500 ease-out group-hover:scale-110",
+            "object-cover transition-all duration-500 ease-out",
             isLoaded ? "opacity-100 scale-100" : "opacity-0 scale-105 blur-sm"
           )}
           onLoad={() => setIsLoaded(true)}
@@ -167,4 +167,3 @@ export const GalleryThumbnail = React.memo(function GalleryThumbnail({
     </Card>
   );
 })
-
