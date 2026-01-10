@@ -72,7 +72,7 @@ vi.mock('@/hooks/use-image-lightbox', () => ({
 
 // Mock the image details query
 vi.mock('@/hooks/queries/use-image-history', () => ({
-    useImageDetails: () => null
+    useImageDetails: vi.fn(() => null)
 }))
 
 // Mock MediaPlayer
@@ -339,6 +339,32 @@ describe('ImageLightbox - Prompt Library Integration', () => {
 
             expect(screen.queryByTestId('zoom-indicator')).not.toBeInTheDocument()
             expect(screen.queryByText('🔍')).not.toBeInTheDocument()
+        })
+
+        it('prioritizes full video URL from details over thumbnail URL', async () => {
+            // Setup useImageDetails to return a different URL (the original video)
+            const mockFullDetails = {
+                ...mockVideo,
+                url: "https://example.com/original-full-video.mp4"
+            }
+            // Temporarily override the mock for this test
+            const useImageHistory = await import('@/hooks/queries/use-image-history')
+            vi.mocked(useImageHistory.useImageDetails).mockReturnValue(mockFullDetails as any)
+
+            const thumbnailVideo = {
+                ...mockVideo,
+                url: "https://example.com/thumbnail.jpg", // Thumbnail passed in props
+                _id: "test-id"
+            }
+
+            render(<ImageLightbox image={thumbnailVideo} isOpen={true} onClose={vi.fn()} />)
+
+            // Should render video player with the FULL URL, not the thumbnail URL
+            expect(screen.getByTestId('video-player')).toBeInTheDocument()
+            expect(screen.getByTestId('video-player')).toHaveAttribute('src', mockFullDetails.url)
+
+            // Clean up mock
+            vi.mocked(useImageHistory.useImageDetails).mockReturnValue(null)
         })
     })
 })

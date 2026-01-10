@@ -67,10 +67,9 @@ export const CUSTOM_ASPECT_RATIO: AspectRatioDefinition = {
  * - HD: ~1-2 megapixels (1080p equivalent)
  * - 2K: ~2-4 megapixels (1440p equivalent)
  * - 4K: ~8 megapixels (2160p equivalent)
- * - max: Model-specific maximum (not defined here)
  */
 export const STANDARD_RESOLUTIONS: Record<
-    Exclude<ResolutionTier, "max">,
+    ResolutionTier,
     Record<Exclude<AspectRatio, "custom">, StandardDimensions>
 > = {
     sd: {
@@ -133,14 +132,13 @@ export const STANDARD_RESOLUTIONS: Record<
 
 /**
  * Get standard dimensions for an aspect ratio at a specific resolution tier.
- * Returns null for custom aspect ratio or max tier (which is model-dependent).
+ * Returns null for custom aspect ratio.
  */
 export function getStandardDimensions(
     aspectRatio: AspectRatio,
     tier: ResolutionTier
 ): StandardDimensions | null {
     if (aspectRatio === "custom") return null
-    if (tier === "max") return null
 
     return STANDARD_RESOLUTIONS[tier][aspectRatio] ?? null
 }
@@ -162,7 +160,6 @@ export function getAllAspectRatioDefinitions(): AspectRatioDefinition[] {
 
 /**
  * Get standard dimensions, with fallback for unsupported combinations.
- * Falls back to the closest supported tier.
  */
 export function getStandardDimensionsWithFallback(
     aspectRatio: AspectRatio,
@@ -171,11 +168,6 @@ export function getStandardDimensionsWithFallback(
     if (aspectRatio === "custom") {
         // Default custom dimensions - 1024x1024
         return { width: 1024, height: 1024 }
-    }
-
-    if (tier === "max") {
-        // Fall back to 4K for max tier
-        return STANDARD_RESOLUTIONS["4k"][aspectRatio]
     }
 
     return STANDARD_RESOLUTIONS[tier][aspectRatio]

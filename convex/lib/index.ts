@@ -23,9 +23,16 @@ export {
 // R2 storage utilities
 export {
     generateR2Key,
+    generateThumbnailKey,
     uploadToR2,
+    generateAndUploadThumbnail,
+    uploadMediaWithThumbnail,
     type R2UploadResult,
+    type MediaUploadResult,
 } from "./r2"
+
+// Video thumbnail utilities
+export { extractVideoThumbnail } from "./videoThumbnail"
 
 // Retry utilities
 export {

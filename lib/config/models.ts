@@ -299,6 +299,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
         defaultDimensions: { width: 1920, height: 1080 },
         dimensionsEnabled: false,
         maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
+        supportedTiers: ["sd", "hd"],
     },
     aspectRatios: VIDEO_ASPECT_RATIOS,
     supportsNegativePrompt: false,
@@ -325,6 +326,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
         defaultDimensions: { width: 1920, height: 1080 },
         dimensionsEnabled: false,
         maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
+        supportedTiers: ["sd", "hd"],
     },
     aspectRatios: VIDEO_ASPECT_RATIOS,
     supportsNegativePrompt: false,
@@ -477,6 +479,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
       defaultDimensions: { width: 1920, height: 1080 },
       dimensionsEnabled: false,
       maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
+      supportedTiers: ["sd", "hd"],
     },
     aspectRatios: VIDEO_ASPECT_RATIOS,
     supportsNegativePrompt: false,

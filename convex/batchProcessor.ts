@@ -23,7 +23,7 @@ import {
     buildPollinationsUrl,
     classifyApiError,
     generateR2Key,
-    uploadToR2,
+    uploadMediaWithThumbnail,
     fetchWithRetry,
     type RetryConfig,
 } from "./lib"
@@ -202,18 +202,28 @@ export const processBatchItem = internalAction({
             const imageBuffer = Buffer.from(await response.arrayBuffer())
             const contentType = response.headers.get("content-type") || "image/jpeg"
 
-            // Upload to R2
+            // Upload to R2 and generate thumbnail in parallel (for videos)
             const r2Key = generateR2Key(batchJob.ownerId, contentType)
             console.log(`${logger} Uploading to R2: ${r2Key}`)
 
-            const uploadResult = await uploadToR2(imageBuffer, r2Key, contentType)
+            const { media: uploadResult, thumbnail: thumbnailResult } = await uploadMediaWithThumbnail(
+                imageBuffer,
+                r2Key,
+                contentType
+            )
+
             console.log(`${logger} Upload complete: ${uploadResult.url}`)
+            if (thumbnailResult) {
+                console.log(`${logger} Thumbnail complete: ${thumbnailResult.url} (${thumbnailResult.sizeBytes} bytes)`)
+            }
 
             // Store the image in Convex database
             const imageId = await ctx.runMutation(internal.batchGeneration.storeGeneratedImage, {
                 ownerId: batchJob.ownerId,
                 r2Key,
                 url: uploadResult.url,
+                thumbnailR2Key: thumbnailResult?.url ? r2Key.replace(/^generated\//, "thumbnails/") : undefined,
+                thumbnailUrl: thumbnailResult?.url,
                 prompt: batchJob.generationParams.prompt,
                 width: batchJob.generationParams.width ?? 1024,
                 height: batchJob.generationParams.height ?? 1024,

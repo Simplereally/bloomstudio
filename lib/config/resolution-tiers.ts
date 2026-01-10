@@ -44,12 +44,6 @@ export const RESOLUTION_TIERS: Record<ResolutionTier, ResolutionTierConfig> = {
         shortLabel: "4K",
         description: "~3840×2160 equivalent, maximum quality",
     },
-    max: {
-        targetMegapixels: Infinity,
-        label: "Maximum",
-        shortLabel: "MAX",
-        description: "Model's maximum supported resolution",
-    },
 } as const
 
 /**
@@ -60,7 +54,6 @@ export const RESOLUTION_TIER_ORDER: readonly ResolutionTier[] = [
     "hd",
     "2k",
     "4k",
-    "max",
 ] as const
 
 // ============================================================================
@@ -100,11 +93,8 @@ export function calculateDimensionsForTier(
     const tierConfig = RESOLUTION_TIERS[tier]
     const aspectRatio = ratio.widthRatio / ratio.heightRatio
 
-    // Determine target pixels based on tier (or model max for 'max' tier)
-    const targetPixels =
-        tier === "max"
-            ? constraints.maxPixels
-            : Math.min(tierConfig.targetMegapixels * 1_000_000, constraints.maxPixels)
+    // Determine target pixels based on tier, capped at model's max
+    const targetPixels = Math.min(tierConfig.targetMegapixels * 1_000_000, constraints.maxPixels)
 
     // Calculate base dimensions from target pixels
     // height = sqrt(pixels / aspectRatio), width = height * aspectRatio
@@ -165,8 +155,7 @@ export function getTierForPixelCount(pixels: number): ResolutionTier {
     if (megapixels <= 0.75) return "sd"
     if (megapixels <= 1.5) return "hd"
     if (megapixels <= 5.0) return "2k"
-    if (megapixels <= 16.0) return "4k"
-    return "max"
+    return "4k"
 }
 
 /**
@@ -188,7 +177,6 @@ export function getSupportedTiersForModel(
     if (maxMp >= 1.0) tiers.push("hd")
     if (maxMp >= 2.0) tiers.push("2k")
     if (maxMp >= 8.0) tiers.push("4k")
-    if (maxMp > 16.0) tiers.push("max")
 
     return tiers.length > 0 ? tiers : ["hd"] // Default to HD if nothing else
 }

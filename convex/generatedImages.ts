@@ -143,7 +143,10 @@ export const getById = query({
 type ThumbnailImage = {
     _id: Doc<"generatedImages">["_id"]
     _creationTime: number
+    /** URL to display - uses thumbnailUrl if available, otherwise falls back to original */
     url: string
+    /** Original full-size URL (for lightbox/download) */
+    originalUrl: string
     visibility: "public" | "unlisted"
     createdAt: number
     // Include model for filtering badge display (small field)
@@ -155,12 +158,16 @@ type ThumbnailImage = {
 /**
  * Helper to map full documents to lightweight thumbnail format.
  * Reduces bandwidth by ~90% by excluding generationParams, prompt, and other unused fields.
+ * Uses thumbnailUrl when available (~98% additional bandwidth reduction for gallery).
  */
 function toThumbnails(images: Doc<"generatedImages">[]): ThumbnailImage[] {
     return images.map(img => ({
         _id: img._id,
         _creationTime: img._creationTime,
-        url: img.url,
+        // Prefer thumbnail for gallery display, fall back to original for legacy images
+        url: img.thumbnailUrl ?? img.url,
+        // Always include original URL for when user opens lightbox
+        originalUrl: img.url,
         visibility: img.visibility,
         createdAt: img.createdAt,
         model: img.model,

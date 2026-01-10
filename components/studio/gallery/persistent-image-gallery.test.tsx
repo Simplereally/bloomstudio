@@ -294,13 +294,14 @@ describe("PersistentImageGallery", () => {
                 expect.objectContaining({
                     id: "conv123",
                     _id: "conv123",
+                    contentType: "image/jpeg",
                 })
             )
         })
     })
 
     describe("pagination", () => {
-        it("shows load more button when canLoadMore", () => {
+        it("shows infinite scroll sentinel when canLoadMore", () => {
             ; (useImageHistory as Mock).mockReturnValue({
                 results: mockConvexImages,
                 status: "CanLoadMore",
@@ -309,25 +310,22 @@ describe("PersistentImageGallery", () => {
 
             render(<PersistentImageGallery />)
 
-            expect(screen.getByText("Load More")).toBeInTheDocument()
+            expect(screen.getByTestId("load-more-sentinel")).toBeInTheDocument()
         })
 
-        it("calls loadMore when load more button clicked", async () => {
-            const mockLoadMore = vi.fn()
-                ; (useImageHistory as Mock).mockReturnValue({
-                    results: mockConvexImages,
-                    status: "CanLoadMore",
-                    loadMore: mockLoadMore,
-                })
+        it("hides sentinel when exhausted", () => {
+            ; (useImageHistory as Mock).mockReturnValue({
+                results: mockConvexImages,
+                status: "Exhausted",
+                loadMore: vi.fn(),
+            })
 
             render(<PersistentImageGallery />)
 
-            await userEvent.click(screen.getByText("Load More"))
-
-            expect(mockLoadMore).toHaveBeenCalledWith(20)
+            expect(screen.queryByTestId("load-more-sentinel")).not.toBeInTheDocument()
         })
 
-        it("shows loading state when loading more", () => {
+        it("shows loading spinner in sentinel when loading more", () => {
             ; (useImageHistory as Mock).mockReturnValue({
                 results: mockConvexImages,
                 status: "LoadingMore",
@@ -336,7 +334,8 @@ describe("PersistentImageGallery", () => {
 
             render(<PersistentImageGallery />)
 
-            expect(screen.getByText("Load More")).toBeDisabled()
+            const sentinel = screen.getByTestId("load-more-sentinel")
+            expect(sentinel.querySelector("svg.animate-spin")).toBeInTheDocument()
         })
 
         it("automatically calls loadMore when results are empty but more pages exist (greedy fetch)", () => {

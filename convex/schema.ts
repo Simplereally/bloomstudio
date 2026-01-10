@@ -54,6 +54,12 @@ export default defineSchema({
         /** Full public URL to the image */
         url: v.string(),
 
+        /** R2 object key for thumbnail (128x128, compressed) */
+        thumbnailR2Key: v.optional(v.string()),
+
+        /** Full public URL to the thumbnail */
+        thumbnailUrl: v.optional(v.string()),
+
         /** Generated identifier */
         filename: v.string(),
 

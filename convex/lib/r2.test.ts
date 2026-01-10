@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from "vitest"
-import { generateR2Key } from "./r2"
+import { generateR2Key, generateThumbnailKey } from "./r2"
 import crypto from "crypto"
 
 describe("r2 utilities", () => {
@@ -42,6 +42,28 @@ describe("r2 utilities", () => {
 
             const expectedHash = crypto.createHash("sha256").update(userId).digest("hex")
             expect(key).toContain(expectedHash)
+        })
+    })
+
+    describe("generateThumbnailKey", () => {
+        it("replaces generated/ prefix with thumbnails/ and converts extension to jpg", () => {
+            const originalKey = "generated/abc123/1234567890-uuid.jpeg"
+            const thumbnailKey = generateThumbnailKey(originalKey)
+            expect(thumbnailKey).toBe("thumbnails/abc123/1234567890-uuid.jpg")
+        })
+
+        it("preserves rest of the path structure but normalizes extension", () => {
+            const originalKey = "generated/hash123/timestamp-uuid.png"
+            const thumbnailKey = generateThumbnailKey(originalKey)
+            expect(thumbnailKey).toMatch(/^thumbnails\//)
+            expect(thumbnailKey).toContain("hash123/timestamp-uuid")
+            expect(thumbnailKey).toMatch(/\.jpg$/)
+        })
+
+        it("handles edge case of no generated/ prefix", () => {
+            // Should return unchanged if no match
+            const key = "other/path/file.jpg"
+            expect(generateThumbnailKey(key)).toBe(key)
         })
     })
 })

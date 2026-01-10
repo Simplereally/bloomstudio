@@ -37,6 +37,7 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
   const displayImage: LightboxImage | null = image ? {
     ...image,
     // Use full data if available, otherwise fall back to what we have
+    url: fullImageData?.url ?? image.url,
     prompt: fullImageData?.prompt ?? image.prompt ?? "",
     model: fullImageData?.model ?? image.model,
     width: fullImageData?.width ?? image.width,
@@ -50,6 +51,8 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
       seed: fullImageData.seed,
     } : undefined),
   } : null
+
+  const isVideo = displayImage ? isVideoContent(displayImage.contentType, displayImage.url) : false
 
   const isLoadingDetails = needsFullData && fullImageData === undefined
 
@@ -73,6 +76,13 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
   // Prompt library state for saving prompts
   const [libraryOpen, setLibraryOpen] = React.useState(false)
   const [saveContent, setSaveContent] = React.useState<string | undefined>(undefined)
+
+  const [isImageLoaded, setIsImageLoaded] = React.useState(false)
+
+  // Reset image loaded state when URL changes
+  React.useEffect(() => {
+    setIsImageLoaded(false)
+  }, [displayImage?.url])
 
   return (
     <>
@@ -120,78 +130,91 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
                   }
                 }}
               >
-                <React.Fragment>
-                  {/* Video: Full player with controls, no zoom */}
-                  {isVideoContent(displayImage.contentType, displayImage.url) ? (
-                    <div className="relative flex items-center justify-center p-4 w-full h-full min-h-full">
+                {/* Unified Content Layer - only render when we have details */}
+                {!isLoadingDetails && (
+                  <React.Fragment>
+                    {isVideo ? (
+                      <div className="relative flex items-center justify-center p-4 w-full h-full min-h-full">
+                        <div
+                          className="relative shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-sm max-w-[calc(100vw-2rem)] max-h-[calc(100vh-6rem)] md:max-w-[calc(100vw-6rem)] md:max-h-[calc(100vh-8rem)]"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MediaPlayer
+                            url={displayImage.url}
+                            alt={displayImage.prompt || "Generated video"}
+                            contentType={displayImage.contentType}
+                            controls={true}
+                            autoPlay={true}
+                            loop={true}
+                            muted={false}
+                            className="w-auto h-auto max-w-full max-h-full object-contain select-none"
+                            draggable={false}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      /* Image: opacity transition for smooth loading */
                       <div
-                        className="relative shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-sm max-w-[calc(100vw-2rem)] max-h-[calc(100vh-6rem)] md:max-w-[calc(100vw-6rem)] md:max-h-[calc(100vh-8rem)]"
+                        className="relative"
+                        style={isZoomed ? {
+                          width: naturalSize.width,
+                          height: naturalSize.height,
+                          flexShrink: 0,
+                          margin: 'auto'
+                        } : undefined}
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <MediaPlayer
-                          url={displayImage.url}
-                          alt={displayImage.prompt || "Generated video"}
-                          contentType={displayImage.contentType}
-                          controls={true}
-                          autoPlay={true}
-                          loop={true}
-                          muted={false}
-                          className="w-auto h-auto max-w-full max-h-full object-contain select-none"
-                          draggable={false}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    /* Image: specific settings preserved from old version */
-                    <div
-                      className="relative"
-                      style={isZoomed ? {
-                        width: naturalSize.width,
-                        height: naturalSize.height,
-                        flexShrink: 0,
-                        margin: 'auto'
-                      } : undefined}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div
-                        className={cn(
-                          "relative shadow-[0_0_50px_rgba(0,0,0,0.5)] group/image",
-                          !isZoomed && "rounded-sm",
-                          !canZoom ? "cursor-default" : !isZoomed && "cursor-zoom-in"
-                        )}
-                        onClick={toggleZoom}
-                      >
-                        <NextImage
-                          src={displayImage.url}
-                          alt={displayImage.prompt || "Generated image"}
-                          onLoad={(e) => handleImageLoad(e as unknown as React.SyntheticEvent<HTMLImageElement>)}
-                          draggable={false}
-                          width={displayImage.width || displayImage.params?.width || 1000}
-                          height={displayImage.height || displayImage.params?.height || 1000}
-                          priority
-                          unoptimized={displayImage.url.startsWith('http')} // Don't re-optimize if it's already a full URL (likely from storage)
-                          className={cn(
-                            "w-auto h-auto object-contain select-none",
-                            isZoomed
-                              ? ""
-                              : "max-w-[calc(100vw-2rem)] max-h-[calc(100vh-6rem)] md:max-w-[calc(100vw-6rem)] md:max-h-[calc(100vh-8rem)]"
-                          )}
-                        />
-                      </div>
-
-                      {/* Zoom indicator - only show if zoomable and not zoomed */}
-                      {canZoom && !isZoomed && (
                         <div
-                          className="absolute top-4 right-4 z-10 opacity-0 group-hover/image:opacity-100 transition-opacity pointer-events-none"
+                          className={cn(
+                            "relative shadow-[0_0_50px_rgba(0,0,0,0.5)] group/image",
+                            !isZoomed && "rounded-sm",
+                            !canZoom ? "cursor-default" : !isZoomed && "cursor-zoom-in"
+                          )}
+                          onClick={toggleZoom}
                         >
-                          <div className="bg-black/40 backdrop-blur-md rounded-full p-2 border border-white/10 text-white/70">
-                            <ZoomIn className="w-5 h-5" />
-                          </div>
+                          <NextImage
+                            src={displayImage.url}
+                            alt={displayImage.prompt || "Generated image"}
+                            onLoad={(e) => {
+                              handleImageLoad(e as unknown as React.SyntheticEvent<HTMLImageElement>)
+                              setIsImageLoaded(true)
+                            }}
+                            draggable={false}
+                            width={displayImage.width || displayImage.params?.width || 1000}
+                            height={displayImage.height || displayImage.params?.height || 1000}
+                            priority
+                            unoptimized={displayImage.url.startsWith('http')} // Don't re-optimize if it's already a full URL (likely from storage)
+                            className={cn(
+                              "w-auto h-auto object-contain select-none transition-opacity duration-300",
+                              isZoomed
+                                ? ""
+                                : "max-w-[calc(100vw-2rem)] max-h-[calc(100vh-6rem)] md:max-w-[calc(100vw-6rem)] md:max-h-[calc(100vh-8rem)]",
+                              !isImageLoaded ? "opacity-0" : "opacity-100"
+                            )}
+                          />
                         </div>
-                      )}
-                    </div>
-                  )}
-                </React.Fragment>
+
+                        {/* Zoom indicator - only show if zoomable and not zoomed */}
+                        {canZoom && !isZoomed && isImageLoaded && (
+                          <div
+                            className="absolute top-4 right-4 z-10 opacity-0 group-hover/image:opacity-100 transition-opacity pointer-events-none"
+                          >
+                            <div className="bg-black/40 backdrop-blur-md rounded-full p-2 border border-white/10 text-white/70">
+                              <ZoomIn className="w-5 h-5" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </React.Fragment>
+                )}
+
+                {/* Unified Loading Layer - persistent overlay across states */}
+                {(isLoadingDetails || (!isVideo && !isImageLoaded)) && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <Loader2 className="w-10 h-10 animate-spin text-white/50" />
+                  </div>
+                )}
               </div>
 
               {/* Info overlay - outside the scrolling content */}

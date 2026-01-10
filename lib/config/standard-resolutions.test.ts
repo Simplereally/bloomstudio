@@ -102,11 +102,6 @@ describe("getStandardDimensions", () => {
         const dims = getStandardDimensions("custom", "hd")
         expect(dims).toBeNull()
     })
-
-    it("should return null for max tier", () => {
-        const dims = getStandardDimensions("16:9", "max")
-        expect(dims).toBeNull()
-    })
 })
 
 describe("getAspectRatioDefinition", () => {
@@ -137,11 +132,6 @@ describe("getStandardDimensionsWithFallback", () => {
     it("should return standard dimensions for valid ratio and tier", () => {
         const dims = getStandardDimensionsWithFallback("16:9", "hd")
         expect(dims).toEqual({ width: 1920, height: 1080 })
-    })
-
-    it("should return 4K dimensions for max tier", () => {
-        const dims = getStandardDimensionsWithFallback("16:9", "max")
-        expect(dims).toEqual({ width: 3840, height: 2160 }) // Falls back to 4K
     })
 
     it("should return default dimensions for custom ratio", () => {
