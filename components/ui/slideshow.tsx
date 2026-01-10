@@ -108,12 +108,12 @@ export const Slideshow = forwardRef<SlideshowRef, SlideshowProps>(function Slide
   return (
     <div
       ref={containerRef}
-      className={cn("relative", className)}
+      className={cn("relative flex flex-col items-center", className)}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
       {/* Main showcase container with glass morphism - inline-flex to wrap content tightly */}
-      <div className="relative inline-flex rounded-2xl md:rounded-3xl overflow-hidden bg-gradient-to-b from-white/[0.08] to-white/[0.02] border border-white/10 backdrop-blur-xl p-2 md:p-3">
+      <div className="relative inline-flex rounded-2xl md:rounded-3xl bg-gradient-to-b from-white/[0.08] to-white/[0.02] border border-white/10 backdrop-blur-xl p-2 md:p-3">
         {/* Inner frame */}
         <div 
           className={cn("relative rounded-xl md:rounded-2xl overflow-hidden bg-black/40", frameClassName)}
@@ -163,26 +163,27 @@ export const Slideshow = forwardRef<SlideshowRef, SlideshowProps>(function Slide
             })}
           </div>
 
+        </div>
+
           {/* Navigation arrows */}
           {showArrows && slides.length > 1 && (
             <>
               <button
                 onClick={prev}
-                className="absolute left-3 md:left-6 top-1/2 -translate-y-1/2 z-30 w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/40 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-black/60 hover:border-white/20 transition-all duration-300 group"
+                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-30 w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/40 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-black/60 hover:border-white/20 transition-all duration-300 group"
                 aria-label="Previous slide"
               >
                 <ChevronLeft className="w-5 h-5 md:w-6 md:h-6 group-hover:-translate-x-0.5 transition-transform" />
               </button>
               <button
                 onClick={next}
-                className="absolute right-3 md:right-6 top-1/2 -translate-y-1/2 z-30 w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/40 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-black/60 hover:border-white/20 transition-all duration-300 group"
+                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-30 w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/40 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-black/60 hover:border-white/20 transition-all duration-300 group"
                 aria-label="Next slide"
               >
                 <ChevronRight className="w-5 h-5 md:w-6 md:h-6 group-hover:translate-x-0.5 transition-transform" />
               </button>
             </>
           )}
-        </div>
       </div>
 
       {/* Thumbnail strip - rendered with declarative thumbnailSrc data */}
@@ -199,7 +200,7 @@ export const Slideshow = forwardRef<SlideshowRef, SlideshowProps>(function Slide
                   "relative rounded-lg overflow-hidden transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                   "w-20 h-16 sm:w-24 sm:h-20 md:w-28 md:h-24",
                   isActive
-                    ? "ring-2 ring-primary ring-offset-2 ring-offset-background scale-105"
+                    ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
                     : "opacity-60 hover:opacity-90 grayscale-[30%] hover:grayscale-0",
                   thumbnailClassName
                 )}

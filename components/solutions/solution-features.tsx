@@ -1,8 +1,9 @@
-"use client"
+
 
 import type { SolutionFeature } from "@/lib/seo-config"
 import { ScrollReveal } from "@/components/landing/scroll-reveal"
 import { cn } from "@/lib/utils"
+import Image from "next/image"
 
 interface SolutionFeaturesProps {
     features: SolutionFeature[]
@@ -36,10 +37,12 @@ export function SolutionFeatures({ features }: SolutionFeaturesProps) {
                                         <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-2xl">
                                             <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent mix-blend-overlay z-10" />
                                             {feature.image ? (
-                                                <img 
-                                                    src={feature.image} 
+                                                <Image
+                                                    src={feature.image}
                                                     alt={feature.title}
-                                                    className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+                                                    fill
+                                                    className="object-cover transition-transform duration-700 hover:scale-105"
+                                                    sizes="(max-width: 768px) 100vw, 50vw"
                                                 />
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center bg-white/5">

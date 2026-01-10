@@ -77,6 +77,7 @@ export default async function SolutionPage({ params }: { params: Promise<{ slug:
                 description={solution.description}
                 heroPrefix={solution.heroPrefix}
                 heroSuffix={solution.heroSuffix}
+                images={solution.heroImages}
             />
 
             <SolutionShowcase items={solution.showcase} />

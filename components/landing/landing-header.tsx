@@ -56,10 +56,9 @@ export function LandingHeader() {
         const element = document.getElementById(id);
         if (element) {
           // Force scroll even if hash is the same
-          const offset = 80; // Header height offset
           const elementPosition = element.getBoundingClientRect().top + window.scrollY;
           window.scrollTo({
-            top: elementPosition - offset,
+            top: elementPosition,
             behavior: "smooth",
           });
 

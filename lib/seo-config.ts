@@ -26,6 +26,7 @@ export interface Solution {
   features: SolutionFeature[];
   steps: SolutionStep[];
   faqs: SolutionFAQ[];
+  heroImages?: string[];
   showcase?: {
     label: string;
     aspectRatio: "square" | "portrait" | "landscape" | "landscape-wide" | "portrait-tall";
@@ -42,24 +43,30 @@ export const SOLUTIONS: Solution[] = [
     description:
       "Generate architectural visualizations and schematic-style concepts instantly with AI. Explore floor plan layouts and technical aesthetics for early-stage planning.",
     heroSuffix: "blueprints",
+    heroImages: [
+        "/solutions/ai-blueprints/hero-1.jpg",
+        "/solutions/ai-blueprints/hero-2.jpg",
+        "/solutions/ai-blueprints/hero-3.jpg",
+        "/solutions/ai-blueprints/hero-4.jpg",
+    ],
     features: [
       {
         title: "Visual Schematics",
         description:
           "Transform textual descriptions into clear architectural visualizations. Our prompt enhancement engine helps you explore room layouts and functional zones through high-quality renders.",
-        image: "/placeholder.jpg",
+        image: "/solutions/ai-blueprints/feature-1.jpg",
       },
       {
         title: "Drafting Aesthetics",
         description:
           "Emulate the look and feel of professional drafting standards. Whether you need an ANSI or ISO schematic aesthetic, our models capture the technical style for your presentations.",
-        image: "/placeholder.jpg",
+        image: "/solutions/ai-blueprints/feature-2.jpg",
       },
       {
         title: "Rapid Layout Iteration",
         description:
           "Generate dozens of layout variations for your project in minutes. Perfect for early-stage conceptualization and spatial flow studies before CAD drafting.",
-        image: "/placeholder.jpg",
+        image: "/solutions/ai-blueprints/feature-3.jpg",
       },
     ],
     steps: [
@@ -88,11 +95,11 @@ export const SOLUTIONS: Solution[] = [
       },
     ],
     showcase: [
-      { label: "Modern Floor Plan Concept", aspectRatio: "landscape", className: "h-full" },
-      { label: "Technical Style Cross-section", aspectRatio: "landscape", className: "h-full" },
-      { label: "Electrical Schematic Aesthetic", aspectRatio: "landscape", className: "h-full" },
-      { label: "Site Layout Visualization", aspectRatio: "landscape", className: "h-full" },
-      { label: "3D Massing Study Render", aspectRatio: "landscape", className: "h-full" },
+      { label: "Modern Floor Plan Concept", aspectRatio: "landscape", className: "h-full", src: "/solutions/ai-blueprints/showcase-1.jpg" },
+      { label: "Technical Style Cross-section", aspectRatio: "landscape", className: "h-full", src: "/solutions/ai-blueprints/showcase-2.jpg" },
+      { label: "Electrical Schematic Aesthetic", aspectRatio: "landscape", className: "h-full", src: "/solutions/ai-blueprints/showcase-3.jpg" },
+      { label: "Site Layout Visualization", aspectRatio: "landscape", className: "h-full", src: "/solutions/ai-blueprints/showcase-4.jpg" },
+      { label: "3D Massing Study Render", aspectRatio: "landscape", className: "h-full", src: "/solutions/ai-blueprints/showcase-5.jpg" },
     ],
   },
   {
@@ -102,24 +109,30 @@ export const SOLUTIONS: Solution[] = [
     description:
       "Generate stunning high-resolution images from any prompt. Powered by a diverse library of world-class AI models like Flux, DALL-E, and Stable Diffusion.",
     heroSuffix: "images",
+    heroImages: [
+        "/solutions/ai-image-generator/hero-1.jpg",
+        "/solutions/ai-image-generator/hero-2.jpg",
+        "/solutions/ai-image-generator/hero-3.jpg",
+        "/solutions/ai-image-generator/hero-4.jpg",
+    ],
     features: [
       {
         title: "Multi-Model Choice",
         description:
           "Access the world's best image models in one place. Choose the specific model that best fits your required style, from photorealism to surrealism.",
-        image: "/gallery/cyberpunk.png",
+        image: "/solutions/ai-image-generator/feature-1.jpg",
       },
       {
         title: "Prompt Enhancement",
         description:
           "Our intelligent prompt expansion helps you get better results by adding descriptive detail and artistic context to your simple ideas.",
-        image: "/placeholder.jpg",
+        image: "/solutions/ai-image-generator/feature-2.jpg",
       },
       {
         title: "Indistinguishable Quality",
         description:
           "Create crystal clear visuals with advanced lighting, ray-traced reflections, and physically accurate textures using our pro-tier models.",
-        image: "/placeholder.jpg",
+        image: "/solutions/ai-image-generator/feature-3.jpg",
       },
     ],
     steps: [
@@ -148,11 +161,11 @@ export const SOLUTIONS: Solution[] = [
       },
     ],
     showcase: [
-      { label: "Cyberpunk Cityscape", aspectRatio: "landscape", className: "h-full" },
-      { label: "Ethereal Forest Path", aspectRatio: "landscape", className: "h-full" },
-      { label: "Gothic Cathedral Interior", aspectRatio: "landscape", className: "h-full" },
+      { label: "Cyberpunk Cityscape", aspectRatio: "landscape", className: "h-full", src: "/solutions/ai-image-generator/showcase-1.jpg" },
+      { label: "Ethereal Forest Path", aspectRatio: "landscape", className: "h-full", src: "/solutions/ai-image-generator/showcase-2.jpg" },
+      { label: "Gothic Cathedral Interior", aspectRatio: "landscape", className: "h-full", src: "/solutions/ai-image-generator/showcase-3.jpg" },
       { label: "Sci-Fi Starship Bridge", aspectRatio: "landscape", className: "h-full" },
-      { label: "Mystical Mountain Peak", aspectRatio: "landscape", className: "h-full" },
+      { label: "Mystical Mountain Peak", aspectRatio: "landscape", className: "h-full", src: "/solutions/ai-image-generator/showcase-4.jpg" },
     ],
   },
   {
@@ -162,23 +175,29 @@ export const SOLUTIONS: Solution[] = [
     description:
       "Transform your artistic visions into beautiful digital pieces. Experiment with countless art styles through a unified, fast, and intuitive interface.",
     heroSuffix: "art",
+    heroImages: [
+        "/solutions/ai-art-generator/hero-1.jpg",
+        "/solutions/ai-art-generator/hero-2.jpg",
+        "/solutions/ai-art-generator/hero-3.jpg",
+        "/solutions/ai-art-generator/hero-4.jpg",
+    ],
     features: [
       {
         title: "Infinite Styles",
         description:
           "Explore styles ranging from classical oil paintings and watercolors to modern digital concept art and pixel-perfect illustrations.",
-        image: "/gallery/portrait.png",
+        image: "/solutions/ai-art-generator/feature-1.jpg",
       },
       {
         title: "Character & World Building",
         description: "Rapidly iterate on character designs, environment silhouettes, and color scripts for your creative projects.",
-        image: "/placeholder.jpg",
+        image: "/solutions/ai-art-generator/feature-2.jpg",
       },
       {
         title: "Creative Brainstorming",
         description:
           "Use AI as a collaborative partner to overcome creative block, exploring compositions and lighting schemes in real-time.",
-        image: "/placeholder.jpg",
+        image: "/solutions/ai-art-generator/feature-3.jpg",
       },
     ],
     steps: [
@@ -206,10 +225,10 @@ export const SOLUTIONS: Solution[] = [
       },
     ],
     showcase: [
-      { label: "Oil Painting Portrait", aspectRatio: "landscape", className: "h-full" },
-      { label: "Impressionist Terrace", aspectRatio: "landscape", className: "h-full" },
-      { label: "Digital Concept Art", aspectRatio: "landscape", className: "h-full" },
-      { label: "Modern Abstract Wall", aspectRatio: "landscape", className: "h-full" },
+      { label: "Oil Painting Portrait", aspectRatio: "landscape", className: "h-full", src: "/solutions/ai-art-generator/showcase-1.jpg" },
+      { label: "Impressionist Terrace", aspectRatio: "landscape", className: "h-full", src: "/solutions/ai-art-generator/showcase-2.jpg" },
+      { label: "Digital Concept Art", aspectRatio: "landscape", className: "h-full", src: "/solutions/ai-art-generator/showcase-4.jpg" },
+      { label: "Modern Abstract Wall", aspectRatio: "landscape", className: "h-full", src: "/solutions/ai-art-generator/showcase-5.jpg" },
       { label: "Sci-Fi Illustration", aspectRatio: "landscape", className: "h-full" },
     ],
   },
@@ -278,6 +297,11 @@ export const SOLUTIONS: Solution[] = [
     description:
       "Generate high-quality images with alpha-channel transparency instantly. Perfect for game assets, stickers, and professional graphic design.",
     heroSuffix: "assets",
+    heroImages: [
+        "/solutions/transparent-generator/hero-1.png",
+        "/solutions/transparent-generator/hero-2.png",
+        "/solutions/transparent-generator/hero-3.png",
+    ],
     features: [
       {
         title: "Automatic Isolation",
@@ -336,24 +360,30 @@ export const SOLUTIONS: Solution[] = [
     description:
       "Scale your content production with AI-generated ad creatives and social media visuals. Explore campaign ideas and brand assets in seconds.",
     heroSuffix: "marketing assets",
+    heroImages: [
+        "/solutions/ai-marketing-tools/hero-1.jpg",
+        "/solutions/ai-marketing-tools/hero-2.jpg",
+        "/solutions/ai-marketing-tools/hero-3.jpg",
+        "/solutions/ai-marketing-tools/hero-4.jpg",
+    ],
     features: [
       {
         title: "Creative Exploration",
         description:
           "Rapidly generate dozens of visual variations for your ad campaigns. Explore different compositions and styles to find what resonates.",
-        image: "/placeholder.jpg",
+        image: "/solutions/ai-marketing-tools/feature-1.jpg",
       },
       {
         title: "Social Media Graphics",
         description:
           "Create eye-catching visuals for Instagram, Facebook, and LinkedIn. Tailor your imagery to specific platforms with custom aspect ratios.",
-        image: "/placeholder.jpg",
+        image: "/solutions/ai-marketing-tools/feature-2.jpg",
       },
       {
         title: "Marketing Campaign Concepts",
         description:
           "Visualize brand directions and campaign themes before starting full production. Align stakeholders with high-quality visual references.",
-        image: "/placeholder.jpg",
+        image: "/solutions/ai-marketing-tools/feature-3.jpg",
       },
     ],
     steps: [
@@ -382,11 +412,11 @@ export const SOLUTIONS: Solution[] = [
       },
     ],
     showcase: [
-      { label: "Instagram Ad Creative", aspectRatio: "square", className: "h-full md:aspect-[1/2]" },
-      { label: "Facebook Banner Ad", aspectRatio: "landscape-wide", className: "h-full" },
-      { label: "Product Marketing Shot", aspectRatio: "square", className: "h-full" },
-      { label: "Hero Website Image", aspectRatio: "landscape-wide", className: "h-full" },
-      { label: "Brand Pattern Design", aspectRatio: "square", className: "h-full" },
+      { label: "Instagram Ad Creative", aspectRatio: "square", className: "h-full md:aspect-[1/2]", src: "/solutions/ai-marketing-tools/showcase-1.jpg" },
+      { label: "Facebook Banner Ad", aspectRatio: "landscape-wide", className: "h-full", src: "/solutions/ai-marketing-tools/showcase-2.jpg" },
+      { label: "Product Marketing Shot", aspectRatio: "square", className: "h-full", src: "/solutions/ai-marketing-tools/showcase-3.jpg" },
+      { label: "Hero Website Image", aspectRatio: "landscape-wide", className: "h-full", src: "/solutions/ai-marketing-tools/showcase-4.jpg" },
+      { label: "Brand Pattern Design", aspectRatio: "square", className: "h-full", src: "/solutions/ai-marketing-tools/showcase-5.jpg" },
     ],
   },
   {
@@ -396,24 +426,30 @@ export const SOLUTIONS: Solution[] = [
     description:
       "Generate professional-grade graphic design elements and layout concepts. From logos and icons to brand patterns, explore your design ideas instantly.",
     heroSuffix: "designs",
+    heroImages: [
+        "/solutions/ai-graphic-design/hero-1.jpg",
+        "/solutions/ai-graphic-design/hero-2.jpg",
+        "/solutions/ai-graphic-design/hero-3.jpg",
+        "/solutions/ai-graphic-design/hero-4.jpg",
+    ],
     features: [
       {
         title: "Logo & Brand Ideation",
         description:
           "Brainstorm and visualize hundreds of logo and icon ideas in seconds. Explore various shapes, symbols, and typographic treatments to kickstart your project.",
-        image: "/placeholder.jpg",
+        image: "/solutions/ai-graphic-design/feature-1.jpg",
       },
       {
         title: "Cohesive Iconography",
         description:
           "Generate sets of icons with consistent line weights and styles. Maintain a unified visual language across your entire app or website project.",
-        image: "/placeholder.jpg",
+        image: "/solutions/ai-graphic-design/feature-2.jpg",
       },
       {
         title: "Pattern Exploration",
         description:
           "Create unique brand patterns and background elements. Experiment with different colors and geometries to build a comprehensive visual identity.",
-        image: "/placeholder.jpg",
+        image: "/solutions/ai-graphic-design/feature-3.jpg",
       },
     ],
     steps: [
@@ -442,11 +478,11 @@ export const SOLUTIONS: Solution[] = [
       },
     ],
     showcase: [
-      { label: "Minimalist Logo Mark", aspectRatio: "landscape", className: "h-full" },
-      { label: "Custom Icon Set", aspectRatio: "landscape", className: "h-full" },
-      { label: "Branding Guidelines Visual", aspectRatio: "landscape", className: "h-full" },
-      { label: "Vector Style Illustration", aspectRatio: "landscape", className: "h-full" },
-      { label: "Typographic Badge concept", aspectRatio: "landscape", className: "h-full" },
+      { label: "Minimalist Logo Mark", aspectRatio: "landscape", className: "h-full", src: "/solutions/ai-graphic-design/showcase-1.jpg" },
+      { label: "Custom Icon Set", aspectRatio: "landscape", className: "h-full", src: "/solutions/ai-graphic-design/showcase-2.jpg" },
+      { label: "Branding Guidelines Visual", aspectRatio: "landscape", className: "h-full", src: "/solutions/ai-graphic-design/showcase-3.jpg" },
+      { label: "Vector Style Illustration", aspectRatio: "landscape", className: "h-full", src: "/solutions/ai-graphic-design/showcase-4.jpg" },
+      { label: "Typographic Badge concept", aspectRatio: "landscape", className: "h-full", src: "/solutions/ai-graphic-design/showcase-5.jpg" },
     ],
   },
   {
@@ -456,6 +492,12 @@ export const SOLUTIONS: Solution[] = [
     description:
       "Create unique, high-resolution designs ready for your merchandise business. Perfect for t-shirts, posters, and product prints.",
     heroSuffix: "prints",
+    heroImages: [
+        "/solutions/ai-print-generator/hero-1.jpg",
+        "/solutions/ai-print-generator/hero-2.jpg",
+        "/solutions/ai-print-generator/hero-3.jpg",
+        "/solutions/ai-print-generator/hero-4.jpg",
+    ],
     features: [
       {
         title: "Merchandise Concepts",
@@ -500,11 +542,11 @@ export const SOLUTIONS: Solution[] = [
       },
     ],
     showcase: [
-      { label: "T-Shirt Graphic Design", aspectRatio: "square", className: "h-full md:aspect-[1/2]" },
-      { label: "Mug & Product Print", aspectRatio: "landscape-wide", className: "h-full" },
-      { label: "Poster Art Print", aspectRatio: "square", className: "h-full" },
+      { label: "T-Shirt Graphic Design", aspectRatio: "square", className: "h-full md:aspect-[1/2]", src: "/solutions/ai-print-generator/showcase-1.jpg" },
+      { label: "Mug & Product Print", aspectRatio: "landscape-wide", className: "h-full", src: "/solutions/ai-print-generator/showcase-2.jpg" },
+      { label: "Poster Art Print", aspectRatio: "square", className: "h-full", src: "/solutions/ai-print-generator/showcase-3.jpg" },
       { label: "Repeat Pattern Merch", aspectRatio: "landscape-wide", className: "h-full" },
-      { label: "Sticker Pack Elements", aspectRatio: "square", className: "h-full" },
+      { label: "Sticker Pack Elements", aspectRatio: "square", className: "h-full", src: "/solutions/ai-print-generator/showcase-5.jpg" },
     ],
   },
   {
