@@ -33,6 +33,7 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T 
                 // Only update state if the value is different from current state
                 // This prevents the "Maximum update depth exceeded" loop when 
                 // initialValue is a literal object that changes reference on every render.
+                // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentionally syncing from localStorage to avoid hydration mismatch
                 setStoredValue((current) => {
                     // Simple stringify comparison for deep equality check
                     // Enough for filter states and small settings objects

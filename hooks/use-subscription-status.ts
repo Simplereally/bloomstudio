@@ -51,8 +51,6 @@ export function useSubscriptionStatus(): UseSubscriptionStatusReturn {
             updateTimer()
             const interval = setInterval(updateTimer, 60000)
             return () => clearInterval(interval)
-        } else {
-            setTimeLeft(undefined)
         }
     }, [result?.status, result?.trialExpiresAt])
 
@@ -64,7 +62,7 @@ export function useSubscriptionStatus(): UseSubscriptionStatusReturn {
         status,
         isLoading,
         trialExpiresAt: result?.trialExpiresAt,
-        timeLeft,
+        timeLeft: status === "trial" ? timeLeft : undefined,
         canGenerate,
     }), [status, isLoading, result?.trialExpiresAt, timeLeft, canGenerate])
 }

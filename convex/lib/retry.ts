@@ -120,7 +120,32 @@ export async function fetchWithRetry(
             // Non-OK response - check if retryable
             lastStatus = response.status
             const errorText = await response.text()
-            lastError = `HTTP ${response.status}: ${errorText.substring(0, 200)}`
+            
+            // Try to parse error text as JSON and unescape it for better readability
+            let displayError: string
+            try {
+            const parseRecursive = (input: unknown): unknown => {
+                    if (typeof input !== "string") return input
+                    try {
+                        const parsed = JSON.parse(input)
+                        if (parsed && typeof parsed === "object") {
+                            // Recursively clean keys in object
+                            for (const key in parsed) {
+                                parsed[key] = parseRecursive(parsed[key])
+                            }
+                        }
+                        return parsed
+                    } catch {
+                        return input
+                    }
+                }
+                const parsed = parseRecursive(errorText)
+                displayError = typeof parsed === "string" ? parsed : JSON.stringify(parsed, null, 2)
+            } catch {
+                displayError = errorText
+            }
+            
+            lastError = `HTTP ${response.status}: ${displayError}`
             
             const isRetryable = shouldRetry(response.status, errorText)
             

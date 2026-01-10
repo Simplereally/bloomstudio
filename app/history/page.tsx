@@ -1,10 +1,15 @@
 import { HistoryClient } from "@/components/gallery/history-client"
 import { auth } from "@clerk/nextjs/server"
+import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 
-export const metadata = {
-    title: "Your History | Bloom Studio",
-    description: "View all your generated images in one place.",
+export const metadata: Metadata = {
+  title: "Your History | Bloom Studio",
+  description: "View all your generated images in one place.",
+  robots: {
+    index: false,
+    follow: false,
+  },
 }
 
 /**
@@ -23,7 +28,7 @@ export default async function HistoryPage() {
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold mb-2">Your History</h1>
                     <p className="text-muted-foreground">
-                        All the images you've created, from newest to oldest.
+                        All the images {"you've"} created, from newest to oldest.
                     </p>
                 </div>
                 <HistoryClient />

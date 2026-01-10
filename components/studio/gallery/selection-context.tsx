@@ -57,7 +57,10 @@ export function SelectionProvider({
     
     // Ref for stable callback access
     const selectedIdsRef = React.useRef(selectedIds)
-    selectedIdsRef.current = selectedIds
+    
+    React.useEffect(() => {
+        selectedIdsRef.current = selectedIds
+    }, [selectedIds])
     
     // Stable callbacks
     const toggleSelectionMode = React.useCallback(() => {

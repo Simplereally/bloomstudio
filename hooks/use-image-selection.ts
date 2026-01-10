@@ -14,7 +14,7 @@
 import type { Id } from "@/convex/_generated/dataModel"
 import { useDeleteGeneratedImage } from "@/hooks/mutations/use-delete-image"
 import { useSetBulkVisibility, type ImageVisibility } from "@/hooks/mutations/use-set-visibility"
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 
 export interface SelectableImage {
@@ -55,7 +55,10 @@ export function useImageSelection(): UseImageSelectionReturn {
     
     // Ref to access current selectedIds without causing callback recreation
     const selectedIdsRef = useRef(selectedIds)
-    selectedIdsRef.current = selectedIds
+
+    useEffect(() => {
+        selectedIdsRef.current = selectedIds
+    }, [selectedIds])
 
     // Mutations
     const deleteMutation = useDeleteGeneratedImage()

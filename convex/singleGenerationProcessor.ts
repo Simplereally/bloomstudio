@@ -140,6 +140,7 @@ export const processGeneration = internalAction({
                 private: params.private,
                 safe: params.safe,
                 image: params.image,
+                quality: params.quality ?? "high"
             })
 
             console.log(`${logger} Calling Pollinations: ${generationUrl}`)

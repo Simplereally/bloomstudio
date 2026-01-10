@@ -22,7 +22,7 @@
   --secondary-foreground: oklch(0.25 0.015 40);
 
   --muted: oklch(0.95 0.008 50);
-  --muted-foreground: oklch(0.45 0.015 40);
+  --muted-foreground: oklch(0.35 0.015 30);
 
   /* Accent: Warm-tinted highlight for interactive selection hovers */
   --accent: oklch(0.91 0.045 50);
@@ -69,7 +69,7 @@
   --secondary: oklch(0.28 0.02 40);
   --secondary-foreground: oklch(0.95 0.005 40);
   --muted: oklch(0.25 0.015 35);
-  --muted-foreground: oklch(0.58 0.01 40);
+  --muted-foreground: oklch(0.70 0.01 50);
   /* Accent: Warm-tinted highlight for interactive selection hovers */
   --accent: oklch(0.28 0.045 45);
   --accent-foreground: oklch(0.95 0.005 40);
@@ -198,6 +198,47 @@
     }
   }
 
+  --animate-fade-in: fade-in 0.6s ease-out forwards;
+
+  @keyframes fade-in {
+    0% {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  --animate-scale-in: scale-in 0.3s ease-out forwards;
+
+  @keyframes scale-in {
+    0% {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes loading-bar {
+    0% {
+      transform: scaleX(0);
+    }
+    50% {
+      transform: scaleX(0.5);
+    }
+    100% {
+      transform: scaleX(1);
+    }
+  }
+
+  --animate-loading-bar: loading-bar 1.5s ease-in-out infinite;
 }
 
 @utility glass-effect {

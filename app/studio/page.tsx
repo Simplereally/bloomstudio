@@ -1,5 +1,14 @@
 import { cookies } from "next/headers"
 import { StudioShell } from "@/components/studio"
+import type { Metadata } from "next"
+
+export const metadata: Metadata = {
+  title: "Studio",
+  robots: {
+    index: false,
+    follow: false,
+  },
+}
 
 /**
  * StudioPage - Main studio page

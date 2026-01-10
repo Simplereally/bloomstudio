@@ -1,242 +1,73 @@
-"use client"
-
-import { ClerkUserButton } from "@/components/clerk-user-button"
-import { Button } from "@/components/ui/button"
-import { MODEL_REGISTRY } from "@/lib/config/models"
-import { cn } from "@/lib/utils"
-import { useUser } from "@clerk/nextjs"
-import { Leva } from "leva"
-import { ArrowRight, InfoIcon, Palette, Sliders, Sparkles } from "lucide-react"
-import dynamic from "next/dynamic"
-import Image from "next/image"
-import Link from "next/link"
-import { Suspense, useState } from "react"
-
-const GL = dynamic(() => import("@/components/gl/gl").then((mod) => ({ default: mod.GL })), {
-  ssr: false,
-  loading: () => (
-    <div className="flex flex-col h-svh justify-between relative overflow-hidden">
-    </div>
-  ),
-})
+import { CtaSection } from "@/components/landing/cta-section";
+import { FeaturesSection } from "@/components/landing/features-section";
+// import { FloatingGallery } from "@/components/landing/floating-gallery";
+import { Footer } from "@/components/layout/footer";
+import { GLBackground } from "@/components/landing/gl-background";
+import { HeroSection } from "@/components/landing/hero-section";
+import { LandingHeader } from "@/components/landing/landing-header";
+import { ModelsSection } from "@/components/landing/models-section";
+import { ShowcaseSection } from "@/components/landing/showcase-section";
+import { ValuePropSection } from "@/components/landing/value-prop-section";
+import { JsonLd } from "@/components/seo/json-ld";
+import Link from "next/link";
 
 /**
- * Landing Page Component
- * 
- * The main entry point for the application. Displays the hero section,
- * WebGL background, and value proposition.
+ * Landing Page - Server Component
+ *
+ * Premium landing page with hero, features showcase, model gallery,
+ * and compelling value proposition. Inspired by Leonardo.ai's layout
+ * but with unique creative elements.
+ *
+ * ARCHITECTURE FOR SEO:
+ * - This page is a SERVER COMPONENT, meaning all static content
+ *   (Hero, Features, Models, CTA, Footer) is rendered on the server
+ *   and included in the initial HTML response for optimal SEO.
+ *
+ * - Interactive/client-only parts are isolated into Client Components:
+ *   - LandingHeader: Uses hooks for scroll detection and auth state
+ *   - GLBackground: Dynamically loads WebGL canvas with ssr:false
+ *
+ * - This separation ensures search engines receive fully-rendered
+ *   static content while users get the enhanced interactive experience.
  */
 export default function LandingPage() {
-  const [hovering, setHovering] = useState(false)
-  const { isSignedIn, isLoaded } = useUser()
-
   return (
     <div className="dark">
-      {/* Override body background to allow backdrop-filter to see WebGL canvas */}
-      <style>{`body { background: transparent !important; }`}</style>
-      <div className="flex flex-col h-svh justify-between relative overflow-hidden">
-        <Leva hidden />
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "SoftwareApplication",
+          name: "Bloom Studio",
+          applicationCategory: "DesignApplication",
+          operatingSystem: "Web Browser",
+          offers: {
+            "@type": "Offer",
+            price: "0",
+            priceCurrency: "USD",
+          },
+          description: "Cheap and powerful AI image and video generator studio.",
+        }}
+      />
+      {/* Client Component: WebGL background (ssr: false, won't impact SEO) */}
+      <GLBackground />
 
-        {/* GL Background */}
-        <div className="absolute">
-          <Suspense
-            fallback={
-              <div className="absolute bg-background flex items-center justify-center">
-                <div className="text-muted-foreground">Initializing...</div>
-              </div>
-            }
-          >
-            <GL hovering={hovering} />
-          </Suspense>
-        </div>
+      {/* Client Component: Interactive header with scroll/auth */}
+      <LandingHeader />
 
-        {/* Header */}
-        <header className="relative z-10 p-6">
-          <div className="container mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <span className="text-3xl font-bold text-primary font-brand tracking-tight -skew-x-10">Bloom Studio</span>
-              <Link href="/pricing">
-                <Button variant="ghost" size="sm" className="text-foreground/80 hover:text-foreground hover:bg-white/10">
-                  Pricing
-                </Button>
-              </Link>
-            </div>
-            {isLoaded && (
-              isSignedIn ? (
-                <div className="flex items-center gap-4">
-                  <Link href="/studio">
-                    <Button variant="ghost" className="text-foreground hover:bg-white/50 glass-effect-home group">
-                      Go to Studio
-                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                    </Button>
-                  </Link>
-                  <ClerkUserButton />
-                </div>
-              ) : (
-                <Link href="/sign-in">
-                  <Button variant="ghost" className="text-foreground hover:bg-white/50 glass-effect-home">
-                    Sign in
-                  </Button>
-                </Link>
-              )
-            )}
-          </div>
-        </header>
+      {/* Static content - Server Rendered for SEO */}
+      <div className="relative z-10 pt-12">
+        {/* <FloatingGallery /> */}
 
-        {/* Hero Content */}
-        <div className="relative z-10 pb-16 my-auto text-center px-6">
-
-          <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold text-foreground mb-6">
-            Create stunning images <br />
-            <i className="text-primary inline-block pb-2 px-2 tracking-tight">
-              cheaply
-            </i>
-          </h1>
-
-          <p className="mt-10 max-w-[450px] mx-auto leading-relaxed px-8 py-4 rounded-3xl glass-effect-home text-base sm:text-lg text-balance">
-            <span className="text-foreground/95 font-medium font-brand [text-shadow:1px_1px_0_#000,1px_2px_0_#000,0_3px_4px_rgba(0,0,0,0.4)]">
-              Professional AI image generation with NanoBanana, GPT, Seedream & more.
-            </span>
-          </p>
-
-          {/* Featured Models */}
-          <div className="mt-10 max-w-4xl mx-auto px-4 overflow-hidden">
-            <div className="flex flex-wrap justify-center gap-3">
-              {Object.values(MODEL_REGISTRY)
-                .filter((m) => m.type === "image")
-                .map((model) => {
-                  const isMonochrome = model.logo?.includes("openai.svg") || model.logo?.includes("flux.svg")
-                  return (
-                    <div
-                      key={model.id}
-                      className="group relative flex items-center gap-2.5 p-2 px-4 rounded-2xl glass-effect-home border border-white/5 transition-all duration-300 overflow-hidden"
-                    >
-                      <div
-                        className="absolute inset-0 rounded-2xl pointer-events-none"
-                        style={{
-                          mask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-                          maskComposite: "exclude",
-                          WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-                          WebkitMaskComposite: "xor",
-                          padding: "1px",
-                        }}
-                      >
-                        <div className="absolute inset-[-100%] bg-[conic-gradient(transparent,transparent,var(--primary))] opacity-0 group-hover:opacity-100 transition-opacity duration-300 animate-[spin_3s_linear_infinite]" />
-                      </div>
-                      {model.logo ? (
-                        <div className="relative w-5 h-5">
-                          <Image
-                            src={model.logo}
-                            alt={`${model.displayName} logo`}
-                            fill
-                            className={cn(
-                              "object-contain transition-all duration-300 opacity-70 group-hover:opacity-100",
-                              isMonochrome && "dark:invert"
-                            )}
-                          />
-                        </div>
-                      ) : (
-                        <Sparkles className="h-4 w-4 text-primary opacity-70 group-hover:opacity-100" />
-                      )}
-                      <span className="text-sm font-bold font-brand text-foreground group-hover:text-foreground transition-colors uppercase">
-                        {model.displayName}
-                      </span>
-                    </div>
-                  )
-                })}
-            </div>
-          </div>
-
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-12">
-            <Link className="contents" href="/pricing">
-              <Button
-                size="lg"
-                variant="default"
-                className="group px-8 h-12 text-base hover:bg-primary/90"
-                onMouseEnter={() => setHovering(true)}
-                onMouseLeave={() => setHovering(false)}
-              >
-                Wait, how cheap?
-                <InfoIcon className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-            <Link className="contents" href="/studio">
-              <Button
-                size="lg"
-                variant="default"
-                className="group px-8 h-12 text-base hover:bg-primary/90"
-                onMouseEnter={() => setHovering(true)}
-                onMouseLeave={() => setHovering(false)}
-              >
-                Start Creating
-                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </Button>
-            </Link>
-            {!isSignedIn && (
-              <Link className="contents" href="/sign-up">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="px-8 h-12 text-base glass-effect-home text-foreground hover:bg-white/[0.05] transition-all"
-                >
-                  Sign Up Free
-                </Button>
-              </Link>
-            )}
-          </div>
-
-          {/* Features Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-16 max-w-3xl mx-auto">
-            <div className="flex items-center gap-3 p-4 rounded-lg glass-effect-home">
-              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-                <Palette className="h-5 w-5 text-primary" />
-              </div>
-              <div className="text-left">
-                <div className="font-semibold text-sm text-foreground font-brand">10 Image Models</div>
-                <div className="text-xs text-muted-foreground">NanoBanana, GPT, Seedream & more</div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 p-4 rounded-lg glass-effect-home">
-              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-                <Sparkles className="h-5 w-5 text-primary" />
-              </div>
-              <div className="text-left">
-                <div className="font-semibold text-sm text-foreground font-brand">Generous Limits</div>
-                <div className="text-xs text-muted-foreground">eg 140 GPT uses daily!</div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 p-4 rounded-lg glass-effect-home">
-              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-                <Sliders className="h-5 w-5 text-primary" />
-              </div>
-              <div className="text-left">
-                <div className="font-semibold text-sm text-foreground font-brand">Dimension Control</div>
-                <div className="text-xs text-muted-foreground">Create logos, banners, or any image size you need</div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <HeroSection />
+        <ShowcaseSection />
+        <ValuePropSection />
+        <FeaturesSection />
+        <ModelsSection />
+        <CtaSection />
 
         {/* Footer */}
-        <footer className="relative z-10 p-6">
-          <div className="container mx-auto text-center">
-            <p className="text-xs text-muted-foreground">
-              Powered by{" "}
-              <a
-                href="https://pollinations.ai"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline"
-              >
-                Pollinations.AI
-              </a>
-            </p>
-          </div>
-        </footer>
+        <Footer />
       </div>
     </div>
-  )
+  );
 }

@@ -29,6 +29,7 @@ export interface PollinationsUrlParams {
     private?: boolean
     safe?: boolean
     image?: string
+    quality?: string
 }
 
 /** Result of error classification */

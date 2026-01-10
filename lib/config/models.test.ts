@@ -54,7 +54,7 @@ describe("Model Registry", () => {
             expect(MODEL_REGISTRY["seedream"].displayName).toBe("Seedream 4.0")
             expect(MODEL_REGISTRY["kontext"].displayName).toBe("Flux Kontext")
             expect(MODEL_REGISTRY["nanobanana"].displayName).toBe("NanoBanana")
-            expect(MODEL_REGISTRY["seedream-pro"].displayName).toBe("Seedream 4.5")
+            expect(MODEL_REGISTRY["seedream-pro"].displayName).toBe("Seedream 4.5 Pro")
             expect(MODEL_REGISTRY["nanobanana-pro"].displayName).toBe("NanoBanana Pro")
             expect(MODEL_REGISTRY["seedance-pro"].displayName).toBe("Seedance Pro")
             expect(MODEL_REGISTRY["seedance"].displayName).toBe("Seedance")
@@ -196,7 +196,7 @@ describe("Model Constraints", () => {
         it("should have high pixel limits", () => {
             const model = getModel("seedream")!
             expect(model.constraints.maxPixels).toBe(16_777_216)
-            expect(model.constraints.minPixels).toBe(3_686_400)
+            expect(model.constraints.minPixels).toBe(262_144) // 512x512
         })
     })
 
@@ -205,6 +205,15 @@ describe("Model Constraints", () => {
             const model = getModel("zimage")!
             expect(model.constraints.maxPixels).toBe(4_194_304)
             expect(model.constraints.maxDimension).toBe(4096)
+        })
+    })
+
+    describe("NanoBanana Pro", () => {
+        it("should have 4k pixel budget (approx 10MP) and 1k min dimension", () => {
+            const model = getModel("nanobanana-pro")!
+            expect(model.constraints.maxPixels).toBe(10_000_000)
+            expect(model.constraints.maxDimension).toBe(4096)
+            expect(model.constraints.minDimension).toBe(1024)
         })
     })
 })
@@ -233,6 +242,19 @@ describe("Aspect Ratio Presets", () => {
         for (const ratio of ratios) {
             expect(ratio.width).toBeLessThanOrEqual(768)
             expect(ratio.height).toBeLessThanOrEqual(768)
+        }
+    })
+
+    it("should have NanoBanana Pro presets reflecting 4k resolution and min 1k", () => {
+        const ratios = getModelAspectRatios("nanobanana-pro")!
+        expect(ratios).not.toBeNull()
+        for (const ratio of ratios) {
+            expect(ratio.width).toBeGreaterThanOrEqual(1024)
+            expect(ratio.height).toBeGreaterThanOrEqual(1024)
+            // Check for 4k dim in 16:9
+            if (ratio.value === "16:9") {
+                expect(ratio.width).toBe(3840)
+            }
         }
     })
 })

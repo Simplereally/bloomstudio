@@ -33,8 +33,8 @@ describe("DimensionControls", () => {
     it("displays megapixel count", () => {
         render(<DimensionControls {...defaultProps} width={1024} height={1024} />)
 
-        // 1024 * 1024 = 1,048,576 pixels = 1.05 MP
-        expect(screen.getByTestId("megapixels")).toHaveTextContent("1.05 MP")
+        // 1024 * 1024 = 1,048,576 pixels = 1.0 MP (using MegapixelBudget format)
+        expect(screen.getByTestId("megapixel-budget-compact")).toHaveTextContent("1.0 MP")
     })
 
     it("renders width and height sliders", () => {
@@ -103,7 +103,8 @@ describe("DimensionControls", () => {
         render(<DimensionControls {...defaultProps} hideHeader={true} />)
 
         expect(screen.queryByText("Dimensions")).not.toBeInTheDocument()
-        expect(screen.queryByTestId("megapixels")).not.toBeInTheDocument()
+        // Note: MegapixelBudget is shown when header is hidden as full visualization
+        expect(screen.getByTestId("megapixel-budget")).toBeInTheDocument()
         expect(screen.queryByTestId("link-toggle")).not.toBeInTheDocument()
     })
 })

@@ -53,7 +53,10 @@ export function PersistentImageGallery(props: PersistentImageGalleryProps) {
     
     // Ref for stable callbacks
     const selectedIdsRef = React.useRef(selectedIds)
-    selectedIdsRef.current = selectedIds
+    
+    React.useEffect(() => {
+        selectedIdsRef.current = selectedIds
+    }, [selectedIds])
 
     // Determine storage key based on user ID for account-specific preferences
     const storageKey = React.useMemo(() => 
@@ -102,6 +105,7 @@ export function PersistentImageGallery(props: PersistentImageGalleryProps) {
         
         const stableImages = results.map(img => {
             const id = img._id
+            // eslint-disable-next-line react-hooks/refs -- Optimization: accessing ref during render for stable object identity
             const cached = imageCache.current.get(id)
             
             // Check if cached version is still valid (same data)
@@ -131,6 +135,8 @@ export function PersistentImageGallery(props: PersistentImageGalleryProps) {
         })
         
         // Update cache for next render
+        // Update cache for next render
+        // eslint-disable-next-line react-hooks/refs -- Optimization: updating ref during render
         imageCache.current = newCache
         
         return stableImages
@@ -213,7 +219,7 @@ export function PersistentImageGallery(props: PersistentImageGalleryProps) {
                 onFiltersChange={setFilterState}
             />
         </div>
-    ), [filterState])
+    ), [filterState, setFilterState])
 
     // Memoize load more handler
     const handleLoadMore = React.useCallback(() => {

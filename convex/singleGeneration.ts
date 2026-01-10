@@ -30,6 +30,7 @@ const generationParamsValidator = v.object({
     private: v.optional(v.boolean()),
     safe: v.optional(v.boolean()),
     image: v.optional(v.string()),
+    quality: v.optional(v.string()),
 })
 
 // ============================================================

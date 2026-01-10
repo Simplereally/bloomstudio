@@ -15,7 +15,7 @@ import { Id } from "@/convex/_generated/dataModel"
 import { useDeleteGeneratedImage } from "@/hooks/mutations/use-delete-image"
 import { useSetBulkVisibility, type ImageVisibility } from "@/hooks/mutations/use-set-visibility"
 import type { GeneratedImage } from "@/types/pollinations"
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 
 export interface UseImageGalleryStateReturn {
@@ -59,10 +59,14 @@ export function useImageGalleryState(): UseImageGalleryStateReturn {
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
     // Refs to access current state without causing callback recreation
+    // Refs to access current state without causing callback recreation
     const imagesRef = useRef(images)
-    imagesRef.current = images
     const selectedIdsRef = useRef(selectedIds)
-    selectedIdsRef.current = selectedIds
+
+    useEffect(() => {
+        imagesRef.current = images
+        selectedIdsRef.current = selectedIds
+    }, [images, selectedIds])
 
     // Mutations
     const deleteMutation = useDeleteGeneratedImage()
