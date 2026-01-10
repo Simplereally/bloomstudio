@@ -1,5 +1,3 @@
-"use client"
-
 import { Button } from "@/components/ui/button"
 import { ArrowRight } from "lucide-react"
 import Link from "next/link"
@@ -7,7 +5,7 @@ import { ScrollReveal } from "./scroll-reveal"
 
 export function CtaSection() {
     return (
-        <section id="get-started" className="py-24 relative">
+        <section id="get-started" className="py-24 xl:py-28 2xl:py-32 relative">
             <div className="container mx-auto px-6">
                 <ScrollReveal>
                 <div className="max-w-4xl mx-auto text-center rounded-3xl bg-gradient-to-br from-white/5 via-card/80 to-purple-500/5 border border-white/10 p-12 sm:p-16 relative overflow-hidden">

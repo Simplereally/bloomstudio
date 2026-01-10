@@ -1,10 +1,6 @@
-"use client";
-
-import { Play } from "lucide-react";
 import { ScrollReveal } from "./scroll-reveal";
 import { ShowcaseImage } from "./showcase-image";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import Autoplay from "embla-carousel-autoplay";
+import { Slideshow, SlideshowSlide } from "@/components/ui/slideshow";
 
 interface ShowcaseItem {
   label: string;
@@ -17,96 +13,73 @@ interface ShowcaseSectionProps {
   items?: ShowcaseItem[];
 }
 
+/**
+ * ShowcaseSection - Server Component with Client Islands
+ * 
+ * Static content (headings, text) is server-rendered for SEO.
+ * The Slideshow component is a client island that handles interactivity.
+ * Images use next/image with lazy loading via the Slideshow's built-in thumbnail rendering.
+ */
 export function ShowcaseSection({ items }: ShowcaseSectionProps) {
   const defaultItems: ShowcaseItem[] = [
-    { label: "Photorealistic Portrait", aspectRatio: "portrait", className: "h-full" },
-    { label: "Abstract Art", aspectRatio: "portrait", className: "h-full", src: "/showcase/abstract-art.png" },
-    { label: "Product Shot", aspectRatio: "portrait", className: "h-full" },
-    { label: "Landscape Scene", aspectRatio: "portrait", className: "h-full", src: "/showcase/landscape-scene.png" },
-    { label: "Character Design", aspectRatio: "portrait", className: "h-full" },
+    { label: "Photorealistic Closeup", aspectRatio: "portrait", className: "h-full", src: "/showcase/photorealistic-closeup.jpeg" },
+    { label: "Abstract Art", aspectRatio: "portrait", className: "h-full", src: "/showcase/abstract-art.jpeg" },
+    { label: "Product Shot", aspectRatio: "portrait", className: "h-full", src: "/showcase/product-shot.jpeg" },
+    { label: "Landscape Scene", aspectRatio: "portrait", className: "h-full", src: "/showcase/landscape-scene.jpeg" },
+    { label: "Character Design", aspectRatio: "portrait", className: "h-full", src: "/showcase/character-design.jpeg" },
   ];
 
   const displayItems = items || defaultItems;
 
-  return (
-    <section id="showcase" className="py-24 relative overflow-hidden">
-      <div className="container mx-auto px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          {/* Left Side: Text Content */}
-          <ScrollReveal>
-            <div className="text-left">
-              <h2 className="text-4xl sm:text-5xl font-bold text-foreground mb-6">See what you can create</h2>
-              <p className="text-lg text-muted-foreground mb-8 text-balance">
-                From photorealistic renders to artistic illustrations, bring any vision to life with our state-of-the-art generation models.
-              </p>
+  // Transform items into slideshow slides with declarative thumbnailSrc
+  const slides: SlideshowSlide[] = displayItems.map((item, index) => ({
+    key: index,
+    label: item.label,
+    thumbnailSrc: item.src, // Pass image source for thumbnail rendering
+    content: (
+      <ShowcaseImage
+        label={item.label}
+        aspectRatio={item.aspectRatio}
+        className="h-full w-full"
+        src={item.src}
+      />
+    ),
+  }));
 
-              {/* Video Entry Point */}
-              <div className="relative rounded-xl overflow-hidden glass-effect-home aspect-video group cursor-pointer border border-white/10 shadow-lg max-w-md hidden lg:block">
-                <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/10 transition-colors">
-                  <div className="text-center p-4">
-                    <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-3 transition-transform group-hover:scale-110">
-                      <Play className="h-5 w-5 text-primary ml-1" />
-                    </div>
-                    <p className="text-base font-semibold text-foreground">Watch Demo</p>
-                  </div>
-                </div>
-              </div>
+  return (
+    <section id="showcase" className="py-16 md:py-20 lg:py-24 xl:py-28 2xl:py-32 relative overflow-hidden">
+      <div className="container mx-auto px-4 sm:px-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-6 xl:gap-8 items-center">
+          {/* Left Side: Text Content with SEO-optimized copy */}
+          <ScrollReveal className="lg:pr-4">
+            <div className="text-left">
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground mb-4 lg:mb-6">
+                See what you can create
+              </h2>
+              <p className="text-base lg:text-lg xl:text-xl text-muted-foreground mb-4 lg:mb-6 text-balance max-w-lg xl:max-w-xl">
+                From photorealistic renders to artistic illustrations, bring any vision to life with our state-of-the-art AI image generator and text-to-image models.
+              </p>
+              <p className="text-sm lg:text-base text-muted-foreground/80 text-balance max-w-lg xl:max-w-xl">
+                Generate high-resolution artwork, professional product photography, stunning character designs, and creative digital art — all powered by the latest AI models including GPT-4 Image, Flux, and Seedream. Perfect for designers, marketers, game developers, and creative professionals who need instant, high-quality visual content.
+              </p>
             </div>
           </ScrollReveal>
 
-          {/* Right Side: Carousel */}
-          <ScrollReveal delay={200} className="w-full relative flex flex-col items-center">
-            {/* 
-                - Centered alignment
-                - Symmetrical peek (basis < 100%)
-                - Autoplay
-            */}
-            <Carousel
-              plugins={[
-                Autoplay({
-                  delay: 3000,
-                }),
-              ]}
-              opts={{
-                align: "center",
-                loop: true,
+          {/* Right Side: Slideshow - 1:1 ratio for square showcase images */}
+          <ScrollReveal delay={200} className="w-full flex justify-center lg:justify-end">
+            <Slideshow
+              slides={slides}
+              className="w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl 2xl:max-w-3xl"
+              aspectRatio="1/1"
+              frameClassName="h-[320px] sm:h-[380px] md:h-[440px] lg:h-[480px] xl:h-[520px] 2xl:h-[580px]"
+              showInfo={true}
+              showThumbnails={true}
+              showProgress={false}
+              options={{
+                autoAdvanceDelay: 3000,
+                visibilityThreshold: 0.7,
               }}
-              className="w-full max-w-md md:max-w-full"
-            >
-              <CarouselContent className="-ml-4">
-                {displayItems.map((item, index) => (
-                  <CarouselItem key={index} className="pl-4 basis-[85%] sm:basis-[70%] md:basis-[60%] pt-2 pb-2">
-                    {/* Added padding top/bottom to avoid clipping shadows/hover effects if any */}
-                    <div className="h-[400px] sm:h-[450px] transition-all duration-300">
-                      <ShowcaseImage
-                        label={item.label}
-                        aspectRatio={item.aspectRatio}
-                        className="h-full w-full shadow-2xl"
-                        src={item.src}
-                      />
-                    </div>
-                  </CarouselItem>
-                ))}
-              </CarouselContent>
-
-              {/* Centered Controls */}
-              <div className="flex items-center justify-center gap-4 mt-8">
-                <CarouselPrevious className="static translate-y-0 translate-x-0 h-10 w-10 border-white/10 hover:bg-white/5 hover:text-white" />
-                <CarouselNext className="static translate-y-0 translate-x-0 h-10 w-10 border-white/10 hover:bg-white/5 hover:text-white" />
-              </div>
-            </Carousel>
-
-            {/* Mobile Video Entry Point (visible only on small screens) */}
-            <div className="mt-12 relative rounded-xl overflow-hidden glass-effect-home aspect-video group cursor-pointer border border-white/10 shadow-lg w-full max-w-md lg:hidden">
-              <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/10 transition-colors">
-                <div className="text-center p-4">
-                  <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-3 transition-transform group-hover:scale-110">
-                    <Play className="h-5 w-5 text-primary ml-1" />
-                  </div>
-                  <p className="text-base font-semibold text-foreground">Watch Demo</p>
-                </div>
-              </div>
-            </div>
+            />
           </ScrollReveal>
         </div>
       </div>

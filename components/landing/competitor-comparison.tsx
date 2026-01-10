@@ -1,5 +1,3 @@
-"use client";
-
 import { cn } from "@/lib/utils";
 import { ScrollReveal } from "./scroll-reveal";
 import { Sparkles, Check, X, Clock, Zap, DollarSign } from "lucide-react";
@@ -89,7 +87,7 @@ export function CompetitorComparison() {
         <div className="px-6 py-8 text-center border-b border-white/5">
           <h3 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">Pay less, generate more</h3>
           <p className="text-sm text-muted-foreground max-w-lg mx-auto">
-            Other apps have expensive plans and confusing token models. All comparisons below are based on <b>monthly subscription plans</b>
+            Other apps have expensive plans and confusing credit systems. All comparisons below are based on <b>monthly subscription plans</b>
             .
           </p>
         </div>

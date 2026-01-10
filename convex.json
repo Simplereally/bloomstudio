@@ -1,5 +1,8 @@
 {
   "node": {
-    "externalPackages": ["ffmpeg-static", "fluent-ffmpeg"]
+    "externalPackages": [
+      "ffmpeg-static",
+      "fluent-ffmpeg"
+    ]
   }
 }

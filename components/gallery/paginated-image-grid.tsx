@@ -1,13 +1,12 @@
 "use client"
 
 import { ImageLightbox } from "@/components/images/image-lightbox"
-import { Button } from "@/components/ui/button"
 import { ImageCard, type ImageCardData } from "@/components/ui/image-card"
 import { MasonryGrid } from "@/components/ui/masonry-grid"
 import { Skeleton } from "@/components/ui/skeleton"
 import { motion, type Variants } from "framer-motion"
 import { ArrowUp, Loader2, Sparkles } from "lucide-react"
-import React, { useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 
 interface PaginatedImageGridProps {
     images: ImageCardData[]
@@ -72,12 +71,15 @@ export function PaginatedImageGrid({
 }: PaginatedImageGridProps) {
     const [selectedImage, setSelectedImage] = useState<ImageCardData | null>(null)
     const [buttonState, setButtonState] = useState<"idle" | "hovered" | "launching">("idle")
+    
+    // Ref for the infinite scroll sentinel element
+    const sentinelRef = useRef<HTMLDivElement>(null)
 
-    const handleSelectImage = React.useCallback((image: ImageCardData) => {
+    const handleSelectImage = useCallback((image: ImageCardData) => {
         setSelectedImage(image)
     }, [])
 
-    const handleCloseLightbox = React.useCallback(() => {
+    const handleCloseLightbox = useCallback(() => {
         setSelectedImage(null)
     }, [])
 
@@ -105,6 +107,36 @@ export function PaginatedImageGrid({
     const isLoadingMore = status === "LoadingMore"
     const canLoadMore = status === "CanLoadMore"
     const isExhausted = status === "Exhausted"
+
+    // Infinite scroll: automatically load more when sentinel becomes visible
+    useEffect(() => {
+        const sentinel = sentinelRef.current
+        if (!sentinel || !canLoadMore || isLoadingMore) {
+            return
+        }
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const entry = entries[0]
+                if (entry?.isIntersecting && canLoadMore && !isLoadingMore) {
+                    loadMore(20)
+                }
+            },
+            {
+                // Use document viewport as root
+                root: null,
+                // Trigger when the sentinel is 400px from being visible
+                rootMargin: "0px 0px 400px 0px",
+                threshold: 0,
+            }
+        )
+
+        observer.observe(sentinel)
+
+        return () => {
+            observer.disconnect()
+        }
+    }, [canLoadMore, isLoadingMore, loadMore])
 
     if (isLoadingFirst) {
         return (
@@ -150,24 +182,19 @@ export function PaginatedImageGrid({
                 ))}
             </MasonryGrid>
 
-            {/* Show load more when we can or are loading more */}
+            {/* Infinite scroll sentinel - triggers loadMore when visible */}
             {(canLoadMore || isLoadingMore) && (
-                <div className="flex justify-center pb-12">
-                    <Button
-                        variant="outline"
-                        onClick={() => loadMore(20)}
-                        disabled={isLoadingMore}
-                        className="rounded-full px-12 h-12 text-base font-medium border-primary/20 hover:bg-primary/5 hover:text-primary transition-colors"
-                    >
-                        {isLoadingMore ? (
-                            <>
-                                <Loader2 className="mr-3 h-5 w-5 animate-spin" />
-                                Discovering...
-                            </>
-                        ) : (
-                            "Explore More"
-                        )}
-                    </Button>
+                <div
+                    ref={sentinelRef}
+                    className="flex justify-center items-center py-12"
+                    data-testid="infinite-scroll-sentinel"
+                >
+                    {isLoadingMore && (
+                        <div className="flex items-center gap-3 text-muted-foreground">
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            <span className="text-sm font-medium">Discovering more...</span>
+                        </div>
+                    )}
                 </div>
             )}
 

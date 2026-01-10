@@ -96,9 +96,12 @@ export const MediaPlayer = React.memo(function MediaPlayer({
         handleLoad(e)
     }, [handleLoad])
 
-    // Toggle play/pause on click for videos (when controls are hidden)
+    // Toggle play/pause on click for videos
+    // Always handle explicitly to bypass browser's native delay (which waits to distinguish click vs double-click)
+    // preventDefault stops the native video controls from also handling the click (which would cause double-toggle)
     const handleVideoClick = React.useCallback((e: React.MouseEvent) => {
-        if (!controls && videoRef.current) {
+        e.preventDefault()
+        if (videoRef.current) {
             if (videoRef.current.paused) {
                 videoRef.current.play()
             } else {
@@ -106,7 +109,7 @@ export const MediaPlayer = React.memo(function MediaPlayer({
             }
         }
         onClick?.(e)
-    }, [controls, onClick])
+    }, [onClick])
 
     if (hasError) {
         return (
@@ -124,7 +127,7 @@ export const MediaPlayer = React.memo(function MediaPlayer({
 
     if (isVideo) {
         return (
-            <div className={cn("relative", className)}>
+            <div className="relative">
                 <video
                     ref={videoRef}
                     src={url}
@@ -137,7 +140,8 @@ export const MediaPlayer = React.memo(function MediaPlayer({
                     preload="metadata"
                     aria-label={alt}
                     className={cn(
-                        "w-full h-full object-contain",
+                        "w-auto h-auto object-contain",
+                        className,
                         isLoading && "opacity-0"
                     )}
                     onClick={handleVideoClick}

@@ -59,6 +59,8 @@ vi.mock('@/hooks/use-image-lightbox', () => ({
         handleCopyPrompt: vi.fn(),
         handleImageLoad: vi.fn(),
         canZoom: true,
+        isHovering: true,
+        setIsHovering: vi.fn(),
         // Legacy/unused props that might be destructured
         naturalSize: { width: 1000, height: 1000 },
         isDragging: false,

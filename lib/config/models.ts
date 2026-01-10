@@ -6,6 +6,7 @@
  */
 
 import type { AspectRatio, AspectRatioOption, ModelConstraints } from "@/types/pollinations";
+import { STANDARD_RESOLUTIONS } from "./standard-resolutions";
 
 // ============================================================================
 // Types
@@ -77,7 +78,7 @@ function withAspectRatioTags(ratio: AspectRatioOption): AspectRatioOption {
   return { ...ratio, tags: ASPECT_RATIO_TAGS[ratio.value] };
 }
 
-/** Standard aspect ratios for ~1MP models (NanoBanana, Kontext) */
+/** Standard aspect ratios for ~1MP models (NanoBanana, Kontext) - Optimized for <1MP limit */
 const STANDARD_ASPECT_RATIOS: readonly AspectRatioOption[] = (
   [
     { label: "Square", value: "1:1", width: 1024, height: 1024, icon: "square", category: "square" },
@@ -126,54 +127,43 @@ const GPTIMAGE_LARGE_ASPECT_RATIOS: readonly AspectRatioOption[] = (
   ] as const
 ).map(withAspectRatioTags);
 
-/** ZImage high-resolution aspect ratios (max dimension 2048) */
+/** ZImage high-resolution aspect ratios (defaults to 2K Tier) */
 const ZIMAGE_ASPECT_RATIOS: readonly AspectRatioOption[] = (
   [
-    { label: "Square", value: "1:1", width: 2048, height: 2048, icon: "square", category: "square" },
-    { label: "Landscape", value: "16:9", width: 2048, height: 1152, icon: "rectangle-horizontal", category: "landscape" },
-    { label: "Portrait", value: "9:16", width: 1152, height: 2048, icon: "rectangle-vertical", category: "portrait" },
-    { label: "Photo", value: "4:3", width: 2048, height: 1536, icon: "image", category: "landscape" },
-    { label: "Portrait Photo", value: "3:4", width: 1536, height: 2048, icon: "frame", category: "portrait" },
-    { label: "Ultrawide", value: "21:9", width: 2048, height: 880, icon: "monitor", category: "ultrawide" },
+    { ...STANDARD_RESOLUTIONS["2k"]["1:1"], label: "Square", value: "1:1", icon: "square", category: "square" },
+    { ...STANDARD_RESOLUTIONS["2k"]["16:9"], label: "Landscape", value: "16:9", icon: "rectangle-horizontal", category: "landscape" },
+    { ...STANDARD_RESOLUTIONS["2k"]["9:16"], label: "Portrait", value: "9:16", icon: "rectangle-vertical", category: "portrait" },
+    { ...STANDARD_RESOLUTIONS["2k"]["4:3"], label: "Photo", value: "4:3", icon: "image", category: "landscape" },
+    { ...STANDARD_RESOLUTIONS["2k"]["3:4"], label: "Portrait Photo", value: "3:4", icon: "frame", category: "portrait" },
+    { ...STANDARD_RESOLUTIONS["2k"]["21:9"], label: "Ultrawide", value: "21:9", icon: "monitor", category: "ultrawide" },
     { label: "Custom", value: "custom", width: 2048, height: 2048, icon: "sliders", category: "square" },
   ] as const
 ).map(withAspectRatioTags);
 
-/** Seedream aspect ratios (4K/16MP optimized) */
+/** Seedream aspect ratios (defaults to 4K Tier) */
 const SEEDREAM_ASPECT_RATIOS: readonly AspectRatioOption[] = (
   [
-    { label: "Square", value: "1:1", width: 4096, height: 4096, icon: "square", category: "square" },
-    { label: "Landscape", value: "16:9", width: 5456, height: 3072, icon: "rectangle-horizontal", category: "landscape" },
-    { label: "Portrait", value: "9:16", width: 3072, height: 5456, icon: "rectangle-vertical", category: "portrait" },
-    { label: "Photo", value: "4:3", width: 4736, height: 3552, icon: "image", category: "landscape" },
-    { label: "Portrait Photo", value: "3:4", width: 3552, height: 4736, icon: "frame", category: "portrait" },
-    { label: "Photo Wide", value: "3:2", width: 5016, height: 3344, icon: "image", category: "landscape" },
-    { label: "Photo Tall", value: "2:3", width: 3344, height: 5016, icon: "frame", category: "portrait" },
-    { label: "Ultrawide", value: "21:9", width: 6272, height: 2688, icon: "monitor", category: "ultrawide" },
+    { ...STANDARD_RESOLUTIONS["4k"]["1:1"], label: "Square", value: "1:1", icon: "square", category: "square" },
+    { ...STANDARD_RESOLUTIONS["4k"]["16:9"], label: "Landscape", value: "16:9", icon: "rectangle-horizontal", category: "landscape" },
+    { ...STANDARD_RESOLUTIONS["4k"]["9:16"], label: "Portrait", value: "9:16", icon: "rectangle-vertical", category: "portrait" },
+    { ...STANDARD_RESOLUTIONS["4k"]["4:3"], label: "Photo", value: "4:3", icon: "image", category: "landscape" },
+    { ...STANDARD_RESOLUTIONS["4k"]["3:4"], label: "Portrait Photo", value: "3:4", icon: "frame", category: "portrait" },
+    { ...STANDARD_RESOLUTIONS["4k"]["3:2"], label: "Photo Wide", value: "3:2", icon: "image", category: "landscape" },
+    { ...STANDARD_RESOLUTIONS["4k"]["2:3"], label: "Photo Tall", value: "2:3", icon: "frame", category: "portrait" },
+    { ...STANDARD_RESOLUTIONS["4k"]["21:9"], label: "Ultrawide", value: "21:9", icon: "monitor", category: "ultrawide" },
     { label: "Custom", value: "custom", width: 1024, height: 1024, icon: "sliders", category: "square" },
   ] as const
 ).map(withAspectRatioTags);
 
-/** Video aspect ratios (16:9 and 9:16 only) */
+/** Video aspect ratios (16:9 and 9:16 only) - defaults to HD */
 const VIDEO_ASPECT_RATIOS: readonly AspectRatioOption[] = (
   [
-    { label: "Landscape", value: "16:9", width: 1920, height: 1080, icon: "rectangle-horizontal", category: "landscape" },
-    { label: "Portrait", value: "9:16", width: 1080, height: 1920, icon: "rectangle-vertical", category: "portrait" },
+    { ...STANDARD_RESOLUTIONS.hd["16:9"], label: "Landscape", value: "16:9", icon: "rectangle-horizontal", category: "landscape" },
+    { ...STANDARD_RESOLUTIONS.hd["9:16"], label: "Portrait", value: "9:16", icon: "rectangle-vertical", category: "portrait" },
   ] as const
 ).map(withAspectRatioTags);
 
-/** NanoBanana Pro 4k aspect ratios (max dimension ~3840/4096, min 1024) */
-const NANOBANANA_PRO_ASPECT_RATIOS: readonly AspectRatioOption[] = (
-  [
-    { label: "Square", value: "1:1", width: 2880, height: 2880, icon: "square", category: "square" },
-    { label: "Landscape", value: "16:9", width: 3840, height: 2160, icon: "rectangle-horizontal", category: "landscape" },
-    { label: "Portrait", value: "9:16", width: 2160, height: 3840, icon: "rectangle-vertical", category: "portrait" },
-    { label: "Photo", value: "4:3", width: 3328, height: 2496, icon: "image", category: "landscape" },
-    { label: "Portrait Photo", value: "3:4", width: 2496, height: 3328, icon: "frame", category: "portrait" },
-    { label: "Ultrawide", value: "21:9", width: 3840, height: 1648, icon: "monitor", category: "ultrawide" },
-    { label: "Custom", value: "custom", width: 1024, height: 1024, icon: "sliders", category: "square" },
-  ] as const
-).map(withAspectRatioTags);
+
 
 // ============================================================================
 // Model Registry
@@ -255,7 +245,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
       supportedTiers: ["sd", "hd", "2k", "4k"],
       outputCertainty: "likely",
     },
-    aspectRatios: NANOBANANA_PRO_ASPECT_RATIOS,
+    aspectRatios: SEEDREAM_ASPECT_RATIOS, // NanoBanana Pro supports 4K tiers, same as Seedream
     supportsNegativePrompt: false,
   },
 

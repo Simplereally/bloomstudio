@@ -34,7 +34,7 @@ export function SolutionHero({ title, shortTitle, description, heroPrefix, heroS
     )
 
     return (
-        <section className="relative pt-32 pb-16 md:pt-48 md:pb-32 overflow-hidden">
+        <section className="relative pt-12 pb-16 md:pt-16 md:pb-24 overflow-hidden">
              {/* Background Effects */}
              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-primary/10 blur-[120px] rounded-full opacity-50 pointer-events-none" />
             

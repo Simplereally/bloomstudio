@@ -70,7 +70,9 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
     handleMouseMove,
     handleMouseUp,
     handleMouseLeave,
-    hasDragged
+    hasDragged,
+    isHovering,
+    setIsHovering
   } = useImageLightbox({ image: displayImage, isOpen })
 
   // Prompt library state for saving prompts
@@ -134,10 +136,14 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
                 {!isLoadingDetails && (
                   <React.Fragment>
                     {isVideo ? (
-                      <div className="relative flex items-center justify-center p-4 w-full h-full min-h-full">
+                      <div
+                        className="relative"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <div
-                          className="relative shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-sm max-w-[calc(100vw-2rem)] max-h-[calc(100vh-6rem)] md:max-w-[calc(100vw-6rem)] md:max-h-[calc(100vh-8rem)]"
-                          onClick={(e) => e.stopPropagation()}
+                          className="relative shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-sm group/video z-10"
+                          onMouseEnter={() => setIsHovering(true)}
+                          onMouseLeave={() => setIsHovering(false)}
                         >
                           <MediaPlayer
                             url={displayImage.url}
@@ -147,7 +153,7 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
                             autoPlay={true}
                             loop={true}
                             muted={false}
-                            className="w-auto h-auto max-w-full max-h-full object-contain select-none"
+                            className="w-auto h-auto max-w-[100vw] max-h-[100vh] object-contain select-none"
                             draggable={false}
                           />
                         </div>
@@ -166,11 +172,13 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
                       >
                         <div
                           className={cn(
-                            "relative shadow-[0_0_50px_rgba(0,0,0,0.5)] group/image",
+                            "relative shadow-[0_0_50px_rgba(0,0,0,0.5)] group/image z-10",
                             !isZoomed && "rounded-sm",
                             !canZoom ? "cursor-default" : !isZoomed && "cursor-zoom-in"
                           )}
                           onClick={toggleZoom}
+                          onMouseEnter={() => setIsHovering(true)}
+                          onMouseLeave={() => setIsHovering(false)}
                         >
                           <NextImage
                             src={displayImage.url}
@@ -188,7 +196,7 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
                               "w-auto h-auto object-contain select-none transition-opacity duration-300",
                               isZoomed
                                 ? ""
-                                : "max-w-[calc(100vw-2rem)] max-h-[calc(100vh-6rem)] md:max-w-[calc(100vw-6rem)] md:max-h-[calc(100vh-8rem)]",
+                                : "max-w-[100vw] max-h-[100vh]",
                               !isImageLoaded ? "opacity-0" : "opacity-100"
                             )}
                           />
@@ -209,17 +217,32 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
                   </React.Fragment>
                 )}
 
-                {/* Unified Loading Layer - persistent overlay across states */}
                 {(isLoadingDetails || (!isVideo && !isImageLoaded)) && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
                     <Loader2 className="w-10 h-10 animate-spin text-white/50" />
                   </div>
                 )}
               </div>
 
-              {/* Info overlay - outside the scrolling content */}
+              {/* 
+                Bottom Hover Zone - invisible area to trigger overlay visibility.
+                NOTE: This height (h-[15vh] min-h-[150px]) must match the effective height of the Info Overlay below to ensure consistent hover behavior.
+              */}
+              {!isZoomed && (
+                <div
+                  className="absolute bottom-0 inset-x-0 h-[15vh] min-h-[150px] z-[5] cursor-default"
+                  onMouseEnter={() => setIsHovering(true)}
+                  onMouseLeave={() => setIsHovering(false)}
+                  onClick={onClose}
+                />
+              )}
+
+              {/* 
+                Info overlay - outside the scrolling content.
+                NOTE: The effective height of this overlay should match the Bottom Hover Zone height (h-[15vh] min-h-[150px]) defined above.
+              */}
               <AnimatePresence>
-                {!isZoomed && (
+                {!isZoomed && isHovering && (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -227,7 +250,11 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
                     transition={{ duration: 0.125, ease: "easeOut" }}
                     className="absolute bottom-0 inset-x-0 p-6 pt-8 bg-gradient-to-t from-black/70 via-black/60 to-transparent pointer-events-none z-20"
                   >
-                    <div className="flex items-end justify-between gap-8 pointer-events-auto max-w-[1400px] mx-auto w-full px-4 md:px-6">
+                    <div
+                      onMouseEnter={() => setIsHovering(true)}
+                      onMouseLeave={() => setIsHovering(false)}
+                      className="flex items-end justify-between gap-8 pointer-events-auto max-w-[1400px] mx-auto w-full px-4 md:px-6"
+                    >
                       <div className="flex flex-col gap-3 max-w-3xl">
                         {isLoadingDetails ? (
                           <div className="flex items-center gap-2 text-white/60">
@@ -287,7 +314,7 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
                               <BookmarkPlus className="h-5 w-5" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent side="top" className="z-[10]">
+                          <TooltipContent side="top" className="z-[100]">
                             <p className="font-medium">Save to Library</p>
                           </TooltipContent>
                         </Tooltip>
@@ -309,7 +336,7 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
                               )}
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent side="top" className="z-[10]">
+                          <TooltipContent side="top" className="z-[100]">
                             <p className="font-medium">{copied ? "Copied!" : "Copy prompt"}</p>
                           </TooltipContent>
                         </Tooltip>

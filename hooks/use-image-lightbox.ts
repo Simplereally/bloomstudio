@@ -47,6 +47,8 @@ export function useImageLightbox({ image, isOpen }: UseImageLightboxProps) {
     setIsZoomed(false)
     setIsDragging(false)
     hasDragged.current = false
+    _setIsHovering(false)
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
   }, [image?.url, isOpen])
 
   const prompt = image?.prompt
@@ -142,6 +144,24 @@ export function useImageLightbox({ image, isOpen }: UseImageLightboxProps) {
     setIsDragging(false)
   }
 
+  const [isHovering, _setIsHovering] = React.useState(false)
+  const hoverTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const setIsHovering = React.useCallback((hovering: boolean) => {
+    if (hovering) {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current)
+        hoverTimeoutRef.current = null
+      }
+      _setIsHovering(true)
+    } else {
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
+      hoverTimeoutRef.current = setTimeout(() => {
+        _setIsHovering(false)
+      }, 100)
+    }
+  }, [])
+
   return {
     copied,
     isZoomed,
@@ -149,6 +169,8 @@ export function useImageLightbox({ image, isOpen }: UseImageLightboxProps) {
     isDragging,
     scrollContainerRef,
     canZoom,
+    isHovering,
+    setIsHovering,
     handleCopyPrompt,
     handleImageLoad,
     toggleZoom,

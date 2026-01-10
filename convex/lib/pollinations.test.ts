@@ -176,15 +176,90 @@ describe("pollinations utilities", () => {
         it("excludes duration when zero or negative", () => {
             const urlZero = buildPollinationsUrl({
                 prompt: "test",
+                model: "veo",
                 duration: 0,
             })
             const urlNegative = buildPollinationsUrl({
                 prompt: "test",
+                model: "veo",
                 duration: -1,
             })
 
             expect(urlZero).not.toContain("duration")
             expect(urlNegative).not.toContain("duration")
+        })
+
+        // Tests to ensure video params are NOT included for image models
+        it("excludes duration for image models even when provided", () => {
+            const url = buildPollinationsUrl({
+                prompt: "test",
+                model: "seedream-pro",
+                duration: 5,
+            })
+
+            expect(url).not.toContain("duration")
+        })
+
+        it("excludes aspectRatio for image models even when provided", () => {
+            const url = buildPollinationsUrl({
+                prompt: "test",
+                model: "zimage",
+                aspectRatio: "16:9",
+            })
+
+            expect(url).not.toContain("aspectRatio")
+        })
+
+        it("excludes audio for image models even when provided", () => {
+            const url = buildPollinationsUrl({
+                prompt: "test",
+                model: "gptimage",
+                audio: true,
+            })
+
+            expect(url).not.toContain("audio")
+        })
+
+        it("excludes lastFrameImage for image models even when provided", () => {
+            const url = buildPollinationsUrl({
+                prompt: "test",
+                model: "nanobanana",
+                image: "https://example.com/first.jpg",
+                lastFrameImage: "https://example.com/last.jpg",
+            })
+
+            // Should have only one image param (the regular image), not lastFrameImage
+            const imageMatches = url.match(/image=/g)
+            expect(imageMatches?.length).toBe(1)
+        })
+
+        it("excludes all video params for image models", () => {
+            const url = buildPollinationsUrl({
+                prompt: "test",
+                model: "seedream-pro",
+                duration: 5,
+                aspectRatio: "16:9",
+                audio: true,
+                lastFrameImage: "https://example.com/last.jpg",
+            })
+
+            expect(url).not.toContain("duration")
+            expect(url).not.toContain("aspectRatio")
+            expect(url).not.toContain("audio")
+            // lastFrameImage should not be included (no image param at all since base image wasn't provided)
+            expect(url).not.toContain("image=")
+        })
+
+        it("includes video params for seedance-pro model", () => {
+            const url = buildPollinationsUrl({
+                prompt: "test",
+                model: "seedance-pro",
+                duration: 5,
+                aspectRatio: "16:9",
+            })
+
+            expect(url).toContain("duration=5")
+            expect(url).toContain("aspectRatio=16%3A9")
         })
     })
 

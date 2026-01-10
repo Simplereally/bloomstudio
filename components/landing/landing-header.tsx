@@ -96,11 +96,26 @@ export function LandingHeader() {
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors",
+                  "text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors cursor-pointer",
                   activeSection === "showcase" && "text-primary bg-white/5"
                 )}
               >
                 Showcase
+              </Button>
+            </Link>
+            <Link
+              href={pathname === "/" ? "#compare" : "/#compare"}
+              onClick={(e) => handleNavClick(e, pathname === "/" ? "#compare" : "/#compare")}
+            >
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors cursor-pointer",
+                  activeSection === "compare" && "text-primary bg-white/5"
+                )}
+              >
+                Compare
               </Button>
             </Link>
             <Link
@@ -111,7 +126,7 @@ export function LandingHeader() {
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors",
+                  "text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors cursor-pointer",
                   activeSection === "features" && "text-primary bg-white/5"
                 )}
               >
@@ -126,26 +141,11 @@ export function LandingHeader() {
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors",
+                  "text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors cursor-pointer",
                   activeSection === "models" && "text-primary bg-white/5"
                 )}
               >
                 Models
-              </Button>
-            </Link>
-            <Link
-              href={pathname === "/" ? "#compare" : "/#compare"}
-              onClick={(e) => handleNavClick(e, pathname === "/" ? "#compare" : "/#compare")}
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors",
-                  activeSection === "compare" && "text-primary bg-white/5"
-                )}
-              >
-                Compare
               </Button>
             </Link>
             <Link href="/pricing">
@@ -153,7 +153,7 @@ export function LandingHeader() {
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "text-foreground/70 hover:text-foreground hover:bg-white/5",
+                  "text-foreground/70 hover:text-foreground hover:bg-white/5 cursor-pointer",
                   pathname === "/pricing" && "text-primary bg-white/5"
                 )}
               >
@@ -225,6 +225,20 @@ export function LandingHeader() {
               </Button>
             </Link>
             <Link
+              href={pathname === "/" ? "#compare" : "/#compare"}
+              onClick={(e) => {
+                setMobileMenuOpen(false);
+                handleNavClick(e, pathname === "/" ? "#compare" : "/#compare");
+              }}
+            >
+              <Button
+                variant="ghost"
+                className={cn("w-full justify-start text-lg", activeSection === "compare" && "text-primary bg-white/5")}
+              >
+                Compare
+              </Button>
+            </Link>
+            <Link
               href={pathname === "/" ? "#features" : "/#features"}
               onClick={(e) => {
                 setMobileMenuOpen(false);
@@ -250,20 +264,6 @@ export function LandingHeader() {
                 className={cn("w-full justify-start text-lg", activeSection === "models" && "text-primary bg-white/5")}
               >
                 Models
-              </Button>
-            </Link>
-            <Link
-              href={pathname === "/" ? "#compare" : "/#compare"}
-              onClick={(e) => {
-                setMobileMenuOpen(false);
-                handleNavClick(e, pathname === "/" ? "#compare" : "/#compare");
-              }}
-            >
-              <Button
-                variant="ghost"
-                className={cn("w-full justify-start text-lg", activeSection === "compare" && "text-primary bg-white/5")}
-              >
-                Compare
               </Button>
             </Link>
             <Link href="/pricing" onClick={() => setMobileMenuOpen(false)}>

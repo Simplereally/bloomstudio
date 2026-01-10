@@ -13,6 +13,9 @@
 /** Pollinations API base URL */
 export const POLLINATIONS_BASE_URL = "https://gen.pollinations.ai"
 
+/** Video model IDs - these are the only models that support duration, aspectRatio, audio, and lastFrameImage */
+const VIDEO_MODELS = ["veo", "seedance", "seedance-pro"] as const
+
 // ============================================================
 // Types
 // ============================================================
@@ -86,19 +89,22 @@ export function buildPollinationsUrl(params: PollinationsUrlParams): string {
     if (params.private) queryParams.append("private", "true")
     if (params.image) queryParams.append("image", params.image)
 
-    // Video-specific parameters
-    if (params.duration !== undefined && params.duration > 0) {
-        queryParams.append("duration", params.duration.toString())
-    }
-    if (params.aspectRatio) {
-        queryParams.append("aspectRatio", params.aspectRatio)
-    }
-    if (params.audio) {
-        queryParams.append("audio", "true")
-    }
-    // Second image for video interpolation (veo) - appended as another image param
-    if (params.lastFrameImage) {
-        queryParams.append("image", params.lastFrameImage)
+    // Video-specific parameters - only include for video models
+    const isVideoModel = params.model && VIDEO_MODELS.includes(params.model as typeof VIDEO_MODELS[number])
+    if (isVideoModel) {
+        if (params.duration !== undefined && params.duration > 0) {
+            queryParams.append("duration", params.duration.toString())
+        }
+        if (params.aspectRatio) {
+            queryParams.append("aspectRatio", params.aspectRatio)
+        }
+        if (params.audio) {
+            queryParams.append("audio", "true")
+        }
+        // Second image for video interpolation (veo) - appended as another image param
+        if (params.lastFrameImage) {
+            queryParams.append("image", params.lastFrameImage)
+        }
     }
 
     const query = queryParams.toString()

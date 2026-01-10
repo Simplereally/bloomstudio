@@ -58,3 +58,6 @@ export type { UsePromptLibraryReturn, Prompt } from "./use-prompt-library"
 
 export { usePromptLibraryForm } from "./use-prompt-library-form"
 export type { UsePromptLibraryFormReturn } from "./use-prompt-library-form"
+
+export { useSlideshow } from "./use-slideshow"
+export type { UseSlideshowOptions, UseSlideshowReturn } from "./use-slideshow"

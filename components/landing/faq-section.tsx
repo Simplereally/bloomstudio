@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/accordion"
 import { HelpCircle } from "lucide-react"
 
-const faqs = [
+export const faqs = [
     {
         question: "How does the free trial work?",
         answer:
