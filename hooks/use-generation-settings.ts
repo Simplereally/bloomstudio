@@ -2,18 +2,19 @@
 
 /**
  * useGenerationSettings Hook
- * 
+ *
  * Manages all generation parameter state: model, dimensions, aspect ratio, seed, options.
  * Isolated from prompt state to prevent unnecessary re-renders when typing.
- * 
+ *
  * Features:
  * - Model selection with automatic constraint application
+ * - Resolution tier selection with dynamic dimension calculation using standard resolutions
  * - Aspect ratio presets with custom dimension support
  * - Linked dimension changes (maintain aspect ratio)
  * - Seed management with random mode support
  * - Generation options (enhance, private, safe)
  * - Reference image selection
- * 
+ *
  * This hook follows the "Headless UI" pattern - pure logic with stable callbacks.
  */
 
@@ -23,10 +24,21 @@ import {
     getModel,
     getModelAspectRatios,
 } from "@/lib/config/models"
+import {
+    getDefaultTierForModel,
+    getSupportedTiersForModel,
+    calculateDimensionsForTier,
+    parseAspectRatio,
+} from "@/lib/config/resolution-tiers"
+import {
+    getStandardDimensionsWithFallback,
+} from "@/lib/config/standard-resolutions"
 import type {
     AspectRatio,
     AspectRatioOption,
     ImageModel,
+    ModelConstraints,
+    ResolutionTier,
 } from "@/types/pollinations"
 import * as React from "react"
 
@@ -39,6 +51,13 @@ export interface UseGenerationSettingsReturn {
     setModel: React.Dispatch<React.SetStateAction<ImageModel>>
     handleModelChange: (newModel: ImageModel) => void
     aspectRatios: readonly AspectRatioOption[]
+    constraints: ModelConstraints | undefined
+
+    // Resolution tier state
+    resolutionTier: ResolutionTier
+    setResolutionTier: React.Dispatch<React.SetStateAction<ResolutionTier>>
+    handleResolutionTierChange: (tier: ResolutionTier) => void
+    supportedTiers: readonly ResolutionTier[]
 
     // Dimension state
     aspectRatio: AspectRatio
@@ -80,12 +99,14 @@ export interface UseGenerationSettingsReturn {
 
 /**
  * Hook for managing image generation settings.
- * 
+ *
  * @example
  * ```tsx
  * const {
  *     model,
  *     handleModelChange,
+ *     resolutionTier,
+ *     handleResolutionTierChange,
  *     width,
  *     height,
  *     handleAspectRatioChange,
@@ -99,6 +120,11 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
     // Model State
     // ========================================
     const [model, setModel] = React.useState<ImageModel>("zimage")
+
+    // ========================================
+    // Resolution Tier State
+    // ========================================
+    const [resolutionTier, setResolutionTier] = React.useState<ResolutionTier>("hd")
 
     // ========================================
     // Dimension State
@@ -142,7 +168,7 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
     })
 
     // ========================================
-    // Model-specific Data
+    // Model-specific Data (Memoized)
     // ========================================
     const modelDef = React.useMemo(() => getModel(model), [model])
     const isVideoModel = modelDef?.type === "video"
@@ -151,6 +177,60 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
         () => getModelAspectRatios(model) ?? [],
         [model]
     )
+
+    const constraints = React.useMemo(
+        () => getModel(model)?.constraints,
+        [model]
+    )
+
+    const supportedTiers = React.useMemo(
+        () => constraints ? getSupportedTiersForModel(constraints) : ["hd"] as const,
+        [constraints]
+    )
+
+    // ========================================
+    // Resolution Tier Handler
+    // ========================================
+    const handleResolutionTierChange = React.useCallback((tier: ResolutionTier) => {
+        setResolutionTier(tier)
+
+        // If we have a non-custom aspect ratio, use standard resolutions
+        if (aspectRatio !== "custom") {
+            // Get standard dimensions for this aspect ratio and tier
+            const standardDims = getStandardDimensionsWithFallback(aspectRatio, tier)
+
+            // If we have model constraints, verify the dimensions are achievable
+            if (constraints) {
+                const pixels = standardDims.width * standardDims.height
+                const exceedsConstraints =
+                    pixels > constraints.maxPixels ||
+                    standardDims.width > constraints.maxDimension ||
+                    standardDims.height > constraints.maxDimension
+
+                if (exceedsConstraints) {
+                    // Standard dimensions don't fit, calculate constrained dimensions
+                    const parsed = parseAspectRatio(aspectRatio)
+                    if (parsed) {
+                        const dims = calculateDimensionsForTier(parsed, tier, constraints)
+                        setWidth(dims.width)
+                        setHeight(dims.height)
+                        return
+                    }
+                }
+
+                // Apply step alignment to standard dimensions
+                const step = constraints.step
+                const alignedWidth = Math.round(standardDims.width / step) * step
+                const alignedHeight = Math.round(standardDims.height / step) * step
+                setWidth(Math.max(constraints.minDimension, Math.min(constraints.maxDimension, alignedWidth)))
+                setHeight(Math.max(constraints.minDimension, Math.min(constraints.maxDimension, alignedHeight)))
+            } else {
+                // No constraints, use standard dimensions directly
+                setWidth(standardDims.width)
+                setHeight(standardDims.height)
+            }
+        }
+    }, [constraints, aspectRatio])
 
     // ========================================
     // Dimension Handlers
@@ -178,32 +258,76 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
     // Model Change Handler
     // ========================================
     // Handle model change with dimension reset for pixel-limited models or fixed-size models
-    // Note: This callback depends on width/height to read current values. This is intentional
-    // and acceptable because model changes are infrequent operations.
+    // Also adjusts resolution tier if current tier is not supported
+    // Uses standard resolutions where possible
     const handleModelChange = React.useCallback((newModel: ImageModel) => {
         setModel(newModel)
 
         const newModelDef = getModel(newModel)
         if (!newModelDef) return // Unknown model, no constraints to apply
 
-        const { constraints, aspectRatios: ratios } = newModelDef
+        const { constraints: newConstraints, aspectRatios: ratios } = newModelDef
 
-        // For fixed-size models (dimensionsEnabled: false), use the first aspect ratio preset
-        if (!constraints.dimensionsEnabled && ratios.length > 0) {
+        // Check if current tier is supported by new model
+        const newSupportedTiers = getSupportedTiersForModel(newConstraints)
+        let tierToUse = resolutionTier
+
+        if (!newSupportedTiers.includes(resolutionTier)) {
+            // Current tier not supported, find the best alternative
+            tierToUse = getDefaultTierForModel(newConstraints)
+            setResolutionTier(tierToUse)
+        }
+
+        // For fixed-size models (dimensionsEnabled: false), use standard dimensions
+        if (!newConstraints.dimensionsEnabled && ratios.length > 0) {
             const firstRatio = ratios[0]
-            setWidth(firstRatio.width)
-            setHeight(firstRatio.height)
+            // Use standard dimensions for this ratio at the tier
+            const standardDims = getStandardDimensionsWithFallback(firstRatio.value, tierToUse)
+            setWidth(standardDims.width)
+            setHeight(standardDims.height)
             setAspectRatio(firstRatio.value)
         } else {
-            // For other models, reset to defaults if current dimensions exceed model limit
+            // For other models, try to preserve aspect ratio with standard dimensions
+            if (aspectRatio !== "custom") {
+                // Get standard dimensions for current aspect ratio at the new tier
+                const standardDims = getStandardDimensionsWithFallback(aspectRatio, tierToUse)
+
+                // Check if standard dimensions fit the model constraints
+                const pixels = standardDims.width * standardDims.height
+                const exceedsConstraints =
+                    pixels > newConstraints.maxPixels ||
+                    standardDims.width > newConstraints.maxDimension ||
+                    standardDims.height > newConstraints.maxDimension
+
+                if (exceedsConstraints) {
+                    // Standard dimensions don't fit, calculate constrained dimensions
+                    const parsed = parseAspectRatio(aspectRatio)
+                    if (parsed) {
+                        const dims = calculateDimensionsForTier(parsed, tierToUse, newConstraints)
+                        setWidth(dims.width)
+                        setHeight(dims.height)
+                        return
+                    }
+                } else {
+                    // Apply step alignment to standard dimensions
+                    const step = newConstraints.step
+                    const alignedWidth = Math.round(standardDims.width / step) * step
+                    const alignedHeight = Math.round(standardDims.height / step) * step
+                    setWidth(Math.max(newConstraints.minDimension, Math.min(newConstraints.maxDimension, alignedWidth)))
+                    setHeight(Math.max(newConstraints.minDimension, Math.min(newConstraints.maxDimension, alignedHeight)))
+                    return
+                }
+            }
+
+            // Fallback: reset to defaults if current dimensions exceed model limit
             const currentPixels = width * height
-            const exceedsPixelLimit = currentPixels > constraints.maxPixels
+            const exceedsPixelLimit = currentPixels > newConstraints.maxPixels
             const exceedsDimensionLimit =
-                width > constraints.maxDimension || height > constraints.maxDimension
+                width > newConstraints.maxDimension || height > newConstraints.maxDimension
 
             if (exceedsPixelLimit || exceedsDimensionLimit) {
-                setWidth(constraints.defaultDimensions.width)
-                setHeight(constraints.defaultDimensions.height)
+                setWidth(newConstraints.defaultDimensions.width)
+                setHeight(newConstraints.defaultDimensions.height)
                 setAspectRatio("1:1")
             }
         }
@@ -220,7 +344,7 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
                 lastFrame: undefined,
             })
         }
-    }, [width, height])
+    }, [width, height, aspectRatio, resolutionTier])
 
     // ========================================
     // Seed Refresh Helper
@@ -238,6 +362,13 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
         setModel,
         handleModelChange,
         aspectRatios,
+        constraints,
+
+        // Resolution tier state
+        resolutionTier,
+        setResolutionTier,
+        handleResolutionTierChange,
+        supportedTiers,
 
         // Dimension state
         aspectRatio,

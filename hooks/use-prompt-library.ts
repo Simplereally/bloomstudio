@@ -136,9 +136,8 @@ export function usePromptLibrary({
     // ========================================
     // Memoized Filtered Prompts
     // ========================================
-    const allPrompts = userLibrary ?? []
-
     const prompts = React.useMemo(() => {
+        const allPrompts = userLibrary ?? []
         if (!searchQuery.trim()) return allPrompts as Prompt[]
         const query = searchQuery.toLowerCase()
         return (allPrompts as Prompt[]).filter(
@@ -148,7 +147,7 @@ export function usePromptLibrary({
                     p.content.toLowerCase().includes(query) ||
                     p.tags.some((t) => t.toLowerCase().includes(query)))
         )
-    }, [allPrompts, searchQuery])
+    }, [userLibrary, searchQuery])
 
     // ========================================
     // Stable Callbacks

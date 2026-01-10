@@ -95,18 +95,32 @@ export function useDimensionConstraints({
 
     // Calculate derived values
     const { maxWidth, maxHeight, pixelCount, isOverLimit, percentOfLimit, hasLimit } = useMemo(() => {
-        const { maxPixels, maxDimension } = constraints
+        const { maxPixels, maxDimension, step, maxAspectRatio } = constraints
         const pixels = width * height
         const hasLimitFlag = maxPixels < Infinity
 
+        // Helper to align max values to step
+        const alignMax = (val: number) => Math.floor(val / step) * step
+
+        let rawMaxWidth = hasLimitFlag
+            ? Math.min(maxDimension, Math.floor(maxPixels / height))
+            : maxDimension
+            
+        let rawMaxHeight = hasLimitFlag
+            ? Math.min(maxDimension, Math.floor(maxPixels / width))
+            : maxDimension
+
+        // Apply aspect ratio constraints if defined
+        if (maxAspectRatio) {
+            rawMaxWidth = Math.min(rawMaxWidth, height * maxAspectRatio)
+            rawMaxHeight = Math.min(rawMaxHeight, width * maxAspectRatio)
+        }
+
         return {
             // Dynamic max: minimum of (absolute max, pixels remaining / other dimension)
-            maxWidth: hasLimitFlag
-                ? Math.min(maxDimension, Math.floor(maxPixels / height))
-                : maxDimension,
-            maxHeight: hasLimitFlag
-                ? Math.min(maxDimension, Math.floor(maxPixels / width))
-                : maxDimension,
+            // Aligned to step to ensure UI inputs/sliders snap correctly
+            maxWidth: alignMax(rawMaxWidth),
+            maxHeight: alignMax(rawMaxHeight),
             pixelCount: pixels,
             isOverLimit: hasLimitFlag && pixels > maxPixels,
             percentOfLimit: hasLimitFlag ? (pixels / maxPixels) * 100 : null,
@@ -128,13 +142,16 @@ export function useDimensionConstraints({
             const finalWidth = Math.max(constraints.minDimension, clamped)
             onWidthChange(finalWidth)
 
-            // Auto-clamp height if it would exceed pixel limit
-            if (hasLimit) {
-                const newMaxHeight = Math.floor(constraints.maxPixels / finalWidth)
-                if (height > newMaxHeight) {
-                    const clampedHeight = alignToStep(Math.min(height, newMaxHeight))
-                    onHeightChange(Math.max(constraints.minDimension, clampedHeight))
-                }
+            // Auto-clamp height if it would exceed limits (pixels or aspect ratio)
+            const newMaxHeightFromPixels = hasLimit ? Math.floor(constraints.maxPixels / finalWidth) : Infinity
+            const newMaxHeightFromAspect = constraints.maxAspectRatio ? finalWidth * constraints.maxAspectRatio : Infinity
+            const newMinHeightFromAspect = constraints.maxAspectRatio ? finalWidth / constraints.maxAspectRatio : 0
+            
+            const newMaxHeight = Math.min(newMaxHeightFromPixels, newMaxHeightFromAspect)
+
+            if (height > newMaxHeight || height < newMinHeightFromAspect) {
+                const clampedHeight = alignToStep(Math.max(newMinHeightFromAspect, Math.min(height, newMaxHeight)))
+                onHeightChange(Math.max(constraints.minDimension, clampedHeight))
             }
         },
         [alignToStep, maxWidth, height, constraints, onWidthChange, onHeightChange, hasLimit]
@@ -148,13 +165,16 @@ export function useDimensionConstraints({
             const finalHeight = Math.max(constraints.minDimension, clamped)
             onHeightChange(finalHeight)
 
-            // Auto-clamp width if it would exceed pixel limit
-            if (hasLimit) {
-                const newMaxWidth = Math.floor(constraints.maxPixels / finalHeight)
-                if (width > newMaxWidth) {
-                    const clampedWidth = alignToStep(Math.min(width, newMaxWidth))
-                    onWidthChange(Math.max(constraints.minDimension, clampedWidth))
-                }
+            // Auto-clamp width if it would exceed limits (pixels or aspect ratio)
+            const newMaxWidthFromPixels = hasLimit ? Math.floor(constraints.maxPixels / finalHeight) : Infinity
+            const newMaxWidthFromAspect = constraints.maxAspectRatio ? finalHeight * constraints.maxAspectRatio : Infinity
+            const newMinWidthFromAspect = constraints.maxAspectRatio ? finalHeight / constraints.maxAspectRatio : 0
+
+            const newMaxWidth = Math.min(newMaxWidthFromPixels, newMaxWidthFromAspect)
+
+            if (width > newMaxWidth || width < newMinWidthFromAspect) {
+                const clampedWidth = alignToStep(Math.max(newMinWidthFromAspect, Math.min(width, newMaxWidth)))
+                onWidthChange(Math.max(constraints.minDimension, clampedWidth))
             }
         },
         [alignToStep, maxHeight, width, constraints, onWidthChange, onHeightChange, hasLimit]

@@ -38,6 +38,7 @@ export interface PollinationsUrlParams {
     aspectRatio?: string
     /** Second reference image for video interpolation (veo) */
     lastFrameImage?: string
+    quality?: string
 }
 
 /** Result of error classification */

@@ -149,7 +149,7 @@ export const ImageCard = React.memo(function ImageCard({
         >
             {/* Selection checkbox - top right */}
             {selectionMode && (
-                // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+                 
                 <div
                     className="absolute top-2 right-2 z-20"
                     onClick={handleCheckboxClick}

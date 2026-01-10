@@ -35,6 +35,7 @@ const generationParamsValidator = v.object({
     audio: v.optional(v.boolean()),
     aspectRatio: v.optional(v.string()),
     lastFrameImage: v.optional(v.string()),
+    quality: v.optional(v.string()),
 })
 
 // ============================================================

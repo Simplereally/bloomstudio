@@ -57,8 +57,8 @@ describe("useDimensionConstraints", () => {
                 useDimensionConstraints({ ...defaultProps, height: 1000 })
             )
 
-            // maxPixels / height = 1,048,576 / 1000 = 1048
-            expect(result.current.maxWidth).toBe(1048)
+            // maxPixels / height = 1,048,576 / 1000 = 1048, aligned to step 32 = 1024
+            expect(result.current.maxWidth).toBe(1024)
         })
 
         it("should calculate maxHeight based on current width for kontext", () => {
@@ -66,7 +66,8 @@ describe("useDimensionConstraints", () => {
                 useDimensionConstraints({ ...defaultProps, width: 1000 })
             )
 
-            expect(result.current.maxHeight).toBe(1048)
+            // maxPixels / width = 1,048,576 / 1000 = 1048, aligned to step 32 = 1024
+            expect(result.current.maxHeight).toBe(1024)
         })
 
         it("should return maxDimension for models without pixel limits", () => {
@@ -230,9 +231,9 @@ describe("useDimensionConstraints", () => {
                 result.current.handleWidthChange(2000) // Over max
             })
 
-            // maxWidth = floor(1048575 / 1000) = 1048, which is not aligned to 32
-            // So it gets clamped to 1048 (the maxWidth limit takes precedence)
-            expect(onWidthChange).toHaveBeenCalledWith(1048)
+            // maxWidth = floor(floor(1048576 / 1000) / 32) * 32 = 1024
+            // The value is clamped to the step-aligned maxWidth
+            expect(onWidthChange).toHaveBeenCalledWith(1024)
         })
 
         it("should not exceed pixel limit even with extreme width values", () => {
@@ -254,8 +255,8 @@ describe("useDimensionConstraints", () => {
                 result.current.handleWidthChange(5000)
             })
 
-            // Width should be clamped to maxWidth (1048 for height=1000)
-            expect(onWidthChange).toHaveBeenCalledWith(1048)
+            // Width should be clamped to step-aligned maxWidth (1024 for height=1000, step=32)
+            expect(onWidthChange).toHaveBeenCalledWith(1024)
         })
     })
 
@@ -296,8 +297,8 @@ describe("useDimensionConstraints", () => {
                 result.current.handleHeightChange(5000)
             })
 
-            // Height should be clamped to maxHeight (1048 for width=1000)
-            expect(onHeightChange).toHaveBeenCalledWith(1048)
+            // Height should be clamped to step-aligned maxHeight (1024 for width=1000, step=32)
+            expect(onHeightChange).toHaveBeenCalledWith(1024)
         })
     })
 

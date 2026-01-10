@@ -197,8 +197,42 @@ describe("CollapsibleSection", () => {
         // Try to click the trigger
         await userEvent.click(screen.getByTestId("test-section-trigger"))
 
-        // Should still be expanded (not toggled)
+        // Should still be expanded
         expect(screen.getByTestId("test-content")).toBeVisible()
+    })
+
+    describe("Controlled mode", () => {
+        it("uses the provided open prop", () => {
+            const { rerender } = render(<CollapsibleSection {...defaultProps} open={false} />)
+            expect(screen.getByTestId("test-content")).not.toBeVisible()
+
+            rerender(<CollapsibleSection {...defaultProps} open={true} />)
+            expect(screen.getByTestId("test-content")).toBeVisible()
+        })
+
+        it("calls onOpenChange when trigger is clicked", async () => {
+            const onOpenChange = vi.fn()
+            render(<CollapsibleSection {...defaultProps} open={true} onOpenChange={onOpenChange} />)
+
+            await userEvent.click(screen.getByTestId("test-section-trigger"))
+
+            expect(onOpenChange).toHaveBeenCalledWith(false)
+        })
+
+        it("does not change state internally when controlled", async () => {
+            const onOpenChange = vi.fn()
+            render(<CollapsibleSection {...defaultProps} open={true} onOpenChange={onOpenChange} />)
+
+            // Initially open
+            expect(screen.getByTestId("test-content")).toBeVisible()
+
+            // Click trigger
+            await userEvent.click(screen.getByTestId("test-section-trigger"))
+
+            // onOpenChange called but state shouldn't change internally because it's controlled
+            expect(onOpenChange).toHaveBeenCalledWith(false)
+            expect(screen.getByTestId("test-content")).toBeVisible()
+        })
     })
 
     it("does not apply disabled styling when disabled is false", () => {

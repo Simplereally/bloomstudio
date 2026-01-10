@@ -20,6 +20,8 @@ export { OptionsPanel, type GenerationOptions, type OptionsPanelProps } from "./
 export { PromptHeaderControls, type PromptHeaderControlsProps } from "./controls/prompt-header-controls"
 export { PromptSection, type PromptSectionAPI, type PromptSectionProps } from "./controls/prompt-section"
 export { ReferenceImagePicker } from "./controls/reference-image-picker"
+export { ResolutionTierSelector, type ResolutionTierSelectorProps } from "./controls/resolution-tier-selector"
+export { MegapixelBudget, type MegapixelBudgetProps } from "./controls/megapixel-budget"
 export { SeedControl, type SeedControlProps } from "./controls/seed-control"
 export { VideoSettingsPanel, type VideoSettings, type VideoSettingsPanelProps } from "./controls/video-settings-panel"
 export { VideoReferenceImagePicker, type VideoReferenceImages } from "./controls/video-reference-image-picker"

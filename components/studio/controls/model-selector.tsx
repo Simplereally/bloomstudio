@@ -195,7 +195,7 @@ export const ModelSelector = React.memo(function ModelSelector({
                                         )} />
                                     )}
                                     <span className={cn(
-                                        "text-sm font-medium truncate",
+                                        "text-xs font-medium truncate",
                                         isSelected && "text-emerald-700 dark:text-emerald-400"
                                     )}>{model.displayName}</span>
                                 </Button>

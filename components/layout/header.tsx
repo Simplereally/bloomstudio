@@ -47,7 +47,7 @@ export function Header() {
         setIsLocalDev(isLocalhost())
     }, [])
 
-    if (pathname === "/" || pathname.startsWith("/sign-in") || pathname.startsWith("/sign-up")) return null
+    if (pathname === "/" || pathname === "/about" || pathname.startsWith("/sign-in") || pathname.startsWith("/sign-up") || pathname.startsWith("/solutions") || pathname.startsWith("/faq") || pathname.startsWith("/pricing") || pathname.startsWith("/support") || pathname.startsWith("/contact") || pathname.startsWith("/privacy") || pathname.startsWith("/terms")) return null
 
     const showAuthUI = mounted && isLoaded
 
@@ -56,12 +56,8 @@ export function Header() {
             <div className="container mx-auto flex h-14 items-center px-6">
                 {/* Left Side: Logo */}
                 <div className="flex-1 flex justify-start">
-                    <Link href="/" className="flex items-center gap-2.5 group">
-                        <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-primary/20 group-hover:bg-primary/30 transition-all duration-300 overflow-hidden">
-                            <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 to-transparent animate-pulse" />
-                            <Sparkles className="h-4.5 w-4.5 text-primary relative z-10" />
-                        </div>
-                        <span className="text-xl font-bold text-foreground font-brand tracking-tight transition-colors group-hover:text-primary">
+                    <Link href="/" className="flex items-center gap-2">
+                        <span className="text-2xl sm:text-3xl font-bold text-primary font-brand tracking-tight -skew-x-6">
                             Bloom Studio
                         </span>
                     </Link>
@@ -126,44 +122,46 @@ export function Header() {
                         )}
 
                         {/* Settings */}
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-all"
-                                >
-                                    <Settings className="h-4 w-4" />
-                                    <span className="sr-only">Settings</span>
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-52 mt-2 border-border bg-popover/90 backdrop-blur-xl">
-                                <DropdownMenuItem onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="focus:bg-accent">
-                                    {theme === "dark" ? (
-                                        <>
-                                            <Sun className="mr-2 h-4 w-4 text-amber-500" />
-                                            Light Mode
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Moon className="mr-2 h-4 w-4 text-primary" />
-                                            Dark Mode
-                                        </>
-                                    )}
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator className="bg-border/50" />
-                                <DropdownMenuItem asChild className="focus:bg-accent">
-                                    <Link href="/settings" className="flex w-full items-center">
-                                        <Settings className="mr-2 h-4 w-4" />
-                                        Settings
-                                    </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem className="focus:bg-accent">
-                                    <HelpCircle className="mr-2 h-4 w-4" />
-                                    Help & Support
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        {mounted && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-all"
+                                    >
+                                        <Settings className="h-4 w-4" />
+                                        <span className="sr-only">Settings</span>
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-52 mt-2 border-border bg-popover/90 backdrop-blur-xl">
+                                    <DropdownMenuItem onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="focus:bg-accent">
+                                        {theme === "dark" ? (
+                                            <>
+                                                <Sun className="mr-2 h-4 w-4 text-amber-500" />
+                                                Light Mode
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Moon className="mr-2 h-4 w-4 text-primary" />
+                                                Dark Mode
+                                            </>
+                                        )}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator className="bg-border/50" />
+                                    <DropdownMenuItem asChild className="focus:bg-accent">
+                                        <Link href="/settings" className="flex w-full items-center">
+                                            <Settings className="mr-2 h-4 w-4" />
+                                            Settings
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem className="focus:bg-accent">
+                                        <HelpCircle className="mr-2 h-4 w-4" />
+                                        Help & Support
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
 
                         {/* Subscription Tier Badge */}
                         {showAuthUI && isSignedIn && (

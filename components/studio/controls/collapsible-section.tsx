@@ -32,6 +32,10 @@ export interface CollapsibleSectionProps {
     collapsedContent?: React.ReactNode
     /** Whether the section is disabled (non-interactive and visually dimmed) */
     disabled?: boolean
+    /** Controlled expanded state */
+    open?: boolean
+    /** Callback when expanded state changes */
+    onOpenChange?: (open: boolean) => void
 }
 
 export const CollapsibleSection = React.memo(function CollapsibleSection({
@@ -44,8 +48,20 @@ export const CollapsibleSection = React.memo(function CollapsibleSection({
     rightContent,
     collapsedContent,
     disabled = false,
+    open: controlledOpen,
+    onOpenChange,
 }: CollapsibleSectionProps) {
-    const [isExpanded, setIsExpanded] = React.useState(defaultExpanded)
+    const [internalOpen, setInternalOpen] = React.useState(defaultExpanded)
+
+    const isControlled = controlledOpen !== undefined
+    const isExpanded = isControlled ? controlledOpen : internalOpen
+
+    const handleOpenChange = React.useCallback((open: boolean) => {
+        if (!isControlled) {
+            setInternalOpen(open)
+        }
+        onOpenChange?.(open)
+    }, [isControlled, onOpenChange])
 
     return (
         <div
@@ -53,7 +69,7 @@ export const CollapsibleSection = React.memo(function CollapsibleSection({
             data-testid={testId ? `${testId}-container` : undefined}
             aria-disabled={disabled}
         >
-            <Collapsible open={isExpanded} onOpenChange={disabled ? undefined : setIsExpanded}>
+            <Collapsible open={isExpanded} onOpenChange={disabled ? undefined : handleOpenChange}>
                 {/* Header row: trigger + rightContent side by side */}
                 <div className="flex items-center gap-2 w-full">
                     <CollapsibleTrigger

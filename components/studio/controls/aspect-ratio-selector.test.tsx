@@ -3,10 +3,12 @@ import { render, screen, fireEvent } from "@testing-library/react"
 import { AspectRatioSelector } from "./aspect-ratio-selector"
 import type { AspectRatioOption } from "@/types/pollinations"
 
+// Note: These dimensions are from the model presets but the component now uses
+// standard resolutions (e.g., HD 16:9 = 1920x1080) via useAspectRatioDimensions hook
 const mockRatios: AspectRatioOption[] = [
     { label: "Square", value: "1:1", width: 1024, height: 1024, icon: "square" },
-    { label: "Landscape", value: "16:9", width: 1344, height: 768, icon: "rectangle-horizontal" },
-    { label: "Portrait", value: "9:16", width: 768, height: 1344, icon: "rectangle-vertical" },
+    { label: "Landscape", value: "16:9", width: 1920, height: 1080, icon: "rectangle-horizontal" },
+    { label: "Portrait", value: "9:16", width: 1080, height: 1920, icon: "rectangle-vertical" },
     { label: "Custom", value: "custom", width: 1024, height: 1024, icon: "sliders" },
 ]
 
@@ -84,7 +86,8 @@ describe("AspectRatioSelector", () => {
             fireEvent.click(screen.getByTestId("ratio-16-9"))
 
             expect(onRatioChange).toHaveBeenCalledTimes(1)
-            expect(onRatioChange).toHaveBeenCalledWith("16:9", { width: 1344, height: 768 })
+            // Now uses standard HD resolution (1920x1080) instead of model-specific dimensions
+            expect(onRatioChange).toHaveBeenCalledWith("16:9", { width: 1920, height: 1080 })
         })
 
         it("calls onRatioChange with correct dimensions for portrait ratio", () => {
@@ -93,7 +96,8 @@ describe("AspectRatioSelector", () => {
 
             fireEvent.click(screen.getByTestId("ratio-9-16"))
 
-            expect(onRatioChange).toHaveBeenCalledWith("9:16", { width: 768, height: 1344 })
+            // Now uses standard HD resolution (1080x1920) instead of model-specific dimensions
+            expect(onRatioChange).toHaveBeenCalledWith("9:16", { width: 1080, height: 1920 })
         })
 
         it("calls onRatioChange when custom ratio is selected", () => {
@@ -139,11 +143,11 @@ describe("AspectRatioSelector", () => {
             expect(screen.getByTestId("aspect-ratio-selector")).toHaveClass("space-y-2")
         })
 
-        it("renders buttons in a 6-column grid", () => {
+        it("renders buttons in a 4-column grid", () => {
             render(<AspectRatioSelector {...defaultProps} />)
 
             const buttonContainer = screen.getByTestId("aspect-ratio-buttons")
-            expect(buttonContainer).toHaveClass("grid", "grid-cols-6")
+            expect(buttonContainer).toHaveClass("grid", "grid-cols-4")
         })
     })
 

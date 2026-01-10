@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
 /**
  * ControlsView - Pure presentational component for generation settings
- * 
+ *
  * Renders the generation controls UI including:
  * - Model selector
  * - Aspect ratio selector
@@ -11,363 +11,391 @@
  * - Seed control
  * - Options panel (enhance, private, safe)
  * - Batch mode panel
- * 
+ *
  * This is a "leaf" component - it receives all data via props and has no internal logic.
  * Wrapped in React.memo for optimal performance.
  */
 
 import {
-    AspectRatioSelector,
-    BatchModePanel,
-    CollapsibleSection,
-    DimensionControls,
-    DimensionHeaderControls,
-    ModelSelector,
-    OptionsPanel,
-    ReferenceImagePicker,
-    SeedControl,
-    VideoSettingsPanel,
-    VideoReferenceImagePicker,
-    type GenerationOptions,
-    type VideoSettings,
-    type VideoReferenceImages,
-} from "@/components/studio"
-import type { BatchModeSettings } from "@/components/studio/batch"
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import type { ModelDefinition, VideoDurationConstraints } from "@/lib/config/models"
-import type { AspectRatio, AspectRatioOption } from "@/types/pollinations"
-import { Dice6, Frame, Image as ImageIcon, Ruler, Sparkles, Video, X } from "lucide-react"
-import * as React from "react"
+  AspectRatioSelector,
+  BatchModePanel,
+  CollapsibleSection,
+  DimensionControls,
+  DimensionHeaderControls,
+  ModelSelector,
+  OptionsPanel,
+  ReferenceImagePicker,
+  SeedControl,
+  type GenerationOptions,
+  // Video components from HEAD
+  VideoSettingsPanel,
+  VideoReferenceImagePicker,
+  type VideoSettings,
+  type VideoReferenceImages,
+} from "@/components/studio";
+import type { BatchModeSettings } from "@/components/studio/batch";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import type { ModelDefinition, VideoDurationConstraints } from "@/lib/config/models";
+import { cn } from "@/lib/utils";
+import type { AspectRatio, AspectRatioOption, ModelConstraints, ResolutionTier } from "@/types/pollinations";
+import { Dice6, Frame, Image as ImageIcon, Ruler, Sparkles, X, Wand2, Video } from "lucide-react";
+import Image from "next/image";
+import * as React from "react";
 
 export interface ControlsViewProps {
-    // Model props
-    model: string
-    onModelChange: (model: string) => void
-    models: ModelDefinition[]
-    isLoadingModels?: boolean
-    isGenerating?: boolean
+  // Model props
+  model: string;
+  onModelChange: (model: string) => void;
+  models: ModelDefinition[];
+  isLoadingModels?: boolean;
+  isGenerating?: boolean;
 
-    // Aspect ratio props
-    aspectRatio: AspectRatio
-    onAspectRatioChange: (ratio: AspectRatio, dimensions: { width: number; height: number }) => void
-    aspectRatios: readonly AspectRatioOption[]
+  // Aspect ratio props
+  aspectRatio: AspectRatio;
+  onAspectRatioChange: (ratio: AspectRatio, dimensions: { width: number; height: number }) => void;
+  aspectRatios: readonly AspectRatioOption[];
 
-    // Dimension props
-    width: number
-    height: number
-    onWidthChange: (width: number) => void
-    onHeightChange: (height: number) => void
-    dimensionsEnabled: boolean
-    dimensionsLinked: boolean
-    onDimensionsLinkedChange: (linked: boolean) => void
-    megapixels: string
-    isOverLimit: boolean
-    percentOfLimit: number
-    hasPixelLimit: boolean
+  // Resolution tier props
+  resolutionTier?: ResolutionTier;
+  onResolutionTierChange?: (tier: ResolutionTier) => void;
+  constraints?: ModelConstraints;
 
-    // Reference image props
-    referenceImage: string | undefined
-    onReferenceImageChange: (image: string | undefined) => void
+  // Dimension props
+  width: number;
+  height: number;
+  onWidthChange: (width: number) => void;
+  onHeightChange: (height: number) => void;
+  dimensionsEnabled: boolean;
+  dimensionsLinked: boolean;
+  onDimensionsLinkedChange: (linked: boolean) => void;
+  megapixels: string;
+  isOverLimit: boolean;
+  percentOfLimit: number;
+  hasPixelLimit: boolean;
 
-    // Seed props
-    seed: number
-    onSeedChange: (seed: number) => void
-    seedLocked: boolean
-    onSeedLockedChange: (locked: boolean) => void
+  // Reference image props
+  referenceImage: string | undefined;
+  onReferenceImageChange: (image: string | undefined) => void;
 
-    // Options props
-    options: GenerationOptions
-    onOptionsChange: (options: GenerationOptions) => void
+  // Seed props
+  seed: number;
+  onSeedChange: (seed: number) => void;
+  seedLocked: boolean;
+  onSeedLockedChange: (locked: boolean) => void;
 
-    // Batch mode props
-    batchSettings: BatchModeSettings
-    onBatchSettingsChange: (settings: BatchModeSettings) => void
-    isBatchActive?: boolean
+  // Options props
+  options: GenerationOptions;
+  onOptionsChange: (options: GenerationOptions) => void;
 
-    // Video-specific props
-    isVideoModel?: boolean
-    videoSettings?: VideoSettings
-    onVideoSettingsChange?: (settings: VideoSettings) => void
-    videoReferenceImages?: VideoReferenceImages
-    onVideoReferenceImagesChange?: (images: VideoReferenceImages) => void
-    durationConstraints?: VideoDurationConstraints
-    supportsAudio?: boolean
-    supportsInterpolation?: boolean
+  // Batch mode props
+  batchSettings: BatchModeSettings;
+  onBatchSettingsChange: (settings: BatchModeSettings) => void;
+  isBatchActive?: boolean;
+
+  // Video-specific props (from HEAD)
+  isVideoModel?: boolean
+  videoSettings?: VideoSettings
+  onVideoSettingsChange?: (settings: VideoSettings) => void
+  videoReferenceImages?: VideoReferenceImages
+  onVideoReferenceImagesChange?: (images: VideoReferenceImages) => void
+  durationConstraints?: VideoDurationConstraints
+  supportsAudio?: boolean
+  supportsInterpolation?: boolean
 }
 
 export const ControlsView = React.memo(function ControlsView({
-    // Model
-    model,
-    onModelChange,
-    models,
-    isLoadingModels = false,
-    isGenerating = false,
+  // Model
+  model,
+  onModelChange,
+  models,
+  isLoadingModels = false,
+  isGenerating = false,
 
-    // Aspect ratio
-    aspectRatio,
-    onAspectRatioChange,
-    aspectRatios,
+  // Aspect ratio
+  aspectRatio,
+  onAspectRatioChange,
+  aspectRatios,
 
-    // Dimensions
-    width,
-    height,
-    onWidthChange,
-    onHeightChange,
-    dimensionsEnabled,
-    dimensionsLinked,
-    onDimensionsLinkedChange,
-    megapixels,
-    isOverLimit,
-    percentOfLimit,
-    hasPixelLimit,
+  // Resolution tier
+  resolutionTier,
+  onResolutionTierChange,
+  constraints,
 
-    // Reference image
-    referenceImage,
-    onReferenceImageChange,
+  // Dimensions
+  width,
+  height,
+  onWidthChange,
+  onHeightChange,
+  dimensionsEnabled,
+  dimensionsLinked,
+  onDimensionsLinkedChange,
+  megapixels,
+  isOverLimit,
+  percentOfLimit,
+  hasPixelLimit,
 
-    // Seed
-    seed,
-    onSeedChange,
-    seedLocked,
-    onSeedLockedChange,
+  // Reference image
+  referenceImage,
+  onReferenceImageChange,
 
-    // Options
-    options,
-    onOptionsChange,
+  // Seed
+  seed,
+  onSeedChange,
+  seedLocked,
+  onSeedLockedChange,
 
-    // Batch mode
-    batchSettings,
-    onBatchSettingsChange,
-    isBatchActive = false,
+  // Options
+  options,
+  onOptionsChange,
 
-    // Video settings
-    isVideoModel = false,
-    videoSettings,
-    onVideoSettingsChange,
-    videoReferenceImages,
-    onVideoReferenceImagesChange,
-    durationConstraints,
-    supportsAudio = false,
-    supportsInterpolation = false,
+  // Batch mode
+  batchSettings,
+  onBatchSettingsChange,
+  isBatchActive = false,
+
+  // Video settings (from HEAD)
+  isVideoModel = false,
+  videoSettings,
+  onVideoSettingsChange,
+  videoReferenceImages,
+  onVideoReferenceImagesChange,
+  durationConstraints,
+  supportsAudio = false,
+  supportsInterpolation = false,
 }: ControlsViewProps) {
-    // Calculate frame count for video reference display
-    const videoFrameCount = (videoReferenceImages?.firstFrame ? 1 : 0) + (videoReferenceImages?.lastFrame ? 1 : 0)
+  const [modelExpanded, setModelExpanded] = React.useState(true);
 
-    return (
-        <>
-            {/* Model Selection */}
-            <CollapsibleSection
-                title="Model"
-                icon={<Sparkles className="h-3.5 w-3.5" />}
-                testId="model-section"
-                collapsedContent={
-                    <span className="flex items-center justify-center px-2 h-5 rounded-full text-xs font-medium bg-primary/15 text-primary truncate max-w-[140px]">
-                        {models.find(m => m.id === model)?.displayName || model}
-                    </span>
-                }
-            >
-                <ModelSelector
-                    selectedModel={model}
-                    onModelChange={onModelChange}
-                    models={models}
-                    disabled={isGenerating || isLoadingModels}
-                    hideHeader
-                />
-                <Separator className="bg-border/50" />
-            </CollapsibleSection>
+  // Calculate frame count for video reference display (from HEAD)
+  const videoFrameCount = (videoReferenceImages?.firstFrame ? 1 : 0) + (videoReferenceImages?.lastFrame ? 1 : 0)
 
-            {/* Aspect Ratio */}
-            <CollapsibleSection
-                title="Aspect Ratio"
-                icon={<Frame className="h-3.5 w-3.5" />}
-                testId="aspect-ratio-section"
-                collapsedContent={
-                    <span className="flex items-center justify-center px-2 h-5 rounded-full text-xs font-medium bg-primary/15 text-primary">
-                        {aspectRatio === "custom" ? "Custom" : aspectRatio}
-                    </span>
-                }
-            >
-                <AspectRatioSelector
-                    selectedRatio={aspectRatio}
-                    onRatioChange={onAspectRatioChange}
-                    ratios={aspectRatios}
-                    disabled={isGenerating}
-                    hideHeader
-                />
-                <Separator className="bg-border/50" />
-            </CollapsibleSection>
+  const handleModelChange = React.useCallback(
+    (newModel: string) => {
+      onModelChange(newModel);
+      setModelExpanded(false);
+    },
+    [onModelChange]
+  );
 
-            {/* Dimensions */}
-            <CollapsibleSection
-                title="Dimensions"
-                icon={<Ruler className="h-3.5 w-3.5" />}
-                testId="dimensions-section"
-                disabled={!dimensionsEnabled}
-                collapsedContent={
-                    dimensionsEnabled ? (
-                        <div className="flex items-center gap-1.5">
-                            <span className="flex items-center justify-center px-2 h-5 rounded-full text-xs font-medium bg-primary/15 text-primary tabular-nums">
-                                {width}×{height}
-                            </span>
-                            {hasPixelLimit && (
-                                <span className={`flex items-center justify-center px-2 h-5 rounded-full text-xs font-medium tabular-nums ${isOverLimit
-                                    ? "bg-destructive/15 text-destructive"
-                                    : "bg-muted text-muted-foreground"
-                                    }`}>
-                                    {megapixels} ({percentOfLimit.toFixed(1)}%)
-                                </span>
-                            )}
-                        </div>
-                    ) : undefined
-                }
-                rightContent={
-                    dimensionsEnabled ? (
-                        <DimensionHeaderControls
-                            megapixels={megapixels}
-                            isOverLimit={isOverLimit}
-                            percentOfLimit={percentOfLimit}
-                            hasPixelLimit={hasPixelLimit}
-                            linked={dimensionsLinked}
-                            onLinkedChange={onDimensionsLinkedChange}
-                            disabled={isGenerating}
-                        />
-                    ) : undefined
-                }
-            >
-                <DimensionControls
-                    width={width}
-                    height={height}
-                    onWidthChange={onWidthChange}
-                    onHeightChange={onHeightChange}
-                    modelId={model}
-                    disabled={isGenerating}
-                    hideHeader
-                    linked={dimensionsLinked}
-                    onLinkedChange={onDimensionsLinkedChange}
-                />
-                <Separator className="bg-border/50" />
-            </CollapsibleSection>
+  const selectedModelData = React.useMemo(() => models.find((m) => m.id === model), [models, model]);
 
-            {/* Reference Image */}
-            <CollapsibleSection
-                title="Reference"
-                icon={<ImageIcon className="h-3.5 w-3.5" />}
-                testId="reference-image-section"
-                collapsedContent={
-                    referenceImage ? (
-                        <span className="flex items-center justify-center px-2 h-5 rounded-full text-xs font-medium bg-primary/15 text-primary">
-                            1 reference
-                        </span>
-                    ) : undefined
-                }
-                rightContent={
-                    referenceImage && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onReferenceImageChange(undefined)}
-                            className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-destructive flex items-center gap-1"
-                        >
-                            <X className="h-3 w-3" />
-                            Clear
-                        </Button>
-                    )
-                }
-            >
-                <ReferenceImagePicker
-                    selectedImage={referenceImage}
-                    onSelect={onReferenceImageChange}
-                    disabled={isGenerating}
-                    hideHeader
-                />
-                <Separator className="bg-border/50" />
-            </CollapsibleSection>
+  const badgeClassName =
+    "flex items-center gap-1.5 px-2 h-5 rounded-full text-xs font-bold bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/20";
 
-            {/* Video Frames (video models only) */}
-            {isVideoModel && videoSettings && onVideoSettingsChange && videoReferenceImages && onVideoReferenceImagesChange && (
-                <CollapsibleSection
-                    title="Video Frames"
-                    icon={<Video className="h-3.5 w-3.5" />}
-                    testId="video-frames-section"
-                    collapsedContent={
-                        videoFrameCount > 0 ? (
-                            <span className="flex items-center justify-center px-2 h-5 rounded-full text-xs font-medium bg-primary/15 text-primary">
-                                {videoFrameCount} frame{videoFrameCount !== 1 ? "s" : ""}
-                            </span>
-                        ) : undefined
-                    }
-                    rightContent={
-                        videoFrameCount > 0 && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => onVideoReferenceImagesChange({ firstFrame: undefined, lastFrame: undefined })}
-                                className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-destructive flex items-center gap-1"
-                            >
-                                <X className="h-3 w-3" />
-                                Clear
-                            </Button>
-                        )
-                    }
+  return (
+    <>
+      {/* Model Selection */}
+      <CollapsibleSection
+        title="Model"
+        icon={<Sparkles className="h-3.5 w-3.5" />}
+        testId="model-section"
+        open={modelExpanded}
+        onOpenChange={setModelExpanded}
+        collapsedContent={
+          <span className={cn(badgeClassName, "truncate max-w-[140px]")}>
+            {selectedModelData?.logo ? (
+              <Image
+                src={selectedModelData.logo}
+                alt=""
+                width={14}
+                height={14}
+                className={cn(
+                  "shrink-0",
+                  (selectedModelData.logo.includes("openai.svg") || selectedModelData.logo.includes("flux.svg")) && "dark:invert"
+                )}
+              />
+            ) : (
+              <Wand2 className="h-3 w-3 shrink-0" />
+            )}
+            {selectedModelData?.displayName || model}
+          </span>
+        }
+      >
+        <ModelSelector
+          selectedModel={model}
+          onModelChange={handleModelChange}
+          models={models}
+          disabled={isGenerating || isLoadingModels}
+          hideHeader
+        />
+        <Separator className="bg-border/50" />
+      </CollapsibleSection>
+
+      {/* Aspect Ratio */}
+      <CollapsibleSection
+        title="Aspect Ratio"
+        icon={<Frame className="h-3.5 w-3.5" />}
+        testId="aspect-ratio-section"
+        collapsedContent={
+          <span className={cn(badgeClassName, "tabular-nums")}>
+            {aspectRatio === "custom" ? "Custom" : aspectRatio} • {width}×{height}
+          </span>
+        }
+      >
+        <AspectRatioSelector
+          selectedRatio={aspectRatio}
+          onRatioChange={onAspectRatioChange}
+          ratios={aspectRatios}
+          disabled={isGenerating}
+          hideHeader
+          constraints={constraints}
+          selectedTier={resolutionTier}
+          onTierChange={onResolutionTierChange}
+          showTierSelector={!!constraints && !!onResolutionTierChange}
+        />
+        <Separator className="bg-border/50" />
+      </CollapsibleSection>
+
+      {/* Video Frames (video models only) - FROM HEAD */}
+      {isVideoModel && videoSettings && onVideoSettingsChange && videoReferenceImages && onVideoReferenceImagesChange && (
+          <CollapsibleSection
+              title="Video Frames"
+              icon={<Video className="h-3.5 w-3.5" />}
+              testId="video-frames-section"
+              collapsedContent={
+                  videoFrameCount > 0 ? (
+                      <span className={cn(badgeClassName, "tabular-nums")}>
+                          {videoFrameCount} frame{videoFrameCount !== 1 ? "s" : ""}
+                      </span>
+                  ) : undefined
+              }
+              rightContent={
+                  videoFrameCount > 0 && (
+                      <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onVideoReferenceImagesChange({ firstFrame: undefined, lastFrame: undefined })}
+                          className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-destructive flex items-center gap-1"
+                      >
+                          <X className="h-3 w-3" />
+                          Clear
+                      </Button>
+                  )
+              }
+          >
+              <VideoReferenceImagePicker
+                  selectedImages={videoReferenceImages}
+                  onImagesChange={onVideoReferenceImagesChange}
+                  supportsInterpolation={supportsInterpolation}
+                  disabled={isGenerating}
+                  hideHeader
+              />
+              <Separator className="bg-border/50" />
+          </CollapsibleSection>
+      )}
+
+      {/* Video Settings (video models only) - FROM HEAD */}
+      {isVideoModel && videoSettings && onVideoSettingsChange && durationConstraints && (
+          <VideoSettingsPanel
+              settings={videoSettings}
+              onSettingsChange={onVideoSettingsChange}
+              durationConstraints={durationConstraints}
+              supportsAudio={supportsAudio}
+              disabled={isGenerating}
+          />
+      )}
+
+      {/* Dimensions - only shown in Custom mode for cleaner UX */}
+      {aspectRatio === "custom" && dimensionsEnabled && (
+        <CollapsibleSection
+          title="Dimensions"
+          icon={<Ruler className="h-3.5 w-3.5" />}
+          testId="dimensions-section"
+          defaultExpanded={true}
+          disabled={false}
+          collapsedContent={
+            <div className="flex items-center gap-1.5">
+              <span className={cn(badgeClassName, "tabular-nums")}>
+                {width}×{height}
+              </span>
+              {hasPixelLimit && (
+                <span
+                  className={cn(
+                    "flex items-center justify-center px-2 h-5 rounded-full text-xs font-bold tabular-nums border",
+                    isOverLimit
+                      ? "bg-destructive/15 text-destructive border-destructive/20"
+                      : "bg-muted text-muted-foreground border-transparent"
+                  )}
                 >
-                    <VideoReferenceImagePicker
-                        selectedImages={videoReferenceImages}
-                        onImagesChange={onVideoReferenceImagesChange}
-                        supportsInterpolation={supportsInterpolation}
-                        disabled={isGenerating}
-                        hideHeader
-                    />
-                    <Separator className="bg-border/50" />
-                </CollapsibleSection>
-            )}
+                  {megapixels} ({percentOfLimit.toFixed(1)}%)
+                </span>
+              )}
+            </div>
+          }
+          rightContent={
+            <DimensionHeaderControls
+              megapixels={megapixels}
+              isOverLimit={isOverLimit}
+              percentOfLimit={percentOfLimit}
+              hasPixelLimit={hasPixelLimit}
+              linked={dimensionsLinked}
+              onLinkedChange={onDimensionsLinkedChange}
+              disabled={isGenerating}
+            />
+          }
+        >
+          <DimensionControls
+            width={width}
+            height={height}
+            onWidthChange={onWidthChange}
+            onHeightChange={onHeightChange}
+            modelId={model}
+            disabled={isGenerating}
+            hideHeader
+            linked={dimensionsLinked}
+            onLinkedChange={onDimensionsLinkedChange}
+          />
+          <Separator className="bg-border/50" />
+        </CollapsibleSection>
+      )}
 
-            {/* Seed */}
-            <CollapsibleSection
-                title="Seed"
-                icon={<Dice6 className="h-3.5 w-3.5" />}
-                testId="seed-section"
-                collapsedContent={
-                    <span className="flex items-center justify-center px-2 h-5 rounded-full text-xs font-medium bg-primary/15 text-primary tabular-nums">
-                        {seed === -1 ? "Random" : seed}
-                    </span>
-                }
+      {/* Reference Image */}
+      <CollapsibleSection
+        title="Reference"
+        icon={<ImageIcon className="h-3.5 w-3.5" />}
+        testId="reference-image-section"
+        collapsedContent={referenceImage ? <span className={badgeClassName}>1 reference</span> : undefined}
+        rightContent={
+          referenceImage && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onReferenceImageChange(undefined)}
+              className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-destructive flex items-center gap-1"
             >
-                <SeedControl
-                    seed={seed}
-                    onSeedChange={onSeedChange}
-                    isLocked={seedLocked}
-                    onLockChange={onSeedLockedChange}
-                    disabled={isGenerating}
-                    hideHeader
-                />
-                <Separator className="bg-border/50" />
-            </CollapsibleSection>
+              <X className="h-3 w-3" />
+              Clear
+            </Button>
+          )
+        }
+      >
+        <ReferenceImagePicker selectedImage={referenceImage} onSelect={onReferenceImageChange} disabled={isGenerating} hideHeader />
+        <Separator className="bg-border/50" />
+      </CollapsibleSection>
 
-            {/* Options */}
-            <OptionsPanel
-                options={options}
-                onOptionsChange={onOptionsChange}
-                disabled={isGenerating}
-            />
+      {/* Seed */}
+      <CollapsibleSection
+        title="Seed"
+        icon={<Dice6 className="h-3.5 w-3.5" />}
+        testId="seed-section"
+        collapsedContent={<span className={cn(badgeClassName, "tabular-nums")}>{seed === -1 ? "Random" : seed}</span>}
+      >
+        <SeedControl
+          seed={seed}
+          onSeedChange={onSeedChange}
+          isLocked={seedLocked}
+          onLockChange={onSeedLockedChange}
+          disabled={isGenerating}
+          hideHeader
+        />
+        <Separator className="bg-border/50" />
+      </CollapsibleSection>
 
-            {/* Video Settings (video models only) */}
-            {isVideoModel && videoSettings && onVideoSettingsChange && durationConstraints && (
-                <VideoSettingsPanel
-                    settings={videoSettings}
-                    onSettingsChange={onVideoSettingsChange}
-                    durationConstraints={durationConstraints}
-                    supportsAudio={supportsAudio}
-                    disabled={isGenerating}
-                />
-            )}
+      {/* Options */}
+      <OptionsPanel options={options} onOptionsChange={onOptionsChange} disabled={isGenerating} />
 
-            {/* Batch Mode */}
-            <BatchModePanel
-                settings={batchSettings}
-                onSettingsChange={onBatchSettingsChange}
-                disabled={isGenerating || isBatchActive}
-            />
-        </>
-    )
-})
+      {/* Batch Mode */}
+      <BatchModePanel settings={batchSettings} onSettingsChange={onBatchSettingsChange} disabled={isGenerating || isBatchActive} />
+    </>
+  );
+});

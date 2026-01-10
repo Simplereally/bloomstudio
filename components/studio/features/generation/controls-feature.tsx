@@ -104,7 +104,12 @@ function ControlsFeatureView({
             aspectRatio={generationSettings.aspectRatio}
             onAspectRatioChange={generationSettings.handleAspectRatioChange}
             aspectRatios={generationSettings.aspectRatios}
-
+            
+            // Resolution tier
+            resolutionTier={generationSettings.resolutionTier}
+            onResolutionTierChange={generationSettings.handleResolutionTierChange}
+            constraints={generationSettings.constraints}
+            
             // Dimensions
             width={generationSettings.width}
             height={generationSettings.height}

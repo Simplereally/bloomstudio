@@ -2,6 +2,7 @@
 
 /**
  * DimensionControls - Model-aware linked width/height sliders with lock toggle
+ * Enhanced with megapixel budget visualization and output certainty indicators.
  * Follows SRP: Only manages dimension input UI with model constraint awareness
  */
 
@@ -14,9 +15,10 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { MegapixelBudget } from "./megapixel-budget"
 import { useDimensionConstraints } from "@/hooks/use-dimension-constraints"
 import { cn } from "@/lib/utils"
-import { AlertTriangle, Link, Ruler, Unlink } from "lucide-react"
+import { Link, Ruler, Unlink } from "lucide-react"
 import * as React from "react"
 
 export interface DimensionControlsProps {
@@ -46,6 +48,8 @@ export interface DimensionControlsProps {
     linked?: boolean
     /** Callback when linked state changes (controlled mode) */
     onLinkedChange?: (linked: boolean) => void
+    /** Show the enhanced megapixel budget visualization */
+    showBudgetVisualization?: boolean
 }
 
 export const DimensionControls = React.memo(function DimensionControls({
@@ -59,6 +63,7 @@ export const DimensionControls = React.memo(function DimensionControls({
     hideHeader = false,
     linked: linkedProp,
     onLinkedChange,
+    showBudgetVisualization = true,
 }: DimensionControlsProps) {
     // Support both controlled and uncontrolled modes for linked state
     const [internalLinked, setInternalLinked] = React.useState(false)
@@ -80,10 +85,6 @@ export const DimensionControls = React.memo(function DimensionControls({
         maxWidth,
         maxHeight,
         isEnabled,
-        pixelCount,
-        isOverLimit,
-        percentOfLimit,
-        hasPixelLimit,
         handleWidthChange: constrainedWidthChange,
         handleHeightChange: constrainedHeightChange,
     } = useDimensionConstraints({
@@ -139,8 +140,6 @@ export const DimensionControls = React.memo(function DimensionControls({
         return null
     }
 
-    const megapixels = (pixelCount / 1_000_000).toFixed(2)
-
     return (
         <div className={cn("space-y-3", className)} data-testid="dimension-controls">
             {!hideHeader && (
@@ -150,26 +149,15 @@ export const DimensionControls = React.memo(function DimensionControls({
                         Dimensions
                     </Label>
                     <div className="flex items-center gap-2">
-                        <span
-                            className={cn(
-                                "text-xs",
-                                isOverLimit ? "text-destructive font-medium" : "text-muted-foreground"
-                            )}
-                            data-testid="megapixels"
-                        >
-                            {megapixels} MP
-                            {hasPixelLimit && percentOfLimit !== null && ` (${percentOfLimit.toFixed(0)}%)`}
-                        </span>
-                        {isOverLimit && (
-                            <Tooltip>
-                                <TooltipTrigger>
-                                    <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    Exceeds model limit. Image will be auto-scaled.
-                                </TooltipContent>
-                            </Tooltip>
-                        )}
+                        {/* Compact megapixel display in header */}
+                        <MegapixelBudget
+                            width={width}
+                            height={height}
+                            maxPixels={constraints.maxPixels}
+                            outputCertainty={constraints.outputCertainty}
+                            dimensionWarning={constraints.dimensionWarning}
+                            compact
+                        />
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button
@@ -194,6 +182,17 @@ export const DimensionControls = React.memo(function DimensionControls({
                         </Tooltip>
                     </div>
                 </div>
+            )}
+
+            {/* Full megapixel budget visualization when header is hidden or explicitly enabled */}
+            {(hideHeader || showBudgetVisualization) && (
+                <MegapixelBudget
+                    width={width}
+                    height={height}
+                    maxPixels={constraints.maxPixels}
+                    outputCertainty={constraints.outputCertainty}
+                    dimensionWarning={constraints.dimensionWarning}
+                />
             )}
 
             {/* Width Control */}

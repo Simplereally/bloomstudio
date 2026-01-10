@@ -2,36 +2,27 @@ import { describe, it, expect, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { StudioLayout } from "./studio-layout"
 
-interface MockPanelGroupProps {
-    children?: React.ReactNode
-    className?: string
-    "data-testid"?: string
-}
-
-interface MockPanelProps {
-    children?: React.ReactNode
-    "data-testid"?: string
-}
-
-interface MockHandleProps {
-    "data-testid"?: string
-}
-
-// Mock the resizable components to avoid complex DOM interactions in tests
-// Filter out all non-DOM props to prevent React warnings
-vi.mock("@/components/ui/resizable", () => ({
-    ResizablePanelGroup: ({ children, className, "data-testid": testId }: MockPanelGroupProps) => (
-        <div data-testid={testId ?? "studio-layout"} className={className}>
+// Mock the Sidebar components
+vi.mock("@/components/ui/sidebar", () => ({
+    SidebarProvider: ({ children, open, "data-testid": testId, style }: any) => (
+        <div data-testid={testId || "sidebar-provider"} data-open={String(open)} style={style}>
             {children}
         </div>
     ),
-    ResizablePanel: ({ children, "data-testid": testId }: MockPanelProps) => (
-        <div data-testid={testId}>
+    Sidebar: ({ children, side, "data-testid": testId }: any) => (
+        <div data-testid={testId || "sidebar"} data-side={side}>
             {children}
         </div>
     ),
-    ResizableHandle: ({ "data-testid": testId }: MockHandleProps) => (
-        <div data-testid={testId} />
+    SidebarContent: ({ children }: any) => (
+        <div data-testid="sidebar-content-wrapper">
+            {children}
+        </div>
+    ),
+    SidebarInset: ({ children }: any) => (
+        <div data-testid="sidebar-inset">
+            {children}
+        </div>
     ),
 }))
 
@@ -40,7 +31,24 @@ describe("StudioLayout", () => {
     const mockCanvas = <div data-testid="canvas-content">Canvas</div>
     const mockGallery = <div data-testid="gallery-content">Gallery</div>
 
-    it("renders all three panels when gallery is shown", () => {
+    it("renders sidebar and canvas correctly", () => {
+        render(
+            <StudioLayout
+                sidebar={mockSidebar}
+                canvas={mockCanvas}
+                showSidebar={true}
+            />
+        )
+
+        expect(screen.getByTestId("sidebar-content")).toBeInTheDocument()
+        expect(screen.getByTestId("canvas-content")).toBeInTheDocument()
+        
+        // Check if SidebarProvider for left sidebar receives correct open prop
+        const providers = screen.getAllByTestId("sidebar-provider")
+        expect(providers[0]).toHaveAttribute("data-open", "true")
+    })
+
+    it("renders gallery when provided", () => {
         render(
             <StudioLayout
                 sidebar={mockSidebar}
@@ -50,12 +58,32 @@ describe("StudioLayout", () => {
             />
         )
 
-        expect(screen.getByTestId("sidebar-content")).toBeInTheDocument()
-        expect(screen.getByTestId("canvas-content")).toBeInTheDocument()
         expect(screen.getByTestId("gallery-content")).toBeInTheDocument()
+        
+        // Check if nested SidebarProvider for gallery receives correct open prop
+        const providers = screen.getAllByTestId("sidebar-provider")
+        // Provider 0 is usually left, Provider 1 is inner/right
+        expect(providers[1]).toHaveAttribute("data-open", "true")
+        
+        // Check if right sidebar is rendered
+        const sidebars = screen.getAllByTestId("studio-gallery-panel")
+        expect(sidebars.length).toBeGreaterThan(0)
     })
 
-    it("renders only sidebar and canvas when gallery is hidden", () => {
+    it("passes false to sidebar provider when sidebar hidden", () => {
+        render(
+            <StudioLayout
+                sidebar={mockSidebar}
+                canvas={mockCanvas}
+                showSidebar={false}
+            />
+        )
+
+        const providers = screen.getAllByTestId("sidebar-provider")
+        expect(providers[0]).toHaveAttribute("data-open", "false")
+    })
+
+    it("passes false to gallery provider when gallery hidden", () => {
         render(
             <StudioLayout
                 sidebar={mockSidebar}
@@ -65,16 +93,21 @@ describe("StudioLayout", () => {
             />
         )
 
-        expect(screen.getByTestId("sidebar-content")).toBeInTheDocument()
-        expect(screen.getByTestId("canvas-content")).toBeInTheDocument()
-        expect(screen.queryByTestId("gallery-content")).not.toBeInTheDocument()
+        const providers = screen.getAllByTestId("sidebar-provider")
+        expect(providers[1]).toHaveAttribute("data-open", "false")
     })
 
-    it("renders without gallery when gallery prop is not provided", () => {
-        render(<StudioLayout sidebar={mockSidebar} canvas={mockCanvas} />)
+    it("does not render gallery sidebar if gallery prop is missing", () => {
+        render(
+            <StudioLayout
+                sidebar={mockSidebar}
+                canvas={mockCanvas}
+                // No gallery prop
+            />
+        )
 
-        expect(screen.getByTestId("sidebar-content")).toBeInTheDocument()
-        expect(screen.getByTestId("canvas-content")).toBeInTheDocument()
+        expect(screen.queryByTestId("gallery-content")).not.toBeInTheDocument()
+        expect(screen.queryByTestId("studio-gallery-panel")).not.toBeInTheDocument()
     })
 
     it("applies custom className", () => {
@@ -88,32 +121,5 @@ describe("StudioLayout", () => {
 
         const layout = screen.getByTestId("studio-layout")
         expect(layout).toHaveClass("custom-class")
-    })
-
-    it("renders resize handles when gallery is shown", () => {
-        render(
-            <StudioLayout
-                sidebar={mockSidebar}
-                canvas={mockCanvas}
-                gallery={mockGallery}
-                showGallery={true}
-            />
-        )
-
-        expect(screen.getByTestId("sidebar-handle")).toBeInTheDocument()
-        expect(screen.getByTestId("gallery-handle")).toBeInTheDocument()
-    })
-
-    it("renders only sidebar handle when gallery is hidden", () => {
-        render(
-            <StudioLayout
-                sidebar={mockSidebar}
-                canvas={mockCanvas}
-                showGallery={false}
-            />
-        )
-
-        expect(screen.getByTestId("sidebar-handle")).toBeInTheDocument()
-        expect(screen.queryByTestId("gallery-handle")).not.toBeInTheDocument()
     })
 })

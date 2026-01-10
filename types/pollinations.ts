@@ -28,6 +28,36 @@ export type AspectRatio =
   | "9:21"
   | "custom"
 
+// ============================================================================
+// Resolution Tier System
+// ============================================================================
+
+/**
+ * Resolution tier for aspect ratio presets.
+ * Each tier represents a target megapixel range for image generation.
+ */
+export type ResolutionTier = "sd" | "hd" | "2k" | "4k" | "max"
+
+/**
+ * Configuration for a resolution tier.
+ */
+export interface ResolutionTierConfig {
+  /** Target megapixels for this tier */
+  readonly targetMegapixels: number
+  /** Human-readable label */
+  readonly label: string
+  /** Short label for compact UI */
+  readonly shortLabel: string
+  /** Approximate description for tooltips */
+  readonly description: string
+}
+
+/**
+ * Output certainty level for a model.
+ * Indicates how reliably the model will produce the requested dimensions.
+ */
+export type OutputCertainty = "exact" | "likely" | "variable"
+
 /**
  * Model constraints configuration.
  * Each model can define its own pixel limits and UI behavior.
@@ -49,6 +79,14 @@ export interface ModelConstraints {
   readonly dimensionsEnabled: boolean
   /** Maximum seed value for this model (optional - defaults to API_CONSTRAINTS.seed.max) */
   readonly maxSeed?: number
+  /** Maximum aspect ratio allowed (max(w/h, h/w) must be <= this value) (optional) */
+  readonly maxAspectRatio?: number
+  /** Supported resolution tiers for this model */
+  readonly supportedTiers?: readonly ResolutionTier[]
+  /** How reliably the model produces requested dimensions */
+  readonly outputCertainty?: OutputCertainty
+  /** Warning message to display for dimension-related expectations */
+  readonly dimensionWarning?: string
 }
 
 /**
@@ -61,4 +99,5 @@ export interface AspectRatioOption {
   readonly height: number
   readonly icon: string
   readonly category?: "square" | "landscape" | "portrait" | "ultrawide"
+  readonly tags?: readonly string[]
 }

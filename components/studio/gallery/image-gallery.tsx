@@ -133,11 +133,14 @@ const VirtualizedGalleryGrid = React.memo(function VirtualizedGalleryGrid({
     
     // Calculate number of rows
     const rowCount = Math.ceil(images.length / columns)
+
+    const estimateSize = React.useCallback(() => rowHeight, [rowHeight])
     
+    // eslint-disable-next-line react-hooks/incompatible-library -- virtualizer is required
     const virtualizer = useVirtualizer({
         count: rowCount,
         getScrollElement: () => parentRef.current,
-        estimateSize: () => rowHeight,
+        estimateSize,
         overscan: 3, // Render 3 extra rows above/below viewport
     })
     

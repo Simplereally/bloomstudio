@@ -8,6 +8,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 import type { Metadata, Viewport } from "next"
 import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google"
 import type React from "react"
+import { JsonLd } from "@/components/seo/json-ld"
 import "./globals.css"
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist-sans" })
@@ -75,7 +76,7 @@ export const metadata: Metadata = {
     },
   },
   alternates: {
-    canonical: "/",
+    canonical: "./",
   },
   /* icons are handled by file conventions in /app directory */
   openGraph: {
@@ -128,6 +129,20 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${geist.variable} ${geistMono.variable} ${bricolage.variable} font-sans antialiased`}>
+        <JsonLd
+          data={{
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            name: "Bloom Studio",
+            url: process.env.NEXT_PUBLIC_APP_URL || "https://bloomstudio.fun",
+            logo: "https://bloomstudio.fun/branding/bloom-studio_logo.png",
+            contactPoint: {
+              "@type": "ContactPoint",
+              telephone: "",
+              contactType: "customer service",
+            },
+          }}
+        />
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"

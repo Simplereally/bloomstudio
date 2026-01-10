@@ -104,7 +104,7 @@ export const SavePromptForm = React.memo(function SavePromptForm({
                         id="prompt-content"
                         placeholder="Write your prompt here..."
                         defaultValue={initialContent ?? ""}
-                        className="min-h-32 max-h-56 resize-y text-sm leading-relaxed"
+                        className="min-h-32 max-h-56 resize-y text-sm leading-relaxed focus-visible:ring-0 focus-visible:border-primary"
                     />
                 </div>
 

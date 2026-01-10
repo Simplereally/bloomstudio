@@ -12,7 +12,7 @@ import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { SubscriptionBadge } from "@/components/subscription/subscription-badge"
 import { UpgradeModal } from "@/components/studio/upgrade-modal"
-import { Loader2, CreditCard } from "lucide-react"
+import { Loader2, CreditCard, Star, Github } from "lucide-react"
 import { useSubscriptionStatus } from "@/hooks/use-subscription-status"
 
 /**
@@ -225,6 +225,42 @@ export default function SettingsPage() {
                         Payments are securely processed by Stripe. Cancel anytime.
                     </p>
                 </CardFooter>
+            </Card>
+
+            {/* Pollinations API Boost */}
+            <Card className="border-yellow-500/20 bg-yellow-500/5">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
+                        Boost Your Limits
+                    </CardTitle>
+                    <CardDescription>
+                        Support the open-source project and unlock higher generation limits.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="rounded-lg border border-border/50 bg-background/50 p-4">
+                        <div className="flex items-start gap-4">
+                            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-yellow-500/10 text-yellow-500 flex items-center justify-center">
+                                <Github className="w-5 h-5" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="font-medium text-foreground">Star the Pollinations repo</p>
+                                <p className="text-sm text-muted-foreground mt-1 mb-4">
+                                    Default keys have limits of around 300 images/month. Starring the repo can unlock higher limits (up to ~900 images/month) permanently.
+                                </p>
+                                <Button
+                                    onClick={() => window.open("https://github.com/pollinations/pollinations", "_blank", "noopener,noreferrer")}
+                                    variant="outline"
+                                    className="w-full sm:w-auto"
+                                >
+                                    <Github className="w-4 h-4 mr-2" />
+                                    Star on GitHub
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
             </Card>
 
             {/* Modals */}

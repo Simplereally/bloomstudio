@@ -62,6 +62,12 @@ const mockGenerationSettings = {
     setOptions: vi.fn(),
     referenceImage: undefined,
     setReferenceImage: vi.fn(),
+    // Resolution tier settings
+    resolutionTier: "hd" as const,
+    setResolutionTier: vi.fn(),
+    handleResolutionTierChange: vi.fn(),
+    supportedTiers: ["hd"] as const,
+    constraints: undefined,
     // Video-specific settings
     isVideoModel: false,
     videoSettings: { duration: 5, audio: false },

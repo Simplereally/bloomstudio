@@ -10,6 +10,10 @@ export * from "./queries"
 // Dimension constraints hook
 export { useDimensionConstraints } from "./use-dimension-constraints"
 
+// Aspect ratio dimensions hook (standard resolutions)
+export { useAspectRatioDimensions } from "./use-aspect-ratio-dimensions"
+export type { UseAspectRatioDimensionsOptions, UseAspectRatioDimensionsReturn } from "./use-aspect-ratio-dimensions"
+
 // Local state hooks
 export { useGenerationControls } from "./use-generation-controls"
 export type { GenerationControlsState, UseGenerationControlsProps } from "./use-generation-controls"

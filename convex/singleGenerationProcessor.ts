@@ -145,6 +145,7 @@ export const processGeneration = internalAction({
                 audio: params.audio,
                 aspectRatio: params.aspectRatio,
                 lastFrameImage: params.lastFrameImage,
+                quality: params.quality ?? "high"
             })
 
             console.log(`${logger} Calling Pollinations: ${generationUrl}`)
