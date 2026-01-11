@@ -23,7 +23,7 @@ describe("VideoSettingsPanel", () => {
         defaultDuration: 4,
     }
 
-    const mockOnSettingsChange = vi.fn<[VideoSettings], void>()
+    const mockOnSettingsChange = vi.fn() as import("vitest").MockedFunction<(settings: VideoSettings) => void>
 
     beforeEach(() => {
         vi.clearAllMocks()

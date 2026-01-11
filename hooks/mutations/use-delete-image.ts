@@ -122,26 +122,23 @@ export function useBulkDeleteGeneratedImages() {
                 ...(result.thumbnailR2Keys ?? []),
             ]
 
-            // Delete all R2 files in parallel but don't block on failures
+            // Delete all R2 files in a single batch request
             if (allKeysToDelete.length > 0) {
-                await Promise.allSettled(
-                    allKeysToDelete.map(async (r2Key: string) => {
-                        try {
-                            const response = await fetch("/api/images/delete", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ r2Key }),
-                            })
-
-                            if (!response.ok) {
-                                const error = await response.json()
-                                console.error("[useBulkDeleteGeneratedImages] Failed to delete from R2:", error)
-                            }
-                        } catch (error) {
-                            console.error("[useBulkDeleteGeneratedImages] Network error deleting from R2:", error)
-                        }
+                try {
+                    const response = await fetch("/api/images/delete-bulk", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ r2Keys: allKeysToDelete }),
                     })
-                )
+
+                    if (!response.ok) {
+                        const error = await response.json()
+                        console.error("[useBulkDeleteGeneratedImages] Failed to delete from R2:", error)
+                        // Don't throw - Convex records are already deleted, UI should reflect that
+                    }
+                } catch (error) {
+                    console.error("[useBulkDeleteGeneratedImages] Network error deleting from R2:", error)
+                }
             }
 
             return result

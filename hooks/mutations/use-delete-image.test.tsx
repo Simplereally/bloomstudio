@@ -166,7 +166,7 @@ describe("useDeleteImage", () => {
     })
 
     describe("useBulkDeleteGeneratedImages", () => {
-        it("deletes multiple images with single Convex call (including thumbnails)", async () => {
+        it("deletes multiple images with single Convex call and single R2 bulk call", async () => {
             const mockRemoveMany = vi.fn().mockResolvedValue({
                 success: true,
                 successCount: 3,
@@ -187,8 +187,12 @@ describe("useDeleteImage", () => {
             expect(mockRemoveMany).toHaveBeenCalledTimes(1)
             expect(mockRemoveMany).toHaveBeenCalledWith({ imageIds })
 
-            // Should delete all R2 files (3 images + 3 thumbnails = 6)
-            expect(global.fetch).toHaveBeenCalledTimes(6)
+            // Should make a single bulk delete request to R2 with all keys
+            expect(global.fetch).toHaveBeenCalledTimes(1)
+            expect(global.fetch).toHaveBeenCalledWith("/api/images/delete-bulk", expect.objectContaining({
+                method: "POST",
+                body: JSON.stringify({ r2Keys: ["key1", "key2", "key3", "thumb1", "thumb2", "thumb3"] }),
+            }))
 
             // Should show single success toast
             expect(toast.success).toHaveBeenCalledTimes(1)
@@ -211,8 +215,11 @@ describe("useDeleteImage", () => {
 
             await result.current.mutateAsync(["id1"] as unknown as Id<"generatedImages">[])
 
-            // Should delete 1 image + 1 thumbnail = 2 R2 files
-            expect(global.fetch).toHaveBeenCalledTimes(2)
+            // Should make a single bulk delete request with 1 image + 1 thumbnail
+            expect(global.fetch).toHaveBeenCalledTimes(1)
+            expect(global.fetch).toHaveBeenCalledWith("/api/images/delete-bulk", expect.objectContaining({
+                body: JSON.stringify({ r2Keys: ["key1", "thumb1"] }),
+            }))
             expect(toast.success).toHaveBeenCalledWith("Deleted 1 image")
         })
 
@@ -232,8 +239,11 @@ describe("useDeleteImage", () => {
 
             await result.current.mutateAsync(["id1", "id2"] as unknown as Id<"generatedImages">[])
 
-            // Should only delete 2 images (no thumbnails)
-            expect(global.fetch).toHaveBeenCalledTimes(2)
+            // Should make a single bulk delete request with only the 2 images
+            expect(global.fetch).toHaveBeenCalledTimes(1)
+            expect(global.fetch).toHaveBeenCalledWith("/api/images/delete-bulk", expect.objectContaining({
+                body: JSON.stringify({ r2Keys: ["key1", "key2"] }),
+            }))
             expect(toast.success).toHaveBeenCalledWith("Deleted 2 images")
         })
 
@@ -296,7 +306,7 @@ describe("useDeleteImage", () => {
             expect(toast.error).toHaveBeenCalledWith("Failed to delete images", expect.any(Object))
         })
 
-        it("handles partial R2 deletion failures gracefully", async () => {
+        it("handles R2 bulk deletion failures gracefully", async () => {
             const mockRemoveMany = vi.fn().mockResolvedValue({
                 success: true,
                 successCount: 2,
@@ -306,18 +316,10 @@ describe("useDeleteImage", () => {
             })
             ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemoveMany)
 
-            // Make second R2 delete fail
-            let callCount = 0
-            global.fetch = vi.fn().mockImplementation(() => {
-                callCount++
-                if (callCount === 2) {
-                    return Promise.reject(new Error("Network error"))
-                }
-                return Promise.resolve({
-                    ok: true,
-                    json: () => Promise.resolve({ success: true }),
-                })
-            }) as unknown as typeof fetch
+            // Make the bulk R2 delete fail
+            global.fetch = vi.fn().mockImplementation(() =>
+                Promise.reject(new Error("Network error"))
+            ) as unknown as typeof fetch
 
             const { result } = renderHook(() => useBulkDeleteGeneratedImages(), {
                 wrapper: createWrapper(),
@@ -326,6 +328,11 @@ describe("useDeleteImage", () => {
             // Should succeed despite R2 failure (Convex records already deleted)
             await result.current.mutateAsync(["id1", "id2"] as unknown as Id<"generatedImages">[])
 
+            // Should have attempted the bulk delete
+            expect(global.fetch).toHaveBeenCalledTimes(1)
+            expect(global.fetch).toHaveBeenCalledWith("/api/images/delete-bulk", expect.objectContaining({
+                body: JSON.stringify({ r2Keys: ["key1", "key2", "thumb1", "thumb2"] }),
+            }))
             expect(toast.success).toHaveBeenCalledWith("Deleted 2 images")
         })
     })

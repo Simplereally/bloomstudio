@@ -8,6 +8,7 @@
 import { auth } from "@clerk/nextjs/server"
 import { NextRequest, NextResponse } from "next/server"
 import { deleteImage } from "@/lib/storage"
+import crypto from "crypto"
 
 interface DeleteResponse {
     success: true
@@ -19,6 +20,14 @@ interface DeleteError {
         code: string
         message: string
     }
+}
+
+/**
+ * Hash a userId the same way it's hashed when generating R2 keys.
+ * This ensures authorization checks match the stored key format.
+ */
+function hashUserId(userId: string): string {
+    return crypto.createHash("sha256").update(userId).digest("hex")
 }
 
 export async function POST(
@@ -43,11 +52,13 @@ export async function POST(
         }
 
         /**
-         * Security check: Ensure the key contains the user's ID to prevent
+         * Security check: Ensure the key contains the user's hashed ID to prevent
          * deleting other users' images.
-         * R2 keys are formatted as: {type}/{userId}/{filename}
+         * R2 keys are formatted as: {type}/{userHash}/{filename}
+         * where userHash is SHA256(userId)
          */
-        if (!r2Key.includes(`/${userId}/`)) {
+        const userHash = hashUserId(userId)
+        if (!r2Key.includes(`/${userHash}/`)) {
             console.warn(`[/api/images/delete] Unauthorized deletion attempt: User ${userId} tried to delete ${r2Key}`)
             return NextResponse.json(
                 { success: false, error: { code: "FORBIDDEN", message: "Not authorized to delete this image" } },

@@ -63,8 +63,8 @@ describe("Standard Resolutions Configuration", () => {
             expect(STANDARD_RESOLUTIONS.hd["9:16"]).toEqual({ width: 1080, height: 1920 })
         })
 
-        it("should have standard HD 1:1 resolution as 1080x1080 (shorter edge model)", () => {
-            expect(STANDARD_RESOLUTIONS.hd["1:1"]).toEqual({ width: 1080, height: 1080 })
+        it("should have standard HD 1:1 resolution as 1024x1024 (optimized for AI generation)", () => {
+            expect(STANDARD_RESOLUTIONS.hd["1:1"]).toEqual({ width: 1024, height: 1024 })
         })
 
         it("should have standard 4K 16:9 resolution as 3840x2160", () => {

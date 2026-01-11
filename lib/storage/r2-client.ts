@@ -8,6 +8,7 @@ import {
     S3Client,
     PutObjectCommand,
     DeleteObjectCommand,
+    DeleteObjectsCommand,
     HeadObjectCommand,
 } from "@aws-sdk/client-s3"
 import { withRetry, isRetryableError } from "./retry"
@@ -103,6 +104,35 @@ export async function deleteImage(key: string): Promise<void> {
     })
 
     await getClient().send(command)
+}
+
+/**
+ * Delete multiple images from R2 in a single batch operation.
+ * Uses S3's DeleteObjectsCommand for efficiency (up to 1000 objects per request).
+ * 
+ * @param keys - Array of R2 object keys to delete
+ */
+export async function deleteImages(keys: string[]): Promise<void> {
+    if (keys.length === 0) return
+
+    // S3/R2 DeleteObjects supports up to 1000 objects per request
+    const MAX_BATCH_SIZE = 1000
+    
+    // Process in batches if necessary
+    for (let i = 0; i < keys.length; i += MAX_BATCH_SIZE) {
+        const batch = keys.slice(i, i + MAX_BATCH_SIZE)
+        
+        const command = new DeleteObjectsCommand({
+            Bucket: BUCKET_NAME(),
+            Delete: {
+                Objects: batch.map(key => ({ Key: key })),
+                // Don't stop on errors, try to delete as many as possible
+                Quiet: true,
+            },
+        })
+
+        await getClient().send(command)
+    }
 }
 
 /**

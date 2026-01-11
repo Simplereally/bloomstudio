@@ -76,7 +76,7 @@ export const CUSTOM_ASPECT_RATIO: AspectRatioDefinition = {
  *
  * Examples:
  *   - HD 16:9 = 1920×1080 (shorter edge 1080 ✓)
- *   - HD 1:1  = 1080×1080 (both edges 1080 ✓)
+ *   - HD 1:1  = 1024×1024 (optimized for AI generation)
  *   - 4K 1:1  = 2160×2160 (both edges 2160 ✓)
  *   - 4K 9:16 = 2160×3840 (shorter edge 2160 ✓)
  */
@@ -104,7 +104,7 @@ export const STANDARD_RESOLUTIONS: Record<
     // HD: 1080p reference (shorter edge = 1080)
     // ──────────────────────────────────────────────────────────────────────────
     hd: {
-        "1:1": { width: 1080, height: 1080 },
+        "1:1": { width: 1024, height: 1024 },
         "16:9": { width: 1920, height: 1080 },
         "9:16": { width: 1080, height: 1920 },
         "4:3": { width: 1440, height: 1080 },

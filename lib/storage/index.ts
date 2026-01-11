@@ -7,6 +7,7 @@
 export {
     uploadImage,
     deleteImage,
+    deleteImages,
     imageExists,
     generateImageKey,
     getPublicUrl,
