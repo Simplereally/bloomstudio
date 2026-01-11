@@ -15,12 +15,6 @@ describe("useStudioUI", () => {
         id: "test-image-1",
         url: "https://example.com/image.jpg",
         prompt: "A beautiful sunset",
-        params: {
-            prompt: "A beautiful sunset",
-            model: "zimage",
-            width: 1024,
-            height: 1024,
-        } as any
     })
 
     beforeEach(() => {

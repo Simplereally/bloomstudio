@@ -62,7 +62,7 @@ describe("CanvasFeature", () => {
             model: "flux",
             width: 1024,
             height: 1024,
-        } as any
+        }
     })
 
     const defaultProps: CanvasFeatureProps = {

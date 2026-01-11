@@ -217,14 +217,11 @@ export function useGenerateImage(
                         private: params.private,
                         safe: params.safe,
                         image: params.image,
-                        // @ts-ignore - Video params
-                        duration: params.duration,
-                        // @ts-ignore - Video params
-                        audio: params.audio,
-                        // @ts-ignore - Video params
-                        aspectRatio: params.aspectRatio,
-                        // @ts-ignore - Video params
-                        lastFrameImage: params.lastFrameImage,
+                        // Video-specific params: safely access using 'in' operator for union type
+                        duration: "duration" in params ? params.duration : undefined,
+                        audio: "audio" in params ? params.audio : undefined,
+                        aspectRatio: "aspectRatio" in params ? params.aspectRatio : undefined,
+                        lastFrameImage: "lastFrameImage" in params ? params.lastFrameImage : undefined,
                     },
                 })
                 setGenerationId(id)

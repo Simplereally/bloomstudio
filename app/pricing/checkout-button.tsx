@@ -70,7 +70,7 @@ export function CheckoutButton({ tierName, cta, highlighted, variant }: Checkout
             const { url } = await createCheckout({
                 priceId: STRIPE_CONFIG.prices.proMonthly,
                 isAnnual: false,
-                successUrl: `${window.location.origin}/studio?upgraded=true`,
+                successUrl: `${window.location.origin}/pricing?success=true`,
                 cancelUrl: `${window.location.origin}/pricing?canceled=true`,
             })
 

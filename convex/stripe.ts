@@ -37,7 +37,7 @@ export const createSubscriptionCheckout = action({
 
         // Determine success/cancel URLs
         // Use provided URLs or fallback to environment (mostly for backward compatibility/prod)
-        const successUrl = args.successUrl || `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/studio?upgraded=true`
+        const successUrl = args.successUrl || `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/pricing?success=true`
         const cancelUrl = args.cancelUrl || `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/pricing?canceled=true`
 
         // Create checkout session using raw Stripe SDK for promotion code support
