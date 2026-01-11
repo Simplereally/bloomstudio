@@ -5,14 +5,8 @@
  * Follows SRP: Only manages image action buttons
  */
 
+
 import { Button } from "@/components/ui/button"
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import {
     Tooltip,
     TooltipContent,
@@ -24,11 +18,8 @@ import {
     Check,
     Copy,
     Download,
-    ExternalLink,
     Heart,
-    MoreHorizontal,
     RefreshCw,
-    Share2,
 } from "lucide-react"
 import * as React from "react"
 
@@ -71,7 +62,6 @@ export function ImageToolbar({
     className,
 }: ImageToolbarProps) {
     const [copied, setCopied] = React.useState(false)
-    const [isDropdownOpen, setIsDropdownOpen] = React.useState(false)
 
     if (!image) return null
 
@@ -94,11 +84,11 @@ export function ImageToolbar({
                 "group-hover:opacity-100 group-hover:pointer-events-auto",
                 "hover:opacity-100 hover:pointer-events-auto",
                 "focus-within:opacity-100 focus-within:pointer-events-auto",
-                "data-[dropdown-open=true]:opacity-100 data-[dropdown-open=true]:pointer-events-auto",
+
                 position === "top" ? "top-4" : "bottom-4",
                 className
             )}
-            data-dropdown-open={isDropdownOpen}
+
             data-testid="image-toolbar"
         >
             {/* Primary Actions */}
@@ -176,41 +166,6 @@ export function ImageToolbar({
                 </TooltipTrigger>
                 <TooltipContent side="bottom">Regenerate</TooltipContent>
             </Tooltip>
-
-            {/* More Actions Dropdown */}
-            <DropdownMenu onOpenChange={setIsDropdownOpen}>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <DropdownMenuTrigger asChild>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                data-testid="more-button"
-                            >
-                                <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">More actions</TooltipContent>
-                </Tooltip>
-                <DropdownMenuContent 
-                    align="end" 
-                    className="w-48"
-                    onCloseAutoFocus={(e) => e.preventDefault()}
-                >
-                    <DropdownMenuItem onClick={onShare}>
-                        <Share2 className="mr-2 h-4 w-4" />
-                        Share Image
-                    </DropdownMenuItem>
-
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={onOpenInNewTab}>
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                        Open in New Tab
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
         </div>
     )
 }

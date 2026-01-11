@@ -287,6 +287,26 @@ vi.mock("@/components/ui/scroll-area", () => ({
     ScrollArea: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
+vi.mock("@/components/studio/batch/batch-action-button", () => ({
+    BatchActionButton: ({ onPause, onResume, onCancel, isPaused, completedCount, totalCount, inFlightCount }: {
+        isPaused: boolean
+        completedCount: number
+        totalCount: number
+        inFlightCount?: number
+        onPause: () => void
+        onResume: () => void
+        onCancel: () => void
+    }) => (
+        <div data-testid="batch-action-button">
+            <button onClick={isPaused ? onResume : onPause} data-testid="batch-toggle">
+                {isPaused ? "Resume" : "Pause"} ({completedCount}/{totalCount})
+                {isPaused && inFlightCount && inFlightCount > 0 ? ` + ${inFlightCount} finishing` : ""}
+            </button>
+            <button onClick={onCancel} data-testid="batch-cancel">Cancel</button>
+        </div>
+    ),
+}))
+
 // Mock utils - isLocalhost returns false by default so dev-only modals don't render in tests
 vi.mock("@/lib/utils", () => ({
     isLocalhost: vi.fn(() => false),

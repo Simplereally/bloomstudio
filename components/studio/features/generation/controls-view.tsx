@@ -39,7 +39,7 @@ import { Separator } from "@/components/ui/separator";
 import type { ModelDefinition, VideoDurationConstraints } from "@/lib/config/models";
 import { cn } from "@/lib/utils";
 import type { AspectRatio, AspectRatioOption, ModelConstraints, ResolutionTier } from "@/types/pollinations";
-import { Dice6, Frame, Image as ImageIcon, Ruler, Sparkles, X, Wand2, Video } from "lucide-react";
+import { Dice6, Frame, Image as ImageIcon, Layers, Ruler, Settings2, Sparkles, X, Wand2, Video, Volume2 } from "lucide-react";
 import Image from "next/image";
 import * as React from "react";
 
@@ -286,13 +286,26 @@ export const ControlsView = React.memo(function ControlsView({
 
       {/* Video Settings (video models only) - FROM HEAD */}
       {isVideoModel && videoSettings && onVideoSettingsChange && durationConstraints && (
-          <VideoSettingsPanel
-              settings={videoSettings}
-              onSettingsChange={onVideoSettingsChange}
-              durationConstraints={durationConstraints}
-              supportsAudio={supportsAudio}
-              disabled={isGenerating}
-          />
+          <CollapsibleSection
+              title="Video Settings"
+              icon={<Video className="h-3.5 w-3.5" />}
+              testId="video-settings-section"
+              collapsedContent={
+                  <span className={cn(badgeClassName, "tabular-nums")}>
+                      {videoSettings.duration}s
+                      {supportsAudio && videoSettings.audio && <Volume2 className="h-3 w-3" />}
+                  </span>
+              }
+          >
+              <VideoSettingsPanel
+                  settings={videoSettings}
+                  onSettingsChange={onVideoSettingsChange}
+                  durationConstraints={durationConstraints}
+                  supportsAudio={supportsAudio}
+                  disabled={isGenerating}
+              />
+              <Separator className="bg-border/50" />
+          </CollapsibleSection>
       )}
 
       {/* Dimensions - only shown in Custom mode for cleaner UX */}
@@ -392,10 +405,40 @@ export const ControlsView = React.memo(function ControlsView({
       </CollapsibleSection>
 
       {/* Options */}
-      <OptionsPanel options={options} onOptionsChange={onOptionsChange} disabled={isGenerating} />
+      <CollapsibleSection
+        title="Advanced Options"
+        icon={<Settings2 className="h-3.5 w-3.5" />}
+        testId="options-section"
+        collapsedContent={
+          (() => {
+             const activeCount = Object.values(options).filter(Boolean).length;
+             return activeCount > 0 ? (
+                 <span className={cn(badgeClassName, "tabular-nums")}>
+                    {activeCount} active
+                 </span>
+             ) : undefined;
+          })()
+        }
+      >
+        <OptionsPanel options={options} onOptionsChange={onOptionsChange} disabled={isGenerating} />
+        <Separator className="bg-border/50" />
+      </CollapsibleSection>
 
       {/* Batch Mode */}
-      <BatchModePanel settings={batchSettings} onSettingsChange={onBatchSettingsChange} disabled={isGenerating || isBatchActive} />
+      <CollapsibleSection
+        title="Batch Mode"
+        icon={<Layers className="h-3.5 w-3.5" />}
+        testId="batch-mode-section"
+        collapsedContent={
+            batchSettings.enabled ? (
+                 <span className={cn(badgeClassName, "tabular-nums")}>
+                    {batchSettings.count} images
+                 </span>
+            ) : undefined
+        }
+      >
+        <BatchModePanel settings={batchSettings} onSettingsChange={onBatchSettingsChange} disabled={isGenerating || isBatchActive} />
+      </CollapsibleSection>
     </>
   );
 });

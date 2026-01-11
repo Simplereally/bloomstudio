@@ -70,7 +70,6 @@ export function PaginatedImageGrid({
     onSelectionChange,
 }: PaginatedImageGridProps) {
     const [selectedImage, setSelectedImage] = useState<ImageCardData | null>(null)
-    const [buttonState, setButtonState] = useState<"idle" | "hovered" | "launching">("idle")
     
     // Ref for the infinite scroll sentinel element
     const sentinelRef = useRef<HTMLDivElement>(null)
@@ -82,25 +81,19 @@ export function PaginatedImageGrid({
     const handleCloseLightbox = useCallback(() => {
         setSelectedImage(null)
     }, [])
+    const [isLaunching, setIsLaunching] = useState(false)
 
-    const handleHoverStart = () => {
-        if (buttonState === "idle") setButtonState("hovered")
-    }
-
-    const handleHoverEnd = () => {
-        if (buttonState === "hovered") setButtonState("idle")
-    }
-
+    // Scroll to top with a delay for the launch animation
     const handleLaunch = () => {
-        if (buttonState !== "hovered") return
-        setButtonState("launching")
+        if (isLaunching) return
+        setIsLaunching(true)
 
-        // Wait for the arrow to shoot up, then scroll
+        // Wait for the arrow to launch before scrolling
         setTimeout(() => {
             window.scrollTo({ top: 0, behavior: "smooth" })
-            // Reset state after scrolling
-            setTimeout(() => setButtonState("idle"), 500)
-        }, 300)
+            // Reset state after scrolling completes (approximate)
+            setTimeout(() => setIsLaunching(false), 1000)
+        }, 400)
     }
 
     const isLoadingFirst = status === "LoadingFirstPage"
@@ -207,7 +200,7 @@ export function PaginatedImageGrid({
                 >
                     {/* Sparkles + message */}
                     <motion.div
-                        className="flex items-center gap-2 text-muted-foreground"
+                        className="flex items-center gap-2 text-muted-foreground mb-4"
                         variants={itemVariants}
                     >
                         <motion.div variants={sparkleVariants} animate="animate" className="text-primary">
@@ -219,81 +212,30 @@ export function PaginatedImageGrid({
                     {/* Animated button - The Launchpad */}
                     <motion.div variants={itemVariants} className="z-10">
                         <motion.button
-                            layout
-                            onHoverStart={handleHoverStart}
-                            onHoverEnd={handleHoverEnd}
                             onClick={handleLaunch}
-                            disabled={buttonState === "launching"}
-                            className="relative flex items-center justify-center bg-primary text-primary-foreground font-medium shadow-xl cursor-pointer"
-                            initial={false}
-                            animate={{
-                                width: buttonState === "idle" ? "auto" : 56,
-                                height: 56,
-                                borderRadius: 9999,
-                                opacity: 1,
-                            }}
-                            transition={{
-                                type: "spring",
-                                stiffness: 400,
-                                damping: 30,
-                            }}
+                            disabled={isLaunching}
+                            whileHover={{ y: -4 }}
+                            whileTap={{ y: 0 }}
+                            className="group relative flex items-center justify-center gap-3 px-8 py-4 bg-primary text-primary-foreground rounded-full shadow-lg hover:shadow-xl hover:shadow-primary/20 transition-all duration-300 overflow-hidden cursor-pointer"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
                         >
-                            <motion.div
-                                className="flex items-center justify-center px-6 relative"
-                            >
+                            <span className="font-semibold text-lg tracking-tight">Take me back up</span>
+                            <div className="relative flex items-center justify-center w-6 h-6">
                                 <motion.div
-                                    animate={
-                                        buttonState === "launching"
-                                            ? {
-                                                y: -2000,
-                                                x: 0,
-                                                scaleY: 2,
-                                                opacity: 0,
-                                                transition: {
-                                                    y: { duration: 0.4, ease: "easeIn" },
-                                                    opacity: { duration: 0.3, ease: "easeOut" }
-                                                }
-                                            }
-                                            : buttonState === "hovered"
-                                                ? {
-                                                    y: 6,
-                                                    scale: 0.9,
-                                                    opacity: 1,
-                                                    x: [0, -3, 3, -2, 2, -3, 3, 0],
-                                                    transition: {
-                                                        y: { type: "spring", stiffness: 400 },
-                                                        scale: { type: "spring", stiffness: 400 },
-                                                        x: {
-                                                            duration: 0.15,
-                                                            repeat: Infinity,
-                                                            ease: "linear"
-                                                        }
-                                                    }
-                                                }
-                                                : {
-                                                    y: 0,
-                                                    x: 0,
-                                                    scale: 1,
-                                                    opacity: 1
-                                                }
-                                    }
+                                    animate={isLaunching ? { y: -50, opacity: 0 } : { y: 0, opacity: 1 }}
+                                    transition={{ duration: 0.4, ease: "backIn" }}
+                                    className="absolute inset-0 flex items-center justify-center"
                                 >
-                                    <ArrowUp className="h-7 w-7 stroke-[3px]" />
+                                    <ArrowUp className="w-6 h-6 stroke-[3px] group-hover:-translate-y-1 transition-transform duration-300 cubic-bezier(0.175, 0.885, 0.32, 1.275)" />
                                 </motion.div>
-
-                                <motion.div
-                                    className="overflow-hidden whitespace-nowrap"
-                                    initial={{ width: "auto", opacity: 1 }}
-                                    animate={
-                                        buttonState !== "idle"
-                                            ? { width: 0, opacity: 0, marginLeft: 0 }
-                                            : { width: "auto", opacity: 1, marginLeft: 8 }
-                                    }
-                                    transition={{ duration: 0.2 }}
-                                >
-                                    <span>Take me back up!</span>
-                                </motion.div>
-                            </motion.div>
+                                {/* Trail effect or secondary arrow could go here if we wanted extra flair, but keeping it clean for now */}
+                            </div>
+                            
+                            {/* Subtle shine effect on hover */}
+                            <div className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
+                                <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-in-out" />
+                            </div>
                         </motion.button>
                     </motion.div>
                 </motion.div>

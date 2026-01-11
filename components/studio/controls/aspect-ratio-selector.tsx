@@ -135,7 +135,7 @@ export const AspectRatioSelector = React.memo(function AspectRatioSelector({
             <Tooltip key={ratio.value}>
               <TooltipTrigger asChild>
                 <Button
-                  variant={isSelected ? "secondary" : "outline"}
+                  variant="outline"
                   onClick={() => handleRatioClick(ratio)}
                   disabled={disabled}
                   className={cn(
@@ -149,7 +149,7 @@ export const AspectRatioSelector = React.memo(function AspectRatioSelector({
                     <div
                       className={cn(
                         "flex items-center justify-center border rounded-sm transition-colors",
-                        isSelected ? "border-primary/50 bg-primary/20" : "border-border/50 bg-background/50"
+                        isSelected ? "border-primary/50 bg-primary/20" : "border-zinc-500/40 bg-accent dark:bg-background/50"
                       )}
                       style={{
                         width: isCustom ? 32 : Math.min(32, 32 * (ratio.width / Math.max(ratio.width, ratio.height))),

@@ -19,7 +19,8 @@
 
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Pause, Play, Sparkles, X } from "lucide-react"
+import { Sparkles } from "lucide-react"
+import { BatchActionButton } from "@/components/studio/batch/batch-action-button"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 
@@ -308,39 +309,15 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
             {/* Generate / Pause / Resume Batch Button */}
             <div className="p-2 border-t border-border/50 bg-card/80">
                 {batchMode.isBatchActive ? (
-                    <div className="flex gap-2">
-                        {/* Pause/Resume toggle button */}
-                        {batchMode.isBatchPaused ? (
-                            <Button
-                                onClick={batchMode.resumeBatchGeneration}
-                                className="flex-1 h-11 text-base font-semibold"
-                                size="lg"
-                            >
-                                <Play className="mr-2 h-4 w-4 fill-current" />
-                                Resume ({batchMode.batchProgress.completedCount}/{batchMode.batchProgress.totalCount})
-                            </Button>
-                        ) : (
-                            <Button
-                                onClick={batchMode.pauseBatchGeneration}
-                                variant="secondary"
-                                className="flex-1 h-11 text-base font-semibold"
-                                size="lg"
-                            >
-                                <Pause className="mr-2 h-4 w-4 fill-current" />
-                                Pause ({batchMode.batchProgress.completedCount}/{batchMode.batchProgress.totalCount})
-                            </Button>
-                        )}
-                        {/* Cancel button */}
-                        <Button
-                            onClick={batchMode.cancelBatchGeneration}
-                            variant="destructive"
-                            className="h-11 px-3"
-                            size="lg"
-                            title="Cancel batch generation"
-                        >
-                            <X className="h-5 w-5" />
-                        </Button>
-                    </div>
+                    <BatchActionButton
+                        isPaused={batchMode.isBatchPaused}
+                        completedCount={batchMode.batchProgress.completedCount}
+                        totalCount={batchMode.batchProgress.totalCount}
+                        inFlightCount={batchMode.batchProgress.inFlightCount}
+                        onPause={batchMode.pauseBatchGeneration}
+                        onResume={batchMode.resumeBatchGeneration}
+                        onCancel={batchMode.cancelBatchGeneration}
+                    />
                 ) : (
                     <Button
                         onClick={handleGenerateClick}

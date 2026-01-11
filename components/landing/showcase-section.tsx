@@ -26,7 +26,7 @@ export function ShowcaseSection({ items }: ShowcaseSectionProps) {
     { label: "Abstract Art", aspectRatio: "portrait", className: "h-full", src: "/showcase/abstract-art.jpeg" },
     { label: "Product Shot", aspectRatio: "portrait", className: "h-full", src: "/showcase/product-shot.jpeg" },
     { label: "Landscape Scene", aspectRatio: "portrait", className: "h-full", src: "/showcase/landscape-scene.jpeg" },
-    { label: "Character Design", aspectRatio: "portrait", className: "h-full", src: "/showcase/character-design.jpeg" },
+    { label: "Influencer", aspectRatio: "portrait", className: "h-full", src: "/showcase/influencer.jpeg" },
   ];
 
   const displayItems = items || defaultItems;
@@ -60,7 +60,7 @@ export function ShowcaseSection({ items }: ShowcaseSectionProps) {
                 From photorealistic renders to artistic illustrations, bring any vision to life with our state-of-the-art AI image generator and text-to-image models.
               </p>
               <p className="text-sm lg:text-base text-muted-foreground/80 text-balance max-w-lg xl:max-w-xl">
-                Generate high-resolution artwork, professional product photography, stunning character designs, and creative digital art — all powered by the latest AI models including GPT-4 Image, Flux, and Seedream. Perfect for designers, marketers, game developers, and creative professionals who need instant, high-quality visual content.
+                Generate high-resolution artwork, professional product photography, lifestyle influencer photos, and creative digital art — all powered by the latest AI models including GPT-4 Image, Flux, and Seedream. Perfect for designers, marketers, and creative professionals who need instant, high-quality visual content.
               </p>
             </div>
           </ScrollReveal>

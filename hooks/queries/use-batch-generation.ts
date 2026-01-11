@@ -57,6 +57,8 @@ export interface BatchJob {
     completedCount: number
     failedCount: number
     currentIndex: number
+    /** Number of items currently in-flight (scheduled but not completed) */
+    inFlightCount?: number
     generationParams: BatchGenerationParams
     imageIds: Id<"generatedImages">[]
     createdAt: number

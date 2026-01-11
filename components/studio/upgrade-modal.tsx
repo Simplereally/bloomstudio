@@ -87,7 +87,7 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="sm:max-w-md p-0 overflow-hidden border border-border/50 bg-card shadow-2xl">
                 {/* Subtle accent line at top */}
-                <div className="h-1 w-full bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+                <div className="absolute top-0 left-0 right-0 h-1 w-full bg-gradient-to-r from-transparent via-primary/60 to-transparent z-10" />
 
                 <div className="px-6 pt-5 pb-4">
                     <DialogHeader className="space-y-2">
@@ -126,7 +126,7 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
                     {/* Pricing */}
                     <div className="mt-5 text-center">
                         <div className="flex items-baseline justify-center gap-1">
-                            <span className="text-3xl font-semibold tracking-tight text-foreground">$5</span>
+                            <span className="text-3xl font-semibold tracking-tight text-green-600">$5</span>
                             <span className="text-sm text-muted-foreground">/month</span>
                         </div>
                         <p className="mt-1.5 text-xs text-muted-foreground">

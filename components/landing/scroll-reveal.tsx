@@ -54,11 +54,12 @@ export function ScrollReveal({ children, className, delay = 0, x = 0, instant = 
             ref={ref}
             className={cn(
                 "transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)]",
-                isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8",
+                isVisible ? "opacity-100" : "opacity-0",
                 className
             )}
             style={{
                 transitionDelay: `${delay}ms`,
+                transform: isVisible ? 'translate(0, 0)' : `translate(${x}px, 32px)`
             }}
         >
             {children}

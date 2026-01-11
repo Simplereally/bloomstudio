@@ -92,6 +92,7 @@ export const startBatchJob = mutation({
         const now = Date.now()
 
         // Create the batch job document
+        // Initialize inFlightCount to 1 since we're about to schedule item 0
         const batchJobId = await ctx.db.insert("batchJobs", {
             ownerId: identity.subject,
             status: "pending",
@@ -99,6 +100,7 @@ export const startBatchJob = mutation({
             completedCount: 0,
             failedCount: 0,
             currentIndex: 0,
+            inFlightCount: 1,
             generationParams: args.generationParams,
             imageIds: [],
             createdAt: now,
@@ -195,12 +197,19 @@ export const scheduleNextBatchItem = internalMutation({
             return { seeded: false }
         }
 
-        // Update current index to point to the one we are about to schedule
-        // access control/consistency: This mutation is sequential so it's safe.
-        // We only update if we are moving forward.
+        // Update current index and increment in-flight count
+        // This tracks that we're about to have another request in the pipeline
+        const currentInFlight = batchJob.inFlightCount ?? 0
         if (nextIndex > batchJob.currentIndex) {
             await ctx.db.patch(args.batchJobId, {
                 currentIndex: nextIndex,
+                inFlightCount: currentInFlight + 1,
+                updatedAt: Date.now(),
+            })
+        } else {
+            // Still increment in-flight even if index doesn't change (edge case)
+            await ctx.db.patch(args.batchJobId, {
+                inFlightCount: currentInFlight + 1,
                 updatedAt: Date.now(),
             })
         }
@@ -263,6 +272,10 @@ export const recordBatchItemResult = internalMutation({
             updates.currentItemRetryCount = args.retryCount
         }
 
+        // Decrement in-flight count (this item is now done)
+        const currentInFlight = batchJob.inFlightCount ?? 1
+        updates.inFlightCount = Math.max(0, currentInFlight - 1)
+
         // Check completion status
         // Note: Since we have parallel processing, we can't just check if `nextIndex >= totalCount`
         // We should check if `completedCount + failedCount >= totalCount`
@@ -270,6 +283,7 @@ export const recordBatchItemResult = internalMutation({
 
         if (totalProcessed >= batchJob.totalCount) {
             updates.status = "completed"
+            updates.inFlightCount = 0 // Ensure clean state on completion
         } else if (batchJob.status === "pending") {
             // If this was the first result, ensure we are "processing"
             updates.status = "processing"
@@ -278,6 +292,31 @@ export const recordBatchItemResult = internalMutation({
         await ctx.db.patch(args.batchJobId, updates)
 
         return { success: true }
+    },
+})
+
+/**
+ * Decrement the in-flight count when an item is skipped.
+ * Called when processBatchItem detects the batch is paused/cancelled
+ * and doesn't process the item.
+ */
+export const decrementInFlightCount = internalMutation({
+    args: {
+        batchJobId: v.id("batchJobs"),
+    },
+    handler: async (ctx, args) => {
+        const batchJob = await ctx.db.get(args.batchJobId)
+        if (!batchJob) {
+            return
+        }
+
+        const currentInFlight = batchJob.inFlightCount ?? 0
+        if (currentInFlight > 0) {
+            await ctx.db.patch(args.batchJobId, {
+                inFlightCount: currentInFlight - 1,
+                updatedAt: Date.now(),
+            })
+        }
     },
 })
 

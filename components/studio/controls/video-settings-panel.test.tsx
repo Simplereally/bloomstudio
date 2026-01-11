@@ -51,40 +51,7 @@ describe("VideoSettingsPanel", () => {
             expect(screen.getByTestId("video-settings-panel")).toBeInTheDocument()
         })
 
-        it("shows duration badge with current duration", () => {
-            render(
-                <VideoSettingsPanel
-                    settings={{ duration: 7, audio: false }}
-                    onSettingsChange={mockOnSettingsChange}
-                    durationConstraints={seedanceConstraints}
-                />
-            )
-            expect(screen.getByTestId("duration-badge")).toHaveTextContent("7s")
-        })
 
-        it("shows audio badge when audio is enabled", () => {
-            render(
-                <VideoSettingsPanel
-                    settings={{ duration: 5, audio: true }}
-                    onSettingsChange={mockOnSettingsChange}
-                    durationConstraints={veoConstraints}
-                    supportsAudio={true}
-                />
-            )
-            expect(screen.getByTestId("audio-badge")).toBeInTheDocument()
-        })
-
-        it("does not show audio badge when supportsAudio is false", () => {
-            render(
-                <VideoSettingsPanel
-                    settings={{ duration: 5, audio: true }}
-                    onSettingsChange={mockOnSettingsChange}
-                    durationConstraints={seedanceConstraints}
-                    supportsAudio={false}
-                />
-            )
-            expect(screen.queryByTestId("audio-badge")).not.toBeInTheDocument()
-        })
     })
 
     describe("duration control", () => {

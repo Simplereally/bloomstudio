@@ -84,7 +84,7 @@ export function LandingHeader() {
       <div className="container mx-auto px-6 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2">
-            <span className="text-2xl sm:text-3xl font-bold text-primary font-brand tracking-tight -skew-x-6">Bloom Studio</span>
+            <span className="text-xl sm:text-2xl md:text-3xl font-bold text-primary font-brand tracking-tight -skew-x-6 whitespace-nowrap">Bloom Studio</span>
           </Link>
           <nav className="hidden md:flex items-center gap-1">
             <Link
@@ -95,7 +95,7 @@ export function LandingHeader() {
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors cursor-pointer",
+                  "text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors",
                   activeSection === "showcase" && "text-primary bg-white/5"
                 )}
               >
@@ -110,7 +110,7 @@ export function LandingHeader() {
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors cursor-pointer",
+                  "text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors",
                   activeSection === "compare" && "text-primary bg-white/5"
                 )}
               >
@@ -125,7 +125,7 @@ export function LandingHeader() {
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors cursor-pointer",
+                  "text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors",
                   activeSection === "features" && "text-primary bg-white/5"
                 )}
               >
@@ -140,7 +140,7 @@ export function LandingHeader() {
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors cursor-pointer",
+                  "text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors",
                   activeSection === "models" && "text-primary bg-white/5"
                 )}
               >
@@ -152,7 +152,7 @@ export function LandingHeader() {
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "text-foreground/70 hover:text-foreground hover:bg-white/5 cursor-pointer",
+                  "text-foreground/70 hover:text-foreground hover:bg-white/5",
                   pathname === "/pricing" && "text-primary bg-white/5"
                 )}
               >

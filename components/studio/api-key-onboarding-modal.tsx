@@ -223,6 +223,9 @@ export function ApiKeyOnboardingModal({ onComplete, forceOpen, onClose }: ApiKey
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogTitle className="sr-only">Connect to Pollinations</DialogTitle>
       <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden border border-border/50 bg-card" showCloseButton={false}>
+        {/* Subtle accent line at top (shared design with UpgradeModal) */}
+        <div className="absolute top-0 left-0 right-0 h-1 w-full bg-gradient-to-r from-transparent via-primary/60 to-transparent z-10" />
+
         <motion.div
           ref={contentRef}
           initial={false}

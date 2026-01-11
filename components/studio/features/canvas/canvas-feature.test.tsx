@@ -4,6 +4,16 @@ import { render, screen, fireEvent } from "@testing-library/react"
 import { CanvasFeature, type CanvasFeatureProps } from "./canvas-feature"
 import type { GeneratedImage } from "@/types/pollinations"
 import { createMockImage } from "@/lib/test-utils"
+import { useIsFavorited } from "@/hooks/queries/use-favorites" // Import for types/mocking
+
+// Mock useIsFavorited and useToggleFavorite
+const mockMutateAsync = vi.fn()
+vi.mock("@/hooks/queries/use-favorites", () => ({
+    useIsFavorited: vi.fn(),
+    useToggleFavorite: () => ({
+        mutateAsync: mockMutateAsync,
+    }),
+}))
 
 // Mock CanvasView
 vi.mock("./canvas-view", () => ({
@@ -25,10 +35,13 @@ vi.mock("./canvas-view", () => ({
         onRegenerate?: () => void
         onOpenInNewTab?: () => void
         onFullscreen?: () => void
+        isFavorited?: boolean
+        onToggleFavorite?: () => void
     }) => (
         <div data-testid="canvas-view">
             <span data-testid="has-image">{String(!!image)}</span>
             <span data-testid="is-generating">{String(isGenerating)}</span>
+            <span data-testid="is-favorited">{String(!!isFavorited)}</span>
             {image && <span data-testid="image-id">{image.id}</span>}
             <button data-testid="image-click" onClick={onImageClick}>Image Click</button>
             <button data-testid="download" onClick={onDownload}>Download</button>
@@ -36,6 +49,7 @@ vi.mock("./canvas-view", () => ({
             <button data-testid="regenerate" onClick={onRegenerate}>Regenerate</button>
             <button data-testid="open-tab" onClick={onOpenInNewTab}>Open Tab</button>
             <button data-testid="fullscreen" onClick={onFullscreen}>Fullscreen</button>
+            <button data-testid="toggle-favorite" onClick={onToggleFavorite}>Toggle Favorite</button>
         </div>
     ),
 }))
@@ -79,6 +93,11 @@ describe("CanvasFeature", () => {
         })
         // Mock window.open
         window.open = vi.fn()
+        
+        // Default mock implementation for useIsFavorited
+        // @ts-expect-error - vitest mock types
+        useIsFavorited.mockReturnValue(false)
+        mockMutateAsync.mockResolvedValue({})
     })
 
     it("renders CanvasView", () => {
@@ -184,5 +203,38 @@ describe("CanvasFeature", () => {
         fireEvent.click(screen.getByTestId("regenerate"))
 
         expect(onRegenerate).toHaveBeenCalledTimes(1)
+    })
+
+    it("passes isFavorited to CanvasView", () => {
+        // @ts-expect-error - vitest mock types
+        useIsFavorited.mockReturnValue(true)
+        render(<CanvasFeature {...defaultProps} currentImage={mockImage} />)
+
+        expect(screen.getByTestId("is-favorited")).toHaveTextContent("true")
+    })
+
+    it("handles toggle favorite action", async () => {
+        render(<CanvasFeature {...defaultProps} currentImage={mockImage} />)
+
+        fireEvent.click(screen.getByTestId("toggle-favorite"))
+
+        expect(mockMutateAsync).toHaveBeenCalledWith({ imageId: mockImage.id })
+    })
+
+    it("handles favorite toggle error gracefully", async () => {
+        const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+        mockMutateAsync.mockRejectedValue(new Error("Favorite failed"))
+        
+        render(<CanvasFeature {...defaultProps} currentImage={mockImage} />)
+
+        fireEvent.click(screen.getByTestId("toggle-favorite"))
+
+        // Should not throw, should log error (and show toast, handled by mock)
+        // Wait for promise to settle is implicit here since fireEvent doesn't wait
+        // but we just check if it blew up or if mock was called
+        expect(mockMutateAsync).toHaveBeenCalled()
+        
+        // Cleanup
+        consoleSpy.mockRestore()
     })
 })

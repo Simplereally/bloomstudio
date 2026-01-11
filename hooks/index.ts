@@ -61,3 +61,6 @@ export type { UsePromptLibraryFormReturn } from "./use-prompt-library-form"
 
 export { useSlideshow } from "./use-slideshow"
 export type { UseSlideshowOptions, UseSlideshowReturn } from "./use-slideshow"
+
+export { useVideoReferenceImages } from "./use-video-reference-images"
+export type { VideoReferenceImages, FrameType } from "./use-video-reference-images"

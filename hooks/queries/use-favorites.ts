@@ -18,8 +18,11 @@ export function useFavorites() {
 /**
  * Hook to check if a specific image is favorited by the current user.
  */
-export function useIsFavorited(imageId: Id<"generatedImages">) {
-    return useQuery(api.favorites.isFavorited, { imageId })
+export function useIsFavorited(imageId?: string) {
+    return useQuery(
+        api.favorites.isFavorited, 
+        imageId ? { imageId: imageId as Id<"generatedImages"> } : "skip"
+    )
 }
 
 /**

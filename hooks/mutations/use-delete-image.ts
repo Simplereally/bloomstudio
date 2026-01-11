@@ -76,6 +76,71 @@ export function useDeleteGeneratedImage() {
 }
 
 /**
+ * Hook to bulk delete multiple generated images.
+ * Uses a single Convex mutation and shows a single toast.
+ */
+export function useBulkDeleteGeneratedImages() {
+    const removeImages = useConvexMutation(api.generatedImages.removeMany)
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: async (imageIds: Id<"generatedImages">[]) => {
+            // Delete all from Convex in one call (returns r2Keys)
+            const result = await removeImages({ imageIds })
+
+            // Delete all from R2 via API route
+            if (result.r2Keys && result.r2Keys.length > 0) {
+                // Delete R2 files in parallel but don't block on failures
+                await Promise.allSettled(
+                    result.r2Keys.map(async (r2Key: string) => {
+                        try {
+                            const response = await fetch("/api/images/delete", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ r2Key }),
+                            })
+
+                            if (!response.ok) {
+                                const error = await response.json()
+                                console.error("[useBulkDeleteGeneratedImages] Failed to delete from R2:", error)
+                            }
+                        } catch (error) {
+                            console.error("[useBulkDeleteGeneratedImages] Network error deleting from R2:", error)
+                        }
+                    })
+                )
+            }
+
+            return result
+        },
+        onMutate: async () => {
+            await queryClient.cancelQueries({ queryKey: ["image-history"] })
+            await queryClient.cancelQueries({ queryKey: ["public-feed"] })
+
+            const previousHistory = queryClient.getQueryData(["image-history"])
+            const previousFeed = queryClient.getQueryData(["public-feed"])
+
+            return { previousHistory, previousFeed }
+        },
+        onSuccess: (result) => {
+            const count = result.successCount
+            toast.success(`Deleted ${count} image${count !== 1 ? "s" : ""}`)
+            queryClient.invalidateQueries({ queryKey: ["image-history"] })
+            queryClient.invalidateQueries({ queryKey: ["public-feed"] })
+        },
+        onError: (error, _imageIds, context) => {
+            if (context) {
+                queryClient.setQueryData(["image-history"], context.previousHistory)
+                queryClient.setQueryData(["public-feed"], context.previousFeed)
+            }
+            toast.error("Failed to delete images", {
+                description: error instanceof Error ? error.message : "Unknown error",
+            })
+        },
+    })
+}
+
+/**
  * Hook to delete a reference image.
  * Deletes from Convex first, then attempts to delete from R2.
  */

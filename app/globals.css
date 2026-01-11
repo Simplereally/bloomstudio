@@ -5,7 +5,7 @@
 
 :root {
   /* Light mode (default) - cream and warm neutrals with orange ember accents */
-  --background: oklch(0.98 0.005 60);
+  --background: oklch(0.96 0.01 60);
   --foreground: oklch(0.18 0.015 30);
 
   --card: oklch(0.99 0.003 60);
@@ -43,7 +43,7 @@
 
   --radius: 0.75rem;
 
-  --sidebar: oklch(0.97 0.005 55);
+  --sidebar: oklch(0.95 0.01 55);
   --sidebar-foreground: oklch(0.18 0.015 30);
   --sidebar-primary: oklch(0.58 0.18 45);
   --sidebar-primary-foreground: oklch(0.99 0.005 45);
@@ -101,6 +101,11 @@
   --font-sans: "Geist", "Geist Fallback";
   --font-mono: "Geist Mono", "Geist Mono Fallback";
   --font-brand: var(--font-bricolage);
+
+  --breakpoint-3xl: 1800px;  /* 1080p monitors (1920px - browser chrome) */
+  --breakpoint-4xl: 2400px;  /* 1440p monitors (2560px - browser chrome) */
+  --breakpoint-5xl: 3600px;  /* 4K monitors (3840px - browser chrome) */
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);

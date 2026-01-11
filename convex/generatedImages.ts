@@ -670,6 +670,62 @@ export const remove = mutation({
 })
 
 /**
+ * Bulk delete multiple generated image records.
+ * Only the owner can delete their images.
+ * Returns all r2Keys so the caller can delete them from R2.
+ */
+export const removeMany = mutation({
+    args: {
+        imageIds: v.array(v.id("generatedImages")),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity()
+        if (!identity) {
+            throw new Error("Not authenticated")
+        }
+
+        const r2Keys: string[] = []
+        const errors: string[] = []
+        let successCount = 0
+
+        await Promise.all(
+            args.imageIds.map(async (imageId) => {
+                try {
+                    const image = await ctx.db.get(imageId)
+                    if (!image) {
+                        errors.push(`Image ${imageId} not found`)
+                        return
+                    }
+
+                    if (image.ownerId !== identity.subject) {
+                        errors.push(`Not authorized to delete image ${imageId}`)
+                        return
+                    }
+
+                    if (image.r2Key) {
+                        r2Keys.push(image.r2Key)
+                    }
+
+                    await ctx.db.delete(imageId)
+                    successCount++
+                } catch (error) {
+                    const errorMessage = error instanceof Error ? error.message : "Unknown error"
+                    errors.push(`Failed to delete image ${imageId}: ${errorMessage}`)
+                }
+            })
+        )
+
+        return {
+            success: successCount > 0,
+            successCount,
+            totalRequested: args.imageIds.length,
+            r2Keys,
+            errors: errors.length > 0 ? errors : undefined,
+        }
+    },
+})
+
+/**
  * Get an image by its R2 key.
  * Used for deduplication checks.
  */

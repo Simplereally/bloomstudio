@@ -44,7 +44,6 @@ describe("ImageToolbar", () => {
         expect(screen.getByTestId("copy-button")).toBeInTheDocument()
         expect(screen.getByTestId("favorite-button")).toBeInTheDocument()
         expect(screen.getByTestId("regenerate-button")).toBeInTheDocument()
-        expect(screen.getByTestId("more-button")).toBeInTheDocument()
     })
 
     it("calls onDownload when download button is clicked", async () => {

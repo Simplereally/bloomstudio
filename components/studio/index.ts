@@ -25,6 +25,7 @@ export { MegapixelBudget, type MegapixelBudgetProps } from "./controls/megapixel
 export { SeedControl, type SeedControlProps } from "./controls/seed-control"
 export { VideoSettingsPanel, type VideoSettings, type VideoSettingsPanelProps } from "./controls/video-settings-panel"
 export { VideoReferenceImagePicker, type VideoReferenceImages } from "./controls/video-reference-image-picker"
+export { ReferenceImagesBrowserModal } from "./controls/reference-images-browser-modal"
 
 // Canvas Components
 export { ImageCanvas, type ImageCanvasProps } from "./canvas/image-canvas"

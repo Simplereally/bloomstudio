@@ -172,7 +172,7 @@ export function Header() {
 
                         {/* User Button */}
                         {showAuthUI && isSignedIn && (
-                            <div className="pl-1 border-l border-border/50 ml-1">
+                            <div className="flex items-center pl-1 border-l border-border/50 ml-1 pr-1">
                                 <UserButton
                                     afterSignOutUrl="/"
                                     appearance={{

@@ -104,8 +104,12 @@ export const processBatchItem = internalAction({
         // Don't process if cancelled, paused, completed, or failed
         // Note: We check this AFTER scheduling next, so we might have scheduled one more
         // but that one will also check status and stop.
+        // We must decrement in-flight count since this item won't be processed.
         if (batchJob.status !== "pending" && batchJob.status !== "processing") {
-            console.log(`${logger} Batch ${args.batchJobId} status is ${batchJob.status}, stopping`)
+            console.log(`${logger} Batch ${args.batchJobId} status is ${batchJob.status}, stopping (decrementing in-flight)`)
+            await ctx.runMutation(internal.batchGeneration.decrementInFlightCount, {
+                batchJobId: args.batchJobId,
+            })
             return
         }
 
