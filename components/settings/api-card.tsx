@@ -164,10 +164,6 @@ export function ApiCard() {
                     )}
                 </div>
             </CardContent>
-            {/* Unified Footer: Removed bg-muted, cleaned up padding */}
-            <CardFooter className="pt-2 pb-4 text-xs text-muted-foreground border-t-0">
-                Your key is encrypted client-side before storage. We cannot access your generation history.
-            </CardFooter>
         </Card>
     )
 }
