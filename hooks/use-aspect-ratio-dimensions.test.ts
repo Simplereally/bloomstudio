@@ -108,8 +108,8 @@ describe("useAspectRatioDimensions", () => {
             )
 
             const dims = result.current.getDimensionsForRatio("16:9")
-            expect(dims.width).toBe(960)
-            expect(dims.height).toBe(544) // Step-aligned from 540
+            expect(dims.width).toBe(1280)
+            expect(dims.height).toBe(720)
         })
 
         it("should return default dimensions for custom ratio", () => {

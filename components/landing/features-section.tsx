@@ -1,5 +1,3 @@
-"use client"
-
 import { Image as ImageIcon, Layers, Lock, MousePointer2, Palette, Video, Wand2, Zap } from "lucide-react"
 import Link from "next/link"
 import { FeatureCard } from "./feature-card"
@@ -7,7 +5,7 @@ import { ScrollReveal } from "./scroll-reveal"
 
 export function FeaturesSection() {
   return (
-    <section id="features" className="py-24 relative">
+    <section id="features" className="py-24 xl:py-28 2xl:py-32 relative">
       <div className="container mx-auto px-6">
         <ScrollReveal>
           <div className="text-center mb-16">

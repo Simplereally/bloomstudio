@@ -30,8 +30,14 @@ const MAX_BATCH_SIZE = 1000
 /** Minimum batch size */
 const MIN_BATCH_SIZE = 1
 
-/** Interval between generations in milliseconds (5 seconds) */
-const BATCH_INTERVAL_MS = 5_000
+/** Base delay between generations in milliseconds (100ms = 10 req/s) */
+const BASE_RATE_LIMIT_DELAY_MS = 100
+
+/** Min jitter to add (20ms) */
+const MIN_JITTER_MS = 20
+
+/** Max jitter to add (100ms) */
+const MAX_JITTER_MS = 100
 
 /**
  * Generation params validator (shared between functions)
@@ -47,6 +53,11 @@ const generationParamsValidator = v.object({
     private: v.optional(v.boolean()),
     safe: v.optional(v.boolean()),
     image: v.optional(v.string()),
+    // Video-specific parameters
+    duration: v.optional(v.number()),
+    audio: v.optional(v.boolean()),
+    aspectRatio: v.optional(v.string()),
+    lastFrameImage: v.optional(v.string()),
 })
 
 /**
@@ -81,6 +92,7 @@ export const startBatchJob = mutation({
         const now = Date.now()
 
         // Create the batch job document
+        // Initialize inFlightCount to 1 since we're about to schedule item 0
         const batchJobId = await ctx.db.insert("batchJobs", {
             ownerId: identity.subject,
             status: "pending",
@@ -88,6 +100,7 @@ export const startBatchJob = mutation({
             completedCount: 0,
             failedCount: 0,
             currentIndex: 0,
+            inFlightCount: 1,
             generationParams: args.generationParams,
             imageIds: [],
             createdAt: now,
@@ -115,6 +128,8 @@ export const storeGeneratedImage = internalMutation({
         ownerId: v.string(),
         r2Key: v.string(),
         url: v.string(),
+        thumbnailR2Key: v.optional(v.string()),
+        thumbnailUrl: v.optional(v.string()),
         prompt: v.string(),
         width: v.number(),
         height: v.number(),
@@ -127,11 +142,13 @@ export const storeGeneratedImage = internalMutation({
     },
     handler: async (ctx, args) => {
         const now = Date.now()
-        
+
         const imageId = await ctx.db.insert("generatedImages", {
             ownerId: args.ownerId,
             r2Key: args.r2Key,
             url: args.url,
+            thumbnailR2Key: args.thumbnailR2Key,
+            thumbnailUrl: args.thumbnailUrl,
             filename: `img_${now}_${Math.random().toString(36).substring(2, 9)}`,
             contentType: args.contentType,
             sizeBytes: args.sizeBytes,
@@ -151,10 +168,72 @@ export const storeGeneratedImage = internalMutation({
 })
 
 /**
- * Internal mutation to record a batch item result and schedule the next item.
- * This is a mutation (not action) to ensure atomic updates to the database.
+ * Schedule the next item in the batch.
+ * Should be called at the START of processing an item to pipeline requests.
  */
-export const recordBatchItemAndScheduleNext = internalMutation({
+export const scheduleNextBatchItem = internalMutation({
+    args: {
+        batchJobId: v.id("batchJobs"),
+        currentItemIndex: v.number(),
+    },
+    handler: async (ctx, args) => {
+        const batchJob = await ctx.db.get(args.batchJobId)
+        if (!batchJob) {
+            throw new Error("Batch job not found")
+        }
+
+        // Don't schedule if cancelled or paused
+        // Note: We check this at the moment of scheduling.
+        // If the user pauses *during* the delay, the next action (processBatchItem)
+        // mimics this check and will abort.
+        if (batchJob.status !== "pending" && batchJob.status !== "processing") {
+            return { seeded: false }
+        }
+
+        const nextIndex = args.currentItemIndex + 1
+
+        // Stop if we've reached the end
+        if (nextIndex >= batchJob.totalCount) {
+            return { seeded: false }
+        }
+
+        // Update current index and increment in-flight count
+        // This tracks that we're about to have another request in the pipeline
+        const currentInFlight = batchJob.inFlightCount ?? 0
+        if (nextIndex > batchJob.currentIndex) {
+            await ctx.db.patch(args.batchJobId, {
+                currentIndex: nextIndex,
+                inFlightCount: currentInFlight + 1,
+                updatedAt: Date.now(),
+            })
+        } else {
+            // Still increment in-flight even if index doesn't change (edge case)
+            await ctx.db.patch(args.batchJobId, {
+                inFlightCount: currentInFlight + 1,
+                updatedAt: Date.now(),
+            })
+        }
+
+        // Calculate delay with jitter
+        // 100ms base + 20-100ms jitter
+        const jitter = Math.floor(Math.random() * (MAX_JITTER_MS - MIN_JITTER_MS + 1)) + MIN_JITTER_MS
+        const delay = BASE_RATE_LIMIT_DELAY_MS + jitter
+
+        await ctx.scheduler.runAfter(delay, internal.batchProcessor.processBatchItem, {
+            batchJobId: args.batchJobId,
+            itemIndex: nextIndex,
+        })
+
+        return { seeded: true, nextIndex, delay }
+    },
+})
+
+/**
+ * Record the result of a batch item processing.
+ * Called at the END of processing an item.
+ * Does NOT schedule the next item (that's done by scheduleNextBatchItem).
+ */
+export const recordBatchItemResult = internalMutation({
     args: {
         batchJobId: v.id("batchJobs"),
         itemIndex: v.number(),
@@ -169,25 +248,13 @@ export const recordBatchItemAndScheduleNext = internalMutation({
             throw new Error("Batch job not found")
         }
 
-        // Don't update if cancelled
-        if (batchJob.status === "cancelled") {
-            return { shouldContinue: false }
-        }
-
-        // Don't update if paused (but allow the current item to complete)
-        // The next item will not be scheduled if paused
-        const isPaused = batchJob.status === "paused"
-
         const now = Date.now()
-        const nextIndex = args.itemIndex + 1
-        const isComplete = nextIndex >= batchJob.totalCount
 
         // Prepare updates
         const updates: Partial<Doc<"batchJobs">> = {
-            currentIndex: nextIndex,
             updatedAt: now,
-            // Reset retry count for the next item
-            currentItemRetryCount: 0,
+            // Reset retry count for the next item logic isn't relevant here anymore
+            // as we track retries per item in memory during action
         }
 
         if (args.success) {
@@ -200,29 +267,56 @@ export const recordBatchItemAndScheduleNext = internalMutation({
         }
 
         // Track the retry count for the completed item (for metrics/debugging)
+        // We might want to store this better but for now overwriting is "okay" as a last-seen metric
         if (args.retryCount !== undefined && args.retryCount > 0) {
             updates.currentItemRetryCount = args.retryCount
         }
 
-        // Update status
-        if (isComplete) {
+        // Decrement in-flight count (this item is now done)
+        const currentInFlight = batchJob.inFlightCount ?? 1
+        updates.inFlightCount = Math.max(0, currentInFlight - 1)
+
+        // Check completion status
+        // Note: Since we have parallel processing, we can't just check if `nextIndex >= totalCount`
+        // We should check if `completedCount + failedCount >= totalCount`
+        const totalProcessed = (updates.completedCount ?? batchJob.completedCount) + (updates.failedCount ?? batchJob.failedCount)
+
+        if (totalProcessed >= batchJob.totalCount) {
             updates.status = "completed"
-        } else if (!isPaused && batchJob.status === "pending") {
+            updates.inFlightCount = 0 // Ensure clean state on completion
+        } else if (batchJob.status === "pending") {
+            // If this was the first result, ensure we are "processing"
             updates.status = "processing"
         }
-        // Keep status as "paused" if it was paused
 
         await ctx.db.patch(args.batchJobId, updates)
 
-        // Schedule next item if not complete and not paused
-        if (!isComplete && !isPaused) {
-            await ctx.scheduler.runAfter(BATCH_INTERVAL_MS, internal.batchProcessor.processBatchItem, {
-                batchJobId: args.batchJobId,
-                itemIndex: nextIndex,
-            })
+        return { success: true }
+    },
+})
+
+/**
+ * Decrement the in-flight count when an item is skipped.
+ * Called when processBatchItem detects the batch is paused/cancelled
+ * and doesn't process the item.
+ */
+export const decrementInFlightCount = internalMutation({
+    args: {
+        batchJobId: v.id("batchJobs"),
+    },
+    handler: async (ctx, args) => {
+        const batchJob = await ctx.db.get(args.batchJobId)
+        if (!batchJob) {
+            return
         }
 
-        return { shouldContinue: !isComplete && !isPaused }
+        const currentInFlight = batchJob.inFlightCount ?? 0
+        if (currentInFlight > 0) {
+            await ctx.db.patch(args.batchJobId, {
+                inFlightCount: currentInFlight - 1,
+                updatedAt: Date.now(),
+            })
+        }
     },
 })
 

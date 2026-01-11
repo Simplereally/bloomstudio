@@ -63,6 +63,7 @@ describe("useBatchMode", () => {
             currentIndex: 0,
             totalCount: 0,
             completedCount: 0,
+            inFlightCount: 0,
         })
     })
 
@@ -275,6 +276,7 @@ describe("useBatchMode", () => {
                     imageIds: [],
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
+                    inFlightCount: 0,
                 },
                 isLoading: false,
             })
@@ -306,6 +308,7 @@ describe("useBatchMode", () => {
                     imageIds: [],
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
+                    inFlightCount: 2,
                 },
                 isLoading: false,
             })
@@ -337,6 +340,7 @@ describe("useBatchMode", () => {
                     imageIds: [],
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
+                    inFlightCount: 0,
                 },
                 isLoading: false,
             })
@@ -352,6 +356,43 @@ describe("useBatchMode", () => {
                 currentIndex: 5,
                 totalCount: 20,
                 completedCount: 5,
+                inFlightCount: 0,
+            })
+        })
+
+        it("batchProgress reflects inFlightCount", async () => {
+            const { useBatchJob } = await import("@/hooks/queries")
+            vi.mocked(useBatchJob).mockReturnValue({
+                batchJob: {
+                    _id: "batch-123" as unknown as import("@/convex/_generated/dataModel").Id<"batchJobs">,
+                    _creationTime: Date.now(),
+                    ownerId: "user-123",
+                    status: "processing",
+                    currentIndex: 10,
+                    totalCount: 50,
+                    completedCount: 8,
+                    failedCount: 0,
+                    generationParams: { prompt: "Test" },
+                    imageIds: [],
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                    inFlightCount: 2,
+                },
+                isLoading: false,
+            })
+
+            const { result } = renderHook(() =>
+                useBatchMode({
+                    generateSeed: mockGenerateSeed,
+                    addImage: mockAddImage,
+                })
+            )
+
+            expect(result.current.batchProgress).toEqual({
+                currentIndex: 10,
+                totalCount: 50,
+                completedCount: 8,
+                inFlightCount: 2,
             })
         })
     })

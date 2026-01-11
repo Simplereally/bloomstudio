@@ -24,6 +24,17 @@ import { Eye, EyeOff, ImageOff, Loader2, MoreHorizontal, Trash2 } from "lucide-r
 import * as React from "react"
 import { GalleryThumbnail } from "./gallery-thumbnail"
 
+// HACK: Suppress "flushSync was called from inside a lifecycle method" warning
+// This is a known issue with TanStack Virtual v3 and React 19 where disabling flushSync
+// causes performance regressions, but keeping it enabled triggers this console error.
+const originalError = console.error
+console.error = (...args) => {
+    if (typeof args[0] === "string" && args[0].includes("flushSync was called from inside a lifecycle method")) {
+        return
+    }
+    originalError.apply(console, args)
+}
+
 /**
  * Lightweight data structure for gallery thumbnails.
  * Contains only the fields needed for rendering thumbnails.
@@ -37,6 +48,7 @@ export interface ThumbnailData {
     visibility?: "public" | "unlisted"
     model?: string
     _creationTime?: number
+    contentType?: string
 }
 
 /**
@@ -105,6 +117,7 @@ const VIRTUALIZATION_THRESHOLD = 50
 
 /**
  * VirtualizedGalleryGrid - Renders only visible thumbnails for performance
+ * Uses IntersectionObserver for automatic infinite scroll loading.
  */
 interface VirtualizedGalleryGridProps {
     images: ThumbnailData[]
@@ -114,6 +127,12 @@ interface VirtualizedGalleryGridProps {
     thumbnailSize: "sm" | "md" | "lg"
     onSelect: (image: ThumbnailData) => void
     onCheckedChange: (id: string, checked: boolean) => void
+    /** Callback to load more images when reaching the end */
+    onLoadMore?: () => void
+    /** Whether more content can be loaded */
+    canLoadMore?: boolean
+    /** Whether content is currently being loaded */
+    isLoadingMore?: boolean
 }
 
 const VirtualizedGalleryGrid = React.memo(function VirtualizedGalleryGrid({
@@ -124,28 +143,65 @@ const VirtualizedGalleryGrid = React.memo(function VirtualizedGalleryGrid({
     thumbnailSize,
     onSelect,
     onCheckedChange,
+    onLoadMore,
+    canLoadMore = false,
+    isLoadingMore = false,
 }: VirtualizedGalleryGridProps) {
     const parentRef = React.useRef<HTMLDivElement>(null)
-    
+    const sentinelRef = React.useRef<HTMLDivElement>(null)
+
     const columns = GRID_COLUMNS[thumbnailSize]
     const itemSize = THUMBNAIL_SIZES[thumbnailSize]
     const rowHeight = itemSize + GAP_SIZE
-    
+
     // Calculate number of rows
     const rowCount = Math.ceil(images.length / columns)
 
+    const getScrollElement = React.useCallback(() => parentRef.current, [])
     const estimateSize = React.useCallback(() => rowHeight, [rowHeight])
-    
-    // eslint-disable-next-line react-hooks/incompatible-library -- virtualizer is required
+
     const virtualizer = useVirtualizer({
         count: rowCount,
-        getScrollElement: () => parentRef.current,
+        getScrollElement,
         estimateSize,
-        overscan: 3, // Render 3 extra rows above/below viewport
+        overscan: 5, // Render 5 extra rows above/below viewport
+        // Disable flushSync to prevent React warning about flushSync in lifecycle methods during render
+        // This is a known issue with TanStack Virtual v3 and React 19
+        useFlushSync: true,
     })
-    
+
     const virtualRows = virtualizer.getVirtualItems()
-    
+
+    // Infinite scroll: trigger loadMore when sentinel becomes visible
+    React.useEffect(() => {
+        const sentinel = sentinelRef.current
+        const scrollContainer = parentRef.current
+        if (!sentinel || !scrollContainer || !onLoadMore || !canLoadMore || isLoadingMore) {
+            return
+        }
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const entry = entries[0]
+                if (entry?.isIntersecting && canLoadMore && !isLoadingMore) {
+                    onLoadMore()
+                }
+            },
+            {
+                root: scrollContainer,
+                // Trigger when the sentinel is 200px from being visible
+                rootMargin: "0px 0px 200px 0px",
+                threshold: 0,
+            }
+        )
+
+        observer.observe(sentinel)
+
+        return () => {
+            observer.disconnect()
+        }
+    }, [onLoadMore, canLoadMore, isLoadingMore])
+
     return (
         <div
             ref={parentRef}
@@ -158,45 +214,173 @@ const VirtualizedGalleryGrid = React.memo(function VirtualizedGalleryGrid({
                     height: `${virtualizer.getTotalSize() + PADDING * 2}px`,
                 }}
             >
-                <div
-                    className="absolute top-0 left-0 w-full"
-                    style={{
-                        transform: `translateY(${(virtualRows[0]?.start ?? 0) + PADDING}px)`,
-                        padding: `0 ${PADDING}px`,
-                    }}
-                >
-                    {virtualRows.map((virtualRow) => {
-                        const rowStartIndex = virtualRow.index * columns
-                        const rowImages = images.slice(rowStartIndex, rowStartIndex + columns)
-                        
-                        return (
-                            <div
-                                key={virtualRow.key}
-                                className="grid gap-2"
-                                style={{
-                                    gridTemplateColumns: `repeat(${columns}, 1fr)`,
-                                    height: `${rowHeight}px`,
-                                }}
-                                data-index={virtualRow.index}
-                            >
-                                {rowImages.map((image) => (
-                                    <ThumbnailItem
-                                        key={image.id}
-                                        image={image}
-                                        isActive={activeImageId === image.id}
-                                        isChecked={selectedIds.has(image.id)}
-                                        onSelect={onSelect}
-                                        onCheckedChange={onCheckedChange}
-                                        showCheckbox={selectionMode}
-                                        size={thumbnailSize}
-                                    />
-                                ))}
-                            </div>
-                        )
-                    })}
-                </div>
+                {virtualRows.map((virtualRow) => {
+                    const rowStartIndex = virtualRow.index * columns
+                    const rowImages = images.slice(rowStartIndex, rowStartIndex + columns)
+
+                    return (
+                        <div
+                            key={virtualRow.key}
+                            className="absolute top-0 left-0 w-full grid gap-2"
+                            style={{
+                                height: `${rowHeight}px`,
+                                transform: `translateY(${virtualRow.start + PADDING}px)`,
+                                gridTemplateColumns: `repeat(${columns}, 1fr)`,
+                                paddingLeft: `${PADDING}px`,
+                                paddingRight: `${PADDING}px`,
+                            }}
+                            data-index={virtualRow.index}
+                        >
+                            {rowImages.map((image) => (
+                                <ThumbnailItem
+                                    key={image.id}
+                                    image={image}
+                                    isActive={activeImageId === image.id}
+                                    isChecked={selectedIds.has(image.id)}
+                                    onSelect={onSelect}
+                                    onCheckedChange={onCheckedChange}
+                                    showCheckbox={selectionMode}
+                                    size={thumbnailSize}
+                                />
+                            ))}
+                        </div>
+                    )
+                })}
             </div>
-        </div>
+
+            {/* Infinite scroll sentinel - triggers load more when visible */}
+            {
+                (canLoadMore || isLoadingMore) && (
+                    <div
+                        ref={sentinelRef}
+                        className="flex justify-center items-center py-4"
+                        data-testid="load-more-sentinel"
+                    >
+                        {isLoadingMore && (
+                            <Loader2
+                                className="h-4 w-4 animate-spin text-muted-foreground"
+                                data-testid="loading-spinner"
+                            />
+                        )}
+                    </div>
+                )
+            }
+        </div >
+    )
+})
+
+/**
+ * StandardGalleryGrid - Non-virtualized grid for smaller datasets
+ * Uses IntersectionObserver for automatic infinite scroll loading.
+ */
+interface StandardGalleryGridProps {
+    images: ThumbnailData[]
+    activeImageId?: string
+    selectedIds: Set<string>
+    selectionMode: boolean
+    thumbnailSize: "sm" | "md" | "lg"
+    direction: "horizontal" | "vertical"
+    onSelect: (image: ThumbnailData) => void
+    onCheckedChange: (id: string, checked: boolean) => void
+    /** Callback to load more images when reaching the end */
+    onLoadMore?: () => void
+    /** Whether more content can be loaded */
+    canLoadMore?: boolean
+    /** Whether content is currently being loaded */
+    isLoadingMore?: boolean
+}
+
+const StandardGalleryGrid = React.memo(function StandardGalleryGrid({
+    images,
+    activeImageId,
+    selectedIds,
+    selectionMode,
+    thumbnailSize,
+    direction,
+    onSelect,
+    onCheckedChange,
+    onLoadMore,
+    canLoadMore = false,
+    isLoadingMore = false,
+}: StandardGalleryGridProps) {
+    const scrollRef = React.useRef<HTMLDivElement>(null)
+    const sentinelRef = React.useRef<HTMLDivElement>(null)
+
+    // Infinite scroll: trigger loadMore when sentinel becomes visible
+    React.useEffect(() => {
+        const sentinel = sentinelRef.current
+        const scrollContainer = scrollRef.current
+        if (!sentinel || !scrollContainer || !onLoadMore || !canLoadMore || isLoadingMore) {
+            return
+        }
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const entry = entries[0]
+                if (entry?.isIntersecting && canLoadMore && !isLoadingMore) {
+                    onLoadMore()
+                }
+            },
+            {
+                root: scrollContainer,
+                // Trigger when the sentinel is 200px from being visible
+                rootMargin: "0px 0px 200px 0px",
+                threshold: 0,
+            }
+        )
+
+        observer.observe(sentinel)
+
+        return () => {
+            observer.disconnect()
+        }
+    }, [onLoadMore, canLoadMore, isLoadingMore])
+
+    return (
+        <ScrollArea className="flex-1" data-testid="gallery-scroll" ref={scrollRef}>
+            <div
+                className={cn(
+                    "p-2",
+                    direction === "horizontal"
+                        ? "flex gap-2 overflow-x-auto"
+                        : "grid gap-2",
+                    direction === "vertical" && {
+                        "grid-cols-2": thumbnailSize === "lg",
+                        "grid-cols-3": thumbnailSize === "md",
+                        "grid-cols-4": thumbnailSize === "sm",
+                    }
+                )}
+                data-testid="gallery-grid"
+            >
+                {images.map((image) => (
+                    <ThumbnailItem
+                        key={image.id}
+                        image={image}
+                        isActive={activeImageId === image.id}
+                        isChecked={selectedIds.has(image.id)}
+                        onSelect={onSelect}
+                        onCheckedChange={onCheckedChange}
+                        showCheckbox={selectionMode}
+                        size={thumbnailSize}
+                    />
+                ))}
+            </div>
+            {/* Infinite scroll sentinel - triggers load more when visible */}
+            {(canLoadMore || isLoadingMore) && (
+                <div
+                    ref={sentinelRef}
+                    className="flex justify-center items-center py-4"
+                    data-testid="load-more-sentinel"
+                >
+                    {isLoadingMore && (
+                        <Loader2
+                            className="h-4 w-4 animate-spin text-muted-foreground"
+                            data-testid="loading-spinner"
+                        />
+                    )}
+                </div>
+            )}
+        </ScrollArea>
     )
 })
 
@@ -266,7 +450,7 @@ export const ImageGallery = React.memo(function ImageGallery({
     // This allows the UI thread to handle interactions (like clicking Select button)
     // without waiting for all thumbnail checkboxes to update
     const deferredSelectedIds = React.useDeferredValue(selectedIds)
-    
+
     // Memoized callback for checkbox changes - uses selectedIds ref to avoid recreating on selection changes
     const selectedIdsRef = React.useRef(selectedIds)
     selectedIdsRef.current = selectedIds
@@ -302,7 +486,10 @@ export const ImageGallery = React.memo(function ImageGallery({
             className="flex flex-col items-center justify-center flex-1 text-center p-6"
             data-testid="gallery-loading"
         >
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <Loader2
+                className="h-6 w-6 animate-spin text-muted-foreground"
+                data-testid="loading-spinner"
+            />
         </div>
     )
 
@@ -350,18 +537,18 @@ export const ImageGallery = React.memo(function ImageGallery({
                     <div className="flex items-center gap-1.5">
                         {selectionMode ? (
                             <>
-                                <label 
+                                <label
                                     className="flex items-center gap-1.5 cursor-pointer select-none"
                                     data-testid="select-all-label"
                                 >
                                     <Checkbox
                                         checked={
-                                            images.length === 0 
-                                                ? false 
-                                                : selectedIds.size === images.length 
-                                                    ? true 
-                                                    : selectedIds.size > 0 
-                                                        ? "indeterminate" 
+                                            images.length === 0
+                                                ? false
+                                                : selectedIds.size === images.length
+                                                    ? true
+                                                    : selectedIds.size > 0
+                                                        ? "indeterminate"
                                                         : false
                                         }
                                         onCheckedChange={(checked) => {
@@ -449,82 +636,34 @@ export const ImageGallery = React.memo(function ImageGallery({
             {/* Gallery Grid, Loading State, or Empty State */}
             {contentState ?? (
                 images.length >= VIRTUALIZATION_THRESHOLD && direction === "vertical" ? (
-                    // Virtualized grid for large datasets
-                    <div className="flex-1 flex flex-col min-h-0">
-                        <VirtualizedGalleryGrid
-                            images={images}
-                            activeImageId={activeImageId}
-                            selectedIds={deferredSelectedIds}
-                            selectionMode={selectionMode}
-                            thumbnailSize={thumbnailSize}
-                            onSelect={handleImageClick}
-                            onCheckedChange={handleCheckedChange}
-                        />
-                        {onLoadMore && (
-                            <div className="p-4 flex justify-center border-t border-border/10 flex-shrink-0">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={onLoadMore}
-                                    disabled={isLoadingMore}
-                                    className="text-xs text-muted-foreground"
-                                >
-                                    {isLoadingMore ? (
-                                        <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                                    ) : null}
-                                    Load More
-                                </Button>
-                            </div>
-                        )}
-                    </div>
+                    // Virtualized grid for large datasets with infinite scroll
+                    <VirtualizedGalleryGrid
+                        images={images}
+                        activeImageId={activeImageId}
+                        selectedIds={deferredSelectedIds}
+                        selectionMode={selectionMode}
+                        thumbnailSize={thumbnailSize}
+                        onSelect={handleImageClick}
+                        onCheckedChange={handleCheckedChange}
+                        onLoadMore={onLoadMore}
+                        canLoadMore={!!onLoadMore && !isExhausted}
+                        isLoadingMore={isLoadingMore}
+                    />
                 ) : (
-                    // Standard grid for smaller datasets or horizontal layout
-                    <ScrollArea className="flex-1" data-testid="gallery-scroll">
-                        <div
-                            className={cn(
-                                "p-2",
-                                direction === "horizontal"
-                                    ? "flex gap-2 overflow-x-auto"
-                                    : "grid gap-2",
-                                direction === "vertical" && {
-                                    "grid-cols-2": thumbnailSize === "lg",
-                                    "grid-cols-3": thumbnailSize === "md",
-                                    "grid-cols-4": thumbnailSize === "sm",
-                                }
-                            )}
-                            data-testid="gallery-grid"
-                        >
-                            {images.map((image) => (
-                                <ThumbnailItem
-                                    key={image.id}
-                                    image={image}
-                                    isActive={activeImageId === image.id}
-                                    isChecked={deferredSelectedIds.has(image.id)}
-                                    onSelect={handleImageClick}
-                                    onCheckedChange={handleCheckedChange}
-                                    showCheckbox={selectionMode}
-                                    size={thumbnailSize}
-                                />
-                            ))}
-                        </div>
-
-                        {onLoadMore && (
-                            <div className="p-4 flex justify-center border-t border-border/10">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={onLoadMore}
-                                    disabled={isLoadingMore}
-                                    className="text-xs text-muted-foreground"
-                                >
-                                    {isLoadingMore ? (
-                                        <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                                    ) : null}
-                                    Load More
-                                </Button>
-                            </div>
-                        )}
-                    </ScrollArea>
+                    // Standard grid for smaller datasets or horizontal layout with infinite scroll
+                    <StandardGalleryGrid
+                        images={images}
+                        activeImageId={activeImageId}
+                        selectedIds={deferredSelectedIds}
+                        selectionMode={selectionMode}
+                        thumbnailSize={thumbnailSize}
+                        direction={direction}
+                        onSelect={handleImageClick}
+                        onCheckedChange={handleCheckedChange}
+                        onLoadMore={onLoadMore}
+                        canLoadMore={!!onLoadMore && !isExhausted}
+                        isLoadingMore={isLoadingMore}
+                    />
                 )
             )}
         </div>

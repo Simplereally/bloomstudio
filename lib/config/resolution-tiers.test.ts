@@ -63,7 +63,6 @@ describe("Resolution Tier Configuration", () => {
             expect(RESOLUTION_TIERS).toHaveProperty("hd")
             expect(RESOLUTION_TIERS).toHaveProperty("2k")
             expect(RESOLUTION_TIERS).toHaveProperty("4k")
-            expect(RESOLUTION_TIERS).toHaveProperty("max")
         })
 
         it("should have correct megapixel targets", () => {
@@ -71,7 +70,6 @@ describe("Resolution Tier Configuration", () => {
             expect(RESOLUTION_TIERS.hd.targetMegapixels).toBe(1.0)
             expect(RESOLUTION_TIERS["2k"].targetMegapixels).toBe(2.0)
             expect(RESOLUTION_TIERS["4k"].targetMegapixels).toBe(8.3)
-            expect(RESOLUTION_TIERS.max.targetMegapixels).toBe(Infinity)
         })
 
         it("should have labels for all tiers", () => {
@@ -85,7 +83,7 @@ describe("Resolution Tier Configuration", () => {
 
     describe("RESOLUTION_TIER_ORDER", () => {
         it("should have tiers in ascending order", () => {
-            expect(RESOLUTION_TIER_ORDER).toEqual(["sd", "hd", "2k", "4k", "max"])
+            expect(RESOLUTION_TIER_ORDER).toEqual(["sd", "hd", "2k", "4k"])
         })
     })
 })
@@ -153,16 +151,6 @@ describe("calculateDimensionsForTier", () => {
         expect(dims.width % KONTEXT_CONSTRAINTS.step).toBe(0)
         expect(dims.height % KONTEXT_CONSTRAINTS.step).toBe(0)
     })
-
-    it("should handle max tier correctly for high-capacity models", () => {
-        const dims = calculateDimensionsForTier(
-            { widthRatio: 1, heightRatio: 1 },
-            "max",
-            SEEDREAM_CONSTRAINTS
-        )
-        // For 1:1, max tier should give us 4096x4096 = 16MP
-        expect(dims.width * dims.height).toBeLessThanOrEqual(SEEDREAM_CONSTRAINTS.maxPixels)
-    })
 })
 
 describe("getTierForPixelCount", () => {
@@ -184,10 +172,7 @@ describe("getTierForPixelCount", () => {
     it("should return 4k for very high pixel counts", () => {
         expect(getTierForPixelCount(8_000_000)).toBe("4k")
         expect(getTierForPixelCount(12_000_000)).toBe("4k")
-    })
-
-    it("should return max for extreme pixel counts", () => {
-        expect(getTierForPixelCount(20_000_000)).toBe("max")
+        expect(getTierForPixelCount(20_000_000)).toBe("4k")
     })
 })
 

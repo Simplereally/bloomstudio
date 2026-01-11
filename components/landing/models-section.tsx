@@ -1,5 +1,3 @@
-"use client";
-
 import { MODEL_REGISTRY } from "@/lib/config/models";
 import { cn } from "@/lib/utils";
 import { ImageIcon, Sparkles, Video } from "lucide-react";
@@ -32,7 +30,7 @@ export function ModelsSection() {
   const videoModels = allModels.filter((m) => m.type === "video");
 
   return (
-    <section id="models" className="py-24 relative overflow-hidden">
+    <section id="models" className="py-24 xl:py-28 2xl:py-32 relative overflow-hidden">
       {/* Background Decorations */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-primary/5 blur-[120px] rounded-full pointer-events-none" />
 
@@ -65,8 +63,8 @@ export function ModelsSection() {
               <div className="grid md:grid-cols-2 gap-10 lg:gap-16">
                 {/* Image Models Column */}
                 <div className="space-y-6">
-                  <div className="flex items-center gap-3 border-b border-white/5 pb-4">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
+                  <div className="flex flex-col items-center text-center border-b border-white/5 pb-6">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 mb-3">
                       <ImageIcon className="h-5 w-5 text-primary" />
                     </div>
                     <div>
@@ -86,8 +84,8 @@ export function ModelsSection() {
 
                 {/* Video Models Column */}
                 <div className="space-y-6">
-                  <div className="flex items-center gap-3 border-b border-white/5 pb-4">
-                    <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
+                  <div className="flex flex-col items-center text-center border-b border-white/5 pb-6">
+                    <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20 mb-3">
                       <Video className="h-5 w-5 text-purple-400" />
                     </div>
                     <div>

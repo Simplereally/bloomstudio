@@ -63,6 +63,8 @@ export interface UseBatchModeReturn {
         currentIndex: number
         totalCount: number
         completedCount: number
+        /** Number of items still being processed (will complete even after pause) */
+        inFlightCount: number
     }
 
     // Handlers
@@ -248,6 +250,7 @@ export function useBatchMode({
             currentIndex: batchJob?.currentIndex ?? 0,
             totalCount: batchJob?.totalCount ?? 0,
             completedCount: batchJob?.completedCount ?? 0,
+            inFlightCount: batchJob?.inFlightCount ?? 0,
         },
 
         // Handlers

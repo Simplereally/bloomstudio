@@ -57,11 +57,6 @@ export const ResolutionTierSelector = React.memo(function ResolutionTierSelector
                 const isSupported = supportedTiers.includes(tier)
                 const isSelected = selectedTier === tier
 
-                // Skip 'max' tier in normal display unless model has very high limits
-                if (tier === "max" && !supportedTiers.includes("max")) {
-                    return null
-                }
-
                 return (
                     <Tooltip key={tier}>
                         <TooltipTrigger asChild>

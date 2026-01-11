@@ -40,9 +40,14 @@ interface HistoryFiltersProps {
     onFiltersChange: (filters: HistoryFilterState) => void
 }
 
-// Get all image models from the registry (exclude video models)
+// Get all image models from the registry
 const IMAGE_MODELS: ModelDefinition[] = Object.values(MODEL_REGISTRY).filter(
     (model): model is ModelDefinition => model.type === "image"
+)
+
+// Get all video models from the registry
+const VIDEO_MODELS: ModelDefinition[] = Object.values(MODEL_REGISTRY).filter(
+    (model): model is ModelDefinition => model.type === "video"
 )
 
 /**
@@ -53,10 +58,11 @@ const LEGACY_FILTER_MODELS: { id: string; displayName: string }[] = [
     { id: "flux", displayName: "Flux (Legacy)" },
 ]
 
-/** Combined list of all filterable models (active + legacy) */
+/** Combined list of all filterable models (image + video + legacy) */
 const ALL_FILTERABLE_MODELS = [
-    ...IMAGE_MODELS.map(m => ({ id: m.id, displayName: m.displayName, isLegacy: false })),
-    ...LEGACY_FILTER_MODELS.map(m => ({ ...m, isLegacy: true })),
+    ...IMAGE_MODELS.map(m => ({ id: m.id, displayName: m.displayName, isLegacy: false, type: "image" as const })),
+    ...VIDEO_MODELS.map(m => ({ id: m.id, displayName: m.displayName, isLegacy: false, type: "video" as const })),
+    ...LEGACY_FILTER_MODELS.map(m => ({ ...m, isLegacy: true, type: "image" as const })),
 ]
 
 // Visibility options with labels
@@ -196,8 +202,8 @@ export function HistoryFiltersDropdown({ filters, onFiltersChange }: HistoryFilt
 
                         <CommandSeparator />
 
-                        {/* Models Section */}
-                        <CommandGroup heading="Models">
+                        {/* Image Models Section */}
+                        <CommandGroup heading="Image Models">
                             {/* Quick actions for models */}
                             <div className="flex items-center gap-1 px-2 py-1.5">
                                 <Button
@@ -224,13 +230,35 @@ export function HistoryFiltersDropdown({ filters, onFiltersChange }: HistoryFilt
                                 </Button>
                             </div>
 
-                            {ALL_FILTERABLE_MODELS.map((model) => {
+                            {ALL_FILTERABLE_MODELS.filter(m => m.type === "image").map((model) => {
                                 const isSelected = pendingFilters.selectedModels.includes(model.id)
                                 return (
                                     <CommandItem
                                         key={model.id}
                                         onSelect={() => handleModelToggle(model.id)}
                                         className={cn("gap-2", model.isLegacy && "opacity-60")}
+                                    >
+                                        <Checkbox
+                                            checked={isSelected}
+                                            className="pointer-events-none"
+                                        />
+                                        <span>{model.displayName}</span>
+                                    </CommandItem>
+                                )
+                            })}
+                        </CommandGroup>
+
+                        <CommandSeparator />
+
+                        {/* Video Models Section */}
+                        <CommandGroup heading="Video Models">
+                            {ALL_FILTERABLE_MODELS.filter(m => m.type === "video").map((model) => {
+                                const isSelected = pendingFilters.selectedModels.includes(model.id)
+                                return (
+                                    <CommandItem
+                                        key={model.id}
+                                        onSelect={() => handleModelToggle(model.id)}
+                                        className="gap-2"
                                     >
                                         <Checkbox
                                             checked={isSelected}

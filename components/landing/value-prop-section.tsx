@@ -1,12 +1,10 @@
-"use client";
-
 import { Download } from "lucide-react";
 import { ScrollReveal } from "./scroll-reveal";
 import { CompetitorComparison } from "./competitor-comparison";
 
 export function ValuePropSection() {
   return (
-    <section id="compare" className="py-24 relative">
+    <section id="compare" className="py-24 xl:py-28 2xl:py-32 relative">
       <div className="container mx-auto px-6">
         <div className="max-w-[1172px] mx-auto">
           <ScrollReveal>

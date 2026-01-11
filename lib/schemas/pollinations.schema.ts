@@ -55,23 +55,33 @@ export const VideoGenerationParamsSchema = ImageGenerationParamsSchema.extend({
   duration: z.number().int().min(2).max(10).optional(),
   aspectRatio: VideoAspectRatioSchema.optional(),
   audio: z.boolean().optional().default(false), // veo only
+  lastFrameImage: z.string().optional(), // Last frame image URL for interpolation (veo only)
 });
+
+// Combined parameter schema for generated results
+export const GenerationParamsSchema = z.union([
+    VideoGenerationParamsSchema,
+    ImageGenerationParamsSchema,
+]);
 
 // Generated image result
 export const GeneratedImageSchema = z.object({
-  id: z.string(),
-  url: z.string().url(),
-  prompt: z.string(),
-  params: ImageGenerationParamsSchema,
-  timestamp: z.number(),
-  // Storage metadata fields (populated when image is stored in R2)
-  r2Key: z.string().optional(),
-  sizeBytes: z.number().optional(),
-  contentType: z.string().optional(),
-  visibility: z.enum(["public", "unlisted"]).optional(),
-  // Convex fields
-  _id: z.string().optional(),
-  _creationTime: z.number().optional(),
+    id: z.string(),
+    url: z.string().url(),
+    prompt: z.string(),
+    params: GenerationParamsSchema,
+    timestamp: z.number(),
+    // Storage metadata fields (populated when image is stored in R2)
+    r2Key: z.string().optional(),
+    sizeBytes: z.number().optional(),
+    contentType: z.string().optional(),
+    visibility: z.enum(["public", "unlisted"]).optional(),
+    lastFrameImage: z.string().optional(),
+    thumbnailUrl: z.string().url().optional(),
+    thumbnailR2Key: z.string().optional(),
+    // Convex fields
+    _id: z.string().optional(),
+    _creationTime: z.number().optional(),
 });
 
 // Model pricing schema

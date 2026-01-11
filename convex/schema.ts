@@ -54,6 +54,12 @@ export default defineSchema({
         /** Full public URL to the image */
         url: v.string(),
 
+        /** R2 object key for thumbnail (128x128, compressed) */
+        thumbnailR2Key: v.optional(v.string()),
+
+        /** Full public URL to the thumbnail */
+        thumbnailUrl: v.optional(v.string()),
+
         /** Generated identifier */
         filename: v.string(),
 
@@ -211,6 +217,11 @@ export default defineSchema({
         failedCount: v.number(),
         /** Current item index being processed */
         currentIndex: v.number(),
+        /** 
+         * Number of items currently in-flight (scheduled but not yet completed).
+         * This helps track requests that will still complete after pause/cancel.
+         */
+        inFlightCount: v.optional(v.number()),
         /** Shared generation parameters for all images */
         generationParams: v.any(),
         /** IDs of successfully generated images */

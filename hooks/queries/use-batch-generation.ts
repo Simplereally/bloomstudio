@@ -29,6 +29,15 @@ export interface BatchGenerationParams {
     private?: boolean
     safe?: boolean
     image?: string
+    // Video-specific parameters
+    /** Video duration in seconds */
+    duration?: number
+    /** Enable audio generation (veo only) */
+    audio?: boolean
+    /** Video aspect ratio (16:9 or 9:16) */
+    aspectRatio?: string
+    /** Second reference image for video interpolation (veo) */
+    lastFrameImage?: string
 }
 
 /**
@@ -48,6 +57,8 @@ export interface BatchJob {
     completedCount: number
     failedCount: number
     currentIndex: number
+    /** Number of items currently in-flight (scheduled but not completed) */
+    inFlightCount?: number
     generationParams: BatchGenerationParams
     imageIds: Id<"generatedImages">[]
     createdAt: number

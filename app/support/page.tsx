@@ -2,6 +2,15 @@ import { Footer } from "@/components/layout/footer"
 import { HelpCircle, Mail } from "lucide-react"
 import Link from "next/link"
 import { LandingHeader } from "@/components/landing/landing-header"
+import { Metadata } from "next"
+
+export const metadata: Metadata = {
+    title: "Support Center | Bloom Studio",
+    description: "Get help with Bloom Studio. Browse our FAQs or contact our support team for assistance with AI image and video generation.",
+    alternates: {
+        canonical: "/support",
+    },
+}
 
 export default function SupportPage() {
     return (

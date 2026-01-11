@@ -23,7 +23,8 @@ import {
     buildPollinationsUrl,
     classifyApiError,
     generateR2Key,
-    uploadToR2,
+    generateThumbnailKey,
+    uploadMediaWithThumbnail,
     fetchWithRetry,
     type RetryConfig,
 } from "./lib"
@@ -78,6 +79,19 @@ export const processBatchItem = internalAction({
     handler: async (ctx, args) => {
         const logger = `[BatchProcessor]`
 
+        // 1. Fire-and-forget scheduling of the NEXT item immediately
+        // This ensures high throughput (10 req/s) by pipelining requests
+        // independent of how long the current generation takes.
+        try {
+            await ctx.runMutation(internal.batchGeneration.scheduleNextBatchItem, {
+                batchJobId: args.batchJobId,
+                currentItemIndex: args.itemIndex,
+            })
+        } catch (error) {
+            console.error(`${logger} Failed to schedule next item:`, error)
+            // Continue processing current item even if scheduling next fails
+        }
+
         // Get the batch job to check status and get params
         const batchJob = await ctx.runQuery(internal.batchGeneration.getBatchJobInternal, {
             batchJobId: args.batchJobId,
@@ -89,14 +103,14 @@ export const processBatchItem = internalAction({
         }
 
         // Don't process if cancelled, paused, completed, or failed
+        // Note: We check this AFTER scheduling next, so we might have scheduled one more
+        // but that one will also check status and stop.
+        // We must decrement in-flight count since this item won't be processed.
         if (batchJob.status !== "pending" && batchJob.status !== "processing") {
-            console.log(`${logger} Batch ${args.batchJobId} status is ${batchJob.status}, stopping`)
-            return
-        }
-
-        // Don't process if we've already processed this or a later item (duplicate prevention)
-        if (args.itemIndex < batchJob.currentIndex) {
-            console.log(`${logger} Item ${args.itemIndex} already processed, skipping`)
+            console.log(`${logger} Batch ${args.batchJobId} status is ${batchJob.status}, stopping (decrementing in-flight)`)
+            await ctx.runMutation(internal.batchGeneration.decrementInFlightCount, {
+                batchJobId: args.batchJobId,
+            })
             return
         }
 
@@ -109,7 +123,7 @@ export const processBatchItem = internalAction({
 
         if (!encryptedApiKey) {
             console.error(`${logger} User has no Pollinations API key configured`)
-            await ctx.runMutation(internal.batchGeneration.recordBatchItemAndScheduleNext, {
+            await ctx.runMutation(internal.batchGeneration.recordBatchItemResult, {
                 batchJobId: args.batchJobId,
                 itemIndex: args.itemIndex,
                 success: false,
@@ -124,7 +138,7 @@ export const processBatchItem = internalAction({
             pollinationsApiKey = decryptApiKey(encryptedApiKey)
         } catch (error) {
             console.error(`${logger} Failed to decrypt API key:`, error)
-            await ctx.runMutation(internal.batchGeneration.recordBatchItemAndScheduleNext, {
+            await ctx.runMutation(internal.batchGeneration.recordBatchItemResult, {
                 batchJobId: args.batchJobId,
                 itemIndex: args.itemIndex,
                 success: false,
@@ -151,6 +165,11 @@ export const processBatchItem = internalAction({
                 private: batchJob.generationParams.private,
                 safe: batchJob.generationParams.safe,
                 image: batchJob.generationParams.image,
+                // Video-specific parameters
+                duration: batchJob.generationParams.duration,
+                audio: batchJob.generationParams.audio,
+                aspectRatio: batchJob.generationParams.aspectRatio,
+                lastFrameImage: batchJob.generationParams.lastFrameImage,
             })
 
             // Log generation request without prompt (which may contain PII)
@@ -172,7 +191,7 @@ export const processBatchItem = internalAction({
 
             if (!result.success || !result.data) {
                 console.error(`${logger} Pollinations API error after ${result.attemptsMade} attempts:`, result.error)
-                await ctx.runMutation(internal.batchGeneration.recordBatchItemAndScheduleNext, {
+                await ctx.runMutation(internal.batchGeneration.recordBatchItemResult, {
                     batchJobId: args.batchJobId,
                     itemIndex: args.itemIndex,
                     success: false,
@@ -188,18 +207,28 @@ export const processBatchItem = internalAction({
             const imageBuffer = Buffer.from(await response.arrayBuffer())
             const contentType = response.headers.get("content-type") || "image/jpeg"
 
-            // Upload to R2
+            // Upload to R2 and generate thumbnail in parallel (for videos)
             const r2Key = generateR2Key(batchJob.ownerId, contentType)
             console.log(`${logger} Uploading to R2: ${r2Key}`)
 
-            const uploadResult = await uploadToR2(imageBuffer, r2Key, contentType)
+            const { media: uploadResult, thumbnail: thumbnailResult } = await uploadMediaWithThumbnail(
+                imageBuffer,
+                r2Key,
+                contentType
+            )
+
             console.log(`${logger} Upload complete: ${uploadResult.url}`)
+            if (thumbnailResult) {
+                console.log(`${logger} Thumbnail complete: ${thumbnailResult.url} (${thumbnailResult.sizeBytes} bytes)`)
+            }
 
             // Store the image in Convex database
             const imageId = await ctx.runMutation(internal.batchGeneration.storeGeneratedImage, {
                 ownerId: batchJob.ownerId,
                 r2Key,
                 url: uploadResult.url,
+                thumbnailR2Key: thumbnailResult?.url ? generateThumbnailKey(r2Key) : undefined,
+                thumbnailUrl: thumbnailResult?.url,
                 prompt: batchJob.generationParams.prompt,
                 width: batchJob.generationParams.width ?? 1024,
                 height: batchJob.generationParams.height ?? 1024,
@@ -216,8 +245,8 @@ export const processBatchItem = internalAction({
 
             console.log(`${logger} Item ${args.itemIndex + 1} completed successfully${result.attemptsMade > 1 ? ` (after ${result.attemptsMade} attempts)` : ""}`)
 
-            // Record the result and schedule next item
-            await ctx.runMutation(internal.batchGeneration.recordBatchItemAndScheduleNext, {
+            // Record the result
+            await ctx.runMutation(internal.batchGeneration.recordBatchItemResult, {
                 batchJobId: args.batchJobId,
                 itemIndex: args.itemIndex,
                 success: true,
@@ -227,7 +256,7 @@ export const processBatchItem = internalAction({
 
         } catch (error) {
             console.error(`${logger} Error processing item ${args.itemIndex}:`, error)
-            await ctx.runMutation(internal.batchGeneration.recordBatchItemAndScheduleNext, {
+            await ctx.runMutation(internal.batchGeneration.recordBatchItemResult, {
                 batchJobId: args.batchJobId,
                 itemIndex: args.itemIndex,
                 success: false,

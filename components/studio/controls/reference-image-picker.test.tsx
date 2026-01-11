@@ -39,15 +39,15 @@ describe("ReferenceImagePicker", () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        vi.mocked(useReferenceImages).mockReturnValue(mockRecentImages)
+        vi.mocked(useReferenceImages).mockReturnValue(mockRecentImages as any)
         vi.mocked(useUploadReference).mockReturnValue({
             mutateAsync: vi.fn(),
             isPending: false,
-        } as ReturnType<typeof useUploadReference>)
+        } as any)
         vi.mocked(useDeleteReferenceImage).mockReturnValue({
             mutateAsync: vi.fn(),
             isPending: false,
-        } as ReturnType<typeof useDeleteReferenceImage>)
+        } as any)
     })
 
     it("renders upload button when no image selected", () => {

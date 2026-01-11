@@ -36,7 +36,7 @@ export type AspectRatio =
  * Resolution tier for aspect ratio presets.
  * Each tier represents a target megapixel range for image generation.
  */
-export type ResolutionTier = "sd" | "hd" | "2k" | "4k" | "max"
+export type ResolutionTier = "sd" | "hd" | "2k" | "4k"
 
 /**
  * Configuration for a resolution tier.

@@ -23,36 +23,13 @@ describe("OptionsPanel", () => {
         render(<OptionsPanel {...defaultProps} />)
 
         expect(screen.getByTestId("options-panel")).toBeInTheDocument()
-        expect(screen.getByTestId("options-trigger")).toBeInTheDocument()
     })
 
-    it("is collapsed by default", () => {
+    it("renders options instantly", () => {
         render(<OptionsPanel {...defaultProps} />)
-
-        expect(screen.queryByTestId("option-enhance")).not.toBeInTheDocument()
-    })
-
-    it("expands when trigger is clicked", async () => {
-        render(<OptionsPanel {...defaultProps} />)
-
-        await userEvent.click(screen.getByTestId("options-trigger"))
-        expect(screen.getByTestId("option-enhance")).toBeInTheDocument()
-    })
-
-    it("starts expanded when defaultExpanded is true", () => {
-        render(<OptionsPanel {...defaultProps} defaultExpanded={true} />)
-
         expect(screen.getByTestId("option-enhance")).toBeInTheDocument()
         expect(screen.getByTestId("option-private")).toBeInTheDocument()
         expect(screen.getByTestId("option-safe")).toBeInTheDocument()
-    })
-
-    it("shows all option switches when expanded", async () => {
-        render(<OptionsPanel {...defaultProps} defaultExpanded={true} />)
-
-        expect(screen.getByTestId("switch-enhance")).toBeInTheDocument()
-        expect(screen.getByTestId("switch-private")).toBeInTheDocument()
-        expect(screen.getByTestId("switch-safe")).toBeInTheDocument()
     })
 
     it("calls onOptionsChange when enhance is toggled", async () => {
@@ -60,7 +37,6 @@ describe("OptionsPanel", () => {
         render(
             <OptionsPanel
                 {...defaultProps}
-                defaultExpanded={true}
                 onOptionsChange={onOptionsChange}
             />
         )
@@ -78,7 +54,6 @@ describe("OptionsPanel", () => {
         render(
             <OptionsPanel
                 {...defaultProps}
-                defaultExpanded={true}
                 onOptionsChange={onOptionsChange}
             />
         )
@@ -96,7 +71,6 @@ describe("OptionsPanel", () => {
         render(
             <OptionsPanel
                 {...defaultProps}
-                defaultExpanded={true}
                 onOptionsChange={onOptionsChange}
             />
         )
@@ -109,28 +83,10 @@ describe("OptionsPanel", () => {
         })
     })
 
-    it("displays active count badge when options are enabled", () => {
-        render(
-            <OptionsPanel
-                {...defaultProps}
-                options={{ enhance: true, private: true, safe: false }}
-            />
-        )
-
-        expect(screen.getByTestId("active-count")).toHaveTextContent("2")
-    })
-
-    it("does not show active count when no options are enabled", () => {
-        render(<OptionsPanel {...defaultProps} />)
-
-        expect(screen.queryByTestId("active-count")).not.toBeInTheDocument()
-    })
-
     it("reflects current option states in switches", () => {
         render(
             <OptionsPanel
                 {...defaultProps}
-                defaultExpanded={true}
                 options={{ enhance: true, private: false, safe: true }}
             />
         )

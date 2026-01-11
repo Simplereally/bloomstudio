@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { renderHook, act } from "@testing-library/react"
 import { useStudioUI } from "./use-studio-ui"
 import type { GeneratedImage } from "@/types/pollinations"
+import { createMockImage } from "@/lib/test-utils"
 
 // Mock useKeyboardShortcuts
 vi.mock("@/hooks/use-keyboard-shortcuts", () => ({
@@ -10,17 +11,11 @@ vi.mock("@/hooks/use-keyboard-shortcuts", () => ({
 }))
 
 describe("useStudioUI", () => {
-    const mockImage: GeneratedImage = {
+    const mockImage = createMockImage({
         id: "test-image-1",
         url: "https://example.com/image.jpg",
         prompt: "A beautiful sunset",
-        timestamp: Date.now(),
-        params: {
-            model: "zimage",
-            width: 1024,
-            height: 1024,
-        },
-    }
+    })
 
     beforeEach(() => {
         vi.clearAllMocks()

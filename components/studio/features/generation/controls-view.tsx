@@ -27,14 +27,18 @@ import {
   ReferenceImagePicker,
   SeedControl,
   type GenerationOptions,
+  VideoSettingsPanel,
+  VideoReferenceImagePicker,
+  type VideoSettings,
+  type VideoReferenceImages,
 } from "@/components/studio";
 import type { BatchModeSettings } from "@/components/studio/batch";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import type { ModelDefinition } from "@/lib/config/models";
+import type { ModelDefinition, VideoDurationConstraints } from "@/lib/config/models";
 import { cn } from "@/lib/utils";
 import type { AspectRatio, AspectRatioOption, ModelConstraints, ResolutionTier } from "@/types/pollinations";
-import { Dice6, Frame, Image as ImageIcon, Ruler, Sparkles, X, Wand2 } from "lucide-react";
+import { Dice6, Frame, Image as ImageIcon, Layers, Ruler, Settings2, Sparkles, X, Wand2, Video, Volume2 } from "lucide-react";
 import Image from "next/image";
 import * as React from "react";
 
@@ -87,6 +91,16 @@ export interface ControlsViewProps {
   batchSettings: BatchModeSettings;
   onBatchSettingsChange: (settings: BatchModeSettings) => void;
   isBatchActive?: boolean;
+
+  // Video-specific props
+  isVideoModel?: boolean
+  videoSettings?: VideoSettings
+  onVideoSettingsChange?: (settings: VideoSettings) => void
+  videoReferenceImages?: VideoReferenceImages
+  onVideoReferenceImagesChange?: (images: VideoReferenceImages) => void
+  durationConstraints?: VideoDurationConstraints
+  supportsAudio?: boolean
+  supportsInterpolation?: boolean
 }
 
 export const ControlsView = React.memo(function ControlsView({
@@ -138,8 +152,21 @@ export const ControlsView = React.memo(function ControlsView({
   batchSettings,
   onBatchSettingsChange,
   isBatchActive = false,
+
+  // Video settings
+  isVideoModel = false,
+  videoSettings,
+  onVideoSettingsChange,
+  videoReferenceImages,
+  onVideoReferenceImagesChange,
+  durationConstraints,
+  supportsAudio = false,
+  supportsInterpolation = false,
 }: ControlsViewProps) {
   const [modelExpanded, setModelExpanded] = React.useState(true);
+
+  // Calculate frame count for video reference display
+  const videoFrameCount = (videoReferenceImages?.firstFrame ? 1 : 0) + (videoReferenceImages?.lastFrame ? 1 : 0)
 
   const handleModelChange = React.useCallback(
     (newModel: string) => {
@@ -217,6 +244,68 @@ export const ControlsView = React.memo(function ControlsView({
         />
         <Separator className="bg-border/50" />
       </CollapsibleSection>
+
+      {/* Video Frames (video models only) */}
+      {isVideoModel && videoReferenceImages && onVideoReferenceImagesChange && (
+          <CollapsibleSection
+              title="Video Frames"
+              icon={<Video className="h-3.5 w-3.5" />}
+              testId="video-frames-section"
+              collapsedContent={
+                  videoFrameCount > 0 ? (
+                      <span className={cn(badgeClassName, "tabular-nums")}>
+                          {videoFrameCount} frame{videoFrameCount !== 1 ? "s" : ""}
+                      </span>
+                  ) : undefined
+              }
+              rightContent={
+                  videoFrameCount > 0 && (
+                      <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onVideoReferenceImagesChange({ firstFrame: undefined, lastFrame: undefined })}
+                          className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-destructive flex items-center gap-1"
+                      >
+                          <X className="h-3 w-3" />
+                          Clear
+                      </Button>
+                  )
+              }
+          >
+              <VideoReferenceImagePicker
+                  selectedImages={videoReferenceImages}
+                  onImagesChange={onVideoReferenceImagesChange}
+                  supportsInterpolation={supportsInterpolation}
+                  disabled={isGenerating}
+                  hideHeader
+              />
+              <Separator className="bg-border/50" />
+          </CollapsibleSection>
+      )}
+
+      {/* Video Settings (video models only) */}
+      {isVideoModel && videoSettings && onVideoSettingsChange && durationConstraints && (
+          <CollapsibleSection
+              title="Video Settings"
+              icon={<Video className="h-3.5 w-3.5" />}
+              testId="video-settings-section"
+              collapsedContent={
+                  <span className={cn(badgeClassName, "tabular-nums")}>
+                      {videoSettings.duration}s
+                      {supportsAudio && videoSettings.audio && <Volume2 className="h-3 w-3" />}
+                  </span>
+              }
+          >
+              <VideoSettingsPanel
+                  settings={videoSettings}
+                  onSettingsChange={onVideoSettingsChange}
+                  durationConstraints={durationConstraints}
+                  supportsAudio={supportsAudio}
+                  disabled={isGenerating}
+              />
+              <Separator className="bg-border/50" />
+          </CollapsibleSection>
+      )}
 
       {/* Dimensions - only shown in Custom mode for cleaner UX */}
       {aspectRatio === "custom" && dimensionsEnabled && (
@@ -315,10 +404,40 @@ export const ControlsView = React.memo(function ControlsView({
       </CollapsibleSection>
 
       {/* Options */}
-      <OptionsPanel options={options} onOptionsChange={onOptionsChange} disabled={isGenerating} />
+      <CollapsibleSection
+        title="Advanced Options"
+        icon={<Settings2 className="h-3.5 w-3.5" />}
+        testId="options-section"
+        collapsedContent={
+          (() => {
+             const activeCount = Object.values(options).filter(Boolean).length;
+             return activeCount > 0 ? (
+                 <span className={cn(badgeClassName, "tabular-nums")}>
+                    {activeCount} active
+                 </span>
+             ) : undefined;
+          })()
+        }
+      >
+        <OptionsPanel options={options} onOptionsChange={onOptionsChange} disabled={isGenerating} />
+        <Separator className="bg-border/50" />
+      </CollapsibleSection>
 
       {/* Batch Mode */}
-      <BatchModePanel settings={batchSettings} onSettingsChange={onBatchSettingsChange} disabled={isGenerating || isBatchActive} />
+      <CollapsibleSection
+        title="Batch Mode"
+        icon={<Layers className="h-3.5 w-3.5" />}
+        testId="batch-mode-section"
+        collapsedContent={
+            batchSettings.enabled ? (
+                 <span className={cn(badgeClassName, "tabular-nums")}>
+                    {batchSettings.count} images
+                 </span>
+            ) : undefined
+        }
+      >
+        <BatchModePanel settings={batchSettings} onSettingsChange={onBatchSettingsChange} disabled={isGenerating || isBatchActive} />
+      </CollapsibleSection>
     </>
   );
 });

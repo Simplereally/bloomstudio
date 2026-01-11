@@ -23,6 +23,9 @@ export { ReferenceImagePicker } from "./controls/reference-image-picker"
 export { ResolutionTierSelector, type ResolutionTierSelectorProps } from "./controls/resolution-tier-selector"
 export { MegapixelBudget, type MegapixelBudgetProps } from "./controls/megapixel-budget"
 export { SeedControl, type SeedControlProps } from "./controls/seed-control"
+export { VideoSettingsPanel, type VideoSettings, type VideoSettingsPanelProps } from "./controls/video-settings-panel"
+export { VideoReferenceImagePicker, type VideoReferenceImages } from "./controls/video-reference-image-picker"
+export { ReferenceImagesBrowserModal } from "./controls/reference-images-browser-modal"
 
 // Canvas Components
 export { ImageCanvas, type ImageCanvasProps } from "./canvas/image-canvas"
@@ -33,10 +36,10 @@ export { ImageToolbar, type ImageToolbarProps } from "./canvas/image-toolbar"
 export { GalleryThumbnail, type GalleryThumbnailProps } from "./gallery/gallery-thumbnail"
 export { ImageGallery, type ImageGalleryProps } from "./gallery/image-gallery"
 export { PersistentImageGallery } from "./gallery/persistent-image-gallery"
-export { 
-    SelectionProvider, 
-    useSelection, 
-    useSelectionMode, 
+export {
+    SelectionProvider,
+    useSelection,
+    useSelectionMode,
     useIsSelected,
     type SelectionContextValue,
     type SelectionProviderProps,

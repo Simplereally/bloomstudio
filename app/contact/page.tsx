@@ -1,10 +1,34 @@
 import { Footer } from "@/components/layout/footer"
 import { Mail, MessageSquare } from "lucide-react"
 import { LandingHeader } from "@/components/landing/landing-header"
+import { JsonLd } from "@/components/seo/json-ld"
+import { Metadata } from "next"
+
+export const metadata: Metadata = {
+    title: "Contact Us | Bloom Studio",
+    description: "Get in touch with Bloom Studio. Contact our support team via email or join our Discord community for help with AI image generation.",
+    alternates: {
+        canonical: "/contact",
+    },
+}
 
 export default function ContactPage() {
     return (
         <div className="min-h-screen flex flex-col bg-background">
+            <JsonLd
+                data={{
+                    "@context": "https://schema.org",
+                    "@type": "ContactPage",
+                    name: "Contact Bloom Studio",
+                    description: "Get in touch with Bloom Studio support team.",
+                    mainEntity: {
+                        "@type": "Organization",
+                        name: "Bloom Studio",
+                        email: "support@bloomstudio.fun",
+                        url: "https://bloomstudio.fun",
+                    },
+                }}
+            />
             <LandingHeader />
 
             <main className="flex-1 container mx-auto px-6 pt-32 pb-20 max-w-2xl">

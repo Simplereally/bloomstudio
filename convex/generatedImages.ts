@@ -8,6 +8,12 @@ import { v } from "convex/values"
 import type { Doc } from "./_generated/dataModel"
 import { mutation, query, type QueryCtx } from "./_generated/server"
 
+/**
+ * Maximum number of items allowed in bulk operations to avoid hitting Convex limits.
+ * Convex has limits on transaction size and number of reads/writes per transaction.
+ */
+const MAX_BULK_OPERATION_SIZE = 100
+
 /** Image with enriched owner display information */
 type EnrichedImage = Doc<"generatedImages"> & {
     ownerName: string
@@ -143,25 +149,35 @@ export const getById = query({
 type ThumbnailImage = {
     _id: Doc<"generatedImages">["_id"]
     _creationTime: number
+    /** URL to display - uses thumbnailUrl if available, otherwise falls back to original */
     url: string
+    /** Original full-size URL (for lightbox/download) */
+    originalUrl: string
     visibility: "public" | "unlisted"
     createdAt: number
     // Include model for filtering badge display (small field)
     model: string
+    // Include contentType for video detection
+    contentType: string
 }
 
 /**
  * Helper to map full documents to lightweight thumbnail format.
  * Reduces bandwidth by ~90% by excluding generationParams, prompt, and other unused fields.
+ * Uses thumbnailUrl when available (~98% additional bandwidth reduction for gallery).
  */
 function toThumbnails(images: Doc<"generatedImages">[]): ThumbnailImage[] {
     return images.map(img => ({
         _id: img._id,
         _creationTime: img._creationTime,
-        url: img.url,
+        // Prefer thumbnail for gallery display, fall back to original for legacy images
+        url: img.thumbnailUrl ?? img.url,
+        // Always include original URL for when user opens lightbox
+        originalUrl: img.url,
         visibility: img.visibility,
         createdAt: img.createdAt,
         model: img.model,
+        contentType: img.contentType,
     }))
 }
 
@@ -289,6 +305,7 @@ type DisplayImage = {
     width: number | undefined
     height: number | undefined
     seed: number | undefined
+    contentType: string
 }
 
 /**
@@ -307,6 +324,7 @@ function toDisplayImages(images: Doc<"generatedImages">[]): DisplayImage[] {
         width: img.width,
         height: img.height,
         seed: img.seed,
+        contentType: img.contentType,
     }))
 }
 
@@ -576,6 +594,8 @@ export const setVisibility = mutation({
  * Bulk update visibility for multiple images.
  * Only the owner can change visibility of their images.
  * Returns the count of successfully updated images.
+ *
+ * @param imageIds - Array of image IDs to update (max 100 to avoid Convex limits)
  */
 export const setBulkVisibility = mutation({
     args: {
@@ -588,8 +608,25 @@ export const setBulkVisibility = mutation({
             throw new Error("Not authenticated")
         }
 
+        // Input validation: enforce upper bound to avoid hitting Convex limits
+        if (args.imageIds.length > MAX_BULK_OPERATION_SIZE) {
+            throw new Error(
+                `Too many items: maximum ${MAX_BULK_OPERATION_SIZE} images can be updated at once, received ${args.imageIds.length}`
+            )
+        }
+
+        if (args.imageIds.length === 0) {
+            return {
+                success: true,
+                successCount: 0,
+                totalRequested: 0,
+                errors: undefined,
+            }
+        }
+
         let successCount = 0
         const errors: string[] = []
+
 
         await Promise.all(
             args.imageIds.map(async (imageId) => {
@@ -628,7 +665,7 @@ export const setBulkVisibility = mutation({
 /**
  * Delete a generated image record.
  * Only the owner can delete their images.
- * Returns the r2Key so the caller can also delete from R2.
+ * Returns the r2Key and thumbnailR2Key so the caller can also delete from R2.
  */
 export const remove = mutation({
     args: {
@@ -650,10 +687,93 @@ export const remove = mutation({
         }
 
         const r2Key = image.r2Key
+        const thumbnailR2Key = image.thumbnailR2Key
 
         await ctx.db.delete(args.imageId)
 
-        return { r2Key }
+        return { r2Key, thumbnailR2Key }
+    },
+})
+
+/**
+ * Bulk delete multiple generated image records.
+ * Only the owner can delete their images.
+ * Returns all r2Keys and thumbnailR2Keys so the caller can delete them from R2.
+ *
+ * @param imageIds - Array of image IDs to delete (max 100 to avoid Convex limits)
+ */
+export const removeMany = mutation({
+    args: {
+        imageIds: v.array(v.id("generatedImages")),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity()
+        if (!identity) {
+            throw new Error("Not authenticated")
+        }
+
+        // Input validation: enforce upper bound to avoid hitting Convex limits
+        if (args.imageIds.length > MAX_BULK_OPERATION_SIZE) {
+            throw new Error(
+                `Too many items: maximum ${MAX_BULK_OPERATION_SIZE} images can be deleted at once, received ${args.imageIds.length}`
+            )
+        }
+
+        if (args.imageIds.length === 0) {
+            return {
+                success: true,
+                successCount: 0,
+                totalRequested: 0,
+                r2Keys: [],
+                thumbnailR2Keys: [],
+                errors: undefined,
+            }
+        }
+
+        const r2Keys: string[] = []
+        const thumbnailR2Keys: string[] = []
+        const errors: string[] = []
+        let successCount = 0
+
+        await Promise.all(
+            args.imageIds.map(async (imageId) => {
+                try {
+                    const image = await ctx.db.get(imageId)
+                    if (!image) {
+                        errors.push(`Image ${imageId} not found`)
+                        return
+                    }
+
+                    if (image.ownerId !== identity.subject) {
+                        errors.push(`Not authorized to delete image ${imageId}`)
+                        return
+                    }
+
+                    // Collect R2 keys for deletion
+                    if (image.r2Key) {
+                        r2Keys.push(image.r2Key)
+                    }
+                    if (image.thumbnailR2Key) {
+                        thumbnailR2Keys.push(image.thumbnailR2Key)
+                    }
+
+                    await ctx.db.delete(imageId)
+                    successCount++
+                } catch (error) {
+                    const errorMessage = error instanceof Error ? error.message : "Unknown error"
+                    errors.push(`Failed to delete image ${imageId}: ${errorMessage}`)
+                }
+            })
+        )
+
+        return {
+            success: successCount > 0,
+            successCount,
+            totalRequested: args.imageIds.length,
+            r2Keys,
+            thumbnailR2Keys,
+            errors: errors.length > 0 ? errors : undefined,
+        }
     },
 })
 

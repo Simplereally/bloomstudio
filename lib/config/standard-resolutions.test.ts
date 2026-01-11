@@ -63,16 +63,16 @@ describe("Standard Resolutions Configuration", () => {
             expect(STANDARD_RESOLUTIONS.hd["9:16"]).toEqual({ width: 1080, height: 1920 })
         })
 
-        it("should have standard HD 1:1 resolution as 1024x1024", () => {
-            expect(STANDARD_RESOLUTIONS.hd["1:1"]).toEqual({ width: 1024, height: 1024 })
+        it("should have standard HD 1:1 resolution as 1080x1080 (shorter edge model)", () => {
+            expect(STANDARD_RESOLUTIONS.hd["1:1"]).toEqual({ width: 1080, height: 1080 })
         })
 
         it("should have standard 4K 16:9 resolution as 3840x2160", () => {
             expect(STANDARD_RESOLUTIONS["4k"]["16:9"]).toEqual({ width: 3840, height: 2160 })
         })
 
-        it("should have standard SD 16:9 resolution as 960x540", () => {
-            expect(STANDARD_RESOLUTIONS.sd["16:9"]).toEqual({ width: 960, height: 540 })
+        it("should have standard SD 16:9 resolution as 1280x720 (720p shorter edge model)", () => {
+            expect(STANDARD_RESOLUTIONS.sd["16:9"]).toEqual({ width: 1280, height: 720 })
         })
 
         it("should have dimensions that maintain proper aspect ratios", () => {
@@ -100,11 +100,6 @@ describe("getStandardDimensions", () => {
 
     it("should return null for custom aspect ratio", () => {
         const dims = getStandardDimensions("custom", "hd")
-        expect(dims).toBeNull()
-    })
-
-    it("should return null for max tier", () => {
-        const dims = getStandardDimensions("16:9", "max")
         expect(dims).toBeNull()
     })
 })
@@ -137,11 +132,6 @@ describe("getStandardDimensionsWithFallback", () => {
     it("should return standard dimensions for valid ratio and tier", () => {
         const dims = getStandardDimensionsWithFallback("16:9", "hd")
         expect(dims).toEqual({ width: 1920, height: 1080 })
-    })
-
-    it("should return 4K dimensions for max tier", () => {
-        const dims = getStandardDimensionsWithFallback("16:9", "max")
-        expect(dims).toEqual({ width: 3840, height: 2160 }) // Falls back to 4K
     })
 
     it("should return default dimensions for custom ratio", () => {

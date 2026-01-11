@@ -1,273 +1,123 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { api } from "@/convex/_generated/api"
-import { useConvexAuth, useMutation, useQuery, useAction } from "convex/react"
-import { useTheme } from "next-themes"
-import { useEffect, useState } from "react"
-import { toast } from "sonner"
-import { SubscriptionBadge } from "@/components/subscription/subscription-badge"
-import { UpgradeModal } from "@/components/studio/upgrade-modal"
-import { Loader2, CreditCard } from "lucide-react"
-import { useSubscriptionStatus } from "@/hooks/use-subscription-status"
+import { useConvexAuth } from "convex/react"
+import { ProfileCard } from "@/components/settings/profile-card"
+import { AppearanceCard } from "@/components/settings/appearance-card"
+import { SubscriptionCard } from "@/components/settings/subscription-card"
+import { ApiCard } from "@/components/settings/api-card"
+import { StarRepoCard } from "@/components/settings/star-repo-card"
+import { motion, AnimatePresence } from "framer-motion"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { useState } from "react"
+import { cn } from "@/lib/utils"
+import { User, Palette, CreditCard, Terminal } from "lucide-react"
 
-/**
- * SettingsPage - User profile and subscription management.
- */
+type Tab = "profile" | "appearance" | "subscription" | "api"
+
+const tabs: { id: Tab; label: string; icon: any }[] = [
+    { id: "profile", label: "Profile", icon: User },
+    { id: "appearance", label: "Appearance", icon: Palette },
+    { id: "subscription", label: "Subscription", icon: CreditCard },
+    { id: "api", label: "Pollinations API Key", icon: Terminal },
+]
+
 export default function SettingsPage() {
-    const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth()
-    const currentUser = useQuery(api.users.getCurrentUser)
-    const updateUsername = useMutation(api.users.updateUsername)
-    const { status: subscriptionStatus, isLoading: isSubscriptionLoading } = useSubscriptionStatus()
-    const createPortalSession = useAction(api.stripe.createPortalSession)
+    const { isAuthenticated, isLoading } = useConvexAuth()
+    const [activeTab, setActiveTab] = useState<Tab>("profile")
 
-    const { theme, setTheme } = useTheme()
-    const [mounted, setMounted] = useState(false)
-
-    const [username, setUsername] = useState("")
-    const [isSaving, setIsSaving] = useState(false)
-    const [isPortalling, setIsPortalling] = useState(false)
-    const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false)
-    const [hasChanges, setHasChanges] = useState(false)
-
-    // Prevent hydration mismatch
-    useEffect(() => {
-        setMounted(true)
-    }, [])
-
-    // Initialize username from user data
-    useEffect(() => {
-        if (currentUser?.username) {
-            setUsername(currentUser.username)
-        }
-    }, [currentUser?.username])
-
-    // Track changes
-    useEffect(() => {
-        const initialUsername = currentUser?.username ?? ""
-        setHasChanges(username !== initialUsername && username.trim().length >= 3)
-    }, [username, currentUser?.username])
-
-    const handleSave = async () => {
-        if (!hasChanges) return
-
-        setIsSaving(true)
-        try {
-            await updateUsername({ username })
-            toast.success("Username updated successfully!")
-            setHasChanges(false)
-        } catch (error) {
-            const message = error instanceof Error ? error.message : "Failed to update username"
-            toast.error(message)
-        } finally {
-            setIsSaving(false)
-        }
-    }
-
-    const handleManageBilling = async () => {
-        setIsPortalling(true)
-        try {
-            const { url } = await createPortalSession({
-                returnUrl: window.location.href,
-            })
-            window.location.href = url
-        } catch (error) {
-            console.error("Portal error:", error)
-            toast.error("Failed to open billing portal")
-            setIsPortalling(false)
-        }
-    }
-
-    if (isAuthLoading || !mounted) {
+    if (isLoading) {
         return (
-            <div className="flex flex-col gap-4 p-6 max-w-2xl mx-auto">
-                <Card className="animate-pulse">
-                    <CardHeader>
-                        <div className="h-6 w-24 bg-muted rounded" />
-                        <div className="h-4 w-48 bg-muted rounded mt-2" />
-                    </CardHeader>
-                    <CardContent className="h-48 bg-muted/20 rounded-b-lg" />
-                </Card>
+            <div className="container max-w-6xl mx-auto py-12 px-4">
+                <div className="h-8 w-48 bg-muted rounded animate-pulse mb-8" />
+                <div className="flex flex-col lg:flex-row gap-8">
+                    <div className="w-full lg:w-64 space-y-2">
+                         {[1, 2, 3, 4].map((i) => (
+                             <div key={i} className="h-10 w-full bg-muted/50 rounded animate-pulse" />
+                         ))}
+                    </div>
+                    <div className="flex-1">
+                        <Card className="h-96 animate-pulse bg-muted/10 border-0" />
+                    </div>
+                </div>
             </div>
         )
     }
 
     if (!isAuthenticated) {
         return (
-            <div className="flex flex-col gap-4 p-6 max-w-2xl mx-auto">
-                <Card className="border-destructive/20 bg-destructive/5">
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-6">
+                <Card className="max-w-md w-full border-destructive/20 bg-destructive/5">
                     <CardHeader>
-                        <CardTitle>Authentication Required</CardTitle>
-                        <CardDescription>
-                            Please sign in to access your settings and subscription.
-                        </CardDescription>
+                        <h2 className="text-xl font-semibold text-destructive">Authentication Required</h2>
                     </CardHeader>
+                    <CardContent>
+                        <p className="text-muted-foreground">
+                            Please sign in to access your settings.
+                        </p>
+                    </CardContent>
                 </Card>
             </div>
         )
     }
 
     return (
-        <div className="flex flex-col gap-8 p-6 max-w-2xl mx-auto py-12">
-            <div className="space-y-1">
+        <div className="container max-w-6xl mx-auto py-12 px-4">
+            <div className="mb-8 space-y-1">
                 <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
                 <p className="text-muted-foreground">
-                    Manage your account settings and subscription preferences.
+                    Manage your account settings and preferences.
                 </p>
             </div>
 
-            {/* Profile Settings */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Profile</CardTitle>
-                    <CardDescription>
-                        Update your public information.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="flex flex-col gap-2">
-                        <Label htmlFor="username">Username</Label>
-                        <Input
-                            id="username"
-                            type="text"
-                            placeholder="Enter your username"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            maxLength={30}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                            This is your public display name. 3-30 characters.
-                        </p>
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        <Label htmlFor="theme">Theme</Label>
-                        <Select value={theme} onValueChange={setTheme}>
-                            <SelectTrigger id="theme">
-                                <SelectValue placeholder="Select a theme" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="light">Light</SelectItem>
-                                <SelectItem value="dark">Dark</SelectItem>
-                                <SelectItem value="system">System</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </CardContent>
-                <CardFooter className="border-t bg-muted/10 pt-6">
-                    <Button
-                        onClick={handleSave}
-                        disabled={!hasChanges || isSaving}
-                        className="ml-auto"
-                    >
-                        {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Save Changes
-                    </Button>
-                </CardFooter>
-            </Card>
-
-            {/* Subscription Settings */}
-            <Card className="overflow-hidden border-primary/20">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <CreditCard className="h-5 w-5 text-primary" />
-                        Subscription
-                    </CardTitle>
-                    <CardDescription>
-                        Manage your current plan and billing details.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="flex items-center justify-between p-6 rounded-2xl border bg-primary/5 border-primary/10">
-                        <div className="space-y-1">
-                            <div className="flex items-center gap-2 mb-1">
-                                <span className="text-sm font-medium text-muted-foreground">Current Plan</span>
-                                <SubscriptionBadge />
-                            </div>
-                            <p className="font-semibold text-lg">
-                                {subscriptionStatus === "pro" ? "Bloom Pro" : "Free Trial"}
-                            </p>
-                            <p className="text-sm text-muted-foreground max-w-[320px]">
-                                {subscriptionStatus === "pro"
-                                    ? "Enjoy unlimited generations and priority access to all models."
-                                    : "Limited trial access. Upgrade to Pro for unlimited creative power."}
-                            </p>
-                        </div>
-
-                        <div className="flex flex-col gap-2 min-w-[140px]">
-                            {subscriptionStatus === "pro" ? (
-                                <Button
-                                    variant="outline"
-                                    className="w-full"
-                                    onClick={handleManageBilling}
-                                    disabled={isPortalling}
+            <div className="flex flex-col lg:flex-row gap-8">
+                {/* Sidebar Navigation */}
+                <aside className="w-full lg:w-64 flex-shrink-0">
+                    <nav className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-x-visible pb-4 lg:pb-0">
+                        {tabs.map((tab) => {
+                            const Icon = tab.icon
+                            const isActive = activeTab === tab.id
+                            return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={cn(
+                                        "flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all whitespace-nowrap",
+                                        isActive 
+                                            ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" 
+                                            : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                                    )}
                                 >
-                                    {isPortalling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Manage Billing
-                                </Button>
-                            ) : (
-                                <Button
-                                    className="w-full shadow-lg shadow-primary/20"
-                                    onClick={() => setIsUpgradeModalOpen(true)}
-                                >
-                                    Upgrade to Pro
-                                </Button>
+                                    <Icon className="w-4 h-4" />
+                                    {tab.label}
+                                </button>
+                            )
+                        })}
+                    </nav>
+                </aside>
+
+                {/* Main Content Area */}
+                <main className="flex-1 min-w-0">
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={activeTab}
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            {activeTab === "profile" && <ProfileCard />}
+                            {activeTab === "appearance" && <AppearanceCard />}
+                            {activeTab === "subscription" && <SubscriptionCard />}
+                            {activeTab === "api" && (
+                                <div className="space-y-6">
+                                    <ApiCard />
+                                    <StarRepoCard />
+                                </div>
                             )}
-                        </div>
-                    </div>
-                </CardContent>
-                <CardFooter className="bg-muted/30 border-t py-4">
-                    <p className="text-xs text-muted-foreground text-center w-full">
-                        Payments are securely processed by Stripe. Cancel anytime.
-                    </p>
-                </CardFooter>
-            </Card>
-
-            {/* Pollinations API Boost */}
-            <Card className="border-yellow-500/20 bg-yellow-500/5">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
-                        Boost Your Limits
-                    </CardTitle>
-                    <CardDescription>
-                        Support the open-source project and unlock higher generation limits.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="rounded-lg border border-border/50 bg-background/50 p-4">
-                        <div className="flex items-start gap-4">
-                            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-yellow-500/10 text-yellow-500 flex items-center justify-center">
-                                <Github className="w-5 h-5" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="font-medium text-foreground">Star the Pollinations repo</p>
-                                <p className="text-sm text-muted-foreground mt-1 mb-4">
-                                    Default keys have limits of around 300 images/month. Starring the repo can unlock higher limits (up to ~900 images/month) permanently.
-                                </p>
-                                <Button
-                                    onClick={() => window.open("https://github.com/pollinations/pollinations", "_blank", "noopener,noreferrer")}
-                                    variant="outline"
-                                    className="w-full sm:w-auto"
-                                >
-                                    <Github className="w-4 h-4 mr-2" />
-                                    Star on GitHub
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Modals */}
-            <UpgradeModal
-                isOpen={isUpgradeModalOpen}
-                onClose={() => setIsUpgradeModalOpen(false)}
-            />
+                        </motion.div>
+                    </AnimatePresence>
+                </main>
+            </div>
         </div>
     )
 }

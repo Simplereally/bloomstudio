@@ -18,7 +18,7 @@
  * This hook follows the "Headless UI" pattern - pure logic with stable callbacks.
  */
 
-import type { GenerationOptions } from "@/components/studio"
+import type { GenerationOptions, VideoSettings, VideoReferenceImages } from "@/components/studio"
 import { useRandomSeed } from "@/hooks/use-random-seed"
 import {
     getModel,
@@ -88,6 +88,13 @@ export interface UseGenerationSettingsReturn {
     // Reference image
     referenceImage: string | undefined
     setReferenceImage: React.Dispatch<React.SetStateAction<string | undefined>>
+
+    // Video-specific settings
+    isVideoModel: boolean
+    videoSettings: VideoSettings
+    setVideoSettings: React.Dispatch<React.SetStateAction<VideoSettings>>
+    videoReferenceImages: VideoReferenceImages
+    setVideoReferenceImages: React.Dispatch<React.SetStateAction<VideoReferenceImages>>
 }
 
 /**
@@ -149,8 +156,23 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
     const [referenceImage, setReferenceImage] = React.useState<string | undefined>(undefined)
 
     // ========================================
+    // Video-specific State
+    // ========================================
+    const [videoSettings, setVideoSettings] = React.useState<VideoSettings>({
+        duration: 5,
+        audio: false,
+    })
+    const [videoReferenceImages, setVideoReferenceImages] = React.useState<VideoReferenceImages>({
+        firstFrame: undefined,
+        lastFrame: undefined,
+    })
+
+    // ========================================
     // Model-specific Data (Memoized)
     // ========================================
+    const modelDef = React.useMemo(() => getModel(model), [model])
+    const isVideoModel = modelDef?.type === "video"
+
     const aspectRatios = React.useMemo(
         () => getModelAspectRatios(model) ?? [],
         [model]
@@ -241,10 +263,10 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
     const handleModelChange = React.useCallback((newModel: ImageModel) => {
         setModel(newModel)
 
-        const modelDef = getModel(newModel)
-        if (!modelDef) return // Unknown model, no constraints to apply
+        const newModelDef = getModel(newModel)
+        if (!newModelDef) return // Unknown model, no constraints to apply
 
-        const { constraints: newConstraints, aspectRatios: ratios } = modelDef
+        const { constraints: newConstraints, aspectRatios: ratios } = newModelDef
 
         // Check if current tier is supported by new model
         const newSupportedTiers = getSupportedTiersForModel(newConstraints)
@@ -264,51 +286,63 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
             setWidth(standardDims.width)
             setHeight(standardDims.height)
             setAspectRatio(firstRatio.value)
-            return
-        }
+        } else {
+            // For other models, try to preserve aspect ratio with standard dimensions
+            if (aspectRatio !== "custom") {
+                // Get standard dimensions for current aspect ratio at the new tier
+                const standardDims = getStandardDimensionsWithFallback(aspectRatio, tierToUse)
 
-        // For other models, try to preserve aspect ratio with standard dimensions
-        if (aspectRatio !== "custom") {
-            // Get standard dimensions for current aspect ratio at the new tier
-            const standardDims = getStandardDimensionsWithFallback(aspectRatio, tierToUse)
+                // Check if standard dimensions fit the model constraints
+                const pixels = standardDims.width * standardDims.height
+                const exceedsConstraints =
+                    pixels > newConstraints.maxPixels ||
+                    standardDims.width > newConstraints.maxDimension ||
+                    standardDims.height > newConstraints.maxDimension
 
-            // Check if standard dimensions fit the model constraints
-            const pixels = standardDims.width * standardDims.height
-            const exceedsConstraints =
-                pixels > newConstraints.maxPixels ||
-                standardDims.width > newConstraints.maxDimension ||
-                standardDims.height > newConstraints.maxDimension
-
-            if (exceedsConstraints) {
-                // Standard dimensions don't fit, calculate constrained dimensions
-                const parsed = parseAspectRatio(aspectRatio)
-                if (parsed) {
-                    const dims = calculateDimensionsForTier(parsed, tierToUse, newConstraints)
-                    setWidth(dims.width)
-                    setHeight(dims.height)
+                if (exceedsConstraints) {
+                    // Standard dimensions don't fit, calculate constrained dimensions
+                    const parsed = parseAspectRatio(aspectRatio)
+                    if (parsed) {
+                        const dims = calculateDimensionsForTier(parsed, tierToUse, newConstraints)
+                        setWidth(dims.width)
+                        setHeight(dims.height)
+                        return
+                    }
+                } else {
+                    // Apply step alignment to standard dimensions
+                    const step = newConstraints.step
+                    const alignedWidth = Math.round(standardDims.width / step) * step
+                    const alignedHeight = Math.round(standardDims.height / step) * step
+                    setWidth(Math.max(newConstraints.minDimension, Math.min(newConstraints.maxDimension, alignedWidth)))
+                    setHeight(Math.max(newConstraints.minDimension, Math.min(newConstraints.maxDimension, alignedHeight)))
                     return
                 }
-            } else {
-                // Apply step alignment to standard dimensions
-                const step = newConstraints.step
-                const alignedWidth = Math.round(standardDims.width / step) * step
-                const alignedHeight = Math.round(standardDims.height / step) * step
-                setWidth(Math.max(newConstraints.minDimension, Math.min(newConstraints.maxDimension, alignedWidth)))
-                setHeight(Math.max(newConstraints.minDimension, Math.min(newConstraints.maxDimension, alignedHeight)))
-                return
+            }
+
+            // Fallback: reset to defaults if current dimensions exceed model limit
+            const currentPixels = width * height
+            const exceedsPixelLimit = currentPixels > newConstraints.maxPixels
+            const exceedsDimensionLimit =
+                width > newConstraints.maxDimension || height > newConstraints.maxDimension
+
+            if (exceedsPixelLimit || exceedsDimensionLimit) {
+                setWidth(newConstraints.defaultDimensions.width)
+                setHeight(newConstraints.defaultDimensions.height)
+                setAspectRatio("1:1")
             }
         }
 
-        // Fallback: reset to defaults if current dimensions exceed model limit
-        const currentPixels = width * height
-        const exceedsPixelLimit = currentPixels > newConstraints.maxPixels
-        const exceedsDimensionLimit =
-            width > newConstraints.maxDimension || height > newConstraints.maxDimension
-
-        if (exceedsPixelLimit || exceedsDimensionLimit) {
-            setWidth(newConstraints.defaultDimensions.width)
-            setHeight(newConstraints.defaultDimensions.height)
-            setAspectRatio("1:1")
+        // Reset video settings to model defaults when switching to a video model
+        if (newModelDef.type === "video" && newModelDef.durationConstraints) {
+            setVideoSettings({
+                duration: newModelDef.durationConstraints.defaultDuration,
+                audio: false,
+            })
+            // Clear video reference images when switching models
+            setVideoReferenceImages({
+                firstFrame: undefined,
+                lastFrame: undefined,
+            })
         }
     }, [width, height, aspectRatio, resolutionTier])
 
@@ -365,5 +399,12 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
         // Reference image
         referenceImage,
         setReferenceImage,
+
+        // Video-specific settings
+        isVideoModel,
+        videoSettings,
+        setVideoSettings,
+        videoReferenceImages,
+        setVideoReferenceImages,
     }
 }

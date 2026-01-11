@@ -84,9 +84,22 @@ export async function generateImage(
  * @returns Promise resolving to the image blob
  */
 export async function downloadImage(imageUrl: string): Promise<Blob> {
-    const response = await fetch(imageUrl, {
-        headers: PollinationsAPI.getHeaders(),
-    })
+    try {
+        // Try with auth headers first
+        const response = await fetch(imageUrl, {
+            headers: PollinationsAPI.getHeaders(),
+        })
+
+        if (response.ok) {
+            return response.blob()
+        }
+    } catch (error) {
+        // Ignore initial error and try fallback
+        console.warn("Initial download attempt failed, retrying without headers...", error)
+    }
+
+    // Fallback: Try without headers (fixes CORS on some CDN redirects or public URLs)
+    const response = await fetch(imageUrl)
 
     if (!response.ok) {
         throw new PollinationsApiError(

@@ -2,7 +2,7 @@
 import type { GeneratedImage } from "@/types/pollinations"
 import { render, screen } from "@testing-library/react"
 import * as React from "react"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { createMockImage } from "@/lib/test-utils"
 import { CanvasView, type CanvasViewProps } from "./canvas-view"
 
 // Mock studio components
@@ -45,17 +45,17 @@ vi.mock("@/components/studio", () => ({
 }))
 
 describe("CanvasView", () => {
-    const mockImage: GeneratedImage = {
+    const mockImage = createMockImage({
         id: "test-image-1",
         url: "https://example.com/image.jpg",
         prompt: "A beautiful sunset",
-        timestamp: Date.now(),
         params: {
+            prompt: "A beautiful sunset",
             model: "flux",
             width: 1024,
             height: 1024,
-        },
-    }
+        } as any
+    })
 
     const defaultProps: CanvasViewProps = {
         image: null,

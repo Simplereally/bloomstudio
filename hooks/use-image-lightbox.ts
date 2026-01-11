@@ -1,5 +1,6 @@
 "use client"
 
+import { isVideoContent } from "@/components/ui/media-player"
 import * as React from "react"
 
 export interface LightboxImage {
@@ -19,6 +20,8 @@ export interface LightboxImage {
   _id?: string
   ownerName?: string
   ownerPictureUrl?: string | null
+  /** MIME type of the content (e.g., "video/mp4", "image/jpeg") */
+  contentType?: string
 }
 
 interface UseImageLightboxProps {
@@ -43,6 +46,9 @@ export function useImageLightbox({ image, isOpen }: UseImageLightboxProps) {
   React.useEffect(() => {
     setIsZoomed(false)
     setIsDragging(false)
+    hasDragged.current = false
+    _setIsHovering(false)
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
   }, [image?.url, isOpen])
 
   const prompt = image?.prompt
@@ -73,11 +79,16 @@ export function useImageLightbox({ image, isOpen }: UseImageLightboxProps) {
 
   const toggleZoom = (e: React.MouseEvent) => {
     e.stopPropagation()
+
+    // Prevent zoom if it's a video
+    if (isVideoContent(image?.contentType, image?.url)) return
+
     // Don't toggle zoom if we just dragged
     if (hasDragged.current) {
       hasDragged.current = false
       return
     }
+
     if (isZoomed) {
       setIsZoomed(false)
     } else if (canZoom) {
@@ -120,6 +131,7 @@ export function useImageLightbox({ image, isOpen }: UseImageLightboxProps) {
       hasDragged.current = true
     }
 
+    // Scroll immediately for smoothness (don't wait for flag)
     scrollContainerRef.current.scrollLeft = dragStart.current.scrollLeft - dx
     scrollContainerRef.current.scrollTop = dragStart.current.scrollTop - dy
   }
@@ -132,6 +144,24 @@ export function useImageLightbox({ image, isOpen }: UseImageLightboxProps) {
     setIsDragging(false)
   }
 
+  const [isHovering, _setIsHovering] = React.useState(false)
+  const hoverTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const setIsHovering = React.useCallback((hovering: boolean) => {
+    if (hovering) {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current)
+        hoverTimeoutRef.current = null
+      }
+      _setIsHovering(true)
+    } else {
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
+      hoverTimeoutRef.current = setTimeout(() => {
+        _setIsHovering(false)
+      }, 100)
+    }
+  }, [])
+
   return {
     copied,
     isZoomed,
@@ -139,12 +169,15 @@ export function useImageLightbox({ image, isOpen }: UseImageLightboxProps) {
     isDragging,
     scrollContainerRef,
     canZoom,
+    isHovering,
+    setIsHovering,
     handleCopyPrompt,
     handleImageLoad,
     toggleZoom,
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
-    handleMouseLeave
+    handleMouseLeave,
+    hasDragged
   }
 }

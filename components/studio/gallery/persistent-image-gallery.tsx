@@ -6,13 +6,12 @@ import {
     type HistoryFilterState,
 } from "@/components/gallery/history-filters"
 import type { Id } from "@/convex/_generated/dataModel"
-import { useDeleteGeneratedImage } from "@/hooks/mutations/use-delete-image"
+import { useBulkDeleteGeneratedImages } from "@/hooks/mutations/use-delete-image"
 import { useSetBulkVisibility } from "@/hooks/mutations/use-set-visibility"
 import { useImageHistory, type HistoryFilters } from "@/hooks/queries/use-image-history"
 import { useLocalStorage } from "@/hooks/use-local-storage"
 import { useUser } from "@clerk/nextjs"
 import * as React from "react"
-import { toast } from "sonner"
 import { ImageGallery, type ImageGalleryProps, type ThumbnailData } from "./image-gallery"
 
 const INITIAL_FILTER_STATE: HistoryFilterState = {
@@ -24,8 +23,8 @@ const INITIAL_FILTER_STATE: HistoryFilterState = {
  * Props for PersistentImageGallery - excludes props that are managed internally
  */
 type PersistentImageGalleryProps = Omit<
-    ImageGalleryProps, 
-    "images" | "headerContent" | "isLoading" | "isExhausted" | 
+    ImageGalleryProps,
+    "images" | "headerContent" | "isLoading" | "isExhausted" |
     "onMakeSelectedPublic" | "onMakeSelectedPrivate" | "onDeleteSelected" |
     "selectionMode" | "selectedIds" | "onSelectionChange" | "onToggleSelectionMode"
 >
@@ -50,25 +49,25 @@ export function PersistentImageGallery(props: PersistentImageGalleryProps) {
     // ========================================
     const [selectionMode, setSelectionMode] = React.useState(false)
     const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set())
-    
+
     // Ref for stable callbacks
     const selectedIdsRef = React.useRef(selectedIds)
-    
+
     React.useEffect(() => {
         selectedIdsRef.current = selectedIds
     }, [selectedIds])
 
     // Determine storage key based on user ID for account-specific preferences
-    const storageKey = React.useMemo(() => 
+    const storageKey = React.useMemo(() =>
         user?.id ? `bloom:studio-filters:${user.id}` : "bloom:studio-filters:anon",
-    [user?.id])
+        [user?.id])
 
     // Filter state persisted to localStorage
     const [filterState, setFilterState] = useLocalStorage<HistoryFilterState>(storageKey, INITIAL_FILTER_STATE)
 
     // Mutations
     const setBulkVisibilityMutation = useSetBulkVisibility()
-    const deleteMutation = useDeleteGeneratedImage()
+    const bulkDeleteMutation = useBulkDeleteGeneratedImages()
 
     // Convert filter state to query parameters
     const queryFilters: HistoryFilters = React.useMemo(() => ({
@@ -99,26 +98,27 @@ export function PersistentImageGallery(props: PersistentImageGalleryProps) {
     // Without stabilization, every ThumbnailItem would re-render even if its data hasn't changed.
     // We use a cache map to preserve object references for unchanged images.
     const imageCache = React.useRef<Map<string, ThumbnailData>>(new Map())
-    
+
     const mappedImages = React.useMemo(() => {
         const newCache = new Map<string, ThumbnailData>()
-        
+
         const stableImages = results.map(img => {
             const id = img._id
             // eslint-disable-next-line react-hooks/refs -- Optimization: accessing ref during render for stable object identity
             const cached = imageCache.current.get(id)
-            
+
             // Check if cached version is still valid (same data)
             // Only compare fields that would affect rendering
-            if (cached && 
-                cached.url === img.url && 
+            if (cached &&
+                cached.url === img.url &&
                 cached.visibility === img.visibility &&
-                cached.model === img.model) {
+                cached.model === img.model &&
+                cached.contentType === img.contentType) {
                 // Reuse cached object reference - prevents child re-render
                 newCache.set(id, cached)
                 return cached
             }
-            
+
             // Create new object for new/changed images
             const newImage: ThumbnailData = {
                 id,
@@ -127,18 +127,18 @@ export function PersistentImageGallery(props: PersistentImageGalleryProps) {
                 url: img.url,
                 visibility: img.visibility,
                 model: img.model,
+                contentType: img.contentType,
                 prompt: "", // Placeholder - full data loaded on click via getById
             }
-            
+
             newCache.set(id, newImage)
             return newImage
         })
-        
-        // Update cache for next render
+
         // Update cache for next render
         // eslint-disable-next-line react-hooks/refs -- Optimization: updating ref during render
         imageCache.current = newCache
-        
+
         return stableImages
     }, [results])
 
@@ -165,47 +165,48 @@ export function PersistentImageGallery(props: PersistentImageGalleryProps) {
     const handleMakeSelectedPublic = React.useCallback(async () => {
         const currentSelectedIds = selectedIdsRef.current
         if (currentSelectedIds.size === 0) return
-        
+
         const imageIds = Array.from(currentSelectedIds) as Id<"generatedImages">[]
         try {
             await setBulkVisibilityMutation.mutateAsync({ imageIds, visibility: "public" })
-            toast.success(`Made ${imageIds.length} image${imageIds.length > 1 ? "s" : ""} public`)
             setSelectedIds(new Set())
             setSelectionMode(false)
         } catch (error) {
             console.error("Failed to make images public:", error)
+            // The mutation hook already shows toasts
         }
     }, [setBulkVisibilityMutation])
 
     const handleMakeSelectedPrivate = React.useCallback(async () => {
         const currentSelectedIds = selectedIdsRef.current
         if (currentSelectedIds.size === 0) return
-        
+
         const imageIds = Array.from(currentSelectedIds) as Id<"generatedImages">[]
         try {
             await setBulkVisibilityMutation.mutateAsync({ imageIds, visibility: "unlisted" })
-            toast.success(`Made ${imageIds.length} image${imageIds.length > 1 ? "s" : ""} private`)
             setSelectedIds(new Set())
             setSelectionMode(false)
         } catch (error) {
             console.error("Failed to make images private:", error)
+            // The mutation hook already shows toasts
         }
     }, [setBulkVisibilityMutation])
 
     const handleDeleteSelected = React.useCallback(async () => {
         const currentSelectedIds = selectedIdsRef.current
         if (currentSelectedIds.size === 0) return
-        
+
         const imageIds = Array.from(currentSelectedIds) as Id<"generatedImages">[]
         try {
-            await Promise.all(imageIds.map(id => deleteMutation.mutateAsync(id)))
-            toast.success(`Deleted ${imageIds.length} image${imageIds.length > 1 ? "s" : ""}`)
+            // Use bulk delete mutation - single Convex call, single toast
+            await bulkDeleteMutation.mutateAsync(imageIds)
             setSelectedIds(new Set())
             setSelectionMode(false)
         } catch (error) {
             console.error("Failed to delete images:", error)
+            // The mutation hook already shows error toast
         }
-    }, [deleteMutation])
+    }, [bulkDeleteMutation])
 
     // Memoize header content to prevent unnecessary re-renders
     const headerContent = React.useMemo(() => (

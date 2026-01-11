@@ -21,7 +21,8 @@ import {
     buildPollinationsUrl,
     classifyApiError,
     generateR2Key,
-    uploadToR2,
+    generateThumbnailKey,
+    uploadMediaWithThumbnail,
     fetchWithRetry,
     type RetryConfig,
 } from "./lib"
@@ -140,6 +141,11 @@ export const processGeneration = internalAction({
                 private: params.private,
                 safe: params.safe,
                 image: params.image,
+                // Video-specific parameters
+                duration: params.duration,
+                audio: params.audio,
+                aspectRatio: params.aspectRatio,
+                lastFrameImage: params.lastFrameImage,
                 quality: params.quality ?? "high"
             })
 
@@ -185,18 +191,30 @@ export const processGeneration = internalAction({
             const imageBuffer = Buffer.from(await response.arrayBuffer())
             const contentType = response.headers.get("content-type") || "image/jpeg"
 
-            // Upload to R2
+            // Upload to R2 and generate thumbnail in parallel (for videos)
             const r2Key = generateR2Key(generation.ownerId, contentType)
             console.log(`${logger} Uploading to R2: ${r2Key}`)
-            
-            const uploadResult = await uploadToR2(imageBuffer, r2Key, contentType)
+
+            const { media: uploadResult, thumbnail: thumbnailResult } = await uploadMediaWithThumbnail(
+                imageBuffer,
+                r2Key,
+                contentType
+            )
+
             console.log(`${logger} Upload complete: ${uploadResult.url}`)
+            if (thumbnailResult) {
+                console.log(`${logger} Thumbnail complete: ${thumbnailResult.url} (${thumbnailResult.sizeBytes} bytes)`)
+            } else {
+                console.log(`${logger} Thumbnail generation skipped or failed`)
+            }
 
             // Store the image in Convex database
             const imageId = await ctx.runMutation(internal.singleGeneration.storeGeneratedImage, {
                 ownerId: generation.ownerId,
                 r2Key,
                 url: uploadResult.url,
+                thumbnailR2Key: thumbnailResult?.url ? generateThumbnailKey(r2Key) : undefined,
+                thumbnailUrl: thumbnailResult?.url,
                 prompt: params.prompt,
                 width: params.width ?? 1024,
                 height: params.height ?? 1024,

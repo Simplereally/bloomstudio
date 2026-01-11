@@ -15,6 +15,7 @@ import type { Id } from "@/convex/_generated/dataModel"
 import type {
     GeneratedImage,
     ImageGenerationParams,
+    VideoGenerationParams,
 } from "@/lib/schemas/pollinations.schema"
 import { ConvexError } from "convex/values"
 import { useMutation, useQuery } from "convex/react"
@@ -66,7 +67,7 @@ export interface UseGenerateImageOptions {
     onSettled?: (
         image: GeneratedImage | undefined,
         error: ServerGenerationError | null,
-        params: ImageGenerationParams
+        params: ImageGenerationParams | VideoGenerationParams
     ) => void
 }
 
@@ -75,10 +76,10 @@ export interface UseGenerateImageOptions {
  */
 export interface UseGenerateImageReturn {
     /** Trigger image generation */
-    generate: (params: ImageGenerationParams) => void
+    generate: (params: ImageGenerationParams | VideoGenerationParams) => void
 
     /** Trigger image generation and return a promise */
-    generateAsync: (params: ImageGenerationParams) => Promise<GeneratedImage>
+    generateAsync: (params: ImageGenerationParams | VideoGenerationParams) => Promise<GeneratedImage>
 
     /** Whether generation is in progress */
     isGenerating: boolean
@@ -131,7 +132,7 @@ export function useGenerateImage(
 
     // Track generation state
     const [generationId, setGenerationId] = React.useState<Id<"pendingGenerations"> | null>(null)
-    const [currentParams, setCurrentParams] = React.useState<ImageGenerationParams | null>(null)
+    const [currentParams, setCurrentParams] = React.useState<ImageGenerationParams | VideoGenerationParams | null>(null)
     const [isGenerating, setIsGenerating] = React.useState(false)
     const [isSuccess, setIsSuccess] = React.useState(false)
     const [isError, setIsError] = React.useState(false)
@@ -192,7 +193,7 @@ export function useGenerateImage(
 
     // Generate function
     const generate = React.useCallback(
-        async (params: ImageGenerationParams) => {
+        async (params: ImageGenerationParams | VideoGenerationParams) => {
             // Reset state
             setIsSuccess(false)
             setIsError(false)
@@ -216,6 +217,11 @@ export function useGenerateImage(
                         private: params.private,
                         safe: params.safe,
                         image: params.image,
+                        // Video-specific params: safely access using 'in' operator for union type
+                        duration: "duration" in params ? params.duration : undefined,
+                        audio: "audio" in params ? params.audio : undefined,
+                        aspectRatio: "aspectRatio" in params ? params.aspectRatio : undefined,
+                        lastFrameImage: "lastFrameImage" in params ? params.lastFrameImage : undefined,
                     },
                 })
                 setGenerationId(id)
@@ -240,7 +246,7 @@ export function useGenerateImage(
 
     // Generate async function (returns a promise)
     const generateAsync = React.useCallback(
-        (params: ImageGenerationParams): Promise<GeneratedImage> => {
+        (params: ImageGenerationParams | VideoGenerationParams): Promise<GeneratedImage> => {
             return new Promise((resolve, reject) => {
                 // Store the resolve/reject callbacks
                 const originalOnSuccess = options.onSuccess

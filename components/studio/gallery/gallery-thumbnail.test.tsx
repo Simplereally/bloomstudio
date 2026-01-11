@@ -146,4 +146,38 @@ describe("GalleryThumbnail", () => {
         rerender(<GalleryThumbnail image={mockImage} size="lg" />)
         expect(screen.getByTestId("gallery-thumbnail")).toHaveClass("w-32", "h-32")
     })
+
+    it("renders as video element when URL is NOT an image", () => {
+        const videoImage = {
+            ...mockImage,
+            url: "https://example.com/video.mp4",
+            contentType: "video/mp4"
+        }
+        const { container } = render(<GalleryThumbnail image={videoImage} />)
+
+        const video = container.querySelector("video")
+        expect(video).toBeInTheDocument()
+        expect(video).toHaveAttribute("src", `${videoImage.url}#t=0.001`)
+    })
+
+    it("renders as image element when URL is an image thumbnail", () => {
+        const videoThumbnail = {
+            ...mockImage,
+            url: "https://example.com/thumbnail.jpg",
+            contentType: "video/mp4"
+        }
+        const { container } = render(<GalleryThumbnail image={videoThumbnail} />)
+
+        // Should NOT find a video tag (except potentially in play overlay logic if implementation was different, but here we expect Image)
+        const video = container.querySelector("video")
+        expect(video).not.toBeInTheDocument()
+
+        // Should find an image
+        const img = container.querySelector("img")
+        expect(img).toBeInTheDocument()
+        expect(img).toHaveAttribute("src", expect.stringContaining("thumbnail.jpg"))
+
+        // Should still show play icon
+        expect(container.querySelector(".bg-black\\/50")).toBeInTheDocument()
+    })
 })

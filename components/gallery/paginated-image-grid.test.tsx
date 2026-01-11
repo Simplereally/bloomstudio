@@ -8,6 +8,32 @@ import { render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { PaginatedImageGrid } from "./paginated-image-grid"
 
+// Mock IntersectionObserver
+const mockObserve = vi.fn()
+const mockDisconnect = vi.fn()
+const mockUnobserve = vi.fn()
+
+class MockIntersectionObserver {
+    static lastCallback: IntersectionObserverCallback | null = null
+    static lastOptions: IntersectionObserverInit | undefined = undefined
+
+    constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+        MockIntersectionObserver.lastCallback = callback
+        MockIntersectionObserver.lastOptions = options
+    }
+
+    observe = mockObserve
+    disconnect = mockDisconnect
+    unobserve = mockUnobserve
+    root = null
+    rootMargin = ""
+    thresholds = []
+    takeRecords = () => []
+}
+
+// Set up the global mock
+vi.stubGlobal("IntersectionObserver", MockIntersectionObserver)
+
 // Mock components
 vi.mock("@/components/ui/image-card", () => ({
     ImageCard: vi.fn(({ image, selectionMode, isSelected, onSelectionChange }) => (
@@ -99,4 +125,61 @@ describe("PaginatedImageGrid", () => {
         
         expect(onSelectionChange).toHaveBeenCalledWith("img1", true)
     })
+
+    describe("Infinite Scroll", () => {
+        beforeEach(() => {
+            mockObserve.mockClear()
+            mockDisconnect.mockClear()
+            MockIntersectionObserver.lastCallback = null
+            MockIntersectionObserver.lastOptions = undefined
+        })
+
+        it("renders sentinel element when CanLoadMore", () => {
+            render(<PaginatedImageGrid {...defaultProps} status="CanLoadMore" />)
+            expect(screen.getByTestId("infinite-scroll-sentinel")).toBeInTheDocument()
+        })
+
+        it("renders sentinel element when LoadingMore", () => {
+            render(<PaginatedImageGrid {...defaultProps} status="LoadingMore" />)
+            expect(screen.getByTestId("infinite-scroll-sentinel")).toBeInTheDocument()
+        })
+
+        it("does not render sentinel when Exhausted", () => {
+            render(<PaginatedImageGrid {...defaultProps} status="Exhausted" />)
+            expect(screen.queryByTestId("infinite-scroll-sentinel")).not.toBeInTheDocument()
+        })
+
+        it("shows loading indicator when LoadingMore", () => {
+            render(<PaginatedImageGrid {...defaultProps} status="LoadingMore" />)
+            expect(screen.getByText("Discovering more...")).toBeInTheDocument()
+        })
+
+        it("does not show loading indicator when CanLoadMore", () => {
+            render(<PaginatedImageGrid {...defaultProps} status="CanLoadMore" />)
+            expect(screen.queryByText("Discovering more...")).not.toBeInTheDocument()
+        })
+
+        it("sets up IntersectionObserver with correct options when CanLoadMore", () => {
+            render(<PaginatedImageGrid {...defaultProps} status="CanLoadMore" />)
+            expect(MockIntersectionObserver.lastOptions).toEqual({
+                root: null,
+                rootMargin: "0px 0px 400px 0px",
+                threshold: 0,
+            })
+            expect(mockObserve).toHaveBeenCalled()
+        })
+
+        it("does not set up IntersectionObserver when LoadingMore", () => {
+            render(<PaginatedImageGrid {...defaultProps} status="LoadingMore" />)
+            // Observer is not set up when isLoadingMore is true
+            expect(mockObserve).not.toHaveBeenCalled()
+        })
+
+        it("cleans up IntersectionObserver on unmount", () => {
+            const { unmount } = render(<PaginatedImageGrid {...defaultProps} status="CanLoadMore" />)
+            unmount()
+            expect(mockDisconnect).toHaveBeenCalled()
+        })
+    })
 })
+

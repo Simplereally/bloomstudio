@@ -12,7 +12,7 @@
  */
 
 import { Id } from "@/convex/_generated/dataModel"
-import { useDeleteGeneratedImage } from "@/hooks/mutations/use-delete-image"
+import { useBulkDeleteGeneratedImages, useDeleteGeneratedImage } from "@/hooks/mutations/use-delete-image"
 import { useSetBulkVisibility, type ImageVisibility } from "@/hooks/mutations/use-set-visibility"
 import type { GeneratedImage } from "@/types/pollinations"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -42,6 +42,8 @@ export interface UseImageGalleryStateReturn {
     addImage: (image: GeneratedImage) => void
 }
 
+export const PROMPT_HISTORY_LIMIT = 10
+
 /**
  * Hook for managing image gallery state including images, selection, and history.
  * Uses ref pattern to keep callbacks stable while still accessing current state.
@@ -70,13 +72,14 @@ export function useImageGalleryState(): UseImageGalleryStateReturn {
 
     // Mutations
     const deleteMutation = useDeleteGeneratedImage()
+    const bulkDeleteMutation = useBulkDeleteGeneratedImages()
     const setBulkVisibilityMutation = useSetBulkVisibility()
 
-    // Add prompt to history (deduped, max 10) - stable callback
+    // Add prompt to history (deduped, max PROMPT_HISTORY_LIMIT) - stable callback
     const addToPromptHistory = useCallback((prompt: string) => {
         setPromptHistory((prev) => {
             if (prev.includes(prompt)) return prev
-            return [prompt, ...prev.slice(0, 9)]
+            return [prompt, ...prev.slice(0, PROMPT_HISTORY_LIMIT - 1)]
         })
     }, [])
 
@@ -118,25 +121,29 @@ export function useImageGalleryState(): UseImageGalleryStateReturn {
     }, [deleteMutation])
 
     // Handle bulk delete - stable callback using refs
+    // Uses single bulk mutation to avoid N roundtrips and N toasts
     const handleDeleteSelected = useCallback(async () => {
         const currentImages = imagesRef.current
         const currentSelectedIds = selectedIdsRef.current
         const imagesToDelete = currentImages.filter(img => currentSelectedIds.has(img.id))
 
-        // Delete all persistent images
+        // Collect all persistent image IDs for bulk deletion
         const persistentIds = imagesToDelete
             .filter(img => img._id)
             .map(img => img._id as Id<"generatedImages">)
 
         if (persistentIds.length > 0) {
             try {
-                await Promise.all(persistentIds.map(dbId => deleteMutation.mutateAsync(dbId)))
-                toast.success(`Deleted ${persistentIds.length} images`)
+                // Use bulk delete mutation - single Convex call, single toast
+                await bulkDeleteMutation.mutateAsync(persistentIds)
             } catch (error) {
-                console.error("Bulk delete partially failed:", error)
+                console.error("Bulk delete failed:", error)
+                // The mutation hook already shows error toast
+                return
             }
         }
 
+        // Clean up local state
         setImages((prev) => prev.filter((img) => !currentSelectedIds.has(img.id)))
         setCurrentImage((curr) => {
             if (curr && currentSelectedIds.has(curr.id)) {
@@ -146,7 +153,7 @@ export function useImageGalleryState(): UseImageGalleryStateReturn {
         })
         setSelectedIds(new Set())
         setSelectionMode(false)
-    }, [deleteMutation])
+    }, [bulkDeleteMutation])
 
     // Handle bulk visibility change - stable callback using refs
     const handleSetSelectedVisibility = useCallback(async (visibility: ImageVisibility) => {

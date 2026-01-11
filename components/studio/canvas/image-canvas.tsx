@@ -5,6 +5,7 @@
  */
 
 import { Card } from "@/components/ui/card"
+import { isVideoContent, MediaPlayer } from "@/components/ui/media-player"
 import { cn } from "@/lib/utils"
 import type { GeneratedImage } from "@/types/pollinations"
 import { AnimatePresence, motion, type Variants } from "framer-motion"
@@ -16,11 +17,17 @@ import * as React from "react"
 const SPRING_CONFIG = { type: "spring", stiffness: 300, damping: 30, mass: 1 } as const
 
 const nexusContainerVariants: Variants = {
+    initial: {
+        opacity: 0,
+        scale: 1,
+    },
     empty: {
+        opacity: 1,
         scale: 1,
         transition: SPRING_CONFIG,
     },
     generating: {
+        opacity: 1,
         scale: 0.95,
         transition: SPRING_CONFIG,
     },
@@ -128,7 +135,7 @@ export const ImageCanvas = React.memo(function ImageCanvas({
     return (
         <Card
             className={cn(
-                "relative overflow-hidden flex flex-col h-full max-h-full transition-colors duration-700",
+                "relative overflow-hidden flex flex-col h-full max-h-full transition-colors duration-700 !p-0",
                 "border-border/40",
                 className
             )}
@@ -140,7 +147,7 @@ export const ImageCanvas = React.memo(function ImageCanvas({
             data-testid="image-canvas"
         >
             <div
-                className="relative w-full flex-1 flex items-center justify-center min-h-[400px]"
+                className="relative w-full flex-1 min-h-0 overflow-hidden"
                 data-testid="canvas-container"
             >
                 {/* Atmospheric Nebulas (Only active during generation) */}
@@ -167,11 +174,12 @@ export const ImageCanvas = React.memo(function ImageCanvas({
                     {showPlaceholder ? (
                         <motion.div
                             key="placeholder"
-                            className="flex flex-col items-center justify-center gap-12 z-10"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
+                            variants={nexusContainerVariants}
+                            initial="initial"
+                            animate={isGenerating ? "generating" : "empty"}
                             exit={{ opacity: 0, scale: 0.96 }}
-                            transition={{ duration: 0.3 }}
+                            className="absolute inset-0 flex flex-col items-center justify-center gap-12 z-10 p-6 md:p-12"
+                            transition={{ duration: 0.4 }}
                         >
                             {/* The Creation Nexus - fixed size wrapper prevents layout shift */}
                             <div className="relative group w-[100px] h-[100px] flex items-center justify-center">
@@ -315,58 +323,58 @@ export const ImageCanvas = React.memo(function ImageCanvas({
                     ) : (
                         <motion.div
                             key="image"
-                            className="relative w-full h-full flex items-center justify-center p-6"
+                            className="absolute inset-0 group"
                             initial={{ opacity: 0, scale: 1.02 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ duration: 0.5, ease: [0.19, 1, 0.22, 1] }}
                         >
-                            {/* Wrapper for hover detection and positioning context - NO overflow hidden here */}
-                            <div className="relative group w-fit">
-                                <div
+                            <div
+                                className={cn(
+                                    "relative w-full h-full rounded-2xl overflow-hidden border border-white/5 transition-all duration-500",
+                                    onImageClick && !isVideoContent(image.contentType, image.url) && "cursor-pointer"
+                                )}
+                                onClick={isVideoContent(image.contentType, image.url) ? undefined : onImageClick}
+                            >
+                                <MediaPlayer
+                                    url={image.url}
+                                    alt={image.prompt}
+                                    contentType={image.contentType}
+                                    controls={isVideoContent(image.contentType, image.url)}
+                                    autoPlay={false}
+                                    loop={false}
+                                    muted={true}
                                     className={cn(
-                                        "relative rounded-2xl overflow-hidden border border-white/5 transition-all duration-500",
-                                        onImageClick && "cursor-pointer"
+                                        "w-full h-full transition-all duration-700",
+                                        imageLoaded ? "opacity-100 scale-100" : "opacity-0 scale-98 blur-lg"
                                     )}
-                                    onClick={onImageClick}
-                                >
-                                    <img
-                                        src={image.url}
-                                        alt={image.prompt}
-                                        className={cn(
-                                            "max-w-full max-h-[80vh] w-auto h-auto object-contain transition-all duration-700",
-                                            imageLoaded ? "opacity-100 scale-100" : "opacity-0 scale-98 blur-lg"
-                                        )}
-                                        onLoad={handleImageLoad}
-                                        onError={() => setImageError(true)}
-                                    />
+                                    onLoad={handleImageLoad}
+                                    onError={() => setImageError(true)}
+                                />
 
-                                    <AnimatePresence>
-                                        {!imageLoaded && (
-                                            <div className="absolute inset-0 bg-background/20 backdrop-blur-md flex items-center justify-center">
-                                                <div className="relative">
-                                                    <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
-                                                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                                                </div>
+                                <AnimatePresence>
+                                    {!imageLoaded && !isVideoContent(image.contentType, image.url) && (
+                                        <div className="absolute inset-0 bg-background/20 backdrop-blur-md flex items-center justify-center">
+                                            <div className="relative">
+                                                <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
+                                                <Loader2 className="w-8 h-8 animate-spin text-primary" />
                                             </div>
-                                        )}
-                                    </AnimatePresence>
-
-                                    {imageError && (
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/80 backdrop-blur-md">
-                                            <p className="text-sm font-medium text-destructive">Sync Error</p>
-                                            <button
-                                                onClick={() => window.location.reload()}
-                                                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                                            >
-                                                Try Again
-                                            </button>
                                         </div>
                                     )}
-                                </div>
-                                {children}
+                                </AnimatePresence>
+
+                                {imageError && (
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/80 backdrop-blur-md">
+                                        <p className="text-sm font-medium text-destructive">Sync Error</p>
+                                        <button
+                                            onClick={() => window.location.reload()}
+                                            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                        >
+                                            Try Again
+                                        </button>
+                                    </div>
+                                )}
                             </div>
-
-
+                            {children}
                         </motion.div>
                     )}
                 </AnimatePresence>

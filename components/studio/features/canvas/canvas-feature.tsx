@@ -29,6 +29,9 @@ export interface CanvasFeatureProps {
     onRegenerate?: () => void
 }
 
+import { useIsFavorited, useToggleFavorite } from "@/hooks/queries/use-favorites"
+import type { Id } from "@/convex/_generated/dataModel"
+
 /**
  * CanvasFeature component - composes hook logic with view
  * 
@@ -54,6 +57,23 @@ export function CanvasFeature({
             showErrorToast(error)
         },
     })
+
+    // Favorites functionality
+    const isFavorited = useIsFavorited(currentImage?.id)
+    const toggleFavoriteMutation = useToggleFavorite()
+
+    const handleToggleFavorite = React.useCallback(async () => {
+        if (!currentImage) return
+        
+        try {
+            await toggleFavoriteMutation({ 
+                imageId: currentImage.id as Id<"generatedImages"> 
+            })
+        } catch (error) {
+            console.error("Failed to toggle favorite:", error)
+            showErrorToast(error instanceof Error ? error : new Error("Failed to toggle favorite"))
+        }
+    }, [currentImage, toggleFavoriteMutation])
 
     // Handle download action
     const handleDownload = React.useCallback(() => {
@@ -99,6 +119,8 @@ export function CanvasFeature({
             onRegenerate={onRegenerate}
             onOpenInNewTab={handleOpenInNewTab}
             onFullscreen={handleFullscreen}
+            isFavorited={isFavorited}
+            onToggleFavorite={handleToggleFavorite}
         />
     )
 }

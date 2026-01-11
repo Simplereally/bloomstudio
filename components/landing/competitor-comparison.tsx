@@ -1,8 +1,6 @@
-"use client";
-
 import { cn } from "@/lib/utils";
 import { ScrollReveal } from "./scroll-reveal";
-import { Sparkles, Check, X, Clock, Zap } from "lucide-react";
+import { Sparkles, Check, X, Clock, Zap, DollarSign } from "lucide-react";
 
 interface CompetitorData {
   name: string;
@@ -89,7 +87,7 @@ export function CompetitorComparison() {
         <div className="px-6 py-8 text-center border-b border-white/5">
           <h3 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">Pay less, generate more</h3>
           <p className="text-sm text-muted-foreground max-w-lg mx-auto">
-            Other apps have expensive plans and confusing token models. All comparisons below are based on <b>monthly subscription plans</b>
+            Other apps have expensive plans and confusing credit systems. All comparisons below are based on <b>monthly subscription plans</b>
             .
           </p>
         </div>
@@ -111,13 +109,16 @@ export function CompetitorComparison() {
 
                 {/* Provider columns */}
                 {competitors.map((competitor) => (
-                  <th key={competitor.name} className={cn("p-4 text-left min-w-[140px]", competitor.isUs && "bg-primary/5")}>
+                  <th
+                    key={competitor.name}
+                    className={cn(
+                      "p-4 text-left min-w-[140px] relative",
+                      competitor.isUs && "bg-primary/10 border-x-2 border-t-2 border-primary/40 rounded-t-xl"
+                    )}
+                  >
                     <div className="flex flex-col gap-1">
                       <span className={cn("font-bold text-sm", competitor.isUs ? "text-primary" : "text-foreground")}>
                         {competitor.name}
-                      </span>
-                      <span className={cn("text-xs", competitor.isUs ? "text-green-400 font-medium" : "text-red-400")}>
-                        ${competitor.monthlyPrice}/month
                       </span>
                     </div>
                   </th>
@@ -126,6 +127,34 @@ export function CompetitorComparison() {
             </thead>
 
             <tbody>
+              {/* Monthly Price Row */}
+              <tr className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                <td className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 rounded flex items-center justify-center bg-white/10 shrink-0">
+                      <DollarSign className="w-3.5 h-3.5 text-primary" />
+                    </div>
+                    <span className="font-semibold text-foreground text-sm">Monthly Price</span>
+                  </div>
+                </td>
+
+                {competitors.map((competitor) => (
+                  <td
+                    key={competitor.name}
+                    className={cn("p-4", competitor.isUs && "bg-primary/10 border-x-2 border-primary/40")}
+                  >
+                    <span
+                      className={cn(
+                        "text-sm font-bold tabular-nums",
+                        competitor.isUs ? "text-green-400" : "text-red-400"
+                      )}
+                    >
+                      ${competitor.monthlyPrice} / month
+                    </span>
+                  </td>
+                ))}
+              </tr>
+
               {/* Nano Banana Pro Row */}
               <tr className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
                 <td className="p-4">
@@ -162,7 +191,10 @@ export function CompetitorComparison() {
                   const multiplier = competitor.isUs ? 1 : getValueMultiplier(competitor, usData);
 
                   return (
-                    <td key={competitor.name} className={cn("p-4", competitor.isUs && "bg-primary/5")}>
+                    <td
+                      key={competitor.name}
+                      className={cn("p-4", competitor.isUs && "bg-primary/10 border-x-2 border-primary/40")}
+                    >
                       <div className="flex flex-col items-start gap-1.5">
                         <div className="flex items-baseline">
                           <span className={cn("font-bold tabular-nums text-base", competitor.isUs ? "text-primary" : "text-foreground")}>
@@ -189,7 +221,10 @@ export function CompetitorComparison() {
                 </td>
 
                 {competitors.map((competitor) => (
-                  <td key={competitor.name} className={cn("p-4", competitor.isUs && "bg-primary/5")}>
+                  <td
+                    key={competitor.name}
+                    className={cn("p-4", competitor.isUs && "bg-primary/10 border-x-2 border-primary/40")}
+                  >
                     <div className="flex items-center gap-1.5">
                       {competitor.isUs && <Check className="w-4 h-4 text-green-400 shrink-0" />}
                       <span className={cn("text-sm", competitor.isUs ? "text-green-400 font-semibold" : "text-muted-foreground")}>
@@ -212,7 +247,10 @@ export function CompetitorComparison() {
                 </td>
 
                 {competitors.map((competitor) => (
-                  <td key={competitor.name} className={cn("p-4", competitor.isUs && "bg-primary/5")}>
+                  <td
+                    key={competitor.name}
+                    className={cn("p-4", competitor.isUs && "bg-primary/10 border-x-2 border-primary/40")}
+                  >
                     <div className="flex items-center gap-1.5">
                       {competitor.isUs && <Check className="w-4 h-4 text-green-400 shrink-0" />}
                       <span className={cn("text-sm", competitor.isUs ? "text-green-400 font-semibold" : "text-muted-foreground")}>
@@ -235,7 +273,13 @@ export function CompetitorComparison() {
                 </td>
 
                 {competitors.map((competitor) => (
-                  <td key={competitor.name} className={cn("p-4", competitor.isUs && "bg-primary/5")}>
+                  <td
+                    key={competitor.name}
+                    className={cn(
+                      "p-4",
+                      competitor.isUs && "bg-primary/10 border-x-2 border-b-2 border-primary/40 rounded-b-xl"
+                    )}
+                  >
                     <div className="flex items-center gap-1.5">
                       {competitor.isUs ? <Check className="w-4 h-4 text-green-400" /> : <X className="w-4 h-4 text-destructive/70" />}
                       <span className={cn("text-sm", competitor.isUs ? "text-green-400 font-semibold" : "text-muted-foreground")}>

@@ -68,9 +68,9 @@ describe("ImageCard", () => {
 
     describe("Selection Mode", () => {
         it("renders checkbox when selectionMode is true", () => {
-             const { container } = render(<ImageCard {...defaultProps} selectionMode={true} />)
-             const checkbox = container.querySelector("button[role='checkbox']")
-             expect(checkbox).toBeInTheDocument()
+            const { container } = render(<ImageCard {...defaultProps} selectionMode={true} />)
+            const checkbox = container.querySelector("button[role='checkbox']")
+            expect(checkbox).toBeInTheDocument()
         })
 
         it("reflects isSelected prop in checkbox state", () => {
@@ -94,15 +94,34 @@ describe("ImageCard", () => {
         })
 
         it("applies ring styling when selected", () => {
-             const { container } = render(<ImageCard {...defaultProps} selectionMode={true} isSelected={true} />)
-             const card = container.firstChild as HTMLElement
-             expect(card.className).toContain("ring-primary")
+            const { container } = render(<ImageCard {...defaultProps} selectionMode={true} isSelected={true} />)
+            const card = container.firstChild as HTMLElement
+            expect(card.className).toContain("ring-primary")
         })
 
         it("does NOT apply ring styling when NOT selected", () => {
-             const { container } = render(<ImageCard {...defaultProps} selectionMode={true} isSelected={false} />)
-             const card = container.firstChild as HTMLElement
-             expect(card.className).not.toContain("ring-primary")
+            const { container } = render(<ImageCard {...defaultProps} selectionMode={true} isSelected={false} />)
+            const card = container.firstChild as HTMLElement
+            expect(card.className).not.toContain("ring-primary")
+        })
+    })
+
+    describe("Video Support", () => {
+        const videoImage: ImageCardData = {
+            ...mockImage,
+            url: "/test-video.mp4",
+            contentType: "video/mp4",
+        }
+
+        it("renders a video element for video content", () => {
+            const { container } = render(<ImageCard {...defaultProps} image={videoImage} />)
+
+            const video = container.querySelector("video")
+            expect(video).toBeInTheDocument()
+            expect(video).toHaveAttribute("src", videoImage.url)
+            // Check for play icon
+            const playIcon = container.querySelector("svg.lucide-play")
+            expect(playIcon).toBeInTheDocument()
         })
     })
 })

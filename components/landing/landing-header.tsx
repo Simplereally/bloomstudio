@@ -56,10 +56,9 @@ export function LandingHeader() {
         const element = document.getElementById(id);
         if (element) {
           // Force scroll even if hash is the same
-          const offset = 80; // Header height offset
           const elementPosition = element.getBoundingClientRect().top + window.scrollY;
           window.scrollTo({
-            top: elementPosition - offset,
+            top: elementPosition,
             behavior: "smooth",
           });
 
@@ -85,7 +84,7 @@ export function LandingHeader() {
       <div className="container mx-auto px-6 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2">
-            <span className="text-2xl sm:text-3xl font-bold text-primary font-brand tracking-tight -skew-x-6">Bloom Studio</span>
+            <span className="text-xl sm:text-2xl md:text-3xl font-bold text-primary font-brand tracking-tight -skew-x-6 whitespace-nowrap">Bloom Studio</span>
           </Link>
           <nav className="hidden md:flex items-center gap-1">
             <Link
@@ -101,6 +100,21 @@ export function LandingHeader() {
                 )}
               >
                 Showcase
+              </Button>
+            </Link>
+            <Link
+              href={pathname === "/" ? "#compare" : "/#compare"}
+              onClick={(e) => handleNavClick(e, pathname === "/" ? "#compare" : "/#compare")}
+            >
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors",
+                  activeSection === "compare" && "text-primary bg-white/5"
+                )}
+              >
+                Compare
               </Button>
             </Link>
             <Link
@@ -131,21 +145,6 @@ export function LandingHeader() {
                 )}
               >
                 Models
-              </Button>
-            </Link>
-            <Link
-              href={pathname === "/" ? "#compare" : "/#compare"}
-              onClick={(e) => handleNavClick(e, pathname === "/" ? "#compare" : "/#compare")}
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors",
-                  activeSection === "compare" && "text-primary bg-white/5"
-                )}
-              >
-                Compare
               </Button>
             </Link>
             <Link href="/pricing">
@@ -225,6 +224,20 @@ export function LandingHeader() {
               </Button>
             </Link>
             <Link
+              href={pathname === "/" ? "#compare" : "/#compare"}
+              onClick={(e) => {
+                setMobileMenuOpen(false);
+                handleNavClick(e, pathname === "/" ? "#compare" : "/#compare");
+              }}
+            >
+              <Button
+                variant="ghost"
+                className={cn("w-full justify-start text-lg", activeSection === "compare" && "text-primary bg-white/5")}
+              >
+                Compare
+              </Button>
+            </Link>
+            <Link
               href={pathname === "/" ? "#features" : "/#features"}
               onClick={(e) => {
                 setMobileMenuOpen(false);
@@ -250,20 +263,6 @@ export function LandingHeader() {
                 className={cn("w-full justify-start text-lg", activeSection === "models" && "text-primary bg-white/5")}
               >
                 Models
-              </Button>
-            </Link>
-            <Link
-              href={pathname === "/" ? "#compare" : "/#compare"}
-              onClick={(e) => {
-                setMobileMenuOpen(false);
-                handleNavClick(e, pathname === "/" ? "#compare" : "/#compare");
-              }}
-            >
-              <Button
-                variant="ghost"
-                className={cn("w-full justify-start text-lg", activeSection === "compare" && "text-primary bg-white/5")}
-              >
-                Compare
               </Button>
             </Link>
             <Link href="/pricing" onClick={() => setMobileMenuOpen(false)}>

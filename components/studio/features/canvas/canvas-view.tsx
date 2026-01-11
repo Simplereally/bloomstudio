@@ -38,6 +38,10 @@ export interface CanvasViewProps {
     onOpenInNewTab?: () => void
     /** Handle fullscreen toggle */
     onFullscreen?: () => void
+    /** Whether image is favorited */
+    isFavorited?: boolean
+    /** Handle favorite toggle */
+    onToggleFavorite?: () => void
 }
 
 export const CanvasView = React.memo(function CanvasView({
@@ -49,6 +53,8 @@ export const CanvasView = React.memo(function CanvasView({
     onRegenerate,
     onOpenInNewTab,
     onFullscreen,
+    isFavorited,
+    onToggleFavorite,
 }: CanvasViewProps) {
     return (
         <div className="h-full flex flex-col overflow-hidden">
@@ -66,6 +72,8 @@ export const CanvasView = React.memo(function CanvasView({
                         onRegenerate={onRegenerate}
                         onOpenInNewTab={onOpenInNewTab}
                         onFullscreen={onFullscreen}
+                        isFavorited={isFavorited}
+                        onToggleFavorite={onToggleFavorite}
                     />
                 </ImageCanvas>
             </div>

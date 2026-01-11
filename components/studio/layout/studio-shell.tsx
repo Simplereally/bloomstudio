@@ -19,7 +19,8 @@
 
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Pause, Play, Sparkles, X } from "lucide-react"
+import { Sparkles } from "lucide-react"
+import { BatchActionButton } from "@/components/studio/batch/batch-action-button"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 
@@ -56,7 +57,7 @@ import { useSubscriptionStatus } from "@/hooks/use-subscription-status"
 import { getModelSupportsNegativePrompt } from "@/lib/config/models"
 import { isTrialExpiredError, showAuthRequiredToast, showErrorToast } from "@/lib/errors"
 import { isLocalhost } from "@/lib/utils"
-import type { ImageGenerationParams } from "@/types/pollinations"
+import type { ImageGenerationParams, VideoGenerationParams } from "@/types/pollinations"
 import type { ThumbnailData } from "@/components/studio/gallery/image-gallery"
 import { useConvexAuth } from "convex/react"
 import { useSearchParams } from "next/navigation"
@@ -192,6 +193,11 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
                     private: generationSettings.options.private,
                     safe: generationSettings.options.safe,
                     image: generationSettings.referenceImage,
+                    // Video-specific parameters
+                    duration: generationSettings.videoSettings.duration,
+                    audio: generationSettings.videoSettings.audio,
+                    aspectRatio: generationSettings.aspectRatio,
+                    lastFrameImage: generationSettings.videoReferenceImages.lastFrame,
                 },
                 batchMode.batchSettings.count
             )
@@ -203,7 +209,7 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
             ? generationSettings.generateSeed()
             : generationSettings.seed
 
-        const params: ImageGenerationParams = {
+        const params: any = {
             prompt,
             negativePrompt: negativePrompt || undefined,
             model: generationSettings.model,
@@ -214,6 +220,11 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
             private: generationSettings.options.private,
             safe: generationSettings.options.safe,
             image: generationSettings.referenceImage,
+            // Video-specific parameters
+            duration: generationSettings.videoSettings.duration,
+            audio: generationSettings.videoSettings.audio,
+            aspectRatio: generationSettings.aspectRatio, // Use current aspect ratio string
+            lastFrameImage: generationSettings.videoReferenceImages.lastFrame,
         }
 
         generate(params)
@@ -298,39 +309,15 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
             {/* Generate / Pause / Resume Batch Button */}
             <div className="p-2 border-t border-border/50 bg-card/80">
                 {batchMode.isBatchActive ? (
-                    <div className="flex gap-2">
-                        {/* Pause/Resume toggle button */}
-                        {batchMode.isBatchPaused ? (
-                            <Button
-                                onClick={batchMode.resumeBatchGeneration}
-                                className="flex-1 h-11 text-base font-semibold"
-                                size="lg"
-                            >
-                                <Play className="mr-2 h-4 w-4 fill-current" />
-                                Resume ({batchMode.batchProgress.completedCount}/{batchMode.batchProgress.totalCount})
-                            </Button>
-                        ) : (
-                            <Button
-                                onClick={batchMode.pauseBatchGeneration}
-                                variant="secondary"
-                                className="flex-1 h-11 text-base font-semibold"
-                                size="lg"
-                            >
-                                <Pause className="mr-2 h-4 w-4 fill-current" />
-                                Pause ({batchMode.batchProgress.completedCount}/{batchMode.batchProgress.totalCount})
-                            </Button>
-                        )}
-                        {/* Cancel button */}
-                        <Button
-                            onClick={batchMode.cancelBatchGeneration}
-                            variant="destructive"
-                            className="h-11 px-3"
-                            size="lg"
-                            title="Cancel batch generation"
-                        >
-                            <X className="h-5 w-5" />
-                        </Button>
-                    </div>
+                    <BatchActionButton
+                        isPaused={batchMode.isBatchPaused}
+                        completedCount={batchMode.batchProgress.completedCount}
+                        totalCount={batchMode.batchProgress.totalCount}
+                        inFlightCount={batchMode.batchProgress.inFlightCount}
+                        onPause={batchMode.pauseBatchGeneration}
+                        onResume={batchMode.resumeBatchGeneration}
+                        onCancel={batchMode.cancelBatchGeneration}
+                    />
                 ) : (
                     <Button
                         onClick={handleGenerateClick}
