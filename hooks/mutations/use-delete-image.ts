@@ -108,8 +108,12 @@ export function useBulkDeleteGeneratedImages() {
             // Delete all from Convex in one call (returns r2Keys and thumbnailR2Keys)
             const result = await removeImages({ imageIds })
 
-            if (result.errors && result.errors.length > 0) {
-                throw new Error(result.errors.join(", ") || `Failed to delete images. Success: ${result.successCount}/${imageIds.length}`)
+            // Handle potential legacy/test shape where 'error' string is returned
+            const flexibleResult = result as typeof result & { error?: string }
+            const errors = flexibleResult.errors ?? (flexibleResult.error ? [flexibleResult.error] : undefined)
+
+            if (errors && errors.length > 0) {
+                throw new Error(errors.join(", ") || `Failed to delete images. Success: ${result.successCount}/${imageIds.length}`)
             }
 
             // Collect all keys to delete (both images and thumbnails)

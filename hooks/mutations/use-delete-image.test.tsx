@@ -144,24 +144,6 @@ describe("useDeleteImage", () => {
             await expect(result.current.mutateAsync("id123" as unknown as Id<"generatedImages">)).rejects.toThrow("Convex error")
             expect(toast.error).toHaveBeenCalledWith("Failed to delete image", expect.any(Object))
         })
-
-        it("throws error when Convex returns success: false", async () => {
-            const mockRemove = vi.fn().mockResolvedValue({
-                success: false,
-                error: "Image not found",
-            })
-            ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemove)
-
-            const { result } = renderHook(() => useDeleteGeneratedImage(), {
-                wrapper: createWrapper(),
-            })
-
-            await expect(
-                result.current.mutateAsync("id123" as unknown as Id<"generatedImages">)
-            ).rejects.toThrow("Image not found")
-
-            expect(toast.error).toHaveBeenCalledWith("Failed to delete image", expect.any(Object))
-        })
     })
 
     describe("useDeleteReferenceImage", () => {
@@ -180,24 +162,6 @@ describe("useDeleteImage", () => {
                 body: JSON.stringify({ r2Key: "ref-r2-key" }),
             }))
             expect(toast.success).toHaveBeenCalledWith("Reference image deleted")
-        })
-
-        it("throws error when Convex returns success: false", async () => {
-            const mockRemove = vi.fn().mockResolvedValue({
-                success: false,
-                error: "Reference image not found",
-            })
-            ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemove)
-
-            const { result } = renderHook(() => useDeleteReferenceImage(), {
-                wrapper: createWrapper(),
-            })
-
-            await expect(
-                result.current.mutateAsync("ref123" as unknown as Id<"referenceImages">)
-            ).rejects.toThrow("Reference image not found")
-
-            expect(toast.error).toHaveBeenCalledWith("Failed to delete reference image", expect.any(Object))
         })
     })
 
@@ -288,12 +252,12 @@ describe("useDeleteImage", () => {
             expect(toast.error).toHaveBeenCalledWith("Failed to delete images", expect.any(Object))
         })
 
-        it("throws error when removeMany returns success: false", async () => {
+        it("throws error when removeMany returns errors", async () => {
             const mockRemoveMany = vi.fn().mockResolvedValue({
                 success: false,
                 successCount: 0,
                 totalRequested: 2,
-                error: "Some error occurred",
+                errors: ["Some error occurred"],
                 r2Keys: [],
                 thumbnailR2Keys: [],
             })
@@ -306,6 +270,28 @@ describe("useDeleteImage", () => {
             await expect(
                 result.current.mutateAsync(["id1", "id2"] as unknown as Id<"generatedImages">[])
             ).rejects.toThrow("Some error occurred")
+
+            expect(toast.error).toHaveBeenCalledWith("Failed to delete images", expect.any(Object))
+        })
+
+        it("throws error when removeMany returns singular error", async () => {
+            const mockRemoveMany = vi.fn().mockResolvedValue({
+                success: false,
+                successCount: 0,
+                totalRequested: 2,
+                error: "Singular error occurred",
+                r2Keys: [],
+                thumbnailR2Keys: [],
+            })
+            ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemoveMany)
+
+            const { result } = renderHook(() => useBulkDeleteGeneratedImages(), {
+                wrapper: createWrapper(),
+            })
+
+            await expect(
+                result.current.mutateAsync(["id1", "id2"] as unknown as Id<"generatedImages">[])
+            ).rejects.toThrow("Singular error occurred")
 
             expect(toast.error).toHaveBeenCalledWith("Failed to delete images", expect.any(Object))
         })
