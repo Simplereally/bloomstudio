@@ -1,6 +1,7 @@
 
 
 
+import { Video } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ScrollReveal } from "@/components/landing/scroll-reveal"
 import { Slideshow, SlideshowSlide } from "@/components/ui/slideshow"
@@ -24,7 +25,7 @@ export function SolutionShowcase({ items, aspectRatio = "16/9", isVideo = false 
     const displayItems = items || []
 
     // Transform items into slideshow slides
-    const slides = displayItems.map((item, index) => {
+    const slides: (VideoSlideshowSlide | SlideshowSlide)[] = displayItems.map((item, index) => {
         if (isVideo) {
             return {
                 key: index,
@@ -46,13 +47,19 @@ export function SolutionShowcase({ items, aspectRatio = "16/9", isVideo = false 
                                 lazy={true}
                             />
                         )}
-                        {/* Fallback pattern if no src provided? Or just empty container */}
                         {!item.src && (
-                             <div className="absolute inset-0 bg-secondary/20" />
+                             <div className="absolute inset-0 flex items-center justify-center bg-card/40">
+                                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-shimmer" />
+                                 <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-purple-500/5" />
+                                 <div className="text-center px-4 relative z-10 transition-all duration-300 group-hover:opacity-100">
+                                     <Video className="h-10 w-10 mx-auto text-white/10 mb-2 transition-colors group-hover:text-primary/40" />
+                                     <p className="text-[10px] text-white/20 uppercase tracking-[0.2em] font-medium">{item.label}</p>
+                                 </div>
+                             </div>
                         )}
                     </div>
                 )
-            }
+            } satisfies VideoSlideshowSlide
         }
 
         return {
@@ -67,7 +74,7 @@ export function SolutionShowcase({ items, aspectRatio = "16/9", isVideo = false 
                     src={item.src}
                 />
             ),
-        }
+        } satisfies SlideshowSlide
     })
 
     const commonProps = {
@@ -113,12 +120,12 @@ export function SolutionShowcase({ items, aspectRatio = "16/9", isVideo = false 
                     <ScrollReveal delay={200} className="w-full flex justify-center lg:justify-end lg:col-span-7 xl:col-span-8">
                         {isVideo ? (
                             <VideoSlideshow
-                                slides={slides as VideoSlideshowSlide[]}
+                                slides={slides}
                                 {...commonProps}
                             />
                         ) : (
                             <Slideshow
-                                slides={slides as SlideshowSlide[]}
+                                slides={slides}
                                 {...commonProps}
                             />
                         )}

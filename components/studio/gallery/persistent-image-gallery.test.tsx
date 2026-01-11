@@ -427,9 +427,9 @@ describe("PersistentImageGallery", () => {
             })
 
             render(<PersistentImageGallery />)
-
-            const sentinel = screen.getByTestId("load-more-sentinel")
-            expect(sentinel.querySelector("svg.animate-spin")).toBeInTheDocument()
+            
+            expect(screen.getByTestId("load-more-sentinel")).toBeInTheDocument()
+            expect(screen.getByTestId("loading-spinner")).toBeInTheDocument()
         })
 
         it("automatically calls loadMore when results are empty but more pages exist (greedy fetch)", () => {

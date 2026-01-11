@@ -144,16 +144,25 @@ export const migrateAllImages = action({
                 images.map(image => processImageInline(image))
             )
 
+            // Build Map of images by ID for safe lookup
+            const imagesMap = new Map(images.map(i => [i._id, i]));
+
             // Update DB for successful thumbnails - also in parallel!
             const dbUpdates = results
                 .filter(r => r.success && r.thumbnailUrl)
-                .map(r =>
-                    ctx.runMutation(api.thumbnailMigration.updateImageThumbnail, {
-                        imageId: r.imageId,
-                        thumbnailR2Key: generateThumbnailKey(images.find(i => i._id === r.imageId)!.r2Key),
-                        thumbnailUrl: r.thumbnailUrl!,
-                    })
-                )
+                .map(r => {
+                    const image = imagesMap.get(r.imageId);
+                    if (image) {
+                        return ctx.runMutation(api.thumbnailMigration.updateImageThumbnail, {
+                            imageId: r.imageId,
+                            thumbnailR2Key: generateThumbnailKey(image.r2Key),
+                            thumbnailUrl: r.thumbnailUrl!,
+                        });
+                    }
+                    console.warn(`[ThumbnailMigration] Image ${r.imageId} not found in batch, skipping update.`);
+                    return null;
+                })
+                .filter(update => update !== null);
 
             await Promise.all(dbUpdates)
 

@@ -144,6 +144,24 @@ describe("useDeleteImage", () => {
             await expect(result.current.mutateAsync("id123" as unknown as Id<"generatedImages">)).rejects.toThrow("Convex error")
             expect(toast.error).toHaveBeenCalledWith("Failed to delete image", expect.any(Object))
         })
+
+        it("throws error when Convex returns success: false", async () => {
+            const mockRemove = vi.fn().mockResolvedValue({
+                success: false,
+                error: "Image not found",
+            })
+            ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemove)
+
+            const { result } = renderHook(() => useDeleteGeneratedImage(), {
+                wrapper: createWrapper(),
+            })
+
+            await expect(
+                result.current.mutateAsync("id123" as unknown as Id<"generatedImages">)
+            ).rejects.toThrow("Image not found")
+
+            expect(toast.error).toHaveBeenCalledWith("Failed to delete image", expect.any(Object))
+        })
     })
 
     describe("useDeleteReferenceImage", () => {
@@ -162,6 +180,24 @@ describe("useDeleteImage", () => {
                 body: JSON.stringify({ r2Key: "ref-r2-key" }),
             }))
             expect(toast.success).toHaveBeenCalledWith("Reference image deleted")
+        })
+
+        it("throws error when Convex returns success: false", async () => {
+            const mockRemove = vi.fn().mockResolvedValue({
+                success: false,
+                error: "Reference image not found",
+            })
+            ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemove)
+
+            const { result } = renderHook(() => useDeleteReferenceImage(), {
+                wrapper: createWrapper(),
+            })
+
+            await expect(
+                result.current.mutateAsync("ref123" as unknown as Id<"referenceImages">)
+            ).rejects.toThrow("Reference image not found")
+
+            expect(toast.error).toHaveBeenCalledWith("Failed to delete reference image", expect.any(Object))
         })
     })
 

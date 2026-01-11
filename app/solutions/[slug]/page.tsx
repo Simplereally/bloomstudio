@@ -80,7 +80,7 @@ export default async function SolutionPage({ params }: { params: Promise<{ slug:
                 images={solution.heroImages}
             />
 
-            <SolutionShowcase items={solution.showcase} isVideo={slug === "ai-video-generator"} />
+            <SolutionShowcase items={solution.showcase} isVideo={solution.isVideo ?? false} />
 
             <SolutionFeatures features={solution.features} />
 

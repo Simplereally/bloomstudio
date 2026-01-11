@@ -24,14 +24,14 @@ vi.mock("@/hooks/mutations/use-delete-image", () => ({
 
 // Mock next/image
 vi.mock("next/image", () => ({
-    default: ({ src, alt }: { src: string; alt: string }) => (
+    default: ({ src, alt }: { src: string; alt: string }): JSX.Element => (
         <img src={src} alt={alt} data-testid="mock-image" />
     ),
 }))
 
 // Mock DeleteImageDialog
 vi.mock("@/components/studio/delete-image-dialog", () => ({
-    DeleteImageDialog: ({ onConfirm }: { onConfirm: () => void }) => (
+    DeleteImageDialog: ({ onConfirm }: { onConfirm: () => void }): JSX.Element => (
         <button onClick={onConfirm} data-testid="delete-button">
             Delete
         </button>
@@ -284,19 +284,12 @@ describe("ReferenceImagesBrowserModal", () => {
     })
 })
 
-describe("ReferenceImagesBrowserModal - empty state", () => {
+describe("ReferenceImagesBrowserModal - search empty state", () => {
     beforeEach(() => {
         vi.clearAllMocks()
     })
 
-    it("shows empty state when no images are uploaded", async () => {
-        // Override the mock for this specific test
-        vi.doMock("@/hooks/queries/use-reference-images", () => ({
-            useReferenceImages: () => [],
-        }))
-
-        // Re-import the component to use the new mock would be complex,
-        // so we test the search "no results" state instead which uses the same UI
+    it("shows empty state message when search yields no results", async () => {
         const mockOnSelect = vi.fn()
         const mockOnOpenChange = vi.fn()
 

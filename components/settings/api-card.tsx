@@ -11,6 +11,18 @@ import { AlertCircle, Key, Loader2, CheckCircle2, Eye, EyeOff } from "lucide-rea
 import { toast } from "sonner"
 import { encryptKey } from "@/app/settings/actions"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+
 
 export function ApiCard() {
     // Current state only lets us know IF a key changes, we can't see the key itself.
@@ -48,8 +60,6 @@ export function ApiCard() {
     }
 
     const handleRemove = async () => {
-        if (!confirm("Are you sure you want to remove your API key?")) return
-        
         setIsRemoving(true)
         try {
             await removeApiKey({})
@@ -121,15 +131,35 @@ export function ApiCard() {
                     </div>
                     {hasKey && (
                         <div className="flex justify-end">
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8"
-                                onClick={handleRemove}
-                                disabled={isRemoving}
-                            >
-                                {isRemoving ? "Removing..." : "Remove Key"}
-                            </Button>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8"
+                                        disabled={isRemoving}
+                                    >
+                                        {isRemoving ? "Removing..." : "Remove Key"}
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Remove API Key?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Are you sure you want to remove your API key? You will need to provide it again to use your personal rate limits.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction 
+                                            onClick={handleRemove}
+                                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                        >
+                                            Remove Key
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                         </div>
                     )}
                 </div>

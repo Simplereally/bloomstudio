@@ -153,12 +153,13 @@ export default function TermsPage() {
                             You are responsible for verifying the accuracy and appropriateness of any output before using it.
                         </p>
                     </section>
-
+                    <section>
                         <h2 className="text-2xl font-bold mb-4">11. Governing Law</h2>
                         <p className="mb-4">
                             These Terms shall be governed and construed in accordance with the laws of the Commonwealth of Australia, without regard to its conflict of law provisions.
                             Our failure to enforce any right or provision of these Terms will not be considered a waiver of those rights.
                         </p>
+                    </section>
 
                     <section>
                         <h2 className="text-2xl font-bold mb-4">12. Changes to Terms</h2>

@@ -59,6 +59,8 @@ const sparkleVariants: Variants = {
     },
 }
 
+const EMPTY_SET = new Set<string>()
+
 export function PaginatedImageGrid({
     images,
     status,
@@ -66,7 +68,7 @@ export function PaginatedImageGrid({
     emptyState,
     showUser = true,
     selectionMode = false,
-    selectedIds = new Set(),
+    selectedIds = EMPTY_SET,
     onSelectionChange,
 }: PaginatedImageGridProps) {
     const [selectedImage, setSelectedImage] = useState<ImageCardData | null>(null)

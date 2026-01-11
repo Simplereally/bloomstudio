@@ -27,6 +27,7 @@ export interface Solution {
   steps: SolutionStep[];
   faqs: SolutionFAQ[];
   heroImages?: string[];
+  isVideo?: boolean;
   showcase?: {
     label: string;
     aspectRatio: "square" | "portrait" | "landscape" | "landscape-wide" | "portrait-tall";
@@ -264,6 +265,7 @@ export const SOLUTIONS: Solution[] = [
     description:
       "Transform your text and images into engaging short-form video clips. Create motion graphics and cinematic animations in minutes.",
     heroSuffix: "videos",
+    isVideo: true,
     heroImages: [
       "/solutions/ai-video-generator/hero-1.mp4",
       "/solutions/ai-video-generator/hero-2.mp4",

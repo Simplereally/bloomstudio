@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
 import { VideoSettingsPanel, type VideoSettings } from "./video-settings-panel"
 import type { VideoDurationConstraints } from "@/lib/config/models"
@@ -23,7 +23,7 @@ describe("VideoSettingsPanel", () => {
         defaultDuration: 4,
     }
 
-    const mockOnSettingsChange = vi.fn()
+    const mockOnSettingsChange = vi.fn<[VideoSettings], void>()
 
     beforeEach(() => {
         vi.clearAllMocks()
@@ -143,7 +143,7 @@ describe("VideoSettingsPanel", () => {
     })
 
     describe("disabled state", () => {
-        it("disables controls when disabled prop is true", () => {
+        it("disables fixed duration options and audio toggle when disabled", () => {
             render(
                 <VideoSettingsPanel
                     settings={{ duration: 4, audio: false }}
@@ -155,6 +155,24 @@ describe("VideoSettingsPanel", () => {
             )
 
             expect(screen.getByTestId("audio-switch")).toBeDisabled()
+            
+            // Verify duration controls are disabled
+            veoConstraints.fixedOptions?.forEach(option => {
+                expect(screen.getByTestId(`duration-option-${option}`)).toBeDisabled()
+            })
+        })
+
+        it("disables duration slider when disabled", () => {
+            render(
+                <VideoSettingsPanel
+                    settings={defaultSettings}
+                    onSettingsChange={mockOnSettingsChange}
+                    durationConstraints={seedanceConstraints}
+                    disabled={true}
+                />
+            )
+
+            expect(screen.getByTestId("duration-slider")).toHaveAttribute("data-disabled")
         })
     })
 })

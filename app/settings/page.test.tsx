@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import SettingsPage from "./page"
+import React from "react"
+
 
 // --- Mocks ---
 
@@ -20,9 +22,9 @@ const mockUseAction = vi.fn()
 const mockUseConvexAuth = vi.fn()
 
 vi.mock("convex/react", () => ({
-  useQuery: (args: any) => mockUseQuery(args),
-  useMutation: (args: any) => mockUseMutation(args),
-  useAction: (args: any) => mockUseAction(args),
+  useQuery: (args: unknown) => mockUseQuery(args),
+  useMutation: (args: unknown) => mockUseMutation(args),
+  useAction: (args: unknown) => mockUseAction(args),
   useConvexAuth: () => mockUseConvexAuth(),
 }))
 
@@ -65,12 +67,17 @@ vi.mock("sonner", () => ({
 }))
 
 // Mock Framer Motion
+type MotionDivProps = {
+  children: React.ReactNode
+  className?: string
+}
+
 vi.mock("framer-motion", () => ({
   motion: {
-    div: ({ children, className }: any) => <div className={className}>{children}</div>,
-    aside: ({ children, className }: any) => <aside className={className}>{children}</aside>
+    div: ({ children, className }: MotionDivProps) => <div className={className}>{children}</div>,
+    aside: ({ children, className }: MotionDivProps) => <aside className={className}>{children}</aside>
   },
-  AnimatePresence: ({ children }: any) => <>{children}</>,
+  AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
 describe("SettingsPage", () => {
@@ -88,7 +95,10 @@ describe("SettingsPage", () => {
       }
       return null
     })
-    mockUseMutation.mockReturnValue(async () => {})
+    mockUseMutation.mockImplementation(() => {
+      const fn = vi.fn().mockResolvedValue(undefined)
+      return Object.assign(fn, { withOptimisticUpdate: vi.fn().mockReturnValue(fn) })
+    })
     mockEncryptKey.mockResolvedValue("encrypted-string")
   })
 

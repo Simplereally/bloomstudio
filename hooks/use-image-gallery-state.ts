@@ -42,6 +42,8 @@ export interface UseImageGalleryStateReturn {
     addImage: (image: GeneratedImage) => void
 }
 
+export const PROMPT_HISTORY_LIMIT = 10
+
 /**
  * Hook for managing image gallery state including images, selection, and history.
  * Uses ref pattern to keep callbacks stable while still accessing current state.
@@ -73,11 +75,11 @@ export function useImageGalleryState(): UseImageGalleryStateReturn {
     const bulkDeleteMutation = useBulkDeleteGeneratedImages()
     const setBulkVisibilityMutation = useSetBulkVisibility()
 
-    // Add prompt to history (deduped, max 10) - stable callback
+    // Add prompt to history (deduped, max PROMPT_HISTORY_LIMIT) - stable callback
     const addToPromptHistory = useCallback((prompt: string) => {
         setPromptHistory((prev) => {
             if (prev.includes(prompt)) return prev
-            return [prompt, ...prev.slice(0, 9)]
+            return [prompt, ...prev.slice(0, PROMPT_HISTORY_LIMIT - 1)]
         })
     }, [])
 

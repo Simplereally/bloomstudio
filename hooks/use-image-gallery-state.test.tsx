@@ -12,7 +12,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react"
 import type { Mock } from "vitest"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { useImageGalleryState } from "./use-image-gallery-state"
+import { useImageGalleryState, PROMPT_HISTORY_LIMIT } from "./use-image-gallery-state"
 import { useBulkDeleteGeneratedImages, useDeleteGeneratedImage } from "./mutations/use-delete-image"
 import { useSetBulkVisibility } from "./mutations/use-set-visibility"
 import type { GeneratedImage } from "@/types/pollinations"
@@ -176,18 +176,18 @@ describe("useImageGalleryState", () => {
             expect(result.current.promptHistory).toHaveLength(1)
         })
 
-        it("limits history to 10 items", () => {
+        it(`limits history to ${PROMPT_HISTORY_LIMIT} items`, () => {
             const { result } = renderHook(() => useImageGalleryState())
 
             act(() => {
-                for (let i = 0; i < 15; i++) {
+                for (let i = 0; i < PROMPT_HISTORY_LIMIT + 5; i++) {
                     result.current.addToPromptHistory(`prompt ${i}`)
                 }
             })
 
-            expect(result.current.promptHistory).toHaveLength(10)
+            expect(result.current.promptHistory).toHaveLength(PROMPT_HISTORY_LIMIT)
             // Most recent should be first
-            expect(result.current.promptHistory[0]).toBe("prompt 14")
+            expect(result.current.promptHistory[0]).toBe(`prompt ${PROMPT_HISTORY_LIMIT + 4}`)
         })
     })
 

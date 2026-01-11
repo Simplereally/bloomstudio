@@ -106,6 +106,7 @@ export const VideoSettingsPanel = React.memo(function VideoSettingsPanel({
                                 value={option.toString()}
                                 className="h-9 px-4 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
                                 data-testid={`duration-option-${option}`}
+                                aria-label={`${option} seconds`}
                             >
                                 {option}s
                             </ToggleGroupItem>
@@ -122,6 +123,7 @@ export const VideoSettingsPanel = React.memo(function VideoSettingsPanel({
                             disabled={disabled}
                             className="w-full"
                             data-testid="duration-slider"
+                            aria-label="Duration"
                         />
                         <div className="flex justify-between text-xs text-muted-foreground tabular-nums">
                             <span>{min}s</span>

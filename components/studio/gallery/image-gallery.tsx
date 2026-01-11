@@ -257,7 +257,10 @@ const VirtualizedGalleryGrid = React.memo(function VirtualizedGalleryGrid({
                         data-testid="load-more-sentinel"
                     >
                         {isLoadingMore && (
-                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                            <Loader2
+                                className="h-4 w-4 animate-spin text-muted-foreground"
+                                data-testid="loading-spinner"
+                            />
                         )}
                     </div>
                 )
@@ -370,7 +373,10 @@ const StandardGalleryGrid = React.memo(function StandardGalleryGrid({
                     data-testid="load-more-sentinel"
                 >
                     {isLoadingMore && (
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        <Loader2
+                            className="h-4 w-4 animate-spin text-muted-foreground"
+                            data-testid="loading-spinner"
+                        />
                     )}
                 </div>
             )}
@@ -480,7 +486,10 @@ export const ImageGallery = React.memo(function ImageGallery({
             className="flex flex-col items-center justify-center flex-1 text-center p-6"
             data-testid="gallery-loading"
         >
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <Loader2
+                className="h-6 w-6 animate-spin text-muted-foreground"
+                data-testid="loading-spinner"
+            />
         </div>
     )
 

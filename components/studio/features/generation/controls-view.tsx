@@ -27,7 +27,6 @@ import {
   ReferenceImagePicker,
   SeedControl,
   type GenerationOptions,
-  // Video components from HEAD
   VideoSettingsPanel,
   VideoReferenceImagePicker,
   type VideoSettings,
@@ -93,7 +92,7 @@ export interface ControlsViewProps {
   onBatchSettingsChange: (settings: BatchModeSettings) => void;
   isBatchActive?: boolean;
 
-  // Video-specific props (from HEAD)
+  // Video-specific props
   isVideoModel?: boolean
   videoSettings?: VideoSettings
   onVideoSettingsChange?: (settings: VideoSettings) => void
@@ -154,7 +153,7 @@ export const ControlsView = React.memo(function ControlsView({
   onBatchSettingsChange,
   isBatchActive = false,
 
-  // Video settings (from HEAD)
+  // Video settings
   isVideoModel = false,
   videoSettings,
   onVideoSettingsChange,
@@ -166,7 +165,7 @@ export const ControlsView = React.memo(function ControlsView({
 }: ControlsViewProps) {
   const [modelExpanded, setModelExpanded] = React.useState(true);
 
-  // Calculate frame count for video reference display (from HEAD)
+  // Calculate frame count for video reference display
   const videoFrameCount = (videoReferenceImages?.firstFrame ? 1 : 0) + (videoReferenceImages?.lastFrame ? 1 : 0)
 
   const handleModelChange = React.useCallback(
@@ -246,7 +245,7 @@ export const ControlsView = React.memo(function ControlsView({
         <Separator className="bg-border/50" />
       </CollapsibleSection>
 
-      {/* Video Frames (video models only) - FROM HEAD */}
+      {/* Video Frames (video models only) */}
       {isVideoModel && videoSettings && onVideoSettingsChange && videoReferenceImages && onVideoReferenceImagesChange && (
           <CollapsibleSection
               title="Video Frames"
@@ -284,7 +283,7 @@ export const ControlsView = React.memo(function ControlsView({
           </CollapsibleSection>
       )}
 
-      {/* Video Settings (video models only) - FROM HEAD */}
+      {/* Video Settings (video models only) */}
       {isVideoModel && videoSettings && onVideoSettingsChange && durationConstraints && (
           <CollapsibleSection
               title="Video Settings"

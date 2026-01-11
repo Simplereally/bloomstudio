@@ -16,8 +16,11 @@ export function useDeleteGeneratedImage() {
 
     return useMutation({
         mutationFn: async (imageId: Id<"generatedImages">) => {
-            // Delete from Convex (returns r2Key and thumbnailR2Key)
             const result = await removeImage({ imageId })
+            
+            if (result.success === false) {
+                throw new Error(result.error || "Failed to delete image")
+            }
 
             // Delete original image from R2 via API route
             if (result.r2Key) {
@@ -177,8 +180,11 @@ export function useDeleteReferenceImage() {
 
     return useMutation({
         mutationFn: async (imageId: Id<"referenceImages">) => {
-            // Delete from Convex (returns r2Key)
             const result = await removeImage({ imageId })
+
+            if (result.success === false) {
+                throw new Error(result.error || "Failed to delete reference image")
+            }
 
             // Delete from R2 via API route
             if (result.r2Key) {
