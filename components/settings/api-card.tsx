@@ -36,7 +36,8 @@ export function ApiCard() {
     const [isVisible, setIsVisible] = useState(false)
 
     // Check if key is set (savedKey is a string if set, null if not)
-    const hasKey = !!savedKey
+    const isLoading = savedKey === undefined
+    const hasKey = savedKey !== undefined && savedKey !== null && savedKey !== ""
 
     const handleSave = async () => {
         if (!inputKey.trim()) return
@@ -84,7 +85,7 @@ export function ApiCard() {
                             Configure your Pollinations.ai API key.
                         </CardDescription>
                     </div>
-                    {hasKey && (
+                    {!isLoading && hasKey && (
                         <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-500/10 text-green-500 text-xs font-medium border border-green-500/20">
                             <CheckCircle2 className="w-3.5 h-3.5" />
                             Active
@@ -110,8 +111,9 @@ export function ApiCard() {
                                 type={isVisible ? "text" : "password"}
                                 value={inputKey}
                                 onChange={(e) => setInputKey(e.target.value)}
-                                placeholder={hasKey ? "Key is set and hidden" : "Enter your API key"}
+                                placeholder={isLoading ? "Loading..." : hasKey ? "Key is set and hidden" : "Enter your API key"}
                                 className="pr-10 bg-background/50"
+                                disabled={isLoading}
                             />
                             <button
                                 type="button"
@@ -123,7 +125,7 @@ export function ApiCard() {
                         </div>
                         <Button 
                             onClick={handleSave} 
-                            disabled={!inputKey.trim() || isSaving}
+                            disabled={!inputKey.trim() || isSaving || isLoading}
                         >
                             {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             Save
@@ -137,7 +139,7 @@ export function ApiCard() {
                                         variant="ghost" 
                                         size="sm" 
                                         className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8"
-                                        disabled={isRemoving}
+                                        disabled={isRemoving || isLoading}
                                     >
                                         {isRemoving ? "Removing..." : "Remove Key"}
                                     </Button>
