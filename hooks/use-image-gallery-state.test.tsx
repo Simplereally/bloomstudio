@@ -411,6 +411,7 @@ describe("useImageGalleryState", () => {
 
             act(() => {
                 result.current.addImage(image)
+                result.current.setSelectionMode(true)
                 result.current.setSelectedIds(new Set(["img1"]))
             })
 
@@ -420,10 +421,12 @@ describe("useImageGalleryState", () => {
 
             expect(consoleSpy).toHaveBeenCalledWith("Bulk delete failed:", expect.any(Error))
 
-            // Should still clean up local state
-            expect(result.current.selectedIds.size).toBe(0)
-            expect(result.current.selectionMode).toBe(false)
-
+            // Should NOT clean up local state on failure
+            expect(result.current.selectedIds.size).toBe(1)
+            expect(result.current.images).toHaveLength(1)
+            // Should stay in selection mode
+            expect(result.current.selectionMode).toBe(true)
+            
             consoleSpy.mockRestore()
         })
     })

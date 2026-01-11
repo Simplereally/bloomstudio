@@ -67,9 +67,9 @@ describe("useDeleteImage", () => {
     })
 
     describe("useDeleteGeneratedImage", () => {
-        it("deletes from Convex and then R2", async () => {
-            const mockRemove = vi.fn().mockResolvedValue({ r2Key: "test-r2-key" })
-            vi.mocked(useConvexMutation).mockReturnValue(mockRemove as unknown as ReturnType<typeof useConvexMutation>)
+        it("deletes from Convex and then R2 (including thumbnail)", async () => {
+            const mockRemove = vi.fn().mockResolvedValue({ r2Key: "test-r2-key", thumbnailR2Key: "test-thumbnail-key" })
+            ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemove)
 
             const { result } = renderHook(() => useDeleteGeneratedImage(), {
                 wrapper: createWrapper(),
@@ -78,16 +78,40 @@ describe("useDeleteImage", () => {
             await result.current.mutateAsync("id123" as unknown as Id<"generatedImages">)
 
             expect(mockRemove).toHaveBeenCalledWith({ imageId: "id123" })
+            // Should delete both the original image and thumbnail
+            expect(global.fetch).toHaveBeenCalledTimes(2)
             expect(global.fetch).toHaveBeenCalledWith("/api/images/delete", expect.objectContaining({
                 method: "POST",
+                body: JSON.stringify({ r2Key: "test-r2-key" }),
+            }))
+            expect(global.fetch).toHaveBeenCalledWith("/api/images/delete", expect.objectContaining({
+                method: "POST",
+                body: JSON.stringify({ r2Key: "test-thumbnail-key" }),
+            }))
+            expect(toast.success).toHaveBeenCalledWith("Image deleted")
+        })
+
+        it("handles image without thumbnail", async () => {
+            const mockRemove = vi.fn().mockResolvedValue({ r2Key: "test-r2-key", thumbnailR2Key: undefined })
+            ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemove)
+
+            const { result } = renderHook(() => useDeleteGeneratedImage(), {
+                wrapper: createWrapper(),
+            })
+
+            await result.current.mutateAsync("id123" as unknown as Id<"generatedImages">)
+
+            // Should only delete the original image (no thumbnail)
+            expect(global.fetch).toHaveBeenCalledTimes(1)
+            expect(global.fetch).toHaveBeenCalledWith("/api/images/delete", expect.objectContaining({
                 body: JSON.stringify({ r2Key: "test-r2-key" }),
             }))
             expect(toast.success).toHaveBeenCalledWith("Image deleted")
         })
 
         it("handles R2 deletion failure gracefully", async () => {
-            const mockRemove = vi.fn().mockResolvedValue({ r2Key: "test-r2-key" })
-            vi.mocked(useConvexMutation).mockReturnValue(mockRemove as unknown as ReturnType<typeof useConvexMutation>)
+            const mockRemove = vi.fn().mockResolvedValue({ r2Key: "test-r2-key", thumbnailR2Key: "test-thumbnail-key" })
+            ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemove)
 
             global.fetch = vi.fn().mockImplementation(() =>
                 Promise.resolve({
@@ -104,12 +128,14 @@ describe("useDeleteImage", () => {
 
             // Should still be successful because Convex deletion succeeded
             expect(mockRemove).toHaveBeenCalled()
+            // Should attempt to delete both original and thumbnail (even if both fail)
+            expect(global.fetch).toHaveBeenCalledTimes(2)
             expect(toast.success).toHaveBeenCalledWith("Image deleted")
         })
 
         it("handles Convex deletion failure", async () => {
             const mockRemove = vi.fn().mockRejectedValue(new Error("Convex error"))
-            vi.mocked(useConvexMutation).mockReturnValue(mockRemove as unknown as ReturnType<typeof useConvexMutation>)
+            ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemove)
 
             const { result } = renderHook(() => useDeleteGeneratedImage(), {
                 wrapper: createWrapper(),
@@ -123,7 +149,7 @@ describe("useDeleteImage", () => {
     describe("useDeleteReferenceImage", () => {
         it("deletes reference image from Convex and R2", async () => {
             const mockRemove = vi.fn().mockResolvedValue({ r2Key: "ref-r2-key" })
-            vi.mocked(useConvexMutation).mockReturnValue(mockRemove as unknown as ReturnType<typeof useConvexMutation>)
+            ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemove)
 
             const { result } = renderHook(() => useDeleteReferenceImage(), {
                 wrapper: createWrapper(),
@@ -140,14 +166,15 @@ describe("useDeleteImage", () => {
     })
 
     describe("useBulkDeleteGeneratedImages", () => {
-        it("deletes multiple images with single Convex call", async () => {
+        it("deletes multiple images with single Convex call (including thumbnails)", async () => {
             const mockRemoveMany = vi.fn().mockResolvedValue({
                 success: true,
                 successCount: 3,
                 totalRequested: 3,
                 r2Keys: ["key1", "key2", "key3"],
+                thumbnailR2Keys: ["thumb1", "thumb2", "thumb3"],
             })
-            vi.mocked(useConvexMutation).mockReturnValue(mockRemoveMany as unknown as ReturnType<typeof useConvexMutation>)
+            ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemoveMany)
 
             const { result } = renderHook(() => useBulkDeleteGeneratedImages(), {
                 wrapper: createWrapper(),
@@ -160,8 +187,8 @@ describe("useDeleteImage", () => {
             expect(mockRemoveMany).toHaveBeenCalledTimes(1)
             expect(mockRemoveMany).toHaveBeenCalledWith({ imageIds })
 
-            // Should delete all R2 files
-            expect(global.fetch).toHaveBeenCalledTimes(3)
+            // Should delete all R2 files (3 images + 3 thumbnails = 6)
+            expect(global.fetch).toHaveBeenCalledTimes(6)
 
             // Should show single success toast
             expect(toast.success).toHaveBeenCalledTimes(1)
@@ -174,8 +201,9 @@ describe("useDeleteImage", () => {
                 successCount: 1,
                 totalRequested: 1,
                 r2Keys: ["key1"],
+                thumbnailR2Keys: ["thumb1"],
             })
-            vi.mocked(useConvexMutation).mockReturnValue(mockRemoveMany as unknown as ReturnType<typeof useConvexMutation>)
+            ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemoveMany)
 
             const { result } = renderHook(() => useBulkDeleteGeneratedImages(), {
                 wrapper: createWrapper(),
@@ -183,12 +211,35 @@ describe("useDeleteImage", () => {
 
             await result.current.mutateAsync(["id1"] as unknown as Id<"generatedImages">[])
 
+            // Should delete 1 image + 1 thumbnail = 2 R2 files
+            expect(global.fetch).toHaveBeenCalledTimes(2)
             expect(toast.success).toHaveBeenCalledWith("Deleted 1 image")
+        })
+
+        it("handles images without thumbnails", async () => {
+            const mockRemoveMany = vi.fn().mockResolvedValue({
+                success: true,
+                successCount: 2,
+                totalRequested: 2,
+                r2Keys: ["key1", "key2"],
+                thumbnailR2Keys: [], // No thumbnails (legacy images)
+            })
+            ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemoveMany)
+
+            const { result } = renderHook(() => useBulkDeleteGeneratedImages(), {
+                wrapper: createWrapper(),
+            })
+
+            await result.current.mutateAsync(["id1", "id2"] as unknown as Id<"generatedImages">[])
+
+            // Should only delete 2 images (no thumbnails)
+            expect(global.fetch).toHaveBeenCalledTimes(2)
+            expect(toast.success).toHaveBeenCalledWith("Deleted 2 images")
         })
 
         it("handles bulk Convex deletion failure", async () => {
             const mockRemoveMany = vi.fn().mockRejectedValue(new Error("Bulk delete failed"))
-            vi.mocked(useConvexMutation).mockReturnValue(mockRemoveMany as unknown as ReturnType<typeof useConvexMutation>)
+            ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemoveMany)
 
             const { result } = renderHook(() => useBulkDeleteGeneratedImages(), {
                 wrapper: createWrapper(),
@@ -201,14 +252,37 @@ describe("useDeleteImage", () => {
             expect(toast.error).toHaveBeenCalledWith("Failed to delete images", expect.any(Object))
         })
 
+        it("throws error when removeMany returns success: false", async () => {
+            const mockRemoveMany = vi.fn().mockResolvedValue({
+                success: false,
+                successCount: 0,
+                totalRequested: 2,
+                error: "Some error occurred",
+                r2Keys: [],
+                thumbnailR2Keys: [],
+            })
+            ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemoveMany)
+
+            const { result } = renderHook(() => useBulkDeleteGeneratedImages(), {
+                wrapper: createWrapper(),
+            })
+
+            await expect(
+                result.current.mutateAsync(["id1", "id2"] as unknown as Id<"generatedImages">[])
+            ).rejects.toThrow("Some error occurred")
+
+            expect(toast.error).toHaveBeenCalledWith("Failed to delete images", expect.any(Object))
+        })
+
         it("handles partial R2 deletion failures gracefully", async () => {
             const mockRemoveMany = vi.fn().mockResolvedValue({
                 success: true,
                 successCount: 2,
                 totalRequested: 2,
                 r2Keys: ["key1", "key2"],
+                thumbnailR2Keys: ["thumb1", "thumb2"],
             })
-            vi.mocked(useConvexMutation).mockReturnValue(mockRemoveMany as unknown as ReturnType<typeof useConvexMutation>)
+            ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemoveMany)
 
             // Make second R2 delete fail
             let callCount = 0

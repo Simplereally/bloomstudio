@@ -2,6 +2,8 @@ import { Footer } from "@/components/layout/footer"
 import { LandingHeader } from "@/components/landing/landing-header"
 import { Metadata } from "next"
 
+import { LAST_UPDATED } from "@/lib/constants"
+
 export const metadata: Metadata = {
     title: "Privacy Policy | Bloom Studio",
     description: "Privacy Policy for Bloom Studio. Learn how we collect, use, and protect your personal information.",
@@ -21,7 +23,7 @@ export default function PrivacyPage() {
 
                  <div className="mb-12">
                     <h1 className="text-4xl md:text-5xl font-bold mb-6 tracking-tight">Privacy Policy</h1>
-                    <p className="text-muted-foreground text-lg">Last updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                    <p className="text-muted-foreground text-lg">Last updated: {LAST_UPDATED}</p>
                 </div>
 
                 <div className="space-y-12 text-foreground/90 leading-relaxed text-lg">
@@ -92,10 +94,12 @@ export default function PrivacyPage() {
                             <li>
                                 <strong>Third-Party Service Providers:</strong> We may share your information with third parties that perform services for us or on our behalf, including:
                                 <ul className="list-circle pl-6 mt-2 space-y-1">
-                                    <li><strong>AI Model Providers:</strong> We transmit your prompts, parameters, and reference images to AI service providers (such as Pollinations AI) to generate your requested content.</li>
+                                    <li><strong>Authentication:</strong> We use Clerk to manage user identity and authentication data securely.</li>
+                                    <li><strong>AI Model Providers:</strong> We transmit your prompts, parameters, and reference images to AI service providers (such as Pollinations AI and OpenRouter) for content generation and prompt enhancement.</li>
+                                    <li><strong>Storage:</strong> We use Cloudflare R2 to store user-uploaded reference images and other system assets.</li>
                                     <li><strong>Payment Processors:</strong> We use Stripe to securely process payments.</li>
                                     <li><strong>Hosting & Infrastructure:</strong> We use providers like Vercel and Convex to host and run our application.</li>
-                                    <li><strong>Analytics:</strong> We use tools to analyze user trends and improve our Service.</li>
+                                    <li><strong>Analytics & Performance:</strong> We use Vercel Analytics and Speed Insights to collect anonymous interaction data (such as page views, events, and performance metrics) to improve our Service.</li>
                                 </ul>
                                 We do not sell your personal data to third parties.
                             </li>
@@ -136,7 +140,21 @@ export default function PrivacyPage() {
                     </section>
 
                     <section>
-                        <h2 className="text-2xl font-bold mb-4 text-foreground">8. Contact Us</h2>
+                        <h2 className="text-2xl font-bold mb-4 text-foreground">8. International Data Transfers</h2>
+                        <p className="mb-4 text-muted-foreground">
+                            Your information, including Personal Data, may be transferred to — and maintained on — computers located outside of your state, province, country, or other governmental jurisdiction where the data protection laws may differ than those from your jurisdiction.
+                        </p>
+                        <p className="mb-4 text-muted-foreground">
+                            Specifically, our servers and third-party service providers are located in the <strong>United States</strong> (including Convex, Vercel, Clerk, Stripe, Cloudflare) and the <strong>European Union</strong> (Pollinations.ai). 
+                            If you are located outside these regions and choose to provide information to us, please note that we transfer the data, including Personal Data, to these jurisdictions for processing.
+                        </p>
+                        <p className="text-muted-foreground">
+                            By accepting this Privacy Policy, you explicitly consent to such transfer. We will take all steps reasonably necessary to ensure that your data is treated securely and in accordance with this Privacy Policy and applicable laws (such as the Australian Privacy Principles).
+                        </p>
+                    </section>
+
+                    <section>
+                        <h2 className="text-2xl font-bold mb-4 text-foreground">9. Contact Us</h2>
                         <p className="text-muted-foreground">
                             If you have questions or comments about this Privacy Policy, please contact us at: <br />
                             <a href="mailto:support@bloomstudio.fun" className="text-primary hover:underline font-medium">support@bloomstudio.fun</a>

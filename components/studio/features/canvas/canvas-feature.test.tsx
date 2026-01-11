@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, fireEvent } from "@testing-library/react"
+import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { CanvasFeature, type CanvasFeatureProps } from "./canvas-feature"
 import type { GeneratedImage } from "@/types/pollinations"
 import { createMockImage } from "@/lib/test-utils"
@@ -26,6 +27,8 @@ vi.mock("./canvas-view", () => ({
         onRegenerate,
         onOpenInNewTab,
         onFullscreen,
+        isFavorited,
+        onToggleFavorite,
     }: {
         image: GeneratedImage | null
         isGenerating: boolean
@@ -86,10 +89,12 @@ describe("CanvasFeature", () => {
     beforeEach(() => {
         vi.clearAllMocks()
         // Mock clipboard API
-        Object.assign(navigator, {
-            clipboard: {
+        Object.defineProperty(navigator, "clipboard", {
+            value: {
                 writeText: vi.fn().mockResolvedValue(undefined),
             },
+            writable: true,
+            configurable: true,
         })
         // Mock window.open
         window.open = vi.fn()
@@ -125,10 +130,11 @@ describe("CanvasFeature", () => {
         expect(screen.getByTestId("is-generating")).toHaveTextContent("false")
     })
 
-    it("handles download action", () => {
+    it("handles download action", async () => {
+        const user = userEvent.setup()
         render(<CanvasFeature {...defaultProps} currentImage={mockImage} />)
 
-        fireEvent.click(screen.getByTestId("download"))
+        await user.click(screen.getByTestId("download"))
 
         expect(mockDownload).toHaveBeenCalledWith({
             url: mockImage.url,
@@ -136,31 +142,36 @@ describe("CanvasFeature", () => {
         })
     })
 
-    it("does not call download when no image", () => {
+    it("does not call download when no image", async () => {
+        const user = userEvent.setup()
         render(<CanvasFeature {...defaultProps} currentImage={null} />)
 
-        fireEvent.click(screen.getByTestId("download"))
+        await user.click(screen.getByTestId("download"))
 
         expect(mockDownload).not.toHaveBeenCalled()
     })
 
     it("handles copy URL action", async () => {
+        const user = userEvent.setup()
+        const writeTextSpy = vi.spyOn(navigator.clipboard, "writeText")
         render(<CanvasFeature {...defaultProps} currentImage={mockImage} />)
 
-        fireEvent.click(screen.getByTestId("copy-url"))
+        await user.click(screen.getByTestId("copy-url"))
 
-        expect(navigator.clipboard.writeText).toHaveBeenCalledWith(mockImage.url)
+        expect(writeTextSpy).toHaveBeenCalledWith(mockImage.url)
     })
 
-    it("handles open in new tab action", () => {
+    it("handles open in new tab action", async () => {
+        const user = userEvent.setup()
         render(<CanvasFeature {...defaultProps} currentImage={mockImage} />)
 
-        fireEvent.click(screen.getByTestId("open-tab"))
+        await user.click(screen.getByTestId("open-tab"))
 
         expect(window.open).toHaveBeenCalledWith(mockImage.url, "_blank")
     })
 
-    it("calls onOpenLightbox on image click", () => {
+    it("calls onOpenLightbox on image click", async () => {
+        const user = userEvent.setup()
         const onOpenLightbox = vi.fn()
         render(
             <CanvasFeature
@@ -170,12 +181,13 @@ describe("CanvasFeature", () => {
             />
         )
 
-        fireEvent.click(screen.getByTestId("image-click"))
+        await user.click(screen.getByTestId("image-click"))
 
         expect(onOpenLightbox).toHaveBeenCalledWith(mockImage)
     })
 
-    it("calls onOpenLightbox on fullscreen click", () => {
+    it("calls onOpenLightbox on fullscreen click", async () => {
+        const user = userEvent.setup()
         const onOpenLightbox = vi.fn()
         render(
             <CanvasFeature
@@ -185,12 +197,13 @@ describe("CanvasFeature", () => {
             />
         )
 
-        fireEvent.click(screen.getByTestId("fullscreen"))
+        await user.click(screen.getByTestId("fullscreen"))
 
         expect(onOpenLightbox).toHaveBeenCalledWith(mockImage)
     })
 
-    it("calls onRegenerate when regenerate clicked", () => {
+    it("calls onRegenerate when regenerate clicked", async () => {
+        const user = userEvent.setup()
         const onRegenerate = vi.fn()
         render(
             <CanvasFeature
@@ -200,7 +213,7 @@ describe("CanvasFeature", () => {
             />
         )
 
-        fireEvent.click(screen.getByTestId("regenerate"))
+        await user.click(screen.getByTestId("regenerate"))
 
         expect(onRegenerate).toHaveBeenCalledTimes(1)
     })
@@ -214,24 +227,24 @@ describe("CanvasFeature", () => {
     })
 
     it("handles toggle favorite action", async () => {
+        const user = userEvent.setup()
         render(<CanvasFeature {...defaultProps} currentImage={mockImage} />)
 
-        fireEvent.click(screen.getByTestId("toggle-favorite"))
+        await user.click(screen.getByTestId("toggle-favorite"))
 
         expect(mockMutateAsync).toHaveBeenCalledWith({ imageId: mockImage.id })
     })
 
     it("handles favorite toggle error gracefully", async () => {
+        const user = userEvent.setup()
         const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
         mockMutateAsync.mockRejectedValue(new Error("Favorite failed"))
         
         render(<CanvasFeature {...defaultProps} currentImage={mockImage} />)
 
-        fireEvent.click(screen.getByTestId("toggle-favorite"))
+        await user.click(screen.getByTestId("toggle-favorite"))
 
         // Should not throw, should log error (and show toast, handled by mock)
-        // Wait for promise to settle is implicit here since fireEvent doesn't wait
-        // but we just check if it blew up or if mock was called
         expect(mockMutateAsync).toHaveBeenCalled()
         
         // Cleanup

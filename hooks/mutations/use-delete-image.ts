@@ -16,10 +16,10 @@ export function useDeleteGeneratedImage() {
 
     return useMutation({
         mutationFn: async (imageId: Id<"generatedImages">) => {
-            // Delete from Convex (returns r2Key)
+            // Delete from Convex (returns r2Key and thumbnailR2Key)
             const result = await removeImage({ imageId })
 
-            // Delete from R2 via API route
+            // Delete original image from R2 via API route
             if (result.r2Key) {
                 try {
                     const response = await fetch("/api/images/delete", {
@@ -35,6 +35,24 @@ export function useDeleteGeneratedImage() {
                     }
                 } catch (error) {
                     console.error("[useDeleteGeneratedImage] Network error deleting from R2:", error)
+                }
+            }
+
+            // Delete thumbnail from R2 via API route (if exists)
+            if (result.thumbnailR2Key) {
+                try {
+                    const response = await fetch("/api/images/delete", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ r2Key: result.thumbnailR2Key }),
+                    })
+
+                    if (!response.ok) {
+                        const error = await response.json()
+                        console.error("[useDeleteGeneratedImage] Failed to delete thumbnail from R2:", error)
+                    }
+                } catch (error) {
+                    console.error("[useDeleteGeneratedImage] Network error deleting thumbnail from R2:", error)
                 }
             }
 
@@ -85,14 +103,23 @@ export function useBulkDeleteGeneratedImages() {
 
     return useMutation({
         mutationFn: async (imageIds: Id<"generatedImages">[]) => {
-            // Delete all from Convex in one call (returns r2Keys)
+            // Delete all from Convex in one call (returns r2Keys and thumbnailR2Keys)
             const result = await removeImages({ imageIds })
 
-            // Delete all from R2 via API route
-            if (result.r2Keys && result.r2Keys.length > 0) {
-                // Delete R2 files in parallel but don't block on failures
+            if (!result.success) {
+                throw new Error(result.error || `Failed to delete images. Success: ${result.successCount}/${imageIds.length}`)
+            }
+
+            // Collect all keys to delete (both images and thumbnails)
+            const allKeysToDelete: string[] = [
+                ...(result.r2Keys ?? []),
+                ...(result.thumbnailR2Keys ?? []),
+            ]
+
+            // Delete all R2 files in parallel but don't block on failures
+            if (allKeysToDelete.length > 0) {
                 await Promise.allSettled(
-                    result.r2Keys.map(async (r2Key: string) => {
+                    allKeysToDelete.map(async (r2Key: string) => {
                         try {
                             const response = await fetch("/api/images/delete", {
                                 method: "POST",

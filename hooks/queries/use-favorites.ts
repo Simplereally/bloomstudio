@@ -19,9 +19,20 @@ export function useFavorites() {
  * Hook to check if a specific image is favorited by the current user.
  */
 export function useIsFavorited(imageId?: string) {
+    const isConvexId = (id?: string): id is Id<"generatedImages"> => {
+        // Convex IDs are base32 strings, but strict validation is complex.
+        // We mainly want to ensure it's not a temp ID (which often start with 'img_')
+        // and let the server handle strict validation if it passes this basic check.
+        // Ideally, we'd use a regex if we knew the exact format, but simple length/content checks help.
+        // For now, we trust non-empty strings that don't look like our temp IDs.
+        return !!id && !id.startsWith("img_")
+    }
+
+    const shouldFetch = isConvexId(imageId)
+
     return useQuery(
         api.favorites.isFavorited, 
-        imageId ? { imageId: imageId as Id<"generatedImages"> } : "skip"
+        shouldFetch ? { imageId } : "skip"
     )
 }
 

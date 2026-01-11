@@ -13,7 +13,7 @@
 import { v } from "convex/values"
 import { action } from "./_generated/server"
 import { api, internal } from "./_generated/api"
-import { generateAndUploadThumbnail } from "./lib/r2"
+import { generateAndUploadThumbnail, generateThumbnailKey } from "./lib/r2"
 import type { Id } from "./_generated/dataModel"
 
 // ============================================================
@@ -150,7 +150,7 @@ export const migrateAllImages = action({
                 .map(r =>
                     ctx.runMutation(api.thumbnailMigration.updateImageThumbnail, {
                         imageId: r.imageId,
-                        thumbnailR2Key: images.find(i => i._id === r.imageId)!.r2Key.replace(/^generated\//, "thumbnails/"),
+                        thumbnailR2Key: generateThumbnailKey(images.find(i => i._id === r.imageId)!.r2Key),
                         thumbnailUrl: r.thumbnailUrl!,
                     })
                 )

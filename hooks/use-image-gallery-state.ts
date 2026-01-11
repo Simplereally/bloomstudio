@@ -137,6 +137,7 @@ export function useImageGalleryState(): UseImageGalleryStateReturn {
             } catch (error) {
                 console.error("Bulk delete failed:", error)
                 // The mutation hook already shows error toast
+                return
             }
         }
 

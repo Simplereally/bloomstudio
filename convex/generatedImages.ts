@@ -8,6 +8,12 @@ import { v } from "convex/values"
 import type { Doc } from "./_generated/dataModel"
 import { mutation, query, type QueryCtx } from "./_generated/server"
 
+/**
+ * Maximum number of items allowed in bulk operations to avoid hitting Convex limits.
+ * Convex has limits on transaction size and number of reads/writes per transaction.
+ */
+const MAX_BULK_OPERATION_SIZE = 100
+
 /** Image with enriched owner display information */
 type EnrichedImage = Doc<"generatedImages"> & {
     ownerName: string
@@ -588,6 +594,8 @@ export const setVisibility = mutation({
  * Bulk update visibility for multiple images.
  * Only the owner can change visibility of their images.
  * Returns the count of successfully updated images.
+ *
+ * @param imageIds - Array of image IDs to update (max 100 to avoid Convex limits)
  */
 export const setBulkVisibility = mutation({
     args: {
@@ -600,8 +608,25 @@ export const setBulkVisibility = mutation({
             throw new Error("Not authenticated")
         }
 
+        // Input validation: enforce upper bound to avoid hitting Convex limits
+        if (args.imageIds.length > MAX_BULK_OPERATION_SIZE) {
+            throw new Error(
+                `Too many items: maximum ${MAX_BULK_OPERATION_SIZE} images can be updated at once, received ${args.imageIds.length}`
+            )
+        }
+
+        if (args.imageIds.length === 0) {
+            return {
+                success: true,
+                successCount: 0,
+                totalRequested: 0,
+                errors: undefined,
+            }
+        }
+
         let successCount = 0
         const errors: string[] = []
+
 
         await Promise.all(
             args.imageIds.map(async (imageId) => {
@@ -640,7 +665,7 @@ export const setBulkVisibility = mutation({
 /**
  * Delete a generated image record.
  * Only the owner can delete their images.
- * Returns the r2Key so the caller can also delete from R2.
+ * Returns the r2Key and thumbnailR2Key so the caller can also delete from R2.
  */
 export const remove = mutation({
     args: {
@@ -662,17 +687,20 @@ export const remove = mutation({
         }
 
         const r2Key = image.r2Key
+        const thumbnailR2Key = image.thumbnailR2Key
 
         await ctx.db.delete(args.imageId)
 
-        return { r2Key }
+        return { r2Key, thumbnailR2Key }
     },
 })
 
 /**
  * Bulk delete multiple generated image records.
  * Only the owner can delete their images.
- * Returns all r2Keys so the caller can delete them from R2.
+ * Returns all r2Keys and thumbnailR2Keys so the caller can delete them from R2.
+ *
+ * @param imageIds - Array of image IDs to delete (max 100 to avoid Convex limits)
  */
 export const removeMany = mutation({
     args: {
@@ -684,7 +712,26 @@ export const removeMany = mutation({
             throw new Error("Not authenticated")
         }
 
+        // Input validation: enforce upper bound to avoid hitting Convex limits
+        if (args.imageIds.length > MAX_BULK_OPERATION_SIZE) {
+            throw new Error(
+                `Too many items: maximum ${MAX_BULK_OPERATION_SIZE} images can be deleted at once, received ${args.imageIds.length}`
+            )
+        }
+
+        if (args.imageIds.length === 0) {
+            return {
+                success: true,
+                successCount: 0,
+                totalRequested: 0,
+                r2Keys: [],
+                thumbnailR2Keys: [],
+                errors: undefined,
+            }
+        }
+
         const r2Keys: string[] = []
+        const thumbnailR2Keys: string[] = []
         const errors: string[] = []
         let successCount = 0
 
@@ -702,8 +749,12 @@ export const removeMany = mutation({
                         return
                     }
 
+                    // Collect R2 keys for deletion
                     if (image.r2Key) {
                         r2Keys.push(image.r2Key)
+                    }
+                    if (image.thumbnailR2Key) {
+                        thumbnailR2Keys.push(image.thumbnailR2Key)
                     }
 
                     await ctx.db.delete(imageId)
@@ -720,6 +771,7 @@ export const removeMany = mutation({
             successCount,
             totalRequested: args.imageIds.length,
             r2Keys,
+            thumbnailR2Keys,
             errors: errors.length > 0 ? errors : undefined,
         }
     },

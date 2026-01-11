@@ -2,6 +2,8 @@ import { Footer } from "@/components/layout/footer"
 import { LandingHeader } from "@/components/landing/landing-header"
 import { Metadata } from "next"
 
+import { TERMS_LAST_UPDATED } from "@/lib/constants"
+
 export const metadata: Metadata = {
     title: "Terms of Service | Bloom Studio",
     description: "Terms of Service for Bloom Studio. Please read these terms carefully before using our AI image and video generation services.",
@@ -18,7 +20,7 @@ export default function TermsPage() {
             <main className="flex-1 container mx-auto px-6 pt-32 pb-20 max-w-4xl">
                  <div className="mb-12">
                     <h1 className="text-4xl font-bold mb-4">Terms of Service</h1>
-                    <p className="text-muted-foreground">Last updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                    <p className="text-muted-foreground">Last updated: {TERMS_LAST_UPDATED}</p>
                 </div>
 
                 <div className="space-y-8 text-foreground/90 leading-relaxed">
@@ -86,8 +88,9 @@ export default function TermsPage() {
                         <h3 className="text-xl font-semibold mb-2 mt-6">Your Generative Content</h3>
                         <p className="mb-4">
                             Subject to your compliance with these Terms, you own the images and videos you generate using the Service ("Generative Content"). 
-                            You grant us a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license to reproduce, prepare derivative works of, 
-                            publicly display, publicly perform, sublicense, and distribute your Generative Content for the purpose of operating, featuring, promoting, and improving the Service.
+                            You grant us a worldwide, non-exclusive, royalty-free license to reproduce, display, and distribute your Generative Content solely as necessary for the operation, hosting, and promotion of the Service. 
+                            For Generative Content set to "Private" or "Unlisted," this license is restricted strictly to the internal operation and delivery of the Service to you and does not include any right to sublicense, publicly display, or distribute such content to third parties. 
+                            Any broader sublicensing or distribution rights apply only to Generative Content that you have explicitly set to "Public" visibility.
                         </p>
                         <p className="mb-4">
                             You understand that any Generative Content you set to "Public" visibility may be viewable by other users and the general public.
@@ -105,7 +108,7 @@ export default function TermsPage() {
                         <p className="mb-4">You agree not to use the Service:</p>
                         <ul className="list-disc pl-6 space-y-2">
                             <li>To generate content that is unlawful, harmful, threatening, abusive, harassing, defamatory, vulgar, obscene, libelous, or invasive of another's privacy.</li>
-                            <li>To generate non-consensual sexual content (NCSC) or child sexual abuse material (CSAM). We strictly report such content and user details to relevant authorities (e.g., NCMEC).</li>
+                            <li>To generate non-consensual sexual content (NCSC) or child sexual abuse material (CSAM). We strictly prohibit such content and may report it and provide associated user details to relevant authorities if we become aware of it or as required by applicable law.</li>
                             <li>To impersonate any person or entity or falsely state or otherwise misrepresent your affiliation with a person or entity.</li>
                             <li>To infringe upon the intellectual property rights of others.</li>
                             <li>To disrupt or interfere with the security or operation of the Service, including sending excessive requests that burden our systems (unless explicitly permitted).</li>
@@ -151,13 +154,11 @@ export default function TermsPage() {
                         </p>
                     </section>
 
-                     <section>
                         <h2 className="text-2xl font-bold mb-4">11. Governing Law</h2>
                         <p className="mb-4">
-                            These Terms shall be governed and construed in accordance with the laws of the United States, without regard to its conflict of law provisions.
+                            These Terms shall be governed and construed in accordance with the laws of the Commonwealth of Australia, without regard to its conflict of law provisions.
                             Our failure to enforce any right or provision of these Terms will not be considered a waiver of those rights.
                         </p>
-                    </section>
 
                     <section>
                         <h2 className="text-2xl font-bold mb-4">12. Changes to Terms</h2>

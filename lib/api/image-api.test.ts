@@ -19,12 +19,11 @@ vi.mock("@/lib/pollinations-api", () => ({
     },
 }))
 
-// Mock fetch
 const mockFetch = vi.fn()
-global.fetch = mockFetch
 
 describe("image-api", () => {
     beforeEach(() => {
+        vi.stubGlobal("fetch", mockFetch)
         vi.clearAllMocks()
         vi.useFakeTimers()
         vi.setSystemTime(new Date("2025-01-01T00:00:00Z"))
@@ -32,6 +31,7 @@ describe("image-api", () => {
 
     afterEach(() => {
         vi.useRealTimers()
+        vi.unstubAllGlobals()
     })
 
     describe("generateImage", () => {
@@ -180,7 +180,49 @@ describe("image-api", () => {
             )
         })
 
+        it("falls back to no-header fetch on initial failure", async () => {
+            const mockBlob = new Blob(["data"], { type: "image/png" })
+            
+            // First call fails (e.g. 403 Forbidden with headers)
+            mockFetch.mockResolvedValueOnce({
+                ok: false,
+                status: 403,
+            })
+            
+            // Second call succeeds (public access)
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                blob: async () => mockBlob,
+            })
+
+            const result = await downloadImage("https://example.com/img.png")
+
+            expect(result).toBe(mockBlob)
+            // Verify both calls were made
+            expect(mockFetch).toHaveBeenCalledTimes(2)
+            // First with headers
+            expect(mockFetch).toHaveBeenNthCalledWith(
+                1,
+                "https://example.com/img.png",
+                expect.objectContaining({
+                    headers: { "Authorization": "Bearer test-token" },
+                })
+            )
+            // Second without headers (undefined or empty options)
+            expect(mockFetch).toHaveBeenNthCalledWith(
+                2,
+                "https://example.com/img.png"
+            )
+        })
+
         it("throws PollinationsApiError on download failure", async () => {
+            // First attempt fails
+            mockFetch.mockResolvedValueOnce({
+                ok: false,
+                status: 404,
+            })
+            // Retry attempt also fails
             mockFetch.mockResolvedValueOnce({
                 ok: false,
                 status: 404,
