@@ -3,7 +3,7 @@
 import { useMutation as useConvexMutation } from "convex/react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { api } from "@/convex/_generated/api"
-import { Id } from "@/convex/_generated/dataModel"
+import type { Id } from "@/convex/_generated/dataModel"
 import { toast } from "sonner"
 
 /**

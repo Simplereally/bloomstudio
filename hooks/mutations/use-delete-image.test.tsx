@@ -10,7 +10,7 @@ import type { ReactNode } from "react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { useBulkDeleteGeneratedImages, useDeleteGeneratedImage, useDeleteReferenceImage } from "./use-delete-image"
 import { toast } from "sonner"
-import { Id } from "@/convex/_generated/dataModel"
+import type { Id } from "@/convex/_generated/dataModel"
 
 // Mock Convex
 vi.mock("convex/react", () => ({

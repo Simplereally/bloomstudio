@@ -246,7 +246,7 @@ export const ControlsView = React.memo(function ControlsView({
       </CollapsibleSection>
 
       {/* Video Frames (video models only) */}
-      {isVideoModel && videoSettings && onVideoSettingsChange && videoReferenceImages && onVideoReferenceImagesChange && (
+      {isVideoModel && videoReferenceImages && onVideoReferenceImagesChange && (
           <CollapsibleSection
               title="Video Frames"
               icon={<Video className="h-3.5 w-3.5" />}
