@@ -24,15 +24,16 @@ vi.mock("@/hooks/mutations/use-delete-image", () => ({
 
 // Mock next/image
 vi.mock("next/image", () => ({
-    default: ({ src, alt }: { src: string; alt: string }): JSX.Element => (
-        <img src={src} alt={alt} data-testid="mock-image" />
+    default: ({ fill, ...props }: React.ComponentProps<"img"> & { fill?: boolean }) => (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img {...props} data-testid="mock-image" />
     ),
 }))
 
 // Mock DeleteImageDialog
 vi.mock("@/components/studio/delete-image-dialog", () => ({
-    DeleteImageDialog: ({ onConfirm }: { onConfirm: () => void }): JSX.Element => (
-        <button onClick={onConfirm} data-testid="delete-button">
+    DeleteImageDialog: (props: any) => (
+        <button onClick={props.onConfirm} data-testid="delete-button">
             Delete
         </button>
     ),

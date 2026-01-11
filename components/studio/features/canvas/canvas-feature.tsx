@@ -66,7 +66,7 @@ export function CanvasFeature({
         if (!currentImage) return
         
         try {
-            await toggleFavoriteMutation.mutateAsync({ 
+            await toggleFavoriteMutation({ 
                 imageId: currentImage.id as Id<"generatedImages"> 
             })
         } catch (error) {

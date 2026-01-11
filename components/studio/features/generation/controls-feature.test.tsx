@@ -84,7 +84,7 @@ const mockBatchMode = {
     isBatchActive: false,
     isBatchPaused: false,
     batchStatus: undefined,
-    batchProgress: { currentIndex: 0, totalCount: 0, completedCount: 0 },
+    batchProgress: { currentIndex: 0, totalCount: 0, completedCount: 0, inFlightCount: 0 },
     startBatchGeneration: vi.fn(),
     pauseBatchGeneration: vi.fn(),
     resumeBatchGeneration: vi.fn(),

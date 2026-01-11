@@ -42,11 +42,23 @@ function createTestImage(overrides: Partial<GeneratedImage> = {}): GeneratedImag
         id: `img-${Math.random().toString(36).slice(2)}`,
         url: "https://example.com/image.jpg",
         prompt: "Test prompt",
-        model: "flux",
+        params: {
+            prompt: "Test prompt",
+            model: "flux",
+            width: 1024,
+            height: 1024,
+            enhance: false,
+            quality: "high",
+            private: false,
+            nologo: false,
+            nofeed: false,
+            safe: false,
+            transparent: false,
+        },
         contentType: "image/jpeg",
         visibility: "public",
         ...overrides,
-    }
+    } as GeneratedImage
 }
 
 describe("useImageGalleryState", () => {
