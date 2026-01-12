@@ -64,3 +64,10 @@ export type { UseSlideshowOptions, UseSlideshowReturn } from "./use-slideshow"
 
 export { useVideoReferenceImages } from "./use-video-reference-images"
 export type { VideoReferenceImages, FrameType } from "./use-video-reference-images"
+
+// Settings/API hooks
+export { useApiCardState } from "./use-api-card-state"
+export type { UseApiCardStateReturn, ConnectionType, ConnectionStatus } from "./use-api-card-state"
+
+export { useExpiryBannerState } from "./use-expiry-banner-state"
+export type { UseExpiryBannerStateReturn, UseExpiryBannerStateOptions } from "./use-expiry-banner-state"

@@ -3,19 +3,25 @@
 /**
  * API Key Onboarding Modal
  *
- * A sleek onboarding flow for users to set up their Pollinations API key.
- * Shows automatically when an authenticated user doesn't have an API key saved.
+ * A sleek onboarding flow for users to connect their Pollinations BYOP account.
+ * Shows automatically when an authenticated user doesn't have a valid connection.
+ * 
+ * Refactored for BYOP OAuth flow - primary action is now "Connect with Pollinations"
+ * with a manual entry fallback for advanced users.
  */
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { api } from "@/convex/_generated/api";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, Check, ExternalLink, Github, Loader2, Save, Star } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, ChevronUp, ExternalLink, Loader2, Save, Star, Zap } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 import GitHubStarButton from "@/components/github-star-button";
+import { usePollenAuth } from "@/lib/pollen-auth";
+import { ConnectButton } from "@/components/pollen-auth";
+import { api } from "@/convex/_generated/api";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 type ApiKeyOnboardingPage = "setup" | "upgrade";
 
@@ -29,10 +35,10 @@ interface ApiKeyOnboardingModalProps {
 }
 
 /**
- * Modal for guiding users through the API key setup process.
+ * Modal for guiding users through the Pollinations connection process.
  *
- * Handles checking for existing keys, generating new keys via external portal,
- * and saving the key securely. Supports both automatic (on-mount) and controlled modes.
+ * Primary flow uses BYOP OAuth for one-click setup.
+ * Includes a hidden manual entry fallback for advanced users.
  */
 export function ApiKeyOnboardingModal({ onComplete, forceOpen, onClose }: ApiKeyOnboardingModalProps) {
   const [apiKey, setApiKey] = React.useState("");
@@ -43,6 +49,7 @@ export function ApiKeyOnboardingModal({ onComplete, forceOpen, onClose }: ApiKey
   const [isFlipActive, setIsFlipActive] = React.useState(false);
   const [flipRotationDeg, setFlipRotationDeg] = React.useState(0);
   const [flipHeightPx, setFlipHeightPx] = React.useState<number | null>(null);
+  const [showManualEntry, setShowManualEntry] = React.useState(false);
   const flipTimeoutRef = React.useRef<number | undefined>(undefined);
   const shouldReduceMotion = useReducedMotion();
 
@@ -54,11 +61,14 @@ export function ApiKeyOnboardingModal({ onComplete, forceOpen, onClose }: ApiKey
 
   const shouldShowPreviewButton = process.env.NODE_ENV !== "production";
 
+  // BYOP auth state
+  const { isAuthorized: isByopAuthorized, isLoading: isByopLoading } = usePollenAuth();
+
   // Controlled mode: forceOpen prop overrides internal state
   const isControlled = forceOpen !== undefined;
   const isOpen = isControlled ? forceOpen : isOpenInternal;
 
-  // Check if user has an API key
+  // Check if user has an API key (legacy Convex-stored key)
   const { isAuthenticated, isLoading: isLoadingAuth } = useConvexAuth();
   const existingApiKey = useQuery(api.users.getPollinationsApiKey, isAuthenticated ? {} : "skip");
   const getOrCreateUser = useMutation(api.users.getOrCreateUser);
@@ -84,21 +94,25 @@ export function ApiKeyOnboardingModal({ onComplete, forceOpen, onClose }: ApiKey
     initUser();
   }, [isAuthenticated, isLoadingAuth, isControlled]);
 
-  // Show modal if user doesn't have an API key (only in automatic mode)
+  // Show modal if user doesn't have ANY valid key (BYOP or legacy)
+  // Close modal if either auth method is successful
   React.useEffect(() => {
     if (isControlled) return; // Skip in controlled mode
 
-    if (isLoadingAuth || !isAuthenticated) {
+    if (isLoadingAuth || !isAuthenticated || isByopLoading) {
       setIsOpenInternal(false);
       return;
     }
 
-    if (existingApiKey === null) {
+    // Has BYOP auth OR has legacy key?
+    const hasValidAuth = isByopAuthorized || (existingApiKey !== null && existingApiKey !== undefined);
+
+    if (!hasValidAuth) {
       setIsOpenInternal(true);
-    } else if (existingApiKey !== undefined && page === "setup") {
+    } else if (page === "setup") {
       setIsOpenInternal(false);
     }
-  }, [existingApiKey, isAuthenticated, isLoadingAuth, isControlled, page]);
+  }, [existingApiKey, isAuthenticated, isLoadingAuth, isControlled, page, isByopAuthorized, isByopLoading]);
 
   React.useEffect(() => {
     return () => {
@@ -152,6 +166,7 @@ export function ApiKeyOnboardingModal({ onComplete, forceOpen, onClose }: ApiKey
     setIsFlipActive(false);
     setFlipRotationDeg(0);
     setFlipHeightPx(null);
+    setShowManualEntry(false);
 
     if (flipTimeoutRef.current !== undefined) {
       window.clearTimeout(flipTimeoutRef.current);
@@ -204,18 +219,15 @@ export function ApiKeyOnboardingModal({ onComplete, forceOpen, onClose }: ApiKey
     }
   };
 
-  const handleOpenPollinationsPortal = () => {
-    window.open("https://enter.pollinations.ai/", "_blank", "noopener,noreferrer");
-  };
-
   const handleFinish = () => {
     handleClose();
     onComplete?.();
   };
 
-  // In automatic mode: don't render if still loading or user has API key
+  // In automatic mode: don't render if still loading or user has valid auth
   // In controlled mode: always render (visibility controlled by forceOpen prop)
-  if (!isControlled && (existingApiKey === undefined || (existingApiKey !== null && !isOpenInternal))) {
+  const hasValidAuth = isByopAuthorized || (existingApiKey !== null && existingApiKey !== undefined);
+  if (!isControlled && (existingApiKey === undefined || isByopLoading || (hasValidAuth && !isOpenInternal))) {
     return null;
   }
 
@@ -250,12 +262,13 @@ export function ApiKeyOnboardingModal({ onComplete, forceOpen, onClose }: ApiKey
                     isSaving={isSaving}
                     validationError={validationError}
                     shouldShowPreviewButton={shouldShowPreviewButton}
+                    showManualEntry={showManualEntry}
                     onApiKeyChange={(nextApiKey) => {
                       setApiKey(nextApiKey);
                       setValidationError(null);
                     }}
                     onPreviewUpgrade={startFlipToUpgrade}
-                    onOpenPollinationsPortal={handleOpenPollinationsPortal}
+                    onToggleManualEntry={() => setShowManualEntry(!showManualEntry)}
                     onSaveApiKey={handleSaveApiKey}
                   />
                 </div>
@@ -270,12 +283,13 @@ export function ApiKeyOnboardingModal({ onComplete, forceOpen, onClose }: ApiKey
               isSaving={isSaving}
               validationError={validationError}
               shouldShowPreviewButton={shouldShowPreviewButton}
+              showManualEntry={showManualEntry}
               onApiKeyChange={(nextApiKey) => {
                 setApiKey(nextApiKey);
                 setValidationError(null);
               }}
               onPreviewUpgrade={startFlipToUpgrade}
-              onOpenPollinationsPortal={handleOpenPollinationsPortal}
+              onToggleManualEntry={() => setShowManualEntry(!showManualEntry)}
               onSaveApiKey={handleSaveApiKey}
             />
           ) : (
@@ -348,9 +362,10 @@ interface SetupFaceProps {
   isSaving: boolean;
   validationError: string | null;
   shouldShowPreviewButton: boolean;
+  showManualEntry: boolean;
   onApiKeyChange: (nextApiKey: string) => void;
   onPreviewUpgrade: () => void;
-  onOpenPollinationsPortal: () => void;
+  onToggleManualEntry: () => void;
   onSaveApiKey: () => void;
 }
 
@@ -359,110 +374,154 @@ function SetupFace({
   isSaving,
   validationError,
   shouldShowPreviewButton,
+  showManualEntry,
   onApiKeyChange,
   onPreviewUpgrade,
-  onOpenPollinationsPortal,
+  onToggleManualEntry,
   onSaveApiKey,
 }: SetupFaceProps) {
   return (
     <>
       <div className="px-6 pt-6 pb-4 text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-xs font-medium mb-3">
-          <Check className="w-3 h-3" />
-          One-time setup
+          <Zap className="w-3 h-3 fill-current" />
+          Zero API Costs
         </div>
         <h2 className="text-xl font-semibold text-foreground mb-1">Connect to Pollinations</h2>
-        <p className="text-sm text-muted-foreground">Takes about 2 minutes. You&apos;ll only need to do this once.</p>
+        <p className="text-sm text-muted-foreground">One-click setup. Generate unlimited images for free.</p>
       </div>
 
       <div className="px-6 pb-6 space-y-4">
-        <div className="rounded-lg border border-border/50 bg-muted/30 p-4">
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center">
-              1
+        {/* Primary action: BYOP OAuth Connect */}
+        <div className="rounded-lg border border-border/50 bg-muted/30 p-5">
+          <div className="text-center space-y-4">
+            <div className="space-y-2">
+              <p className="font-medium text-foreground">Connect with your Pollinations account</p>
+              <p className="text-sm text-muted-foreground">
+                You&apos;ll be redirected to Pollinations to authorize access. Returns automatically.
+              </p>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-foreground mb-2">Get a free API key from Pollinations</p>
 
-              <div className="space-y-2 text-sm">
-                <div className="flex items-start gap-2">
-                  <ArrowRight className="w-3.5 h-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
-                  <span className="text-foreground/80">Click the button below to open Pollinations</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <ArrowRight className="w-3.5 h-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
-                  <span className="text-foreground/80">
-                    Sign in with your <Github className="w-3.5 h-3.5 inline-block align-[-2px]" />{" "}
-                    <span className="font-medium text-foreground">GitHub</span> account
-                  </span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <ArrowRight className="w-3.5 h-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
-                  <span className="text-foreground/80">
-                    Click <span className="font-medium text-foreground">&quot;Create API Key&quot;</span>, select{" "}
-                    <span className="font-medium text-foreground">&quot;Secret Key&quot;</span>, then generate and copy it
-                  </span>
-                </div>
-              </div>
+            <ConnectButton size="lg" className="w-full" icon="external">
+              Connect with Pollinations
+            </ConnectButton>
 
-              <div className="mt-3 pt-3 border-t border-border/30">
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  <span className="font-medium text-foreground/70">No GitHub account?</span>{" "}
-                  <a href="https://github.com/signup" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                    Create one free
-                  </a>{" "}
-                  — you can sign up with your Google/Gmail account.
-                </p>
-              </div>
-
-              <Button onClick={onOpenPollinationsPortal} variant="default" className="w-full h-10 font-medium mt-4">
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Open Pollinations
-              </Button>
+            <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Check className="w-3 h-3 text-emerald-500" />
+                Free forever
+              </span>
+              <span className="flex items-center gap-1">
+                <Check className="w-3 h-3 text-emerald-500" />
+                30-day authorization
+              </span>
             </div>
           </div>
         </div>
 
-        <div className="rounded-lg border border-border/50 bg-muted/30 p-4">
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center">
-              2
+        {/* Manual entry fallback - collapsible */}
+        <Collapsible open={showManualEntry} onOpenChange={onToggleManualEntry}>
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="w-full flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors py-2"
+            >
+              {showManualEntry ? (
+                <>
+                  <ChevronUp className="w-3 h-3" />
+                  Hide manual entry
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-3 h-3" />
+                  Enter API key manually
+                </>
+              )}
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="rounded-lg border border-border/50 bg-muted/30 p-4 mt-2">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center">
+                  1
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-foreground mb-2">Get a free API key from Pollinations</p>
+
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-start gap-2">
+                      <ArrowRight className="w-3.5 h-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <span className="text-foreground/80">
+                        Go to{" "}
+                        <a
+                          href="https://enter.pollinations.ai/"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline font-medium"
+                        >
+                          enter.pollinations.ai
+                          <ExternalLink className="w-3 h-3 inline-block ml-0.5 align-[-2px]" />
+                        </a>
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <ArrowRight className="w-3.5 h-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <span className="text-foreground/80">
+                        Click <span className="font-medium text-foreground">&quot;Create API Key&quot;</span>, select{" "}
+                        <span className="font-medium text-foreground">&quot;Secret Key&quot;</span>
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <ArrowRight className="w-3.5 h-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <span className="text-foreground/80">Copy the generated key</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-border/30 my-4" />
+
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center">
+                  2
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-foreground mb-3">Paste your API key here</p>
+
+                  <Input
+                    type="password"
+                    placeholder="sk_xxx..."
+                    value={apiKey}
+                    onChange={(e) => onApiKeyChange(e.target.value)}
+                    className={`h-10 font-mono text-sm bg-background/50 ${validationError ? "border-destructive" : "border-border"}`}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+
+                  {validationError && <p className="text-xs text-destructive mt-2">{validationError}</p>}
+
+                  <Button onClick={onSaveApiKey} disabled={isSaving || !apiKey.trim()} className="w-full h-10 font-medium mt-3">
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 mr-2" />
+                        Save & Continue
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-foreground mb-3">Paste your API key here</p>
-
-              <Input
-                type="password"
-                placeholder="sk_xxx..."
-                value={apiKey}
-                onChange={(e) => onApiKeyChange(e.target.value)}
-                className={`h-10 font-mono text-sm bg-background/50 ${validationError ? "border-destructive" : "border-border"}`}
-                autoComplete="off"
-                spellCheck={false}
-              />
-
-              {validationError && <p className="text-xs text-destructive mt-2">{validationError}</p>}
-
-              <Button onClick={onSaveApiKey} disabled={isSaving || !apiKey.trim()} className="w-full h-10 font-medium mt-3">
-                {isSaving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    Save & Continue
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
+          </CollapsibleContent>
+        </Collapsible>
       </div>
 
       <div className="px-6 py-3 bg-muted/20 border-t border-border/30 text-center">
-        <p className="text-xs text-muted-foreground">Your API key is stored securely, encrypted, and never shared.</p>
+        <p className="text-xs text-muted-foreground">Your connection is secure and renews every 30 days.</p>
         {shouldShowPreviewButton && (
           <Button onClick={onPreviewUpgrade} variant="ghost" size="sm" className="mt-2" disabled={isSaving} type="button">
             Preview upgrade screen

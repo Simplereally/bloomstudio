@@ -1,0 +1,270 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { renderHook, act, waitFor } from "@testing-library/react";
+import { useApiCardState } from "./use-api-card-state";
+
+// Mock the Convex hooks
+const mockSetApiKey = vi.fn();
+const mockRemoveApiKey = vi.fn();
+let mockSavedKey: string | null | undefined = undefined;
+
+vi.mock("convex/react", () => ({
+  useQuery: () => mockSavedKey,
+  useMutation: (api: unknown) => {
+    // Check which mutation is being requested by looking at the api reference
+    if (api === "setPollinationsApiKey") {
+      return mockSetApiKey;
+    }
+    return mockRemoveApiKey;
+  },
+}));
+
+// Mock the API module to return distinguishable references
+vi.mock("@/convex/_generated/api", () => ({
+  api: {
+    users: {
+      getPollinationsApiKey: "getPollinationsApiKey",
+      setPollinationsApiKey: "setPollinationsApiKey",
+      removePollinationsApiKey: "removePollinationsApiKey",
+    },
+  },
+}));
+
+// Mock the usePollenAuth hook
+const mockAuthorize = vi.fn();
+const mockDeauthorize = vi.fn();
+let mockPollenAuthState = {
+  isAuthorized: false,
+  isExpiringSoon: false,
+  isExpired: false,
+  daysUntilExpiry: null as number | null,
+  isLoading: false,
+  authorize: mockAuthorize,
+  deauthorize: mockDeauthorize,
+};
+
+vi.mock("@/lib/pollen-auth", () => ({
+  usePollenAuth: () => mockPollenAuthState,
+}));
+
+// Mock the encryptKey function
+vi.mock("@/app/settings/actions", () => ({
+  encryptKey: vi.fn().mockResolvedValue("encrypted-key"),
+}));
+
+// Mock toast
+vi.mock("sonner", () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
+describe("useApiCardState", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSavedKey = undefined;
+    mockPollenAuthState = {
+      isAuthorized: false,
+      isExpiringSoon: false,
+      isExpired: false,
+      daysUntilExpiry: null,
+      isLoading: false,
+      authorize: mockAuthorize,
+      deauthorize: mockDeauthorize,
+    };
+  });
+
+  describe("loading states", () => {
+    it("returns loading state when legacy key is undefined", () => {
+      mockSavedKey = undefined;
+      const { result } = renderHook(() => useApiCardState());
+
+      expect(result.current.legacyState.isLegacyLoading).toBe(true);
+      expect(result.current.isLoading).toBe(true);
+      expect(result.current.connectionStatus).toBe("loading");
+    });
+
+    it("returns loading state when pollen auth is loading", () => {
+      mockSavedKey = null;
+      mockPollenAuthState.isLoading = true;
+      const { result } = renderHook(() => useApiCardState());
+
+      expect(result.current.byopState.isLoading).toBe(true);
+      expect(result.current.isLoading).toBe(true);
+      expect(result.current.connectionStatus).toBe("loading");
+    });
+  });
+
+  describe("connection states", () => {
+    it("returns not-connected when no keys are present", () => {
+      mockSavedKey = null;
+      const { result } = renderHook(() => useApiCardState());
+
+      expect(result.current.isConnected).toBe(false);
+      expect(result.current.connectionType).toBe(null);
+      expect(result.current.connectionStatus).toBe("not-connected");
+    });
+
+    it("returns legacy-active when only legacy key is present", () => {
+      mockSavedKey = "some-encrypted-key";
+      const { result } = renderHook(() => useApiCardState());
+
+      expect(result.current.isConnected).toBe(true);
+      expect(result.current.connectionType).toBe("legacy");
+      expect(result.current.connectionStatus).toBe("legacy-active");
+      expect(result.current.legacyState.hasLegacyKey).toBe(true);
+    });
+
+    it("returns byop-connected when BYOP is authorized", () => {
+      mockSavedKey = null;
+      mockPollenAuthState.isAuthorized = true;
+      mockPollenAuthState.daysUntilExpiry = 25;
+      const { result } = renderHook(() => useApiCardState());
+
+      expect(result.current.isConnected).toBe(true);
+      expect(result.current.connectionType).toBe("byop");
+      expect(result.current.connectionStatus).toBe("byop-connected");
+      expect(result.current.byopState.isConnected).toBe(true);
+    });
+
+    it("returns expiring-soon when BYOP key is expiring soon", () => {
+      mockSavedKey = null;
+      mockPollenAuthState.isAuthorized = true;
+      mockPollenAuthState.isExpiringSoon = true;
+      mockPollenAuthState.daysUntilExpiry = 5;
+      const { result } = renderHook(() => useApiCardState());
+
+      expect(result.current.isConnected).toBe(true);
+      expect(result.current.connectionStatus).toBe("expiring-soon");
+      expect(result.current.byopState.isExpiringSoon).toBe(true);
+    });
+
+    it("returns expired when BYOP key is expired", () => {
+      mockSavedKey = null;
+      mockPollenAuthState.isExpired = true;
+      const { result } = renderHook(() => useApiCardState());
+
+      expect(result.current.connectionStatus).toBe("expired");
+      expect(result.current.byopState.isExpired).toBe(true);
+    });
+  });
+
+  describe("input state", () => {
+    it("manages input key state", () => {
+      mockSavedKey = null;
+      const { result } = renderHook(() => useApiCardState());
+
+      expect(result.current.inputState.inputKey).toBe("");
+
+      act(() => {
+        result.current.inputState.setInputKey("new-key");
+      });
+
+      expect(result.current.inputState.inputKey).toBe("new-key");
+    });
+
+    it("toggles visibility state", () => {
+      mockSavedKey = null;
+      const { result } = renderHook(() => useApiCardState());
+
+      expect(result.current.inputState.isVisible).toBe(false);
+
+      act(() => {
+        result.current.inputState.toggleVisibility();
+      });
+
+      expect(result.current.inputState.isVisible).toBe(true);
+    });
+  });
+
+  describe("action state", () => {
+    it("manages legacy section visibility", () => {
+      mockSavedKey = null;
+      const { result } = renderHook(() => useApiCardState());
+
+      expect(result.current.actionState.showLegacySection).toBe(false);
+
+      act(() => {
+        result.current.actionState.setShowLegacySection(true);
+      });
+
+      expect(result.current.actionState.showLegacySection).toBe(true);
+    });
+  });
+
+  describe("handlers", () => {
+    it("handleReconnect calls authorize and sets redirecting state", () => {
+      mockSavedKey = null;
+      const { result } = renderHook(() => useApiCardState());
+
+      act(() => {
+        result.current.handlers.handleReconnect();
+      });
+
+      expect(mockAuthorize).toHaveBeenCalledTimes(1);
+      expect(result.current.actionState.isRedirecting).toBe(true);
+    });
+
+    it("handleDisconnect calls deauthorize", async () => {
+      mockSavedKey = null;
+      mockPollenAuthState.isAuthorized = true;
+      const { result } = renderHook(() => useApiCardState());
+
+      act(() => {
+        result.current.handlers.handleDisconnect();
+      });
+
+      expect(mockDeauthorize).toHaveBeenCalledTimes(1);
+    });
+
+    it("handleSave encrypts and saves key", async () => {
+      mockSavedKey = null;
+      const { result } = renderHook(() => useApiCardState());
+
+      // Set input key first
+      act(() => {
+        result.current.inputState.setInputKey("test-api-key");
+      });
+
+      // Call handleSave
+      await act(async () => {
+        await result.current.handlers.handleSave();
+      });
+
+      // Wait for the async operation to complete
+      await waitFor(() => {
+        expect(result.current.actionState.isSaving).toBe(false);
+      });
+
+      expect(mockSetApiKey).toHaveBeenCalledWith({
+        encryptedApiKey: "encrypted-key",
+      });
+    });
+
+    it("handleSave does nothing with empty input", async () => {
+      mockSavedKey = null;
+      const { result } = renderHook(() => useApiCardState());
+
+      await act(async () => {
+        await result.current.handlers.handleSave();
+      });
+
+      expect(mockSetApiKey).not.toHaveBeenCalled();
+    });
+
+    it("handleRemoveLegacyKey removes the key", async () => {
+      mockSavedKey = "some-key";
+      const { result } = renderHook(() => useApiCardState());
+
+      await act(async () => {
+        await result.current.handlers.handleRemoveLegacyKey();
+      });
+
+      await waitFor(() => {
+        expect(result.current.actionState.isRemoving).toBe(false);
+      });
+
+      expect(mockRemoveApiKey).toHaveBeenCalledWith({});
+    });
+  });
+});
