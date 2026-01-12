@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import SettingsPage from "./page"
@@ -151,7 +152,7 @@ describe("SettingsPage", () => {
     fireEvent.click(apiBtn)
 
     await waitFor(() => {
-        expect(screen.getByLabelText("Pollinations API Key")).toBeInTheDocument()
+        expect(screen.getByText("Pollinations Connection")).toBeInTheDocument()
         // Check for Star Repo card content
         expect(screen.getByText("Boost Your Limits")).toBeInTheDocument()
     })

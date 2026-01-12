@@ -11,9 +11,7 @@ import { useIsFavorited } from "@/hooks/queries/use-favorites" // Import for typ
 const mockMutateAsync = vi.fn()
 vi.mock("@/hooks/queries/use-favorites", () => ({
     useIsFavorited: vi.fn(),
-    useToggleFavorite: () => ({
-        mutateAsync: mockMutateAsync,
-    }),
+    useToggleFavorite: () => mockMutateAsync,
 }))
 
 // Mock CanvasView

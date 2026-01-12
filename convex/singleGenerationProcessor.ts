@@ -5,10 +5,10 @@
  * 
  * This file uses the Node.js runtime to enable:
  * - AWS SDK for R2 uploads
- * - Node.js crypto for API key decryption
  * 
- * The action directly calls Pollinations API and uploads to R2,
- * using the user's stored (encrypted) Pollinations API key.
+ * BYOP (Bring Your Own Pollen) Flow:
+ * The action receives the API key directly from the mutation (passed from client).
+ * No server-side key storage or decryption is needed.
  * 
  * Implements retry logic with exponential backoff for transient failures.
  */
@@ -17,7 +17,6 @@ import { v } from "convex/values"
 import { internal } from "./_generated/api"
 import { internalAction } from "./_generated/server"
 import {
-    decryptApiKey,
     buildPollinationsUrl,
     classifyApiError,
     generateR2Key,
@@ -61,11 +60,14 @@ function shouldRetryPollinationsError(status: number, errorText: string): boolea
 
 /**
  * Internal action to process a single image generation.
+ * Receives the API key directly from the mutation (BYOP flow).
  * Includes retry logic with exponential backoff for transient failures.
  */
 export const processGeneration = internalAction({
     args: {
         generationId: v.id("pendingGenerations"),
+        /** The Pollinations API key passed from the client (BYOP flow) */
+        apiKey: v.string(),
     },
     handler: async (ctx, args) => {
         const logger = "[SingleGeneration]"
@@ -93,31 +95,16 @@ export const processGeneration = internalAction({
 
         console.log(`${logger} Processing generation ${args.generationId}`)
 
-        // Get user's encrypted API key
-        const encryptedApiKey = await ctx.runQuery(internal.users.getEncryptedApiKeyByClerkId, {
-            clerkId: generation.ownerId,
-        })
+        // Use the API key passed from the client (BYOP flow)
+        const pollinationsApiKey = args.apiKey
 
-        if (!encryptedApiKey) {
-            console.error(`${logger} User has no Pollinations API key configured`)
+        // Validate API key
+        if (!pollinationsApiKey || pollinationsApiKey.trim().length === 0) {
+            console.error(`${logger} No Pollinations API key provided`)
             await ctx.runMutation(internal.singleGeneration.updateGenerationStatus, {
                 generationId: args.generationId,
                 status: "failed",
-                errorMessage: "No Pollinations API key configured. Please add your API key in settings.",
-            })
-            return
-        }
-
-        // Decrypt the API key
-        let pollinationsApiKey: string
-        try {
-            pollinationsApiKey = decryptApiKey(encryptedApiKey)
-        } catch (error) {
-            console.error(`${logger} Failed to decrypt API key:`, error)
-            await ctx.runMutation(internal.singleGeneration.updateGenerationStatus, {
-                generationId: args.generationId,
-                status: "failed",
-                errorMessage: "Failed to decrypt API key. Please re-enter your API key in settings.",
+                errorMessage: "No Pollinations API key provided. Please connect to Pollinations first.",
             })
             return
         }

@@ -32,6 +32,18 @@ vi.mock("convex/react", () => ({
 
 vi.mock("@/lib/errors", () => ({
     showErrorToast: vi.fn(),
+    // ClientErrorCodeConst is used with onTrialExpired
+    ClientErrorCodeConst: {
+        TRIAL_EXPIRED: "TRIAL_EXPIRED",
+    },
+}))
+
+// Mock BYOP pollen-auth hooks
+const mockApiKey = "test-pollinations-api-key"
+const mockAuthorize = vi.fn()
+vi.mock("@/lib/pollen-auth", () => ({
+    usePollenApiKey: () => mockApiKey,
+    usePollenAuthActions: () => ({ authorize: mockAuthorize }),
 }))
 
 describe("useBatchMode", () => {

@@ -16,6 +16,7 @@ import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
 import { useRandomSeed } from "@/hooks"
 import { IMAGE_MODEL_IDS, MODEL_REGISTRY } from "@/lib/config/models"
+import { usePollenApiKey, usePollenAuthActions } from "@/lib/pollen-auth"
 import { useMutation, useQuery } from "convex/react"
 import { AlertCircle, CheckCircle, Loader2 } from "lucide-react"
 import { useState } from "react"
@@ -41,6 +42,10 @@ export function LimitTester() {
 
     const startGeneration = useMutation(api.singleGeneration.startGeneration)
     
+    // BYOP context for API key
+    const apiKey = usePollenApiKey()
+    const { authorize } = usePollenAuthActions()
+    
     // Poll status if we have a generation ID
     const status = useQuery(api.singleGeneration.getGenerationStatus, 
         currentGenId ? { generationId: currentGenId } : "skip"
@@ -51,6 +56,13 @@ export function LimitTester() {
     const image = useQuery(api.generatedImages.getById, imageId ? { imageId } : "skip")
 
     const handleGenerate = async () => {
+        // Check for API key
+        if (!apiKey) {
+            toast.error("Not connected to Pollinations. Please connect first.")
+            authorize()
+            return
+        }
+        
         try {
             setLastResult(null)
             const id = await startGeneration({
@@ -61,7 +73,8 @@ export function LimitTester() {
                     height,
                     seed: generateSeed(),
                     quality: "high"
-                }
+                },
+                apiKey,
             })
             setCurrentGenId(id)
         } catch (error) {

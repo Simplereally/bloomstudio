@@ -6,6 +6,11 @@
  * Manages batch generation mode settings and active batch state.
  * Isolated from single-image generation for cleaner separation of concerns.
  * 
+ * BYOP (Bring Your Own Pollen) Flow:
+ * - Gets API key from PollenAuth context (stored in localStorage)
+ * - Passes API key to startBatch which stores it with the batch job
+ * - Server uses stored key for all batch processing
+ * 
  * Features:
  * - Batch mode enable/disable toggle
  * - Batch count configuration
@@ -13,8 +18,7 @@
  * - Server-side processing (fire and forget)
  * 
  * This hook follows the "Headless UI" pattern - pure logic with stable callbacks.
- * 
- * Note: Batch processing now happens entirely on the Convex server.
+ * Note: Batch processing happens entirely on the Convex server.
  * Users can close their browser and the batch will continue processing.
  */
 
@@ -26,6 +30,7 @@ import {
     useBatchJob
 } from "@/hooks/queries"
 import { ClientErrorCodeConst, showErrorToast } from "@/lib/errors"
+import { usePollenApiKey, usePollenAuthActions } from "@/lib/pollen-auth"
 import type { GeneratedImage } from "@/types/pollinations"
 import { ConvexError } from "convex/values"
 import * as React from "react"
@@ -144,7 +149,7 @@ export function useBatchMode({
     const isBatchActive = hasActiveBatch || activeBatchId !== null
 
     // Get batch job status reactively
-    const { batchJob } = useBatchJob(effectiveBatchId ?? undefined)
+    const { batchJob, isLoading: isBatchJobLoading } = useBatchJob(effectiveBatchId ?? undefined)
 
     // Computed paused state
     const isBatchPaused = batchJob?.status === "paused"
@@ -156,13 +161,35 @@ export function useBatchMode({
         }
     }, [batchJob?.status])
 
+    // Clear activeBatchId if job disappears (deleted from server)
+    // This supports the "nuke on complete" policy where completed/failed jobs are deleted
+    React.useEffect(() => {
+        if (activeBatchId && batchJob === null && !isBatchJobLoading) {
+            setActiveBatchId(null)
+        }
+    }, [activeBatchId, batchJob, isBatchJobLoading])
+
+    // ========================================
+    // BYOP Context
+    // ========================================
+    const apiKey = usePollenApiKey()
+    const { authorize } = usePollenAuthActions()
+
     // ========================================
     // Batch Start Handler
     // ========================================
     const startBatchGeneration = React.useCallback(async (params: BatchGenerationParams, count: number) => {
+        // Check for API key from BYOP context
+        if (!apiKey) {
+            console.error("[useBatchMode] No API key available - triggering auth flow")
+            showErrorToast(new Error("Not connected to Pollinations. Please connect first."))
+            authorize()
+            return
+        }
+
         try {
             // The server will handle all processing via scheduled functions
-            const batchId = await startBatch(params, count)
+            const batchId = await startBatch(params, count, apiKey)
             setActiveBatchId(batchId)
         } catch (error) {
             console.error("Failed to start batch job:", error)
@@ -174,7 +201,7 @@ export function useBatchMode({
                 showErrorToast(error as Error)
             }
         }
-    }, [startBatch, onTrialExpired])
+    }, [startBatch, onTrialExpired, apiKey, authorize])
 
     // ========================================
     // Batch Cancel Handler

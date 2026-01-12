@@ -224,6 +224,8 @@ export default defineSchema({
         inFlightCount: v.optional(v.number()),
         /** Shared generation parameters for all images */
         generationParams: v.any(),
+        /** Pollinations API key for BYOP flow (passed from client, stored for processor actions) */
+        apiKey: v.optional(v.string()),
         /** IDs of successfully generated images */
         imageIds: v.array(v.id("generatedImages")),
         /** Number of retry attempts for current item (for transient failures) */

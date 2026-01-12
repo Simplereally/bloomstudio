@@ -12,36 +12,59 @@ Refactor the image generation pipeline to support the BYOP flow. This fundamenta
 ## Implementation Tasks
 
 ### 1. Convex Mutation Updates
-- [ ] **`convex/singleGeneration.ts`**:
+- [x] **`convex/singleGeneration.ts`**:
   - Update `startGeneration` mutation to accept `apiKey: string` argument.
   - Pass this `apiKey` to the `singleGenerationProcessor` action.
-- [ ] **`convex/batchGeneration.ts`**:
-  - Update `startBatchGeneration` mutation to accept `apiKey: string` argument.
-  - Pass this `apiKey` to the `batchProcessor` action.
+- [x] **`convex/batchGeneration.ts`**:
+  - Update `startBatchJob` mutation to accept `apiKey: string` argument.
+  - Store `apiKey` in batch job record for processor actions to access.
 
 ### 2. Convex Action Updates
-- [ ] **`convex/singleGenerationProcessor.ts`**:
+- [x] **`convex/singleGenerationProcessor.ts`**:
   - Remove calls to `getEncryptedApiKeyByClerkId`.
   - Remove `decryptApiKey` logic.
   - Update handler to use the passed `apiKey` argument for the Pollinations request.
   - Add validation: Ensure `apiKey` is present and valid format.
-- [ ] **`convex/batchProcessor.ts`**:
-  - Perform similar refactoring as `singleGenerationProcessor`.
-  - **Decision**: For now, pass the key from the mutation. (If batch processing is long-running, verify if passing key once is sufficient or if temporary storage is needed. Proceed with passing as arg for MVP).
+- [x] **`convex/batchProcessor.ts`**:
+  - Remove calls to `getEncryptedApiKeyByClerkId`.
+  - Remove `decryptApiKey` logic.
+  - Read API key from batch job record stored during job creation.
+  - Add validation: Ensure `apiKey` is present and valid format.
 
 ### 3. Client Hook Updates
-- [ ] **`hooks/queries/use-generate-image.ts`**:
-  - Consume `usePollenAuth` context.
+- [x] **`hooks/queries/use-generate-image.ts`**:
+  - Consume `usePollenApiKey` and `usePollenAuthActions` from pollen-auth context.
   - Pass `apiKey` from context into the `startGeneration` mutation call.
   - Handle case where `apiKey` is missing (trigger auth flow).
-- [ ] **`hooks/use-batch-mode.ts`**:
-  - Consume `usePollenAuth` context.
-  - Pass `apiKey` from context into the `startBatchGeneration` mutation call.
+- [x] **`hooks/use-batch-mode.ts`**:
+  - Consume `usePollenApiKey` and `usePollenAuthActions` from pollen-auth context.
+  - Pass `apiKey` from context into the `startBatch` function call.
+  - Handle case where `apiKey` is missing (trigger auth flow with error toast).
+- [x] **`hooks/queries/use-batch-generation.ts`**:
+  - Updated `startBatch` signature to accept `apiKey` parameter.
+  - Pass `apiKey` to the Convex mutation.
+
+### 4. Schema Updates
+- [x] **`convex/schema.ts`**:
+  - Added `apiKey: v.optional(v.string())` field to `batchJobs` table for storing the API key during batch processing.
+
+### 5. Test Updates
+- [x] **`hooks/queries/use-generate-image.test.tsx`**:
+  - Added mock for pollen-auth hooks.
+  - Updated assertions to include `apiKey` in expected mutation calls.
+- [x] **`hooks/use-batch-mode.test.ts`**:
+  - Added mock for pollen-auth hooks.
+
+### 6. Additional Updates
+- [x] **`components/debug/limit-tester.tsx`**:
+  - Updated to use BYOP context for API key.
 
 ## Technical Details
-- **Backward Compatibility**: (Optional) If supporting migration, logic might need to accept `apiKey` OR fall back to DB key if `apiKey` arg is null. See Story 4 for cleanup. For this story, focus on wiring the new path.
+- **Backward Compatibility**: The schema field `apiKey` on `batchJobs` is optional (`v.optional`) to support migration. Story 4 will handle cleanup of legacy key storage.
+- **Batch Processing**: For batch jobs, the API key is stored in the batch job record when the job starts. All processor actions read from this record, ensuring the key is available for long-running batches even after the initiating client disconnects.
+- **Nuke on Complete**: Implemented strict data retention policy where batch job records (containing the API key) are deleted immediately upon completion, cancellation, or failure. This ensures API keys are not stored longer than necessary and keeps the database clean.
 
 ## Acceptance Criteria
-- [ ] Single image generation works using the key from localStorage.
-- [ ] Batch generation works using the key from localStorage.
-- [ ] Server no longer errors if the user has no key in the `users` table (provided they send one from client).
+- [x] Single image generation works using the key from localStorage (via BYOP context).
+- [x] Batch generation works using the key from localStorage (via BYOP context).
+- [x] Server no longer errors if the user has no key in the `users` table (provided they send one from client).
