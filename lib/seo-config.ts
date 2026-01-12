@@ -936,5 +936,5 @@ export const RESOURCES = [
   { name: "FAQ", href: "/faq" },
   { name: "Support", href: "/support" },
   { name: "Contact us", href: "/contact" },
-  { name: "Sitemap", href: "/sitemap" },
+  { name: "Sitemap", href: "/site-map" },
 ];
