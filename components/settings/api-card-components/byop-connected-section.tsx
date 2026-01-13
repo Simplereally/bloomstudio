@@ -58,7 +58,7 @@ export function ByopConnectedSection({
       </p>
       <div className="flex gap-2 pt-1">
         <Button
-          variant="outline"
+          variant="secondary"
           size="sm"
           onClick={onReconnect}
           disabled={isRedirecting}
@@ -74,9 +74,9 @@ export function ByopConnectedSection({
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              className="border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
             >
               <LogOut className="w-4 h-4 mr-1.5" />
               Disconnect

@@ -77,7 +77,7 @@ export async function canUserGenerate(
 
     return {
         allowed: false,
-        reason: "Your 24-hour trial has expired. Upgrade to Pro for $5/month to continue generating images.",
+        reason: "Your 24-hour trial has expired. Upgrade to Pro for $3/month to continue generating images.",
     }
 }
 

@@ -10,123 +10,81 @@ describe("LegacyKeySection", () => {
     hasLegacyKey: false,
     isByopConnected: false,
     isLoading: false,
-    inputKey: "",
-    onInputKeyChange: vi.fn(),
-    isVisible: false,
-    onToggleVisibility: vi.fn(),
-    isSaving: false,
     isRemoving: false,
-    onSave: vi.fn(),
     onRemove: vi.fn(),
   };
 
-  it("renders collapsed by default", () => {
-    render(<LegacyKeySection {...defaultProps} />);
-    expect(screen.getByText("Manual API Key Entry")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Pollinations API Key")).not.toBeInTheDocument();
+  it("returns null when no legacy key exists", () => {
+    const { container } = render(<LegacyKeySection {...defaultProps} />);
+    expect(container.firstChild).toBeNull();
   });
 
-  it("renders expanded content when open", () => {
-    render(<LegacyKeySection {...defaultProps} isOpen={true} />);
-    expect(screen.getByLabelText("Pollinations API Key")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /save/i })).toBeInTheDocument();
-  });
-
-  it("shows 'Legacy API Key (active)' when hasLegacyKey is true", () => {
-    render(
-      <LegacyKeySection {...defaultProps} hasLegacyKey={true} isOpen={false} />
-    );
+  it("renders with (active) label when hasLegacyKey is true and BYOP not connected", () => {
+    render(<LegacyKeySection {...defaultProps} hasLegacyKey={true} />);
     expect(screen.getByText("Legacy API Key (active)")).toBeInTheDocument();
   });
 
-  it("shows legacy warning when not connected via BYOP", () => {
+  it("renders with (inactive) label when hasLegacyKey is true and BYOP is connected", () => {
+    render(<LegacyKeySection {...defaultProps} hasLegacyKey={true} isByopConnected={true} />);
+    expect(screen.getByText("Legacy API Key (inactive)")).toBeInTheDocument();
+  });
+
+  it("renders expanded content when open and has legacy key", () => {
+    render(
+      <LegacyKeySection {...defaultProps} hasLegacyKey={true} isOpen={true} />
+    );
+    expect(screen.getByText("API Key Status")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /remove key/i })
+    ).toBeInTheDocument();
+  });
+
+  it("shows legacy key active warning when not connected via BYOP", () => {
     render(
       <LegacyKeySection
         {...defaultProps}
+        hasLegacyKey={true}
         isOpen={true}
         isByopConnected={false}
       />
     );
-    expect(screen.getByText("Legacy Option")).toBeInTheDocument();
+    expect(screen.getByText("Legacy Key Active")).toBeInTheDocument();
   });
 
-  it("hides legacy warning when connected via BYOP", () => {
-    render(
-      <LegacyKeySection {...defaultProps} isOpen={true} isByopConnected={true} />
-    );
-    expect(screen.queryByText("Legacy Option")).not.toBeInTheDocument();
-  });
-
-  it("calls onInputKeyChange when typing", async () => {
-    const user = userEvent.setup();
-    const onInputKeyChange = vi.fn();
+  it("shows BYOP connected message when connected via BYOP", () => {
     render(
       <LegacyKeySection
         {...defaultProps}
-        isOpen={true}
-        onInputKeyChange={onInputKeyChange}
-      />
-    );
-
-    const input = screen.getByLabelText("Pollinations API Key");
-    await user.type(input, "test");
-    expect(onInputKeyChange).toHaveBeenCalled();
-  });
-
-  it("toggles visibility when visibility button is clicked", async () => {
-    const user = userEvent.setup();
-    const onToggleVisibility = vi.fn();
-    render(
-      <LegacyKeySection
-        {...defaultProps}
-        isOpen={true}
-        onToggleVisibility={onToggleVisibility}
-      />
-    );
-
-    // Find the visibility toggle button (it has Eye icon)
-    const visibilityButton = screen.getByRole("button", { name: "" });
-    await user.click(visibilityButton);
-    expect(onToggleVisibility).toHaveBeenCalledTimes(1);
-  });
-
-  it("disables Save button when inputKey is empty", () => {
-    render(
-      <LegacyKeySection {...defaultProps} isOpen={true} inputKey="" />
-    );
-    expect(screen.getByRole("button", { name: /save/i })).toBeDisabled();
-  });
-
-  it("enables Save button when inputKey has content", () => {
-    render(
-      <LegacyKeySection {...defaultProps} isOpen={true} inputKey="some-key" />
-    );
-    expect(screen.getByRole("button", { name: /save/i })).not.toBeDisabled();
-  });
-
-  it("calls onSave when Save button is clicked", async () => {
-    const user = userEvent.setup();
-    const onSave = vi.fn();
-    render(
-      <LegacyKeySection
-        {...defaultProps}
-        isOpen={true}
-        inputKey="test-key"
-        onSave={onSave}
-      />
-    );
-
-    await user.click(screen.getByRole("button", { name: /save/i }));
-    expect(onSave).toHaveBeenCalledTimes(1);
-  });
-
-  it("shows Remove Key button when hasLegacyKey is true", () => {
-    render(
-      <LegacyKeySection
-        {...defaultProps}
-        isOpen={true}
         hasLegacyKey={true}
+        isOpen={true}
+        isByopConnected={true}
       />
+    );
+    expect(screen.getByText("BYOP Connected")).toBeInTheDocument();
+  });
+
+  it("shows 'Key is set and hidden' status", () => {
+    render(
+      <LegacyKeySection {...defaultProps} hasLegacyKey={true} isOpen={true} />
+    );
+    expect(screen.getByText("Key is set and hidden")).toBeInTheDocument();
+  });
+
+  it("shows 'Loading...' when isLoading is true", () => {
+    render(
+      <LegacyKeySection
+        {...defaultProps}
+        hasLegacyKey={true}
+        isOpen={true}
+        isLoading={true}
+      />
+    );
+    expect(screen.getByText("Loading...")).toBeInTheDocument();
+  });
+
+  it("shows Remove Key button", () => {
+    render(
+      <LegacyKeySection {...defaultProps} hasLegacyKey={true} isOpen={true} />
     );
     expect(
       screen.getByRole("button", { name: /remove key/i })
@@ -137,11 +95,28 @@ describe("LegacyKeySection", () => {
     render(
       <LegacyKeySection
         {...defaultProps}
-        isOpen={true}
         hasLegacyKey={true}
+        isOpen={true}
         isRemoving={true}
       />
     );
     expect(screen.getByText("Removing...")).toBeInTheDocument();
+  });
+
+  it("calls onOpenChange when trigger is clicked", async () => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    render(
+      <LegacyKeySection
+        {...defaultProps}
+        hasLegacyKey={true}
+        isOpen={false}
+        onOpenChange={onOpenChange}
+      />
+    );
+
+    // Use a more flexible selector since the label is dynamic
+    await user.click(screen.getByRole("button", { name: /legacy api key/i }));
+    expect(onOpenChange).toHaveBeenCalled();
   });
 });

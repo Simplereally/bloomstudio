@@ -55,15 +55,15 @@ const VIDEO_MODELS: ModelDefinition[] = Object.values(MODEL_REGISTRY).filter(
  * These are shown separately in the filter dropdown so users can still filter by them.
  */
 const LEGACY_FILTER_MODELS: { id: string; displayName: string }[] = [
-    { id: "flux", displayName: "Flux (Legacy)" },
+    // Currently empty - 'flux' was moved back to MODEL_REGISTRY as an active model
 ]
 
-/** Combined list of all filterable models (image + video + legacy) */
+/** Combined list of all filterable models (image + video + legacy), sorted alphabetically */
 const ALL_FILTERABLE_MODELS = [
     ...IMAGE_MODELS.map(m => ({ id: m.id, displayName: m.displayName, isLegacy: false, type: "image" as const })),
     ...VIDEO_MODELS.map(m => ({ id: m.id, displayName: m.displayName, isLegacy: false, type: "video" as const })),
     ...LEGACY_FILTER_MODELS.map(m => ({ ...m, isLegacy: true, type: "image" as const })),
-]
+].sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { numeric: true }))
 
 // Visibility options with labels
 const VISIBILITY_OPTIONS: { value: VisibilityFilter; label: string }[] = [

@@ -32,7 +32,7 @@ export function HeroSection({
     const allModels = Object.values(MODEL_REGISTRY)
 
     return (
-        <section id="hero" className="relative pt-8 pb-20 sm:pt-12 sm:pb-28 lg:pb-32 xl:pb-32 xl:min-h-[75vh] 2xl:pb-32 2xl:min-h-[80vh] 3xl:pb-28 3xl:min-h-[80vh] 4xl:h-[calc(100vh-4rem)] 4xl:min-h-0 4xl:pb-12 5xl:h-[calc(100vh-4rem)] 5xl:min-h-0 5xl:pb-16 overflow-hidden flex flex-col justify-center">
+        <section id="hero" className="relative pt-20 pb-20 sm:pt-24 sm:pb-28 lg:pb-32 xl:pb-32 xl:min-h-[75vh] 2xl:pb-32 2xl:min-h-[80vh] 3xl:pb-28 3xl:min-h-[80vh] 4xl:h-[calc(100vh-4rem)] 4xl:min-h-0 4xl:pb-12 5xl:h-[calc(100vh-4rem)] 5xl:min-h-0 5xl:pb-16 overflow-hidden flex flex-col justify-center">
             <div className="container mx-auto px-6 text-center">
                 {/* Badge */}
                 <ScrollReveal instant>
@@ -63,9 +63,8 @@ export function HeroSection({
                     <div className="mt-2 max-w-2xl 3xl:max-w-4xl 4xl:max-w-5xl mx-auto text-lg sm:text-xl 3xl:text-2xl 4xl:text-3xl text-foreground/80 leading-relaxed">
                         {description || (
                             <p>
-                                Professional AI image and video generation with
-                                <span className="text-primary font-semibold"> {allModels.length}+ cutting-edge models</span>. Generate{" "}
-                                <span className="text-primary font-semibold">900 images/month</span> for just $5.
+                                Professional AI image and video generation
+                                <span className="block text-primary/95 font-semibold">for just <span className="pl-2 text-primary font-semibold text-3xl">$3</span></span>
                             </p>
                         )}
                     </div>

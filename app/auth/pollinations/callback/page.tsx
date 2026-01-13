@@ -23,6 +23,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, CheckCircle, XCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import {
   CALLBACK_KEY_PARAM,
   storeApiKey,
@@ -109,6 +110,9 @@ export default function PollinationsCallbackPage() {
       }
 
       setState("success");
+      toast.success("Connected to Pollinations successfully!", {
+        description: "You can now generate images with your own Pollen wallet.",
+      });
     } catch (error) {
       console.error("[PollinationsCallback] Error processing callback:", error);
       setState("error_storage");

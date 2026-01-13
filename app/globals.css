@@ -102,7 +102,7 @@
   --font-mono: "Geist Mono", "Geist Mono Fallback";
   --font-brand: var(--font-bricolage);
 
-  --breakpoint-3xl: 1800px;  /* 1080p monitors (1920px - browser chrome) */
+  --breakpoint-3xl: 2000px;  /* Above 1080p monitors (effectively targets 1440p+ when combined with scaling) */
   --breakpoint-4xl: 2400px;  /* 1440p monitors (2560px - browser chrome) */
   --breakpoint-5xl: 3600px;  /* 4K monitors (3840px - browser chrome) */
 
@@ -270,10 +270,42 @@
 
   html {
     scroll-behavior: smooth;
+    scrollbar-gutter: stable;
+    overflow-x: hidden;
   }
 
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
+  }
+
+  /* Fixed viewport pages (like Studio) - prevent any scroll at root level */
+  html:has(body[data-fixed-viewport="true"]) {
+    overflow: hidden;
+    height: 100%;
+  }
+
+  body[data-fixed-viewport="true"] {
+    overflow: hidden;
+    height: 100%;
+  }
+
+  /**
+   * Radix Dialog / react-remove-scroll layout shift fix
+   * 
+   * When a modal opens, Radix adds padding-right to the body to prevent layout shift.
+   * However, since we globally enable `scrollbar-gutter: stable`, this results in 
+   * double-spacing (gutter + padding) which squeezes the layout and causes a shift.
+   * 
+   * The Fix: We force Radix's padding to 0 on the body. We rely on `scrollbar-gutter: stable`
+   * (on html) to keep the layout stable by reserving the scrollbar space permanently.
+   */
+  /* Fix for Radix Dialog layout shift with scrollbar-gutter */
+  @supports (scrollbar-gutter: stable) {
+    body {
+      padding-right: 0 !important;
+      margin-right: 0 !important;
+    }
   }
 }
 

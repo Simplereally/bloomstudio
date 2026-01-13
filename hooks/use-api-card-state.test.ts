@@ -3,19 +3,12 @@ import { renderHook, act, waitFor } from "@testing-library/react";
 import { useApiCardState } from "./use-api-card-state";
 
 // Mock the Convex hooks
-const mockSetApiKey = vi.fn();
 const mockRemoveApiKey = vi.fn();
 let mockSavedKey: string | null | undefined = undefined;
 
 vi.mock("convex/react", () => ({
   useQuery: () => mockSavedKey,
-  useMutation: (api: unknown) => {
-    // Check which mutation is being requested by looking at the api reference
-    if (api === "setPollinationsApiKey") {
-      return mockSetApiKey;
-    }
-    return mockRemoveApiKey;
-  },
+  useMutation: () => mockRemoveApiKey,
 }));
 
 // Mock the API module to return distinguishable references
@@ -23,7 +16,6 @@ vi.mock("@/convex/_generated/api", () => ({
   api: {
     users: {
       getPollinationsApiKey: "getPollinationsApiKey",
-      setPollinationsApiKey: "setPollinationsApiKey",
       removePollinationsApiKey: "removePollinationsApiKey",
     },
   },
@@ -44,11 +36,6 @@ let mockPollenAuthState = {
 
 vi.mock("@/lib/pollen-auth", () => ({
   usePollenAuth: () => mockPollenAuthState,
-}));
-
-// Mock the encryptKey function
-vi.mock("@/app/settings/actions", () => ({
-  encryptKey: vi.fn().mockResolvedValue("encrypted-key"),
 }));
 
 // Mock toast
@@ -149,34 +136,6 @@ describe("useApiCardState", () => {
     });
   });
 
-  describe("input state", () => {
-    it("manages input key state", () => {
-      mockSavedKey = null;
-      const { result } = renderHook(() => useApiCardState());
-
-      expect(result.current.inputState.inputKey).toBe("");
-
-      act(() => {
-        result.current.inputState.setInputKey("new-key");
-      });
-
-      expect(result.current.inputState.inputKey).toBe("new-key");
-    });
-
-    it("toggles visibility state", () => {
-      mockSavedKey = null;
-      const { result } = renderHook(() => useApiCardState());
-
-      expect(result.current.inputState.isVisible).toBe(false);
-
-      act(() => {
-        result.current.inputState.toggleVisibility();
-      });
-
-      expect(result.current.inputState.isVisible).toBe(true);
-    });
-  });
-
   describe("action state", () => {
     it("manages legacy section visibility", () => {
       mockSavedKey = null;
@@ -215,41 +174,6 @@ describe("useApiCardState", () => {
       });
 
       expect(mockDeauthorize).toHaveBeenCalledTimes(1);
-    });
-
-    it("handleSave encrypts and saves key", async () => {
-      mockSavedKey = null;
-      const { result } = renderHook(() => useApiCardState());
-
-      // Set input key first
-      act(() => {
-        result.current.inputState.setInputKey("test-api-key");
-      });
-
-      // Call handleSave
-      await act(async () => {
-        await result.current.handlers.handleSave();
-      });
-
-      // Wait for the async operation to complete
-      await waitFor(() => {
-        expect(result.current.actionState.isSaving).toBe(false);
-      });
-
-      expect(mockSetApiKey).toHaveBeenCalledWith({
-        encryptedApiKey: "encrypted-key",
-      });
-    });
-
-    it("handleSave does nothing with empty input", async () => {
-      mockSavedKey = null;
-      const { result } = renderHook(() => useApiCardState());
-
-      await act(async () => {
-        await result.current.handlers.handleSave();
-      });
-
-      expect(mockSetApiKey).not.toHaveBeenCalled();
     });
 
     it("handleRemoveLegacyKey removes the key", async () => {

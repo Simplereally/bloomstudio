@@ -56,6 +56,7 @@ export {
   isAuthExpired,
   getDaysUntilExpiry,
   isValidApiKeyFormat,
+  POLLEN_AUTH_CHANGED_EVENT,
 } from "./storage";
 export type { PollenAuthMetadata } from "./storage";
 

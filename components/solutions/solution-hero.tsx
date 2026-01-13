@@ -15,7 +15,7 @@ interface SolutionHeroProps {
 
 export function SolutionHero({ title, shortTitle, description, heroPrefix, heroSuffix, images = [] }: SolutionHeroProps) {
     return (
-        <section className="relative pt-12 pb-16 md:pt-16 md:pb-24 3xl:pt-20 3xl:pb-28 4xl:pt-32 4xl:pb-40 5xl:pt-40 5xl:pb-56 overflow-hidden">
+        <section className="relative pt-24 pb-16 md:pt-28 md:pb-24 3xl:pt-32 3xl:pb-28 4xl:pt-44 4xl:pb-40 5xl:pt-52 5xl:pb-56 overflow-hidden">
              {/* Background Effects */}
              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-primary/10 blur-[120px] rounded-full opacity-50 pointer-events-none" />
             

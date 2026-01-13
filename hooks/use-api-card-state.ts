@@ -4,14 +4,14 @@
  * useApiCardState Hook
  *
  * Manages state and handlers for the API settings card.
- * Handles both BYOP (Bring Your Own Pollen) and legacy API key connection states.
+ * Now focused on BYOP (Bring Your Own Pollen) authentication.
+ * Legacy Convex-stored API key support maintained for backward compatibility.
  */
 
 import { useState, useCallback, useMemo } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { toast } from "sonner";
-import { encryptKey } from "@/app/settings/actions";
 import { usePollenAuth } from "@/lib/pollen-auth";
 
 /**
@@ -34,7 +34,7 @@ export type ConnectionStatus =
  * Return type for useApiCardState hook
  */
 export interface UseApiCardStateReturn {
-  // Legacy API state
+  // Legacy API state (deprecated - for backward compatibility)
   legacyState: {
     savedKey: string | null | undefined;
     hasLegacyKey: boolean;
@@ -56,18 +56,8 @@ export interface UseApiCardStateReturn {
   connectionType: ConnectionType;
   connectionStatus: ConnectionStatus;
 
-  // Input state
-  inputState: {
-    inputKey: string;
-    setInputKey: (value: string) => void;
-    isVisible: boolean;
-    setIsVisible: (value: boolean) => void;
-    toggleVisibility: () => void;
-  };
-
   // Loading/action states
   actionState: {
-    isSaving: boolean;
     isRemoving: boolean;
     isRedirecting: boolean;
     showLegacySection: boolean;
@@ -76,7 +66,6 @@ export interface UseApiCardStateReturn {
 
   // Handlers
   handlers: {
-    handleSave: () => Promise<void>;
     handleRemoveLegacyKey: () => Promise<void>;
     handleReconnect: () => void;
     handleDisconnect: () => void;
@@ -86,7 +75,8 @@ export interface UseApiCardStateReturn {
 /**
  * Hook for managing API card state.
  *
- * Combines BYOP authentication state with legacy Convex-stored API key management.
+ * Primarily uses BYOP authentication state with legacy Convex-stored
+ * API key support for backward compatibility during migration.
  *
  * @example
  * ```tsx
@@ -103,9 +93,8 @@ export interface UseApiCardStateReturn {
  * ```
  */
 export function useApiCardState(): UseApiCardStateReturn {
-  // Legacy Convex-stored key
+  // Legacy Convex-stored key (deprecated - kept for backward compatibility)
   const savedKey = useQuery(api.users.getPollinationsApiKey);
-  const setApiKey = useMutation(api.users.setPollinationsApiKey);
   const removeApiKey = useMutation(api.users.removePollinationsApiKey);
 
   // BYOP auth state
@@ -119,12 +108,7 @@ export function useApiCardState(): UseApiCardStateReturn {
     deauthorize,
   } = usePollenAuth();
 
-  // Input state
-  const [inputKey, setInputKey] = useState("");
-  const [isVisible, setIsVisible] = useState(false);
-
   // Action states
-  const [isSaving, setIsSaving] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [showLegacySection, setShowLegacySection] = useState(false);
@@ -161,32 +145,11 @@ export function useApiCardState(): UseApiCardStateReturn {
   ]);
 
   // Handlers
-  const handleSave = useCallback(async () => {
-    if (!inputKey.trim()) return;
-
-    setIsSaving(true);
-    try {
-      // 1. Encrypt on server via Next.js Action
-      const encrypted = await encryptKey(inputKey.trim());
-
-      // 2. Save encrypted key to Convex
-      await setApiKey({ encryptedApiKey: encrypted });
-
-      toast.success("API Key saved successfully");
-      setInputKey(""); // Clear input for security
-    } catch (error) {
-      toast.error("Failed to save API Key");
-      console.error(error);
-    } finally {
-      setIsSaving(false);
-    }
-  }, [inputKey, setApiKey]);
-
   const handleRemoveLegacyKey = useCallback(async () => {
     setIsRemoving(true);
     try {
       await removeApiKey({});
-      toast.success("API Key removed");
+      toast.success("Legacy API Key removed");
     } catch {
       toast.error("Failed to remove API Key");
     } finally {
@@ -204,12 +167,8 @@ export function useApiCardState(): UseApiCardStateReturn {
     toast.success("Disconnected from Pollinations");
   }, [deauthorize]);
 
-  const toggleVisibility = useCallback(() => {
-    setIsVisible((prev) => !prev);
-  }, []);
-
   return {
-    // Legacy API state
+    // Legacy API state (deprecated)
     legacyState: {
       savedKey,
       hasLegacyKey,
@@ -231,18 +190,8 @@ export function useApiCardState(): UseApiCardStateReturn {
     connectionType,
     connectionStatus,
 
-    // Input state
-    inputState: {
-      inputKey,
-      setInputKey,
-      isVisible,
-      setIsVisible,
-      toggleVisibility,
-    },
-
     // Loading/action states
     actionState: {
-      isSaving,
       isRemoving,
       isRedirecting,
       showLegacySection,
@@ -251,7 +200,6 @@ export function useApiCardState(): UseApiCardStateReturn {
 
     // Handlers
     handlers: {
-      handleSave,
       handleRemoveLegacyKey,
       handleReconnect,
       handleDisconnect,

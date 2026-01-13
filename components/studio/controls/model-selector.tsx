@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils"
 import {
     Camera,
     Cloud,
+    Image as ImageIcon,
     PenTool,
     Sparkles,
     Video,
@@ -76,6 +77,124 @@ export const ModelSelector = React.memo(function ModelSelector({
     // Using a sage/forest green that complements ember orange
     const activeClasses = "bg-emerald-500/15 text-emerald-700 border border-emerald-500 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500 ring-1 ring-emerald-500/20"
 
+    // Group models by type for separator logic
+    const imageModels = models.filter(m => m.type === "image")
+    const videoModels = models.filter(m => m.type === "video")
+    const hasMultipleTypes = imageModels.length > 0 && videoModels.length > 0
+
+    // Render a single model button (shared between variants)
+    const renderModelButton = (model: ModelDefinition, isCards: boolean) => {
+        const Icon = getModelIcon(model)
+        const isSelected = selectedModel === model.id
+        const isMonochrome = model.logo?.includes("openai.svg") || model.logo?.includes("flux.svg")
+
+        if (isCards) {
+            return (
+                <Button
+                    key={model.id}
+                    variant="outline"
+                    className={cn(
+                        "h-auto flex flex-col items-start gap-2 p-4 text-left transition-all",
+                        "hover:border-foreground/30 hover:shadow-md",
+                        isSelected && activeClasses
+                    )}
+                    onClick={() => onModelChange(model.id)}
+                    disabled={disabled}
+                    data-testid={`model-card-${model.id}`}
+                >
+                    <div className="flex items-center gap-3 w-full">
+                        {model.logo ? (
+                            <Image
+                                src={model.logo}
+                                alt={`${model.displayName} logo`}
+                                width={32}
+                                height={32}
+                                className={cn(
+                                    "transition-all flex-shrink-0",
+                                    isMonochrome && "dark:invert",
+                                    !isSelected && "opacity-70"
+                                )}
+                            />
+                        ) : (
+                            <Icon className={cn(
+                                "h-8 w-8 flex-shrink-0",
+                                isSelected ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
+                            )} />
+                        )}
+                        <span className={cn(
+                            "text-base font-semibold truncate",
+                            isSelected && "text-emerald-700 dark:text-emerald-400"
+                        )}>
+                            {model.displayName}
+                        </span>
+                    </div>
+                    <span className="text-sm text-muted-foreground line-clamp-2">
+                        {model.description}
+                    </span>
+                </Button>
+            )
+        }
+
+        // Compact variant
+        return (
+            <Tooltip key={model.id}>
+                <TooltipTrigger asChild>
+                    <Button
+                        variant={isSelected ? "secondary" : "ghost"}
+                        size="sm"
+                        onClick={() => onModelChange(model.id)}
+                        disabled={disabled}
+                        className={cn(
+                            "h-12 px-3 gap-2.5 justify-start transition-all",
+                            isSelected && activeClasses
+                        )}
+                        data-testid={`model-button-${model.id}`}
+                    >
+                        {model.logo ? (
+                            <Image
+                                src={model.logo}
+                                alt={`${model.displayName} logo`}
+                                width={28}
+                                height={28}
+                                className={cn(
+                                    "transition-all flex-shrink-0",
+                                    isMonochrome && "dark:invert",
+                                    !isSelected && "opacity-60"
+                                )}
+                            />
+                        ) : (
+                            <Icon className={cn(
+                                "h-7 w-7 flex-shrink-0",
+                                isSelected ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
+                            )} />
+                        )}
+                        <span className={cn(
+                            "text-xs font-medium truncate",
+                            isSelected && "text-emerald-700 dark:text-emerald-400"
+                        )}>{model.displayName}</span>
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="flex flex-col items-center text-center max-w-[200px]">
+                    <p className="font-medium">{model.displayName}</p>
+                    <p className="text-xs opacity-70">
+                        {model.description}
+                    </p>
+                </TooltipContent>
+            </Tooltip>
+        )
+    }
+
+    // Render group separator with label
+    const renderGroupSeparator = (label: string, icon: React.ReactNode) => (
+        <div className="col-span-full flex items-center gap-2 py-1.5" data-testid={`model-group-${label.toLowerCase().replace(/\s/g, "-")}`}>
+            <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                {icon}
+                <span>{label}</span>
+            </div>
+            <div className="flex-1 h-px bg-border/50" />
+        </div>
+    )
+
     if (variant === "cards") {
         return (
             <div className={`space-y-3 ${className || ""}`} data-testid="model-selector">
@@ -89,56 +208,14 @@ export const ModelSelector = React.memo(function ModelSelector({
                     className="grid grid-cols-2 gap-2.5"
                     data-testid="model-cards"
                 >
-                    {models.map((model) => {
-                        const Icon = getModelIcon(model)
-                        const isSelected = selectedModel === model.id
-                        const isMonochrome = model.logo?.includes("openai.svg") || model.logo?.includes("flux.svg")
-
-                        return (
-                            <Button
-                                key={model.id}
-                                variant="outline"
-                                className={cn(
-                                    "h-auto flex flex-col items-start gap-2 p-4 text-left transition-all",
-                                    "hover:border-foreground/30 hover:shadow-md",
-                                    isSelected && activeClasses
-                                )}
-                                onClick={() => onModelChange(model.id)}
-                                disabled={disabled}
-                                data-testid={`model-card-${model.id}`}
-                            >
-                                <div className="flex items-center gap-3 w-full">
-                                    {model.logo ? (
-                                        <Image
-                                            src={model.logo}
-                                            alt={`${model.displayName} logo`}
-                                            width={32}
-                                            height={32}
-                                            className={cn(
-                                                "transition-all flex-shrink-0",
-                                                isMonochrome && "dark:invert",
-                                                !isSelected && "opacity-70"
-                                            )}
-                                        />
-                                    ) : (
-                                        <Icon className={cn(
-                                            "h-8 w-8 flex-shrink-0",
-                                            isSelected ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
-                                        )} />
-                                    )}
-                                    <span className={cn(
-                                        "text-base font-semibold truncate",
-                                        isSelected && "text-emerald-700 dark:text-emerald-400"
-                                    )}>
-                                        {model.displayName}
-                                    </span>
-                                </div>
-                                <span className="text-sm text-muted-foreground line-clamp-2">
-                                    {model.description}
-                                </span>
-                            </Button>
-                        )
-                    })}
+                    {hasMultipleTypes && imageModels.length > 0 && (
+                        renderGroupSeparator("Image Models", <ImageIcon className="h-3 w-3" />)
+                    )}
+                    {imageModels.map((model) => renderModelButton(model, true))}
+                    {hasMultipleTypes && videoModels.length > 0 && (
+                        renderGroupSeparator("Video Models", <Video className="h-3 w-3" />)
+                    )}
+                    {videoModels.map((model) => renderModelButton(model, true))}
                 </div>
             </div>
         )
@@ -157,58 +234,14 @@ export const ModelSelector = React.memo(function ModelSelector({
                 className="grid grid-cols-1 sm:grid-cols-2 gap-2"
                 data-testid="model-buttons"
             >
-                {models.map((model) => {
-                    const Icon = getModelIcon(model)
-                    const isSelected = selectedModel === model.id
-                    const isMonochrome = model.logo?.includes("openai.svg") || model.logo?.includes("flux.svg")
-
-                    return (
-                        <Tooltip key={model.id}>
-                            <TooltipTrigger asChild>
-                                <Button
-                                    variant={isSelected ? "secondary" : "ghost"}
-                                    size="sm"
-                                    onClick={() => onModelChange(model.id)}
-                                    disabled={disabled}
-                                    className={cn(
-                                        "h-12 px-3 gap-2.5 justify-start transition-all",
-                                        isSelected && activeClasses
-                                    )}
-                                    data-testid={`model-button-${model.id}`}
-                                >
-                                    {model.logo ? (
-                                        <Image
-                                            src={model.logo}
-                                            alt={`${model.displayName} logo`}
-                                            width={28}
-                                            height={28}
-                                            className={cn(
-                                                "transition-all flex-shrink-0",
-                                                isMonochrome && "dark:invert",
-                                                !isSelected && "opacity-60"
-                                            )}
-                                        />
-                                    ) : (
-                                        <Icon className={cn(
-                                            "h-7 w-7 flex-shrink-0",
-                                            isSelected ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
-                                        )} />
-                                    )}
-                                    <span className={cn(
-                                        "text-xs font-medium truncate",
-                                        isSelected && "text-emerald-700 dark:text-emerald-400"
-                                    )}>{model.displayName}</span>
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom" className="flex flex-col items-center text-center max-w-[200px]">
-                                <p className="font-medium">{model.displayName}</p>
-                                <p className="text-xs opacity-70">
-                                    {model.description}
-                                </p>
-                            </TooltipContent>
-                        </Tooltip>
-                    )
-                })}
+                {hasMultipleTypes && imageModels.length > 0 && (
+                    renderGroupSeparator("Image Models", <ImageIcon className="h-3 w-3" />)
+                )}
+                {imageModels.map((model) => renderModelButton(model, false))}
+                {hasMultipleTypes && videoModels.length > 0 && (
+                    renderGroupSeparator("Video Models", <Video className="h-3 w-3" />)
+                )}
+                {videoModels.map((model) => renderModelButton(model, false))}
             </div>
         </div>
     )

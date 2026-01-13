@@ -11,12 +11,12 @@ export const faqs = [
     {
         question: "How does the free trial work?",
         answer:
-            "Sign up and get 24 hours of full, unrestricted access to everything — all models, max resolution, batch generation. No credit card required. After 24 hours, upgrade to Pro for $5/month to continue.",
+            "Sign up and get 24 hours of full, unrestricted access to everything — all models, max resolution, batch generation. No credit card required. After 24 hours, upgrade to Pro for $3/month to continue.",
     },
     {
         question: "What happens after my trial expires?",
         answer:
-            "You'll need to upgrade to Pro ($5/month) to continue generating images. Your account and any images you created during the trial remain accessible.",
+            "You'll need to upgrade to Pro ($3/month) to continue generating images. Your account and any images you created during the trial remain accessible.",
     },
     {
         question: "What AI models are included?",

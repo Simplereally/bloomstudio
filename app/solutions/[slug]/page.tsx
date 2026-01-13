@@ -48,7 +48,7 @@ export default async function SolutionPage({ params }: { params: Promise<{ slug:
     }
 
     return (
-        <div className="dark min-h-screen relative selection:bg-primary/30 selection:text-primary-foreground bg-background pt-20">
+        <div className="dark min-h-screen relative selection:bg-primary/30 selection:text-primary-foreground bg-background">
              <JsonLd
                 data={{
                     "@context": "https://schema.org",

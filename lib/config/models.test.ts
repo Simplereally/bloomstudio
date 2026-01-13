@@ -26,6 +26,7 @@ describe("Model Registry", () => {
                 "gptimage-large",
                 "seedream",
                 "kontext",
+                "flux",
                 "nanobanana",
                 "seedream-pro",
                 "nanobanana-pro",
@@ -53,6 +54,7 @@ describe("Model Registry", () => {
             expect(MODEL_REGISTRY["gptimage-large"].displayName).toBe("GPT 1.5")
             expect(MODEL_REGISTRY["seedream"].displayName).toBe("Seedream 4.0")
             expect(MODEL_REGISTRY["kontext"].displayName).toBe("Flux Kontext")
+            expect(MODEL_REGISTRY["flux"].displayName).toBe("Flux Schnell")
             expect(MODEL_REGISTRY["nanobanana"].displayName).toBe("NanoBanana")
             expect(MODEL_REGISTRY["seedream-pro"].displayName).toBe("Seedream 4.5 Pro")
             expect(MODEL_REGISTRY["nanobanana-pro"].displayName).toBe("NanoBanana Pro")
@@ -107,7 +109,8 @@ describe("Model Registry", () => {
         it("should return constraints for known models", () => {
             const zimageConstraints = getModelConstraints("zimage")
             expect(zimageConstraints).toBeDefined()
-            expect(zimageConstraints!.maxPixels).toBe(4_194_304)
+            // Updated for SPAN upscaler limit (768×768 base × 2 = 1536×1536 max)
+            expect(zimageConstraints!.maxPixels).toBe(2_359_296)
             expect(zimageConstraints!.step).toBe(32)
         })
 
@@ -147,13 +150,14 @@ describe("Model Registry", () => {
 
     describe("Model Lists", () => {
         it("should have all model IDs", () => {
-            expect(ALL_MODEL_IDS.length).toBe(12)
+            expect(ALL_MODEL_IDS.length).toBe(13)
         })
 
         it("should have correct image model IDs", () => {
-            expect(IMAGE_MODEL_IDS.length).toBe(9)
+            expect(IMAGE_MODEL_IDS.length).toBe(10)
             expect(IMAGE_MODEL_IDS).toContain("zimage")
             expect(IMAGE_MODEL_IDS).toContain("gptimage")
+            expect(IMAGE_MODEL_IDS).toContain("flux")
             expect(IMAGE_MODEL_IDS).not.toContain("veo")
         })
 
@@ -201,10 +205,31 @@ describe("Model Constraints", () => {
     })
 
     describe("ZImage", () => {
-        it("should have 4MP limit", () => {
+        it("should have 2.36MP limit (SPAN upscaler restriction)", () => {
             const model = getModel("zimage")!
-            expect(model.constraints.maxPixels).toBe(4_194_304)
-            expect(model.constraints.maxDimension).toBe(4096)
+            // SPAN upscaler limit: 768×768 base × 2 = max 1536×1536 square (2,359,296 pixels)
+            expect(model.constraints.maxPixels).toBe(2_359_296)
+            expect(model.constraints.maxDimension).toBe(2048) // Max single dimension (e.g., 2048×1152)
+        })
+
+        it("should have all presets under 2.36MP limit and step-aligned", () => {
+            const ratios = getModelAspectRatios("zimage")!
+            const step = 32
+            const maxPixels = 2_359_296
+
+            for (const ratio of ratios) {
+                const pixels = ratio.width * ratio.height
+                // All presets should be at or under the limit
+                expect(pixels).toBeLessThanOrEqual(maxPixels)
+                // All dimensions should be aligned to step 32
+                expect(ratio.width % step).toBe(0)
+                expect(ratio.height % step).toBe(0)
+            }
+        })
+
+        it("should only support SD and HD tiers (not 2K)", () => {
+            const model = getModel("zimage")!
+            expect(model.constraints.supportedTiers).toEqual(["sd", "hd"])
         })
     })
 
@@ -214,6 +239,44 @@ describe("Model Constraints", () => {
             expect(model.constraints.maxPixels).toBe(10_000_000)
             expect(model.constraints.maxDimension).toBe(4096)
             expect(model.constraints.minDimension).toBe(1024)
+        })
+    })
+
+    describe("Flux Schnell", () => {
+        it("should have 589,824 pixel limit (768x768 cap)", () => {
+            const model = getModel("flux")!
+            expect(model.constraints.maxPixels).toBe(589_824)
+            expect(model.constraints.maxDimension).toBe(768)
+        })
+
+        it("should have step 8 for dimension alignment", () => {
+            const model = getModel("flux")!
+            expect(model.constraints.step).toBe(8)
+        })
+
+        it("should support negative prompts", () => {
+            const model = getModel("flux")!
+            expect(model.supportsNegativePrompt).toBe(true)
+        })
+
+        it("should only support SD tier", () => {
+            const model = getModel("flux")!
+            expect(model.constraints.supportedTiers).toEqual(["sd"])
+        })
+
+        it("should have all presets under 589,824 pixel limit and step-aligned to 8", () => {
+            const ratios = getModelAspectRatios("flux")!
+            const step = 8
+            const maxPixels = 589_824
+
+            for (const ratio of ratios) {
+                const pixels = ratio.width * ratio.height
+                // All presets should be at or under the limit
+                expect(pixels).toBeLessThanOrEqual(maxPixels)
+                // All dimensions should be aligned to step 8
+                expect(ratio.width % step).toBe(0)
+                expect(ratio.height % step).toBe(0)
+            }
         })
     })
 })
@@ -255,6 +318,16 @@ describe("Aspect Ratio Presets", () => {
             if (ratio.value === "16:9") {
                 expect(ratio.width).toBe(3840)
             }
+        }
+    })
+
+    it("should have Flux Schnell presets within 768px limit", () => {
+        const ratios = getModelAspectRatios("flux")!
+        expect(ratios).not.toBeNull()
+        expect(ratios.length).toBeGreaterThan(0)
+        for (const ratio of ratios) {
+            expect(ratio.width).toBeLessThanOrEqual(768)
+            expect(ratio.height).toBeLessThanOrEqual(768)
         }
     })
 })

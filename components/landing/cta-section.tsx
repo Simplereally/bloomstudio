@@ -5,7 +5,7 @@ import { ScrollReveal } from "./scroll-reveal"
 
 export function CtaSection() {
     return (
-        <section id="get-started" className="py-24 xl:py-28 2xl:py-32 relative">
+        <section id="get-started" className="py-24 xl:py-28 2xl:py-32 3xl:py-40 4xl:py-48 5xl:py-56 relative">
             <div className="container mx-auto px-6">
                 <ScrollReveal>
                 <div className="max-w-4xl mx-auto text-center rounded-3xl bg-gradient-to-br from-white/5 via-card/80 to-purple-500/5 border border-white/10 p-12 sm:p-16 relative overflow-hidden">
@@ -18,7 +18,7 @@ export function CtaSection() {
                             <p className="text-lg text-muted-foreground mb-10 max-w-2xl mx-auto">
                                 Get 24 hours of full, unrestricted access. Every model, every feature, no limits.
                                 <br />
-                                <span className="text-foreground/80">Then just $5/month to keep creating.</span>
+                                <span className="text-foreground/80">Then just $3/month to keep creating.</span>
                             </p>
                             <div className="flex flex-col sm:flex-row gap-4 justify-center">
                                 <Link href="/studio">

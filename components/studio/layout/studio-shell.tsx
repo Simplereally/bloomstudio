@@ -106,6 +106,14 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
         setIsLocalDev(isLocalhost())
     }, [])
 
+    // Prevent any scroll at the root level for fixed viewport pages like Studio
+    React.useEffect(() => {
+        document.body.setAttribute("data-fixed-viewport", "true")
+        return () => {
+            document.body.removeAttribute("data-fixed-viewport")
+        }
+    }, [])
+
     // Subscription status for post-upgrade verification
     const { status: subscriptionStatus } = useSubscriptionStatus()
 

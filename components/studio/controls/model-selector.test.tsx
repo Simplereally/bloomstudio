@@ -236,4 +236,78 @@ describe("ModelSelector", () => {
             expect(screen.getByText("Model")).toBeInTheDocument()
         })
     })
+
+    describe("Group separators", () => {
+        const mixedModels: ModelDefinition[] = [
+            {
+                id: "turbo",
+                displayName: "SDXL Turbo",
+                type: "image",
+                icon: "zap",
+                description: "Fastest generation",
+                constraints: {
+                    maxPixels: 589_825,
+                    minPixels: 0,
+                    minDimension: 64,
+                    maxDimension: 768,
+                    step: 64,
+                    defaultDimensions: { width: 768, height: 768 },
+                    dimensionsEnabled: true,
+                },
+                aspectRatios: [],
+                supportsNegativePrompt: false,
+            },
+            {
+                id: "seedance",
+                displayName: "Seedance",
+                type: "video",
+                icon: "video",
+                description: "Video generation",
+                constraints: {
+                    maxPixels: Infinity,
+                    minPixels: 0,
+                    minDimension: 720,
+                    maxDimension: 1920,
+                    step: 1,
+                    defaultDimensions: { width: 1920, height: 1080 },
+                    dimensionsEnabled: false,
+                },
+                aspectRatios: [],
+                supportsNegativePrompt: false,
+            },
+        ]
+
+        it("shows group separators when both image and video models are present (compact)", () => {
+            render(<ModelSelector {...defaultProps} models={mixedModels} selectedModel="turbo" />)
+
+            expect(screen.getByTestId("model-group-image-models")).toBeInTheDocument()
+            expect(screen.getByTestId("model-group-video-models")).toBeInTheDocument()
+            expect(screen.getByText("Image Models")).toBeInTheDocument()
+            expect(screen.getByText("Video Models")).toBeInTheDocument()
+        })
+
+        it("shows group separators when both image and video models are present (cards)", () => {
+            render(<ModelSelector {...defaultProps} models={mixedModels} selectedModel="turbo" variant="cards" />)
+
+            expect(screen.getByTestId("model-group-image-models")).toBeInTheDocument()
+            expect(screen.getByTestId("model-group-video-models")).toBeInTheDocument()
+            expect(screen.getByText("Image Models")).toBeInTheDocument()
+            expect(screen.getByText("Video Models")).toBeInTheDocument()
+        })
+
+        it("does not show separators when only image models are present", () => {
+            render(<ModelSelector {...defaultProps} />)
+
+            expect(screen.queryByTestId("model-group-image-models")).not.toBeInTheDocument()
+            expect(screen.queryByTestId("model-group-video-models")).not.toBeInTheDocument()
+        })
+
+        it("does not show separators when only video models are present", () => {
+            const videoOnlyModels = mixedModels.filter(m => m.type === "video")
+            render(<ModelSelector {...defaultProps} models={videoOnlyModels} selectedModel="seedance" />)
+
+            expect(screen.queryByTestId("model-group-image-models")).not.toBeInTheDocument()
+            expect(screen.queryByTestId("model-group-video-models")).not.toBeInTheDocument()
+        })
+    })
 })

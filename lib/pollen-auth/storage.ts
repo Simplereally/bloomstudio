@@ -15,6 +15,21 @@ import {
 } from "./constants";
 
 /**
+ * Custom event name dispatched when pollen auth storage changes.
+ * This is used to notify same-tab listeners (the native storage event only fires cross-tab).
+ */
+export const POLLEN_AUTH_CHANGED_EVENT = "pollen-auth-changed";
+
+/**
+ * Dispatches the custom auth changed event if in browser environment.
+ */
+function dispatchAuthChangedEvent(): void {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(POLLEN_AUTH_CHANGED_EVENT));
+  }
+}
+
+/**
  * Metadata stored alongside the API key.
  */
 export interface PollenAuthMetadata {
@@ -69,6 +84,9 @@ export function storeApiKey(
       STORAGE_AUTHORIZED_AT_KEY,
       String(authorizedAt)
     );
+
+    // Dispatch custom event to notify same-tab listeners
+    dispatchAuthChangedEvent();
 
     return true;
   } catch (error) {
@@ -143,6 +161,10 @@ export function clearStoredAuth(): boolean {
     window.localStorage.removeItem(STORAGE_KEY);
     window.localStorage.removeItem(STORAGE_EXPIRY_KEY);
     window.localStorage.removeItem(STORAGE_AUTHORIZED_AT_KEY);
+
+    // Dispatch custom event to notify same-tab listeners
+    dispatchAuthChangedEvent();
+
     return true;
   } catch (error) {
     console.error("[PollenAuth] Failed to clear stored auth:", error);

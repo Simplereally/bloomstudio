@@ -7,7 +7,7 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
-import { Crown, Sparkles, Clock } from "lucide-react"
+import { Crown, Sparkles, Clock, ArrowUpCircle } from "lucide-react"
 import { UpgradeModal } from "@/components/studio/upgrade-modal"
 import { memo } from "react"
 import { SubscriptionStatus } from "@/hooks/use-subscription-status"
@@ -115,26 +115,36 @@ export const SubscriptionBadgeView = memo(function SubscriptionBadgeView({
 
     // Default or Expired
     return (
+
         <>
             <Tooltip>
                 <TooltipTrigger asChild>
                     <Badge
-                        variant="secondary"
+                        variant="outline"
                         onClick={onUpgradeClick}
                         className={cn(
-                            "cursor-pointer font-bold px-2 py-0.5",
-                            "hover:bg-primary hover:text-primary-foreground transition-all duration-300",
-                            "animate-pulse hover:animate-none"
+                            "cursor-pointer font-bold px-2.5 py-0.5",
+                            "bg-primary/5 border-primary/30 text-primary",
+                            "hover:bg-primary/15 hover:border-primary/60 transition-all duration-300",
+                            "hover:scale-105 active:scale-95",
+                            "shadow-sm hover:shadow-[0_0_12px_-3px_rgba(var(--primary),0.2)]"
                         )}
                     >
+                        <ArrowUpCircle className="w-3 h-3 mr-1.5" />
                         UPGRADE
                     </Badge>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="max-w-[200px] p-3">
                     <div className="space-y-1">
-                        <p className="font-bold text-primary">Upgrade to Pro</p>
+                        <p className="font-bold flex items-center gap-1.5 text-primary">
+                            <ArrowUpCircle className="w-3.5 h-3.5" />
+                            Upgrade to Pro
+                        </p>
                         <p className="text-xs text-muted-foreground">
-                            Your trial has ended. Upgrade to Pro for just $5/mo to continue generating images.
+                            Unlock full access and unlimited possibilities for just $3/mo.
+                        </p>
+                        <p className="text-[10px] font-medium text-primary/80 pt-1">
+                            Click to upgrade now
                         </p>
                     </div>
                 </TooltipContent>
@@ -145,4 +155,5 @@ export const SubscriptionBadgeView = memo(function SubscriptionBadgeView({
             />
         </>
     )
+
 })

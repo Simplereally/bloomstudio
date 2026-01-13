@@ -90,6 +90,10 @@ export const getCurrentUser = query({
 })
 
 /**
+ * @deprecated BYOP Migration - This function is deprecated.
+ * API keys are now stored client-side in localStorage via the BYOP flow.
+ * See lib/pollen-auth for the new implementation.
+ * 
  * Set the Pollinations API key for the current user.
  * The key should be encrypted before calling this mutation.
  */
@@ -122,6 +126,10 @@ export const setPollinationsApiKey = mutation({
 })
 
 /**
+ * @deprecated BYOP Migration - This function is deprecated.
+ * API keys are now stored client-side in localStorage via the BYOP flow.
+ * See lib/pollen-auth for the new implementation.
+ * 
  * Get the encrypted Pollinations API key for the current user.
  * The key must be decrypted on the client/server side.
  */
@@ -143,6 +151,11 @@ export const getPollinationsApiKey = query({
 })
 
 /**
+ * @deprecated BYOP Migration - This function is deprecated.
+ * API keys are now passed directly from the client via the BYOP flow.
+ * Batch processing now receives the API key as a parameter.
+ * See convex/batchProcessor.ts for the new implementation.
+ * 
  * Internal query to get a user's encrypted API key by their Clerk ID.
  * Used by internal actions like batch processing.
  */
@@ -161,6 +174,9 @@ export const getEncryptedApiKeyByClerkId = internalQuery({
 })
 
 /**
+ * @deprecated BYOP Migration - This function is deprecated.
+ * Use the deauthorize() function from lib/pollen-auth instead.
+ * 
  * Remove the Pollinations API key for the current user.
  */
 export const removePollinationsApiKey = mutation({

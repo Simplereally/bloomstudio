@@ -77,7 +77,9 @@ export const GalleryThumbnail = React.memo(function GalleryThumbnail({
 
   // Reset loaded state when image changes to trigger animation again
   React.useEffect(() => {
-    setIsLoaded(false);
+    // Only reset video error on URL change, keep isLoaded true to prevent flashing/grey state
+    // on Signed URL refreshes or hydration updates. 
+    // New images get a fresh component instance (via key=id), so they start as isLoaded=false naturally.
     setVideoError(false);
   }, [image.url]);
 
@@ -149,8 +151,14 @@ export const GalleryThumbnail = React.memo(function GalleryThumbnail({
             isLoaded ? "opacity-100 scale-100" : "opacity-0 scale-105 blur-sm"
           )}
           onLoad={() => setIsLoaded(true)}
+          // Set loaded on error to show alt text/broken icon instead of eternal loading skeleton
+          onError={() => setIsLoaded(true)}
           sizes={size === "lg" ? "128px" : size === "md" ? "96px" : "64px"}
           unoptimized
+          // Virtualization handles the "when to render" logic.
+          // We must eager load to prevent race conditions with IntersectionObserver
+          // inside the transformed virtual rows which can cause images to stick in loading state.
+          loading="eager"
         />
       )}
 

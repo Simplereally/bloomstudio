@@ -32,6 +32,12 @@ describe("GalleryThumbnail", () => {
         expect(screen.getByTestId("gallery-thumbnail")).toBeInTheDocument()
     })
 
+    it("uses eager loading strategy", () => {
+        render(<GalleryThumbnail image={mockImage} />)
+        const img = screen.getByRole("img")
+        expect(img).toHaveAttribute("loading", "eager")
+    })
+
     it("calls onClick when clicked (not in selection mode)", async () => {
         const onClick = vi.fn()
         render(<GalleryThumbnail image={mockImage} onClick={onClick} />)

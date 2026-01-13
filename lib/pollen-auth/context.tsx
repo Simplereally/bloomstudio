@@ -33,6 +33,7 @@ import {
   getStoredMetadata,
   isAuthExpired as checkIsAuthExpired,
   getDaysUntilExpiry as calcDaysUntilExpiry,
+  POLLEN_AUTH_CHANGED_EVENT,
   type PollenAuthMetadata,
 } from "./storage";
 
@@ -200,7 +201,8 @@ export function PollenAuthProvider({ children }: PollenAuthProviderProps) {
     loadAuthState();
   }, [loadAuthState]);
 
-  // Listen for storage changes from other tabs
+  // Listen for storage changes from other tabs (native storage event)
+  // and same-tab changes (custom event dispatched by storage utilities)
   useEffect(() => {
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === STORAGE_KEY || event.key === null) {
@@ -209,8 +211,17 @@ export function PollenAuthProvider({ children }: PollenAuthProviderProps) {
       }
     };
 
+    // Handle same-tab storage changes via custom event
+    const handleAuthChanged = () => {
+      loadAuthState();
+    };
+
     window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
+    window.addEventListener(POLLEN_AUTH_CHANGED_EVENT, handleAuthChanged);
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener(POLLEN_AUTH_CHANGED_EVENT, handleAuthChanged);
+    };
   }, [loadAuthState]);
 
   // Memoize context value to prevent unnecessary re-renders

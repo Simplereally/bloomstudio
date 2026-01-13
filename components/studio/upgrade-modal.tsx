@@ -35,7 +35,7 @@ interface UpgradeModalProps {
 }
 
 const proFeatures = [
-    { icon: Images, label: "900", description: "NanoBanana images/month" },
+    { icon: Images, label: "180", description: "NanoBanana images/month" },
     { icon: Palette, label: "10+", description: "AI models included" },
     { icon: RefreshCw, label: "Daily", description: "quota refresh" },
 ]
@@ -85,11 +85,12 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="sm:max-w-md p-0 overflow-hidden border border-border/50 bg-card shadow-2xl">
+            <DialogContent className="sm:max-w-md p-0 overflow-hidden border border-border/50 bg-card shadow-2xl flex flex-col gap-0 max-h-[calc(100vh-4rem)]">
                 {/* Subtle accent line at top */}
                 <div className="absolute top-0 left-0 right-0 h-1 w-full bg-gradient-to-r from-transparent via-primary/60 to-transparent z-10" />
 
-                <div className="px-6 pt-5 pb-4">
+                {/* Header - Fixed at top */}
+                <div className="flex-shrink-0 px-6 pt-6 pb-2">
                     <DialogHeader className="space-y-2">
                         <p className="text-[10px] font-medium tracking-widest uppercase text-primary/80">
                             Trial Ended
@@ -101,21 +102,24 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
                             Unlock unlimited creative potential with Pro.
                         </DialogDescription>
                     </DialogHeader>
+                </div>
 
+                {/* Body - Scrollable */}
+                <div className="flex-1 overflow-y-auto px-6 pb-4">
                     {/* Feature grid */}
-                    <div className="mt-5 grid grid-cols-3 gap-2">
+                    <div className="mt-2 grid grid-cols-3 gap-2">
                         {proFeatures.map((feature) => {
                             const Icon = feature.icon
                             return (
                                 <div
                                     key={feature.label}
-                                    className="flex flex-col items-center text-center py-3 px-2 rounded-lg bg-muted/30 border border-border/30"
+                                    className="flex flex-col items-center text-center py-2.5 px-2 rounded-lg bg-muted/30 border border-border/30"
                                 >
-                                    <Icon className="w-4 h-4 text-primary/70 mb-2" strokeWidth={1.5} />
+                                    <Icon className="w-4 h-4 text-primary/70 mb-1.5" strokeWidth={1.5} />
                                     <p className="text-base font-semibold text-foreground tabular-nums leading-none">
                                         {feature.label}
                                     </p>
-                                    <p className="text-xs text-muted-foreground mt-1">
+                                    <p className="text-[11px] text-muted-foreground mt-1">
                                         {feature.description}
                                     </p>
                                 </div>
@@ -124,9 +128,9 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
                     </div>
 
                     {/* Pricing */}
-                    <div className="mt-5 text-center">
+                    <div className="mt-4 text-center">
                         <div className="flex items-baseline justify-center gap-1">
-                            <span className="text-3xl font-semibold tracking-tight text-green-600">$5</span>
+                            <span className="text-3xl font-semibold tracking-tight text-green-600">$3</span>
                             <span className="text-sm text-muted-foreground">/month</span>
                         </div>
                         <p className="mt-1.5 text-xs text-muted-foreground">
@@ -169,8 +173,8 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
                     </div>
                 </div>
 
-                {/* Footer */}
-                <div className="px-6 py-3 bg-muted/20 border-t border-border/30">
+                {/* Footer - Fixed at bottom */}
+                <div className="flex-shrink-0 px-6 py-3 bg-muted/20 border-t border-border/30">
                     <p className="text-center text-xs text-muted-foreground">
                         Cancel anytime · Powered by{" "}
                         <a
