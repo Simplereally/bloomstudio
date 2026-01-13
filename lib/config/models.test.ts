@@ -111,7 +111,7 @@ describe("Model Registry", () => {
             expect(zimageConstraints).toBeDefined()
             // Updated for SPAN upscaler limit (768×768 base × 2 = 1536×1536 max)
             expect(zimageConstraints!.maxPixels).toBe(2_359_296)
-            expect(zimageConstraints!.step).toBe(32)
+            expect(zimageConstraints!.step).toBe(8)
         })
 
         it("should return undefined for unknown models", () => {
@@ -212,16 +212,35 @@ describe("Model Constraints", () => {
             expect(model.constraints.maxDimension).toBe(2048) // Max single dimension (e.g., 2048×1152)
         })
 
+        it("should have correct dimensions for common aspect ratios (1920x1080 for 16:9, 1536x1536 for 1:1)", () => {
+            const ratios = getModelAspectRatios("zimage")!
+
+            const ratio169 = ratios.find((r) => r.value === "16:9")
+            expect(ratio169).toBeDefined()
+            expect(ratio169?.width).toBe(1920)
+            expect(ratio169?.height).toBe(1080)
+
+            const ratio916 = ratios.find((r) => r.value === "9:16")
+            expect(ratio916).toBeDefined()
+            expect(ratio916?.width).toBe(1080)
+            expect(ratio916?.height).toBe(1920)
+
+            const ratio11 = ratios.find((r) => r.value === "1:1")
+            expect(ratio11).toBeDefined()
+            expect(ratio11?.width).toBe(1536)
+            expect(ratio11?.height).toBe(1536)
+        })
+
         it("should have all presets under 2.36MP limit and step-aligned", () => {
             const ratios = getModelAspectRatios("zimage")!
-            const step = 32
+            const step = 8
             const maxPixels = 2_359_296
 
             for (const ratio of ratios) {
                 const pixels = ratio.width * ratio.height
                 // All presets should be at or under the limit
                 expect(pixels).toBeLessThanOrEqual(maxPixels)
-                // All dimensions should be aligned to step 32
+                // All dimensions should be aligned to step 8
                 expect(ratio.width % step).toBe(0)
                 expect(ratio.height % step).toBe(0)
             }
@@ -261,7 +280,7 @@ describe("Model Constraints", () => {
 
         it("should only support SD and HD tiers", () => {
             const model = getModel("flux")!
-            expect(model.constraints.supportedTiers).toEqual(["sd", "hd"])
+            expect(model.constraints.supportedTiers).toEqual(["sd"])
         })
 
         it("should have all presets under 589,824 pixel limit and step-aligned to 8", () => {

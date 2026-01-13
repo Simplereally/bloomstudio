@@ -145,6 +145,36 @@ describe("useAspectRatioDimensions", () => {
             expect(landscape?.height).toBe(1080)
         })
 
+        it("should return correct Z-Image dimensions for HD tier (1920x1080 16:9, 1536x1536 1:1)", () => {
+            const zimageConstraints: ModelConstraints = {
+                maxPixels: 2_359_296,
+                minPixels: 0,
+                minDimension: 64,
+                maxDimension: 2048,
+                step: 8,
+                defaultDimensions: { width: 1536, height: 1536 },
+                dimensionsEnabled: true,
+                supportedTiers: ["sd", "hd"],
+            }
+
+            const { result } = renderHook(() =>
+                useAspectRatioDimensions({
+                    tier: "hd",
+                    constraints: zimageConstraints,
+                })
+            )
+
+            const options = result.current.aspectRatioOptions
+
+            const landscape = options.find(o => o.value === "16:9")
+            expect(landscape?.width).toBe(1920)
+            expect(landscape?.height).toBe(1080)
+
+            const square = options.find(o => o.value === "1:1")
+            expect(square?.width).toBe(1536)
+            expect(square?.height).toBe(1536)
+        })
+
         it("should maintain original labels and icons from available ratios", () => {
             const { result } = renderHook(() =>
                 useAspectRatioDimensions({
