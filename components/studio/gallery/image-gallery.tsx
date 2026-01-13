@@ -579,7 +579,7 @@ export const ImageGallery = React.memo(function ImageGallery({
                                             Actions
                                         </Button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-48">
+                                    <DropdownMenuContent align="end" className="w-48" collisionPadding={16}>
                                         {onMakeSelectedPublic && (
                                             <DropdownMenuItem
                                                 onClick={onMakeSelectedPublic}

@@ -6,12 +6,11 @@
  * This file uses the Node.js runtime to enable:
  * - AWS SDK for R2 uploads
  * - Full Node.js Buffer support
- * - Node.js crypto for API key decryption
  * 
- * The action directly calls Pollinations API and uploads to R2,
- * without needing to go through the Next.js API route.
+ * BYOP (Bring Your Own Pollen) Flow:
+ * The action reads the API key from the batch job record (stored when job was created).
+ * No server-side key decryption is needed.
  * 
- * Uses the user's stored (encrypted) Pollinations API key from Convex.
  * Implements retry logic with exponential backoff for transient failures.
  */
 
@@ -19,7 +18,6 @@ import { v } from "convex/values"
 import { internal } from "./_generated/api"
 import { internalAction } from "./_generated/server"
 import {
-    decryptApiKey,
     buildPollinationsUrl,
     classifyApiError,
     generateR2Key,
@@ -116,33 +114,17 @@ export const processBatchItem = internalAction({
 
         console.log(`${logger} Processing item ${args.itemIndex + 1}/${batchJob.totalCount} for batch ${args.batchJobId}`)
 
-        // Get the user's encrypted API key from the database
-        const encryptedApiKey = await ctx.runQuery(internal.users.getEncryptedApiKeyByClerkId, {
-            clerkId: batchJob.ownerId,
-        })
+        // Use the API key stored in the batch job (BYOP flow)
+        const pollinationsApiKey = batchJob.apiKey
 
-        if (!encryptedApiKey) {
-            console.error(`${logger} User has no Pollinations API key configured`)
+        // Validate API key
+        if (!pollinationsApiKey || pollinationsApiKey.trim().length === 0) {
+            console.error(`${logger} No Pollinations API key in batch job`)
             await ctx.runMutation(internal.batchGeneration.recordBatchItemResult, {
                 batchJobId: args.batchJobId,
                 itemIndex: args.itemIndex,
                 success: false,
-                errorMessage: "No Pollinations API key configured. Please add your API key in settings.",
-            })
-            return
-        }
-
-        // Decrypt the API key
-        let pollinationsApiKey: string
-        try {
-            pollinationsApiKey = decryptApiKey(encryptedApiKey)
-        } catch (error) {
-            console.error(`${logger} Failed to decrypt API key:`, error)
-            await ctx.runMutation(internal.batchGeneration.recordBatchItemResult, {
-                batchJobId: args.batchJobId,
-                itemIndex: args.itemIndex,
-                success: false,
-                errorMessage: "Failed to decrypt API key. Please re-enter your API key in settings.",
+                errorMessage: "No Pollinations API key configured. Please connect to Pollinations first.",
             })
             return
         }

@@ -85,14 +85,26 @@ export function useImageModels(
     const { type = "image" } = options
 
     // Memoize the model list to prevent unnecessary re-renders
+    // Sort alphabetically by displayName, with image models first then video models
     const models = useMemo(() => {
         const allModels = Object.values(MODEL_REGISTRY)
 
-        if (type === "all") {
-            return allModels
+        // Sort function: first by type (image before video), then alphabetically by displayName
+        const sortModels = (a: ModelDefinition, b: ModelDefinition) => {
+            // Type priority: image = 0, video = 1
+            const typeOrder = { image: 0, video: 1 }
+            const typeComparison = typeOrder[a.type] - typeOrder[b.type]
+            if (typeComparison !== 0) return typeComparison
+
+            // Alphabetically by displayName within the same type
+            return a.displayName.localeCompare(b.displayName)
         }
 
-        return allModels.filter(model => model.type === type)
+        if (type === "all") {
+            return [...allModels].sort(sortModels)
+        }
+
+        return allModels.filter(model => model.type === type).sort(sortModels)
     }, [type])
 
     // Memoize the getModel function

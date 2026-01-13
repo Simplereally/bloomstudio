@@ -6,8 +6,10 @@
  * Manages batch image generation jobs using Convex.
  * Provides reactive state for active batches and methods to start/cancel jobs.
  * 
- * Note: Batch processing now happens entirely on the server via Convex scheduled
- * functions. The client only needs to start the batch and observe progress.
+ * BYOP (Bring Your Own Pollen) Flow:
+ * - startBatch accepts an API key parameter from the caller
+ * - The API key is passed to the Convex mutation which stores it with the batch job
+ * - Batch processing happens entirely on the server using the stored key
  */
 
 import { api } from "@/convex/_generated/api"
@@ -69,8 +71,8 @@ export interface BatchJob {
  * Return type for useBatchGeneration hook
  */
 export interface UseBatchGenerationReturn {
-    /** Start a new batch generation job */
-    startBatch: (params: BatchGenerationParams, count: number) => Promise<Id<"batchJobs">>
+    /** Start a new batch generation job (apiKey must be provided from BYOP context) */
+    startBatch: (params: BatchGenerationParams, count: number, apiKey: string) => Promise<Id<"batchJobs">>
     /** Cancel an active batch job */
     cancelBatch: (batchJobId: Id<"batchJobs">) => Promise<void>
     /** Pause an active batch job */
@@ -130,11 +132,12 @@ export function useBatchGeneration(): UseBatchGenerationReturn {
     const isLoading = activeBatchesQuery === undefined
 
     const startBatch = React.useCallback(
-        async (params: BatchGenerationParams, count: number): Promise<Id<"batchJobs">> => {
+        async (params: BatchGenerationParams, count: number, apiKey: string): Promise<Id<"batchJobs">> => {
             // The server will handle all processing via scheduled functions
             return await startBatchMutation({
                 count,
                 generationParams: params,
+                apiKey,
             })
         },
         [startBatchMutation]

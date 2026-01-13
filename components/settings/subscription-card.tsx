@@ -6,7 +6,7 @@ import { api } from "@/convex/_generated/api"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Check, Sparkles, Zap, Loader2 } from "lucide-react"
+import { Check, Zap, Loader2 } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
 import { UpgradeModal } from "@/components/studio/upgrade-modal"
@@ -39,12 +39,7 @@ export function SubscriptionCard() {
 
     return (
         <>
-            <Card className="border-border/50 bg-background/50 backdrop-blur-sm shadow-sm relative overflow-hidden">
-                {isPro && (
-                    <div className="absolute top-0 right-0 p-3 opacity-10 pointer-events-none">
-                        <Sparkles className="w-32 h-32 fill-primary text-primary" />
-                    </div>
-                )}
+            <Card className="border-border/50 bg-background/50 backdrop-blur-sm shadow-sm overflow-hidden">
                 
                 <CardHeader>
                     <div className="flex items-center justify-between">

@@ -30,13 +30,20 @@ export function ModelsSection() {
   const videoModels = allModels.filter((m) => m.type === "video");
 
   return (
-    <section id="models" className="py-24 xl:py-28 2xl:py-32 relative overflow-hidden">
+    /**
+     * Responsive Layout Strategy:
+     * - Mobile to 2xl: Standard vertical padding creates natural section breaks
+     * - 3xl+ (1440p and above): Section fills full viewport height (minus header)
+     *   with content vertically centered to prevent next section from "leaking"
+     *   into view when navigating via anchor links
+     */
+    <section id="models" className="pt-16 pb-24 xl:pt-20 xl:pb-28 2xl:pt-24 2xl:pb-32 3xl:py-40 4xl:py-48 5xl:py-56 3xl:min-h-[calc(100vh-4rem)] 4xl:min-h-[calc(100vh-4rem)] 5xl:min-h-[calc(100vh-4rem)] 3xl:flex 3xl:flex-col 3xl:justify-center relative overflow-hidden">
       {/* Background Decorations */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-primary/5 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="container mx-auto px-6 relative z-10">
         <ScrollReveal>
-          <div className="text-center mb-12">
+          <div className="text-center mb-12 3xl:mb-16 4xl:mb-20">
             <h2 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground mb-6 tracking-tight">
               Every model, <span className="text-primary">one subscription</span>.
             </h2>
@@ -52,7 +59,7 @@ export function ModelsSection() {
             <div className="absolute inset-0 bg-primary/10 blur-[40px] rounded-[32px] pointer-events-none transition-colors duration-500" />
 
             {/* Main Card */}
-            <div className="relative rounded-[32px] bg-[#0A0A0A]/80 border border-white/10 shadow-2xl backdrop-blur-sm overflow-hidden p-6 md:p-10 pt-14 md:pt-16">
+            <div className="relative rounded-[32px] bg-[#0A0A0A]/80 border border-white/10 shadow-2xl backdrop-blur-sm overflow-hidden p-6 md:p-10 3xl:p-14 4xl:p-16 pt-14 md:pt-16 3xl:pt-20 4xl:pt-24">
               {/* Card Header Badge - Centered without translate to avoid blur */}
               <div className="absolute top-0 left-0 right-0 flex justify-center">
                 <div className="bg-[#0D0D0D] px-8 py-3 border-x border-b border-white/10 rounded-b-2xl shadow-xl">
@@ -60,7 +67,7 @@ export function ModelsSection() {
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-10 lg:gap-16">
+              <div className="grid md:grid-cols-2 gap-10 lg:gap-16 3xl:gap-20 4xl:gap-24">
                 {/* Image Models Column */}
                 <div className="space-y-6">
                   <div className="flex flex-col items-center text-center border-b border-white/5 pb-6">

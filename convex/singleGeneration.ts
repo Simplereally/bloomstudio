@@ -1,14 +1,15 @@
 /**
  * Single Image Generation Functions
  * 
- * Server-side image generation using the user's stored Pollinations API key.
+ * Server-side image generation using the client-provided Pollinations API key.
  * This is a "fire and forget" pattern - the generation happens on Convex servers.
  * 
- * Flow:
- * 1. Client calls startGeneration mutation
- * 2. Mutation creates a pending generation record and schedules processGeneration
- * 3. processGeneration action (in singleGenerationProcessor.ts) generates image
- * 4. Client observes the generation record status to know when complete
+ * BYOP (Bring Your Own Pollen) Flow:
+ * 1. Client obtains API key from PollenAuth context (stored in localStorage)
+ * 2. Client calls startGeneration mutation with the API key
+ * 3. Mutation creates a pending generation record and schedules processGeneration with the key
+ * 4. processGeneration action (in singleGenerationProcessor.ts) generates image using the key
+ * 5. Client observes the generation record status to know when complete
  */
 
 import { ConvexError, v } from "convex/values"
@@ -50,11 +51,21 @@ const generationParamsValidator = v.object({
 export const startGeneration = mutation({
     args: {
         generationParams: generationParamsValidator,
+        /** The Pollinations API key from the client (BYOP flow) */
+        apiKey: v.string(),
     },
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity()
         if (!identity) {
             throw new Error("Not authenticated")
+        }
+
+        // Validate API key is provided
+        if (!args.apiKey || args.apiKey.trim().length === 0) {
+            throw new ConvexError({
+                code: "MISSING_API_KEY",
+                message: "Pollinations API key is required. Please connect to Pollinations first.",
+            })
         }
 
         // Check if user can generate (has active subscription or is in trial)
@@ -77,9 +88,10 @@ export const startGeneration = mutation({
             updatedAt: now,
         })
 
-        // Schedule the processing action to run immediately
+        // Schedule the processing action to run immediately with the API key
         await ctx.scheduler.runAfter(0, internal.singleGenerationProcessor.processGeneration, {
             generationId,
+            apiKey: args.apiKey,
         })
 
         return generationId

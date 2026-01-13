@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import SettingsPage from "./page"
@@ -66,6 +67,25 @@ vi.mock("sonner", () => ({
   },
 }))
 
+// Mock Pollen Auth - provides default unauthenticated state
+vi.mock("@/lib/pollen-auth", () => ({
+  usePollenAuth: () => ({
+    isAuthorized: false,
+    isExpired: false,
+    isExpiringSoon: false,
+    daysUntilExpiry: null,
+    apiKey: null,
+    authorizedAt: null,
+    expiresAt: null,
+    authorize: vi.fn(),
+    disconnect: vi.fn(),
+  }),
+  PollenAuthProvider: ({ children }: { children: React.ReactNode }) => children,
+  PollenAuthContext: {
+    Provider: ({ children }: { children: React.ReactNode }) => children,
+  },
+}))
+
 // Mock Framer Motion
 type MotionDivProps = {
   children: React.ReactNode
@@ -121,39 +141,39 @@ describe("SettingsPage", () => {
 
   it("switches to Appearance view", async () => {
     render(<SettingsPage />)
-    
+
     // Click Appearance
     const appearanceBtn = screen.getByRole("button", { name: /Appearance/i })
     fireEvent.click(appearanceBtn)
 
     await waitFor(() => {
-        expect(screen.getByText("Customize the look and feel of your experience.")).toBeInTheDocument()
-        expect(screen.getByText("Dark")).toBeInTheDocument()
+      expect(screen.getByText("Customize the look and feel of your experience.")).toBeInTheDocument()
+      expect(screen.getByText("Dark")).toBeInTheDocument()
     })
   })
 
   it("switches to Subscription view", async () => {
     render(<SettingsPage />)
-    
+
     // Click Subscription
     const subBtn = screen.getByRole("button", { name: /Subscription/i })
     fireEvent.click(subBtn)
 
     await waitFor(() => {
-        expect(screen.getByText("Manage your plan and billing preferences.")).toBeInTheDocument()
+      expect(screen.getByText("Manage your plan and billing preferences.")).toBeInTheDocument()
     })
   })
 
   it("switches to API view and shows Star Repo", async () => {
     render(<SettingsPage />)
-    
+
     const apiBtn = screen.getByRole("button", { name: /Pollinations API Key/i })
     fireEvent.click(apiBtn)
 
     await waitFor(() => {
-        expect(screen.getByLabelText("Pollinations API Key")).toBeInTheDocument()
-        // Check for Star Repo card content
-        expect(screen.getByText("Boost Your Limits")).toBeInTheDocument()
+      expect(screen.getByText("Pollinations Connection")).toBeInTheDocument()
+      // Check for Star Repo card content
+      expect(screen.getByText("Boost Your Limits")).toBeInTheDocument()
     })
   })
 })

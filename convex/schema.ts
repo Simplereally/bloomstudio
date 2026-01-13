@@ -21,7 +21,13 @@ export default defineSchema({
         username: v.optional(v.string()),
         /** User's profile picture URL from Clerk identity */
         pictureUrl: v.optional(v.string()),
-        /** Encrypted Pollinations API key */
+        /**
+         * @deprecated BYOP Migration - This field is deprecated.
+         * API keys are now stored client-side in localStorage via the BYOP (Bring Your Own Pollen) flow.
+         * See lib/pollen-auth for the new implementation.
+         * This field is kept for backward compatibility during migration.
+         * TODO: Remove this field once all users have migrated to BYOP.
+         */
         pollinationsApiKey: v.optional(v.string()),
         /** Timestamp of record creation */
         createdAt: v.number(),
@@ -224,6 +230,8 @@ export default defineSchema({
         inFlightCount: v.optional(v.number()),
         /** Shared generation parameters for all images */
         generationParams: v.any(),
+        /** Pollinations API key for BYOP flow (passed from client, stored for processor actions) */
+        apiKey: v.optional(v.string()),
         /** IDs of successfully generated images */
         imageIds: v.array(v.id("generatedImages")),
         /** Number of retry attempts for current item (for transient failures) */

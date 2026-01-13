@@ -4,11 +4,11 @@ import { CompetitorComparison } from "./competitor-comparison";
 
 export function ValuePropSection() {
   return (
-    <section id="compare" className="py-24 xl:py-28 2xl:py-32 relative">
+    <section id="compare" className="py-24 xl:py-28 2xl:py-32 3xl:py-40 4xl:py-48 5xl:py-56 relative">
       <div className="container mx-auto px-6">
         <div className="max-w-[1172px] mx-auto">
           <ScrollReveal>
-            <div className="text-center mb-12">
+            <div className="text-center mb-12 3xl:mb-16 4xl:mb-20">
               <h2 className="text-4xl sm:text-5xl font-bold text-foreground mb-4">Why pay more elsewhere?</h2>
               <p className="text-lg text-muted-foreground">A simple comparison that speaks for itself.</p>
             </div>
@@ -33,7 +33,7 @@ export function ValuePropSection() {
               <div className="h-full p-6 rounded-2xl glass-effect-home">
                 <h3 className="font-bold text-foreground mb-2">1,000+ Batch Queue</h3>
                 <p className="text-sm text-muted-foreground">
-                  Queue up massive batches while competitors limit you to 10-20 images at a time.
+                  Queue up massive batches while competitors limit you to 4-8 images at a time.
                 </p>
               </div>
             </ScrollReveal>

@@ -1,6 +1,7 @@
 import { ClerkThemeProvider } from "@/components/clerk-theme-provider"
 import { Header } from "@/components/layout/header"
-import { ConvexClientProvider, QueryProvider } from "@/components/providers"
+import { ExpiryBanner } from "@/components/pollen-auth"
+import { ConvexClientProvider, QueryProvider, PollenAuthProvider } from "@/components/providers"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 import { Analytics } from "@vercel/analytics/next"
@@ -152,10 +153,13 @@ export default function RootLayout({
           <ClerkThemeProvider>
             <ConvexClientProvider>
               <QueryProvider>
-                <Header />
-                {children}
-                <Toaster position="bottom-right" richColors closeButton />
-                <SpeedInsights />
+                <PollenAuthProvider>
+                  <Header />
+                  <ExpiryBanner className="mx-auto max-w-7xl px-4 mt-2" />
+                  {children}
+                  <Toaster position="bottom-right" richColors closeButton />
+                  <SpeedInsights />
+                </PollenAuthProvider>
               </QueryProvider>
             </ConvexClientProvider>
           </ClerkThemeProvider>

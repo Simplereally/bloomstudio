@@ -47,9 +47,16 @@ export function ShowcaseSection({ items }: ShowcaseSectionProps) {
   }));
 
   return (
-    <section id="showcase" className="py-16 md:py-20 lg:py-24 xl:py-28 2xl:py-32 relative overflow-hidden">
+    /**
+     * Responsive Layout Strategy:
+     * - Mobile to 2xl: Standard vertical padding creates natural section breaks
+     * - 3xl+ (1440p and above): Section fills full viewport height (minus header)
+     *   with content vertically centered to prevent next section from "leaking"
+     *   into view when navigating via anchor links
+     */
+    <section id="showcase" className="py-16 md:py-20 lg:py-24 xl:py-28 2xl:py-32 3xl:py-40 4xl:py-48 5xl:py-56 3xl:min-h-[calc(100vh-4rem)] 4xl:min-h-[calc(100vh-4rem)] 5xl:min-h-[calc(100vh-4rem)] 3xl:flex 3xl:flex-col 3xl:justify-center relative overflow-hidden">
       <div className="container mx-auto px-4 sm:px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-6 xl:gap-8 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-6 xl:gap-8 3xl:gap-16 4xl:gap-20 5xl:gap-24 items-center">
           {/* Left Side: Text Content with SEO-optimized copy */}
           <ScrollReveal className="lg:pr-4">
             <div className="text-left">
@@ -71,7 +78,7 @@ export function ShowcaseSection({ items }: ShowcaseSectionProps) {
               slides={slides}
               className="w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl 2xl:max-w-3xl"
               aspectRatio="1/1"
-              frameClassName="h-[320px] sm:h-[380px] md:h-[440px] lg:h-[480px] xl:h-[520px] 2xl:h-[580px]"
+              frameClassName="h-[320px] sm:h-[380px] md:h-[440px] lg:h-[480px] xl:h-[520px] 2xl:h-[580px] 3xl:h-[680px] 4xl:h-[780px]"
               showInfo={true}
               showThumbnails={true}
               showProgress={false}

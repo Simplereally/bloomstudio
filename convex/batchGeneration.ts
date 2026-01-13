@@ -4,14 +4,15 @@
  * Handles async batch image generation with scheduled server-side processing.
  * Images are generated with configurable intervals using Convex scheduled functions.
  * 
- * Architecture:
- * - startBatchJob: Creates batch record and schedules first item
- * - processBatchItem (batchProcessor.ts): Node.js action that generates images directly
+ * BYOP (Bring Your Own Pollen) Architecture:
+ * - Client obtains API key from PollenAuth context (stored in localStorage)
+ * - startBatchJob: Receives API key, creates batch record (with key), schedules first item
+ * - processBatchItem (batchProcessor.ts): Reads API key from batch record, generates images
  * - storeGeneratedImage: Stores image metadata in Convex
  * - recordBatchItemAndScheduleNext: Updates DB and schedules next item
  * 
  * This is a true "fire and forget" implementation - users can close their browser
- * and the batch will continue processing on the server.
+ * and the batch will continue processing on the server using the stored API key.
  */
 import { ConvexError, v } from "convex/values"
 import { internal } from "./_generated/api"
@@ -68,11 +69,21 @@ export const startBatchJob = mutation({
     args: {
         count: v.number(),
         generationParams: generationParamsValidator,
+        /** The Pollinations API key from the client (BYOP flow) */
+        apiKey: v.string(),
     },
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity()
         if (!identity) {
             throw new Error("Not authenticated")
+        }
+
+        // Validate API key is provided
+        if (!args.apiKey || args.apiKey.trim().length === 0) {
+            throw new ConvexError({
+                code: "MISSING_API_KEY",
+                message: "Pollinations API key is required. Please connect to Pollinations first.",
+            })
         }
 
         // Check if user can generate (has active subscription or is in trial)
@@ -91,7 +102,7 @@ export const startBatchJob = mutation({
 
         const now = Date.now()
 
-        // Create the batch job document
+        // Create the batch job document with the API key for later use
         // Initialize inFlightCount to 1 since we're about to schedule item 0
         const batchJobId = await ctx.db.insert("batchJobs", {
             ownerId: identity.subject,
@@ -102,6 +113,7 @@ export const startBatchJob = mutation({
             currentIndex: 0,
             inFlightCount: 1,
             generationParams: args.generationParams,
+            apiKey: args.apiKey, // Store the API key for use by processor actions
             imageIds: [],
             createdAt: now,
             updatedAt: now,
@@ -179,7 +191,8 @@ export const scheduleNextBatchItem = internalMutation({
     handler: async (ctx, args) => {
         const batchJob = await ctx.db.get(args.batchJobId)
         if (!batchJob) {
-            throw new Error("Batch job not found")
+            // Gracefully handle missing job (likely deleted/completed)
+            return { seeded: false }
         }
 
         // Don't schedule if cancelled or paused
@@ -245,7 +258,8 @@ export const recordBatchItemResult = internalMutation({
     handler: async (ctx, args) => {
         const batchJob = await ctx.db.get(args.batchJobId)
         if (!batchJob) {
-            throw new Error("Batch job not found")
+            // Gracefully handle missing job (likely deleted/cancelled)
+            return { success: false }
         }
 
         const now = Date.now()
@@ -282,8 +296,10 @@ export const recordBatchItemResult = internalMutation({
         const totalProcessed = (updates.completedCount ?? batchJob.completedCount) + (updates.failedCount ?? batchJob.failedCount)
 
         if (totalProcessed >= batchJob.totalCount) {
-            updates.status = "completed"
-            updates.inFlightCount = 0 // Ensure clean state on completion
+            // Job complete - delete the record ("nuke" policy)
+            // This removes the API key from the database immediately
+            await ctx.db.delete(args.batchJobId)
+            return { success: true }
         } else if (batchJob.status === "pending") {
             // If this was the first result, ensure we are "processing"
             updates.status = "processing"
@@ -351,7 +367,9 @@ export const getBatchJob = query({
             return null
         }
 
-        return batchJob
+        // Filter out apiKey to prevent exposing sensitive data to clients
+        const { apiKey: _, ...safeBatchJob } = batchJob
+        return safeBatchJob
     },
 })
 
@@ -374,7 +392,10 @@ export const getUserActiveBatches = query({
             .collect()
 
         // Filter to only active (pending/processing/paused) jobs
-        return jobs.filter((job) => job.status === "pending" || job.status === "processing" || job.status === "paused")
+        // Filter out apiKey to prevent exposing sensitive data to clients
+        return jobs
+            .filter((job) => job.status === "pending" || job.status === "processing" || job.status === "paused")
+            .map(({ apiKey: _, ...safeJob }) => safeJob)
     },
 })
 
@@ -399,7 +420,8 @@ export const getUserBatchJobs = query({
             .order("desc")
             .take(limit)
 
-        return jobs
+        // Filter out apiKey to prevent exposing sensitive data to clients
+        return jobs.map(({ apiKey: _, ...safeJob }) => safeJob)
     },
 })
 
@@ -459,10 +481,8 @@ export const cancelBatchJob = mutation({
             throw new Error("Batch job is not active")
         }
 
-        await ctx.db.patch(args.batchJobId, {
-            status: "cancelled",
-            updatedAt: Date.now(),
-        })
+        // Delete the batch job immediately ("nuke" policy)
+        await ctx.db.delete(args.batchJobId)
 
         return { success: true }
     },

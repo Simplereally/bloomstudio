@@ -12,23 +12,24 @@ import {
     AccordionItem,
     AccordionTrigger,
 } from "@/components/ui/accordion"
-import { ArrowRight, Check, HelpCircle } from "lucide-react"
+import { ArrowRight, Check, HelpCircle, Info, X } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { Suspense } from "react"
 
 import { pricingTiers, pricingFaqs, featureComparison } from "./pricing-data"
 import { CheckoutButton, PaymentToastHandler } from "./checkout-button"
+import { FeatureDetailDialog } from "@/components/pricing/feature-detail-dialog"
 
 export const metadata: Metadata = {
     title: "Pricing | Bloom Studio",
-    description: "Simple pricing for AI image and video generation. Start for free, upgrade for just $5/month.",
+    description: "Simple pricing for AI image and video generation. Start for free, upgrade for just $3/month.",
     alternates: {
         canonical: "/pricing",
     },
     openGraph: {
         title: "Pricing | Bloom Studio",
-        description: "Unbeatable value. 900 images/mo for $5. Compare vs Leonardo.ai.",
+        description: "Unbeatable value. 180 images/mo for $3. Compare vs Leonardo.ai.",
         url: "/pricing",
     },
 }
@@ -45,11 +46,11 @@ export default function PricingPage() {
         "@context": "https://schema.org",
         "@type": "Product",
         name: "Bloom Studio Pro",
-        description: "Professional AI image and video generation subscription. Includes 900 images/month, all models (Flux, Veo, etc), and private generations.",
+        description: "Professional AI image and video generation subscription. Includes 180 images/month, all models (Flux, Veo, etc), and private generations.",
         image: "https://bloomstudio.fun/branding/bloom-studio_logo.png",
         offers: {
             "@type": "Offer",
-            price: "5.00",
+            price: "3.00",
             priceCurrency: "USD",
             priceValidUntil: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split("T")[0],
             availability: "https://schema.org/InStock",
@@ -74,14 +75,14 @@ export default function PricingPage() {
 
             <div className="min-h-svh bg-background">
                 {/* Hero + Value Proposition - Static SSR */}
-                <section className="container mx-auto px-6 pt-32 pb-10 text-center">
+                <section className="container mx-auto px-6 pt-24 sm:pt-32 md:pt-36 pb-10 text-center">
                     <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
                         Simple pricing. <span className="text-primary">Unbeatable value.</span>
                     </h1>
                 </section>
 
                 {/* Pricing Cards Section - Static SSR with Client checkout buttons */}
-                <section className="container mx-auto px-6 pb-10 text-center">
+                <section className="container mx-auto px-6 pb-16 md:pb-20 lg:pb-24 xl:pb-28 2xl:pb-32 text-center">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
                         {pricingTiers.map((tier) => {
                             const Icon = tier.icon
@@ -123,8 +124,27 @@ export default function PricingPage() {
                                     </div>
 
                                     <div className="mb-6">
-                                        <p className="text-sm text-muted-foreground">{tier.description}</p>
-                                        {tier.poweredBy && (
+                                        <p className="text-sm text-muted-foreground">
+                                            {tier.description.includes("Nano Banana Pro") ? (
+                                                <span className="flex items-center gap-1 flex-wrap">
+                                                    {tier.description.split("Nano Banana Pro")[0]}
+                                                    <span className="inline-flex items-center gap-1 font-semibold text-foreground/90">
+                                                        <Image
+                                                            src="/image-models/google.svg"
+                                                            alt="Gemini"
+                                                            width={12}
+                                                            height={12}
+                                                            className="opacity-80 contrast-125"
+                                                        />
+                                                        Nano Banana Pro
+                                                    </span>
+                                                    {tier.description.split("Nano Banana Pro")[1]}
+                                                </span>
+                                            ) : (
+                                                tier.description
+                                            )}
+                                        </p>
+                                        {tier.poweredBy && tier.name !== "Pro" && (
                                             <div className="flex items-center gap-1.5 mt-2.5 text-[10px] uppercase tracking-wider font-bold text-muted-foreground bg-muted/50 py-1 px-2 rounded-md border border-border/50 w-fit">
                                                 <Image
                                                     src={tier.poweredBy.logo}
@@ -148,7 +168,7 @@ export default function PricingPage() {
                                             tier.price === 0 ? (
                                                 <div className="flex items-baseline gap-1">
                                                     <span className="text-4xl font-bold text-foreground">Free</span>
-                                                    <span className="text-muted-foreground">for 24 hours</span>
+                                                    <span className="text-muted-foreground">for 24h, try everything.</span>
                                                 </div>
                                             ) : (
                                                 <div className="flex items-baseline gap-1">
@@ -159,7 +179,7 @@ export default function PricingPage() {
                                         ) : (
                                             <div className="text-2xl font-bold text-foreground">Custom</div>
                                         )}
-                                        {tier.name === "Pro" && <p className="text-xs text-primary font-medium mt-1">= $0.005 per image</p>}
+                                        {tier.name === "Pro" && <p className="text-xs text-primary font-medium mt-1">= $0.017 per image</p>}
                                         {tier.name === "Competitors" && <p className="text-xs text-muted-foreground mt-1">= $0.20 per image</p>}
                                     </div>
 
@@ -174,7 +194,11 @@ export default function PricingPage() {
                                     <ul className={`space-y-3 ${tier.name === "Competitors" ? "mt-0" : ""}`}>
                                         {tier.features.map((feature, i) => (
                                             <li key={i} className="flex items-start gap-3 text-sm">
-                                                <Check className={`h-4 w-4 mt-0.5 shrink-0 ${tier.name === "Starter" ? "text-green-600" : "text-primary"}`} />
+                                                {tier.name === "Competitors" ? (
+                                                    <X className="h-4 w-4 mt-0.5 shrink-0 text-red-500" />
+                                                ) : (
+                                                    <Check className={`h-4 w-4 mt-0.5 shrink-0 ${tier.name === "Starter" || tier.name === "Pro" ? "text-green-600" : "text-primary"}`} />
+                                                )}
                                                 <span className="text-muted-foreground">
                                                     {feature.includes("24 hours of everything in Pro") ? (
                                                         <span className="flex items-center gap-1 font-medium text-foreground">
@@ -210,42 +234,14 @@ export default function PricingPage() {
                 </section>
 
                 {/* Competitor Comparison - Static SSR */}
-                <section className="container mx-auto px-6 pb-16">
+                <section className="container mx-auto px-6 py-16 md:py-20 lg:py-24 xl:py-28 2xl:py-32">
                     <div className="max-w-[1172px] mx-auto">
                         <CompetitorComparison />
                     </div>
                 </section>
 
-                {/* Distilled Value Section - Static SSR */}
-                <section className="container mx-auto px-6 pb-16">
-                    <div className="max-w-xl mx-auto mb-8 p-6 rounded-2xl bg-gradient-to-br from-primary/10 via-card to-card border border-primary/30">
-                        <div className="flex flex-col items-center gap-3 mb-4">
-                            <div className="flex items-center gap-2 text-[12px] uppercase tracking-wider font-bold text-muted-foreground bg-muted/30 py-1 px-3 rounded-full border border-border/30">
-                                <Image src="/image-models/google.svg" alt="Nano Banana Pro" width={12} height={12} className="opacity-60 contrast-125" />
-                                <span>Nano Banana Pro</span>
-                            </div>
-
-                            <div className="flex items-center justify-center gap-6">
-                                <div className="text-center">
-                                    <div className="text-5xl sm:text-6xl font-black text-primary tabular-nums">900</div>
-                                    <div className="text-sm text-muted-foreground">images/month</div>
-                                </div>
-                                <div className="text-center pl-6 border-l border-border">
-                                    <div className="text-5xl sm:text-6xl font-black text-foreground">$5</div>
-                                    <div className="text-sm text-muted-foreground">/month</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <p className="text-sm text-muted-foreground text-center">
-                            That&apos;s <span className="text-primary font-semibold">$0.005 per image</span> — Leonardo charges{" "}
-                            <span className="text-orange-500 font-semibold">$0.14–$0.20</span>
-                        </p>
-                    </div>
-                </section>
-
                 {/* Feature Comparison Table - Static SSR */}
-                <section id="comparison-table" className="container mx-auto px-6 py-20">
+                <section id="comparison-table" className="container mx-auto px-6 py-16 md:py-20 lg:py-24 xl:py-28 2xl:py-32">
                     <div className="text-center mb-12">
                         <h2 className="text-3xl font-bold text-foreground mb-4">Compare plans in detail</h2>
                         <p className="text-muted-foreground">See exactly what you get with each plan</p>
@@ -256,20 +252,48 @@ export default function PricingPage() {
                             <thead>
                                 <tr className="border-b border-border">
                                     <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Feature</th>
-                                    <th className="text-center py-4 px-4 text-sm font-medium text-foreground">Starter</th>
-                                    <th className="text-center py-4 px-4 text-sm font-medium text-primary">Pro</th>
-                                    <th className="text-center py-4 px-4 text-sm font-medium text-muted-foreground">Competitors</th>
+                                    <th className="text-center py-4 px-4 text-sm font-medium text-foreground">
+                                        <div className="flex flex-col items-center">
+                                            <span>Starter</span>
+                                            <span className="text-[10px] text-green-600 font-bold uppercase tracking-widest mt-0.5">24h Trial</span>
+                                        </div>
+                                    </th>
+                                    <th className="text-center py-4 px-4 text-sm font-medium text-primary">
+                                        <div className="flex flex-col items-center">
+                                            <span>Pro</span>
+                                            <span className="text-[10px] text-primary/60 font-bold uppercase tracking-widest mt-0.5">$3/mo</span>
+                                        </div>
+                                    </th>
+                                    <th className="text-center py-4 px-4 text-sm font-medium text-muted-foreground">
+                                        <div className="flex flex-col items-center">
+                                            <span>Competitors</span>
+                                            <span className="text-[10px] text-muted-foreground/40 font-bold uppercase tracking-widest mt-0.5">Varies</span>
+                                        </div>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {featureComparison.map((row) => (
                                     <tr key={row.feature} className="border-b border-border/50">
-                                        <td className="py-4 px-4 text-sm text-foreground">{row.feature}</td>
+                                        <td className="py-4 px-4 text-sm text-foreground">
+                                            <div className="flex items-center">
+                                                {row.feature}
+                                                {"details" in row && row.details && (
+                                                    <FeatureDetailDialog 
+                                                        title={row.details.title}
+                                                        description={row.details.description}
+                                                        cardTitle={row.details.cardTitle}
+                                                        cardDescription={row.details.cardDescription}
+                                                        footer={row.details.footer}
+                                                    />
+                                                )}
+                                            </div>
+                                        </td>
                                         {(["starter", "pro", "competitors"] as const).map((tier) => (
                                             <td key={tier} className="py-4 px-4 text-center">
                                                 {typeof row[tier] === "boolean" ? (
                                                     row[tier] ? (
-                                                        <Check className="h-4 w-4 text-primary mx-auto" />
+                                                        <Check className={`h-4 w-4 mx-auto ${tier === "starter" || tier === "pro" ? "text-green-600" : "text-primary"}`} />
                                                     ) : (
                                                         <span className="text-muted-foreground">—</span>
                                                     )
@@ -288,7 +312,7 @@ export default function PricingPage() {
                 </section>
 
                 {/* FAQ Section - Static SSR */}
-                <section className="container mx-auto px-6 py-20">
+                <section className="container mx-auto px-6 py-16 md:py-20 lg:py-24 xl:py-28 2xl:py-32">
                     <div className="max-w-3xl mx-auto">
                         <div className="text-center mb-12">
                             <div className="flex items-center justify-center gap-2 mb-4">
@@ -310,16 +334,16 @@ export default function PricingPage() {
                 </section>
 
                 {/* CTA Section - Static SSR */}
-                <section className="container mx-auto px-6 py-20">
+                <section className="container mx-auto px-6 py-16 md:py-20 lg:py-24 xl:py-28 2xl:py-32">
                     <div className="max-w-4xl mx-auto text-center rounded-3xl bg-gradient-to-br from-primary/10 via-card to-accent/10 border border-primary/20 p-12">
                         <h2 className="text-3xl font-bold text-foreground mb-4">Ready to create stunning images?</h2>
                         <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-                            Get 24 hours of full access — all models, max resolution, no limits. Then just $5/month to keep creating.
+                            Get 180 images every month effectively for free. Upgrade to Pro for just $3/month for 180 images.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
                             <Link href="/studio">
                                 <Button size="lg" className="px-8">
-                                    Start Your Free Trial
+                                    Start Creating
                                     <ArrowRight className="ml-2 h-4 w-4" />
                                 </Button>
                             </Link>

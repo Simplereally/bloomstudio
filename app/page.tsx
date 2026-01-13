@@ -55,7 +55,7 @@ export default function LandingPage() {
       <LandingHeader />
 
       {/* Static content - Server Rendered for SEO */}
-      <div className="relative z-10 pt-12">
+      <div className="relative z-[1] pt-0">
         {/* <FloatingGallery /> */}
 
         <HeroSection />

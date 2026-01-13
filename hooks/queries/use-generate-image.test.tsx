@@ -63,6 +63,14 @@ vi.mock("convex/react", () => ({
     },
 }))
 
+// Mock BYOP pollen-auth hooks
+const mockApiKey = "test-pollinations-api-key"
+const mockAuthorize = vi.fn()
+vi.mock("@/lib/pollen-auth", () => ({
+    usePollenApiKey: () => mockApiKey,
+    usePollenAuthActions: () => ({ authorize: mockAuthorize }),
+}))
+
 // Mock Convex API - provide full structure that the hook expects
 vi.mock("@/convex/_generated/api", () => ({
     api: {
@@ -88,6 +96,7 @@ describe("useGenerateImage", () => {
         mockGenerationStatus = null
         mockGeneratedImage = null
         mockStartGeneration.mockReset()
+        mockAuthorize.mockReset()
     })
 
     it("starts generation via Convex mutation", async () => {
@@ -114,7 +123,12 @@ describe("useGenerateImage", () => {
                 private: undefined,
                 safe: undefined,
                 image: undefined,
+                duration: undefined,
+                audio: undefined,
+                aspectRatio: undefined,
+                lastFrameImage: undefined,
             },
+            apiKey: mockApiKey,
         })
         expect(result.current.isGenerating).toBe(true)
     })
@@ -334,7 +348,15 @@ describe("useGenerateImage", () => {
         })
 
         expect(mockStartGeneration).toHaveBeenCalledWith({
-            generationParams: params,
+            generationParams: {
+                ...params,
+                // Video params are not in this call since it's not a video
+                duration: undefined,
+                audio: undefined,
+                aspectRatio: undefined,
+                lastFrameImage: undefined,
+            },
+            apiKey: mockApiKey,
         })
     })
 })

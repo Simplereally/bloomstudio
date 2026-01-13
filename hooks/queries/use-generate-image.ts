@@ -4,14 +4,18 @@
  * useGenerateImage Hook
  *
  * Hook for server-side image generation using Convex actions.
- * Uses the user's stored Pollinations API key for authentication.
+ * Uses the client-provided Pollinations API key from BYOP context.
  * 
- * This is a "fire and forget" pattern - the generation happens on Convex servers.
- * The hook tracks generation status and calls callbacks when complete.
+ * BYOP (Bring Your Own Pollen) Flow:
+ * 1. Hook reads API key from PollenAuth context (stored in localStorage)
+ * 2. API key is passed to the Convex mutation
+ * 3. Mutation schedules server-side processing with the key
+ * 4. Generation happens on Convex servers - users can close their browser
  */
 
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
+import { usePollenApiKey, usePollenAuthActions } from "@/lib/pollen-auth"
 import type {
     GeneratedImage,
     ImageGenerationParams,
@@ -129,6 +133,10 @@ export function useGenerateImage(
     options: UseGenerateImageOptions = {}
 ): UseGenerateImageReturn {
     const startGeneration = useMutation(api.singleGeneration.startGeneration)
+    
+    // Get API key from BYOP context
+    const apiKey = usePollenApiKey()
+    const { authorize } = usePollenAuthActions()
 
     // Track generation state
     const [generationId, setGenerationId] = React.useState<Id<"pendingGenerations"> | null>(null)
@@ -204,6 +212,22 @@ export function useGenerateImage(
 
             await options.onMutate?.(params)
 
+            // Check for API key from BYOP context
+            if (!apiKey) {
+                const err = new ServerGenerationError(
+                    "Not connected to Pollinations. Please connect to Pollinations first.",
+                    "NOT_AUTHORIZED"
+                )
+                setError(err)
+                setIsError(true)
+                setIsGenerating(false)
+                options.onError?.(err, params)
+                options.onSettled?.(undefined, err, params)
+                // Trigger auth flow
+                authorize()
+                return
+            }
+
             try {
                 const id = await startGeneration({
                     generationParams: {
@@ -223,6 +247,7 @@ export function useGenerateImage(
                         aspectRatio: "aspectRatio" in params ? params.aspectRatio : undefined,
                         lastFrameImage: "lastFrameImage" in params ? params.lastFrameImage : undefined,
                     },
+                    apiKey,
                 })
                 setGenerationId(id)
             } catch (err) {
@@ -241,7 +266,7 @@ export function useGenerateImage(
                 options.onSettled?.(undefined, serverError, params)
             }
         },
-        [startGeneration, options]
+        [startGeneration, options, apiKey, authorize]
     )
 
     // Generate async function (returns a promise)

@@ -15,8 +15,8 @@ interface CompetitorData {
 const competitors: CompetitorData[] = [
   {
     name: "Bloom Studio",
-    monthlyPrice: 5,
-    generations: 900,
+    monthlyPrice: 3,
+    generations: 180,
     concurrent: "10 generations a second (600 a minute!)",
     queueLimit: "1,000 generations",
     waitTimes: "No wait times",

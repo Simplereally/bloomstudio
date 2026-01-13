@@ -78,6 +78,41 @@ function withAspectRatioTags(ratio: AspectRatioOption): AspectRatioOption {
   return { ...ratio, tags: ASPECT_RATIO_TAGS[ratio.value] };
 }
 
+/**
+ * Flux Schnell aspect ratios - Optimized for 768px max dimension
+ *
+ * Pollinations enforces:
+ * - max 589,824 pixels (768×768 cap)
+ * - width/height must be multiples of 8
+ * - (width × height) must be divisible by 65,536
+ *
+ * | Ratio | Width | Height | Pixels    |
+ * |-------|-------|--------|-----------|
+ * | 1:1   | 768   | 768    | 589,824   |
+ * | 16:9  | 768   | 432    | 331,776   |
+ * | 9:16  | 432   | 768    | 331,776   |
+ * | 4:3   | 768   | 576    | 442,368   |
+ * | 3:4   | 576   | 768    | 442,368   |
+ * | 3:2   | 768   | 512    | 393,216   |
+ * | 2:3   | 512   | 768    | 393,216   |
+ * | 21:9  | 768   | 328    | 251,904   |
+ * | 9:21  | 328   | 768    | 251,904   |
+ */
+const FLUX_SCHNELL_ASPECT_RATIOS: readonly AspectRatioOption[] = (
+  [
+    { label: "Square", value: "1:1", width: 768, height: 768, icon: "square", category: "square" },
+    { label: "Landscape", value: "16:9", width: 768, height: 432, icon: "rectangle-horizontal", category: "landscape" },
+    { label: "Portrait", value: "9:16", width: 432, height: 768, icon: "rectangle-vertical", category: "portrait" },
+    { label: "Photo", value: "4:3", width: 768, height: 576, icon: "image", category: "landscape" },
+    { label: "Portrait Photo", value: "3:4", width: 576, height: 768, icon: "frame", category: "portrait" },
+    { label: "Photo Wide", value: "3:2", width: 768, height: 512, icon: "image", category: "landscape" },
+    { label: "Photo Tall", value: "2:3", width: 512, height: 768, icon: "frame", category: "portrait" },
+    { label: "Ultrawide", value: "21:9", width: 768, height: 328, icon: "monitor", category: "ultrawide" },
+    { label: "Ultra Tall", value: "9:21", width: 328, height: 768, icon: "smartphone", category: "ultrawide" },
+    { label: "Custom", value: "custom", width: 768, height: 768, icon: "sliders", category: "square" },
+  ] as const
+).map(withAspectRatioTags);
+
 /** Standard aspect ratios for ~1MP models (NanoBanana, Kontext) - Optimized for <1MP limit */
 const STANDARD_ASPECT_RATIOS: readonly AspectRatioOption[] = (
   [
@@ -127,16 +162,40 @@ const GPTIMAGE_LARGE_ASPECT_RATIOS: readonly AspectRatioOption[] = (
   ] as const
 ).map(withAspectRatioTags);
 
-/** ZImage high-resolution aspect ratios (defaults to 2K Tier) */
+/**
+ * Z-Image Turbo aspect ratios - Optimized for SPAN upscaler limit
+ *
+ * Pollinations enforces a max of 2,359,296 pixels (768×768 base × 2 upscale = 1536×1536 max square).
+ * All dimensions are aligned to step=32 and maximize quality within the pixel budget.
+ *
+ * | Ratio | Width | Height | Pixels    |
+ * |-------|-------|--------|-----------||
+ * | 1:1   | 1536  | 1536   | 2,359,296 |
+ * | 16:9  | 2048  | 1152   | 2,359,296 |
+ * | 9:16  | 1152  | 2048   | 2,359,296 |
+ * | 4:3   | 1664  | 1248   | 2,076,672 |
+ * | 3:4   | 1248  | 1664   | 2,076,672 |
+ * | 3:2   | 1824  | 1216   | 2,218,784 |
+ * | 2:3   | 1216  | 1824   | 2,218,784 |
+ * | 4:5   | 1280  | 1600   | 2,048,000 |
+ * | 5:4   | 1600  | 1280   | 2,048,000 |
+ * | 21:9  | 2240  | 960    | 2,150,400 |
+ * | 9:21  | 960   | 2240   | 2,150,400 |
+ */
 const ZIMAGE_ASPECT_RATIOS: readonly AspectRatioOption[] = (
   [
-    { ...STANDARD_RESOLUTIONS["2k"]["1:1"], label: "Square", value: "1:1", icon: "square", category: "square" },
-    { ...STANDARD_RESOLUTIONS["2k"]["16:9"], label: "Landscape", value: "16:9", icon: "rectangle-horizontal", category: "landscape" },
-    { ...STANDARD_RESOLUTIONS["2k"]["9:16"], label: "Portrait", value: "9:16", icon: "rectangle-vertical", category: "portrait" },
-    { ...STANDARD_RESOLUTIONS["2k"]["4:3"], label: "Photo", value: "4:3", icon: "image", category: "landscape" },
-    { ...STANDARD_RESOLUTIONS["2k"]["3:4"], label: "Portrait Photo", value: "3:4", icon: "frame", category: "portrait" },
-    { ...STANDARD_RESOLUTIONS["2k"]["21:9"], label: "Ultrawide", value: "21:9", icon: "monitor", category: "ultrawide" },
-    { label: "Custom", value: "custom", width: 2048, height: 2048, icon: "sliders", category: "square" },
+    { label: "Square", value: "1:1", width: 1536, height: 1536, icon: "square", category: "square" },
+    { label: "Landscape", value: "16:9", width: 2048, height: 1152, icon: "rectangle-horizontal", category: "landscape" },
+    { label: "Portrait", value: "9:16", width: 1152, height: 2048, icon: "rectangle-vertical", category: "portrait" },
+    { label: "Photo", value: "4:3", width: 1664, height: 1248, icon: "image", category: "landscape" },
+    { label: "Portrait Photo", value: "3:4", width: 1248, height: 1664, icon: "frame", category: "portrait" },
+    { label: "Photo Wide", value: "3:2", width: 1824, height: 1216, icon: "image", category: "landscape" },
+    { label: "Photo Tall", value: "2:3", width: 1216, height: 1824, icon: "frame", category: "portrait" },
+    { label: "Social", value: "4:5", width: 1280, height: 1600, icon: "smartphone", category: "portrait" },
+    { label: "Social Wide", value: "5:4", width: 1600, height: 1280, icon: "monitor", category: "landscape" },
+    { label: "Ultrawide", value: "21:9", width: 2240, height: 960, icon: "monitor", category: "ultrawide" },
+    { label: "Ultra Tall", value: "9:21", width: 960, height: 2240, icon: "smartphone", category: "ultrawide" },
+    { label: "Custom", value: "custom", width: 1536, height: 1536, icon: "sliders", category: "square" },
   ] as const
 ).map(withAspectRatioTags);
 
@@ -273,6 +332,30 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     supportsNegativePrompt: false,
   },
 
+  flux: {
+    id: "flux",
+    displayName: "Flux Schnell",
+    type: "image",
+    icon: "zap",
+    logo: "/image-models/flux.svg",
+    description: "Fast image generation with 768px max dimension",
+    constraints: {
+      maxPixels: 589_824, // 768×768 cap from Pollinations backend
+      minPixels: 65_536, // Minimum 256×256 (area divisible by 65,536)
+      minDimension: 64, // Minimum per-side (will snap to nearest valid)
+      maxDimension: 768, // Max per-side dimension
+      step: 8, // Dimensions must be multiples of 8
+      defaultDimensions: { width: 768, height: 768 },
+      dimensionsEnabled: true,
+      maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
+      supportedTiers: ["sd", "hd"], // Limited to SD tier (768px max)
+      outputCertainty: "variable",
+      dimensionWarning: "Output may be adjusted by gateway to fit constraints",
+    },
+    aspectRatios: FLUX_SCHNELL_ASPECT_RATIOS,
+    supportsNegativePrompt: true, // Supports negative prompts
+  },
+
   "seedance-pro": {
     id: "seedance-pro",
     displayName: "Seedance Pro",
@@ -340,17 +423,17 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     type: "image",
     icon: "zap",
     logo: "/image-models/alibaba.svg",
-    description: "High-resolution image generation up to 4MP",
+    description: "Fast image generation with SPAN upscaling (max 2.36MP)",
     constraints: {
-      maxPixels: 4_194_304,
+      maxPixels: 2_359_296, // SPAN upscaler limit: 768×768 base × 2 = 1536×1536 max
       minPixels: 0,
       minDimension: 64,
-      maxDimension: 4096,
+      maxDimension: 2048, // Max single dimension (e.g., 2048×1152 landscape)
       step: 32,
-      defaultDimensions: { width: 2048, height: 2048 },
+      defaultDimensions: { width: 1536, height: 1536 },
       dimensionsEnabled: true,
       maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
-      supportedTiers: ["sd", "hd", "2k"],
+      supportedTiers: ["sd", "hd"], // 2K tier removed - exceeds pixel limit for most ratios
       outputCertainty: "likely",
     },
     aspectRatios: ZIMAGE_ASPECT_RATIOS,

@@ -9,7 +9,7 @@ export function AppearanceCard() {
     const { theme, setTheme } = useTheme()
 
     return (
-        <Card className="border-border/50 bg-background/50 backdrop-blur-sm shadow-sm">
+        <Card className="border-border/50 bg-background/50 backdrop-blur-sm shadow-sm overflow-hidden">
             <CardHeader>
                 <CardTitle className="text-xl">Appearance</CardTitle>
                 <CardDescription>
@@ -57,13 +57,13 @@ function ThemeOption({
         <button
             onClick={onClick}
             className={cn(
-                "flex flex-col items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all duration-200 hover:bg-accent/50",
+                "flex flex-col items-center justify-center gap-2 py-3 px-4 rounded-lg border transition-all duration-200 hover:bg-accent/50",
                 active
                     ? "border-primary bg-primary/5 text-primary"
-                    : "border-transparent bg-muted/50 text-muted-foreground hover:border-primary/20"
+                    : "border-border/50 bg-muted/30 text-muted-foreground hover:border-primary/20"
             )}
         >
-            <Icon className={cn("w-6 h-6", active && "fill-current")} />
+            <Icon className={cn("w-5 h-5", active && "fill-current")} />
             <span className="font-medium text-sm">{label}</span>
         </button>
     )
