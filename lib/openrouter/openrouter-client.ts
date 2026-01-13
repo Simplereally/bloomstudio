@@ -71,8 +71,18 @@ async function highThroughputFetch(
 
   // Merge signals if one was provided
   const originalSignal = init?.signal
+  const abortHandler = () => controller.abort()
+
   if (originalSignal) {
-    originalSignal.addEventListener("abort", () => controller.abort())
+    // Handle already-aborted signal (abort event won't fire again)
+    if (originalSignal.aborted) {
+      clearTimeout(timeoutId)
+      controller.abort()
+      throw new DOMException("Aborted", "AbortError")
+    }
+    // Use { once: true } to auto-remove listener after first invocation
+    // We also manually remove in finally for cases where abort never fires
+    originalSignal.addEventListener("abort", abortHandler, { once: true })
   }
 
   try {
@@ -85,6 +95,10 @@ async function highThroughputFetch(
     return response
   } finally {
     clearTimeout(timeoutId)
+    // Clean up listener to prevent memory leak if originalSignal is long-lived
+    if (originalSignal) {
+      originalSignal.removeEventListener("abort", abortHandler)
+    }
   }
 }
 
