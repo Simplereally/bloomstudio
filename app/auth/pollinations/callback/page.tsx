@@ -57,6 +57,53 @@ const ERROR_MESSAGES: Record<string, { title: string; description: string }> = {
   },
 };
 
+/** Default redirect path when returnTo is invalid or missing */
+const DEFAULT_RETURN_PATH = "/studio";
+
+/**
+ * Validates that a returnTo path is safe for redirection.
+ * Prevents open-redirect attacks by ensuring the path is:
+ * - A local path (starts with "/")
+ * - Not an absolute URL (no protocol or double slashes)
+ * - Doesn't contain suspicious characters that could be used for attacks
+ *
+ * @param returnTo - The return path to validate
+ * @returns true if the path is safe for redirection
+ */
+function isSafeReturnTo(returnTo: string | null): returnTo is string {
+  if (!returnTo) return false;
+
+  // Must start with exactly one forward slash (local path)
+  if (!returnTo.startsWith("/")) return false;
+
+  // Reject paths starting with "//" (protocol-relative URLs)
+  if (returnTo.startsWith("//")) return false;
+
+  // Reject if it contains a protocol (e.g., "javascript:", "data:", "http:")
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(returnTo)) return false;
+
+  // Reject URLs with encoded protocol attempts or suspicious patterns
+  // This catches patterns like "/\\evil.com" or "/@evil.com"
+  if (/[\\\/]{2,}|@/.test(returnTo)) return false;
+
+  // Reject if contains encoded characters that could bypass checks
+  // Match %2f (/) %5c (\) %3a (:) %40 (@) in any case
+  if (/%(?:2f|5c|3a|40)/i.test(returnTo)) return false;
+
+  return true;
+}
+
+/**
+ * Gets a safe returnTo path from search params, falling back to default.
+ *
+ * @param searchParams - URLSearchParams or compatible object
+ * @returns A validated local path safe for redirection
+ */
+function getSafeReturnTo(searchParams: { get: (key: string) => string | null }): string {
+  const returnTo = searchParams.get("returnTo");
+  return isSafeReturnTo(returnTo) ? returnTo : DEFAULT_RETURN_PATH;
+}
+
 export default function PollinationsCallbackPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -105,8 +152,13 @@ export default function PollinationsCallbackPage() {
       }
 
       // Clear the hash from the URL for security (prevent accidental sharing)
+      // Preserve the query string (including returnTo) so redirects still work
       if (typeof window !== "undefined") {
-        window.history.replaceState(null, "", window.location.pathname);
+        window.history.replaceState(
+          null,
+          "",
+          window.location.pathname + window.location.search
+        );
       }
 
       setState("success");
@@ -133,8 +185,7 @@ export default function PollinationsCallbackPage() {
     const timer = setInterval(() => {
       setRedirectCountdown((prev) => {
         if (prev <= 1) {
-          const returnTo = searchParams.get("returnTo") || "/studio";
-          router.push(returnTo);
+          router.push(getSafeReturnTo(searchParams));
           return 0;
         }
         return prev - 1;
@@ -158,8 +209,7 @@ export default function PollinationsCallbackPage() {
    * Handles navigation back to the previous page or studio.
    */
   const handleGoBack = useCallback(() => {
-    const returnTo = searchParams.get("returnTo") || "/studio";
-    router.push(returnTo);
+    router.push(getSafeReturnTo(searchParams));
   }, [router, searchParams]);
 
   return (

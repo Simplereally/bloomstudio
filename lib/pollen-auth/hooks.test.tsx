@@ -63,13 +63,16 @@ describe("pollen-auth/hooks", () => {
     });
 
     it("should throw when used outside provider", () => {
-      // Note: The current implementation returns default context instead of throwing
-      // This test documents the current behavior
-      const { result } = renderHook(() => usePollenAuth());
+      // Suppress console.error for this test since React will log the error
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => { });
 
-      // Since we use createContext with default value, it won't throw
-      // but will have the warning-logging no-op functions
-      expect(result.current).toBeDefined();
+      expect(() => {
+        renderHook(() => usePollenAuth());
+      }).toThrow(
+        "[usePollenAuth] must be used within a PollenAuthProvider"
+      );
+
+      consoleSpy.mockRestore();
     });
   });
 

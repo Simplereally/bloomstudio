@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -42,7 +43,7 @@ vi.mock("@/components/pollen-auth", () => ({
     children,
     className,
   }: {
-    children: React.ReactNode;
+    children: ReactNode;
     className?: string;
   }) => (
     <button data-testid="connect-button" className={className}>
@@ -53,7 +54,7 @@ vi.mock("@/components/pollen-auth", () => ({
 
 // Mock framer-motion to avoid animation issues in tests
 vi.mock("framer-motion", () => ({
-  AnimatePresence: ({ children }: { children: React.ReactNode }) => (
+  AnimatePresence: ({ children }: { children: ReactNode }) => (
     <>{children}</>
   ),
   motion: {
@@ -61,7 +62,7 @@ vi.mock("framer-motion", () => ({
       children,
       ...props
     }: {
-      children: React.ReactNode;
+      children: ReactNode;
       [key: string]: unknown;
     }) => <div {...props}>{children}</div>,
   },
@@ -95,41 +96,56 @@ describe("ApiKeyOnboardingModal", () => {
     it("does not render when user is already authorized via BYOP", () => {
       mockPollenAuthState.isAuthorized = true;
 
-      const { container } = render(<ApiKeyOnboardingModal />);
+      render(<ApiKeyOnboardingModal />);
 
-      expect(container).toBeEmptyDOMElement();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: /connect to pollinations/i })
+      ).not.toBeInTheDocument();
     });
 
     it("does not render when user has existing API key", () => {
       mockExistingApiKey = "existing-key";
 
-      const { container } = render(<ApiKeyOnboardingModal />);
+      render(<ApiKeyOnboardingModal />);
 
-      expect(container).toBeEmptyDOMElement();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: /connect to pollinations/i })
+      ).not.toBeInTheDocument();
     });
 
     it("does not render while pollen auth is loading", () => {
       mockPollenAuthState.isLoading = true;
 
-      const { container } = render(<ApiKeyOnboardingModal />);
+      render(<ApiKeyOnboardingModal />);
 
-      expect(container).toBeEmptyDOMElement();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: /connect to pollinations/i })
+      ).not.toBeInTheDocument();
     });
 
     it("does not render while convex auth is loading", () => {
       mockConvexAuthState.isLoading = true;
 
-      const { container } = render(<ApiKeyOnboardingModal />);
+      render(<ApiKeyOnboardingModal />);
 
-      expect(container).toBeEmptyDOMElement();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: /connect to pollinations/i })
+      ).not.toBeInTheDocument();
     });
 
     it("does not render when user is not authenticated", () => {
       mockConvexAuthState.isAuthenticated = false;
 
-      const { container } = render(<ApiKeyOnboardingModal />);
+      render(<ApiKeyOnboardingModal />);
 
-      expect(container).toBeEmptyDOMElement();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: /connect to pollinations/i })
+      ).not.toBeInTheDocument();
     });
 
     it("calls getOrCreateUser on mount when authenticated", async () => {

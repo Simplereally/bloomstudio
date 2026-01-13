@@ -16,8 +16,11 @@ import {
 } from "./constants";
 
 describe("pollen-auth/storage", () => {
-  // Mock localStorage
-  const localStorageMock = (() => {
+  // Store original localStorage descriptor for restoration
+  let originalLocalStorageDescriptor: PropertyDescriptor | undefined;
+
+  // Mock localStorage - use factory function to create fresh store per test
+  const createLocalStorageMock = () => {
     let store: Record<string, string> = {};
     return {
       getItem: vi.fn((key: string) => store[key] || null),
@@ -35,16 +38,38 @@ describe("pollen-auth/storage", () => {
       },
       key: vi.fn((i: number) => Object.keys(store)[i] || null),
     };
-  })();
+  };
+
+  let localStorageMock: ReturnType<typeof createLocalStorageMock>;
 
   beforeEach(() => {
-    vi.stubGlobal("localStorage", localStorageMock);
-    localStorageMock.clear();
+    // Save original descriptor before first test
+    if (originalLocalStorageDescriptor === undefined) {
+      originalLocalStorageDescriptor = Object.getOwnPropertyDescriptor(
+        window,
+        "localStorage"
+      );
+    }
+
+    // Create fresh mock for each test
+    localStorageMock = createLocalStorageMock();
+
+    // Use Object.defineProperty to stub window.localStorage directly
+    // This ensures the mock is applied correctly since storage.ts uses window.localStorage
+    Object.defineProperty(window, "localStorage", {
+      value: localStorageMock,
+      writable: true,
+      configurable: true,
+    });
+
     vi.clearAllMocks();
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
+    // Restore original localStorage
+    if (originalLocalStorageDescriptor) {
+      Object.defineProperty(window, "localStorage", originalLocalStorageDescriptor);
+    }
   });
 
   describe("storeApiKey", () => {

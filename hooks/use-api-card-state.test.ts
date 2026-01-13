@@ -128,11 +128,36 @@ describe("useApiCardState", () => {
 
     it("returns expired when BYOP key is expired", () => {
       mockSavedKey = null;
+      mockPollenAuthState.isAuthorized = true;
       mockPollenAuthState.isExpired = true;
       const { result } = renderHook(() => useApiCardState());
 
       expect(result.current.connectionStatus).toBe("expired");
       expect(result.current.byopState.isExpired).toBe(true);
+    });
+
+    it("returns not-connected when BYOP is expired but not authorized", () => {
+      mockSavedKey = null;
+      mockPollenAuthState.isAuthorized = false;
+      mockPollenAuthState.isExpired = true;
+      const { result } = renderHook(() => useApiCardState());
+
+      // Without isByopConnected, expired status should not apply
+      expect(result.current.connectionStatus).toBe("not-connected");
+    });
+
+    it("returns legacy-active when legacy key exists even if BYOP expiry flags are set", () => {
+      // This is the key bug fix test: legacy keys should not be affected by BYOP expiry state
+      mockSavedKey = "some-encrypted-legacy-key";
+      mockPollenAuthState.isAuthorized = false;
+      mockPollenAuthState.isExpired = true;
+      mockPollenAuthState.isExpiringSoon = true;
+      mockPollenAuthState.daysUntilExpiry = 3;
+      const { result } = renderHook(() => useApiCardState());
+
+      expect(result.current.isConnected).toBe(true);
+      expect(result.current.connectionType).toBe("legacy");
+      expect(result.current.connectionStatus).toBe("legacy-active");
     });
   });
 

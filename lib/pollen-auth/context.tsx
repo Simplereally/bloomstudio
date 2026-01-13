@@ -72,7 +72,14 @@ export interface PollenAuthActions {
 /**
  * Combined context value type.
  */
-export type PollenAuthContextValue = PollenAuthState & PollenAuthActions;
+export type PollenAuthContextValue = PollenAuthState &
+  PollenAuthActions & {
+    /**
+     * Internal sentinel to detect if this value came from a provider.
+     * @internal
+     */
+    _fromProvider: boolean;
+  };
 
 /**
  * Default state when no authorization exists.
@@ -93,6 +100,7 @@ const defaultState: PollenAuthState = {
  */
 export const PollenAuthContext = createContext<PollenAuthContextValue>({
   ...defaultState,
+  _fromProvider: false,
   authorize: () => {
     console.warn("[PollenAuth] authorize called outside of provider");
   },
@@ -228,6 +236,7 @@ export function PollenAuthProvider({ children }: PollenAuthProviderProps) {
   const contextValue = useMemo<PollenAuthContextValue>(
     () => ({
       ...state,
+      _fromProvider: true,
       authorize,
       deauthorize,
       refreshAuthState,

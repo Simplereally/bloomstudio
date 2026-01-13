@@ -70,20 +70,25 @@ export function storeApiKey(
     return false;
   }
 
-  if (!apiKey || typeof apiKey !== "string") {
-    console.warn("[PollenAuth] Invalid API key provided");
+  // Validate API key format before attempting storage
+  if (!isValidApiKeyFormat(apiKey)) {
+    console.warn("[PollenAuth] Invalid API key format provided");
     return false;
   }
 
-  try {
-    const expiresAt = authorizedAt + EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+  // Prepare all values before writing to storage (atomic-like write)
+  const expiresAt = authorizedAt + EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+  const values: Array<{ key: string; value: string }> = [
+    { key: STORAGE_KEY, value: apiKey },
+    { key: STORAGE_EXPIRY_KEY, value: String(expiresAt) },
+    { key: STORAGE_AUTHORIZED_AT_KEY, value: String(authorizedAt) },
+  ];
 
-    window.localStorage.setItem(STORAGE_KEY, apiKey);
-    window.localStorage.setItem(STORAGE_EXPIRY_KEY, String(expiresAt));
-    window.localStorage.setItem(
-      STORAGE_AUTHORIZED_AT_KEY,
-      String(authorizedAt)
-    );
+  try {
+    // Write all values within the try block
+    for (const { key, value } of values) {
+      window.localStorage.setItem(key, value);
+    }
 
     // Dispatch custom event to notify same-tab listeners
     dispatchAuthChangedEvent();
@@ -91,6 +96,16 @@ export function storeApiKey(
     return true;
   } catch (error) {
     console.error("[PollenAuth] Failed to store API key:", error);
+
+    // Clean up any keys that may have been written to avoid partial-write state
+    try {
+      window.localStorage.removeItem(STORAGE_KEY);
+      window.localStorage.removeItem(STORAGE_EXPIRY_KEY);
+      window.localStorage.removeItem(STORAGE_AUTHORIZED_AT_KEY);
+    } catch {
+      // Ignore cleanup errors - we're already in an error state
+    }
+
     return false;
   }
 }

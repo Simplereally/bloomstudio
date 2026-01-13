@@ -9,7 +9,7 @@
  * Uses BYOP OAuth flow for one-click setup - manual key entry has been deprecated.
  */
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Check, Zap } from "lucide-react";
@@ -131,11 +131,13 @@ export function ApiKeyOnboardingModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      {isOpen && <DialogTitle className="sr-only">Connect to Pollinations</DialogTitle>}
       <DialogContent
         className="sm:max-w-[480px] p-0 border border-border/50 bg-card overflow-hidden"
         showCloseButton={false}
       >
+        <DialogHeader>
+          <DialogTitle className="sr-only">Connect to Pollinations</DialogTitle>
+        </DialogHeader>
         {/* Subtle accent line at top */}
         <div className="absolute top-0 left-0 right-0 h-1 w-full bg-gradient-to-r from-transparent via-primary/60 to-transparent z-10" />
 

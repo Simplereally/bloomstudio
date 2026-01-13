@@ -38,10 +38,10 @@ import {
 export function usePollenAuth(): PollenAuthContextValue {
   const context = useContext(PollenAuthContext);
 
-  if (!context) {
+  if (!context._fromProvider) {
     throw new Error(
       "[usePollenAuth] must be used within a PollenAuthProvider. " +
-        "Make sure your component is wrapped in <PollenAuthProvider>."
+      "Make sure your component is wrapped in <PollenAuthProvider>."
     );
   }
 

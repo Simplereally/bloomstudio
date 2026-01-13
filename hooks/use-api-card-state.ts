@@ -128,16 +128,19 @@ export function useApiCardState(): UseApiCardStateReturn {
 
   const connectionStatus: ConnectionStatus = useMemo(() => {
     if (isLoading) return "loading";
-    // Check expired first - expired takes precedence over not-connected
-    if (isExpired) return "expired";
+    // BYOP-specific expiry checks - only apply when using BYOP auth
+    // Legacy connections should not be affected by BYOP token expiry state
+    if (isByopConnected && isExpired) return "expired";
     if (!isConnected) return "not-connected";
-    if (isExpiringSoon && daysUntilExpiry !== null) return "expiring-soon";
+    if (isByopConnected && isExpiringSoon && daysUntilExpiry !== null)
+      return "expiring-soon";
     if (connectionType === "byop" && daysUntilExpiry !== null)
       return "byop-connected";
     return "legacy-active";
   }, [
     isLoading,
     isConnected,
+    isByopConnected,
     isExpired,
     isExpiringSoon,
     daysUntilExpiry,
