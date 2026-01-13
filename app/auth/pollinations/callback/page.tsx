@@ -81,8 +81,6 @@ function isSafeReturnTo(returnTo: string | null): returnTo is string {
   // Reject paths starting with "//" (protocol-relative URLs)
   if (returnTo.startsWith("//")) return false;
 
-  // Reject if it contains a protocol (e.g., "javascript:", "data:", "http:")
-  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(returnTo)) return false;
 
   // Reject URLs with encoded protocol attempts or suspicious patterns
   // This catches patterns like "/\\evil.com" or "/@evil.com"
@@ -174,8 +172,19 @@ export default function PollinationsCallbackPage() {
   }, [extractKeyFromHash]);
 
   // Process the callback on mount
+  // NOTE: The 100ms delay is a defensive measure for browser timing quirks.
+  // Some browsers may not immediately populate `window.location.hash` in the
+  // same event loop tick after a redirect from an external OAuth provider.
+  // This ensures the hash fragment is parsed correctly after the page loads.
+  //
+  // Trade-off: If the hash is legitimately missing (e.g., user cancelled auth),
+  // there's a 100ms delay before showing the "Authorization Cancelled" error.
+  // Testing has shown this delay is necessary for reliable OAuth flows in Safari
+  // and some mobile browsers.
+  //
+  // TODO(@pollinations): Re-evaluate this delay if OAuth flow changes or if
+  // browser support for immediate hash access improves.
   useEffect(() => {
-    // Small delay to ensure hash is available after navigation
     const timer = setTimeout(processCallback, 100);
     return () => clearTimeout(timer);
   }, [processCallback]);

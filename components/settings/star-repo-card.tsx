@@ -43,7 +43,7 @@ export function StarRepoCard() {
                         onClick={() => window.open("https://enter.pollinations.ai/", "_blank", "noopener,noreferrer")}
                     >
                         <ExternalLink className="w-4 h-4 mr-2" />
-                        Learn More
+                        Learn more about this
                     </Button>
                 </div>
             </CardContent>

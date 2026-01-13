@@ -1,13 +1,15 @@
 /**
  * Tests for the Pollinations OAuth callback page.
- * 
+ *
  * These tests focus on the security validation of the returnTo parameter
  * to prevent open-redirect attacks.
+ *
+ * Performance Note: Uses fake timers to avoid waiting for real delays
+ * (100ms processing + 3s countdown = 3.1s per test without fake timers).
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { render, screen, act } from "@testing-library/react";
 import PollinationsCallbackPage from "./page";
 
 // Mock next/navigation
@@ -28,6 +30,8 @@ vi.mock("@/lib/pollen-auth", () => ({
     CALLBACK_KEY_PARAM: "api_key",
     storeApiKey: vi.fn(() => true),
     isValidApiKeyFormat: vi.fn((key: string) => key.startsWith("sk_")),
+    buildAuthorizationUrl: vi.fn(() => "https://pollinations.ai/authorize"),
+    getCallbackUrl: vi.fn(() => "https://example.com/auth/pollinations/callback"),
 }));
 
 // Mock sonner
@@ -38,11 +42,17 @@ vi.mock("sonner", () => ({
     },
 }));
 
+/** Time constants matching the component implementation */
+const PROCESSING_DELAY_MS = 100;
+const COUNTDOWN_SECONDS = 3;
+const COUNTDOWN_MS = COUNTDOWN_SECONDS * 1000;
+
 describe("PollinationsCallbackPage", () => {
     const originalLocation = window.location;
 
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.useFakeTimers();
 
         // Mock window.location
         Object.defineProperty(window, "location", {
@@ -51,6 +61,7 @@ describe("PollinationsCallbackPage", () => {
                 pathname: "/auth/pollinations/callback",
                 search: "",
                 origin: "https://example.com",
+                href: "https://example.com/auth/pollinations/callback",
             },
             writable: true,
         });
@@ -60,12 +71,44 @@ describe("PollinationsCallbackPage", () => {
     });
 
     afterEach(() => {
+        vi.useRealTimers();
         Object.defineProperty(window, "location", {
             value: originalLocation,
             writable: true,
         });
         vi.restoreAllMocks();
     });
+
+    /**
+     * Helper to advance past the initial processing delay.
+     * The component waits 100ms before parsing the hash for browser timing quirks.
+     */
+    async function advancePastProcessingDelay() {
+        await act(async () => {
+            vi.advanceTimersByTime(PROCESSING_DELAY_MS);
+        });
+    }
+
+    /**
+     * Helper to advance through the full countdown timer.
+     * After successful auth, the component counts down 3 seconds before redirecting.
+     */
+    async function advanceThroughCountdown() {
+        await act(async () => {
+            vi.advanceTimersByTime(COUNTDOWN_MS);
+        });
+    }
+
+    /**
+     * Helper to advance past processing and wait for success state.
+     */
+    async function advanceToSuccessState() {
+        await advancePastProcessingDelay();
+        // Allow React to process the state update
+        await act(async () => {
+            vi.advanceTimersByTime(0);
+        });
+    }
 
     describe("returnTo validation (isSafeReturnTo)", () => {
         it("should accept valid local paths", async () => {
@@ -74,15 +117,11 @@ describe("PollinationsCallbackPage", () => {
 
             render(<PollinationsCallbackPage />);
 
-            // Wait for processing to complete and countdown to trigger redirect
-            await waitFor(() => {
-                expect(screen.getByText(/Successfully Connected/i)).toBeInTheDocument();
-            }, { timeout: 500 });
+            await advanceToSuccessState();
+            expect(screen.getByText(/Successfully Connected/i)).toBeInTheDocument();
 
-            // Simulate countdown completion
-            await waitFor(() => {
-                expect(mockPush).toHaveBeenCalledWith("/studio");
-            }, { timeout: 5000 });
+            await advanceThroughCountdown();
+            expect(mockPush).toHaveBeenCalledWith("/studio");
         });
 
         it("should accept nested local paths", async () => {
@@ -91,13 +130,11 @@ describe("PollinationsCallbackPage", () => {
 
             render(<PollinationsCallbackPage />);
 
-            await waitFor(() => {
-                expect(screen.getByText(/Successfully Connected/i)).toBeInTheDocument();
-            }, { timeout: 500 });
+            await advanceToSuccessState();
+            expect(screen.getByText(/Successfully Connected/i)).toBeInTheDocument();
 
-            await waitFor(() => {
-                expect(mockPush).toHaveBeenCalledWith("/dashboard/settings/profile");
-            }, { timeout: 5000 });
+            await advanceThroughCountdown();
+            expect(mockPush).toHaveBeenCalledWith("/dashboard/settings/profile");
         });
 
         it("should reject absolute URLs and fall back to /studio", async () => {
@@ -106,13 +143,11 @@ describe("PollinationsCallbackPage", () => {
 
             render(<PollinationsCallbackPage />);
 
-            await waitFor(() => {
-                expect(screen.getByText(/Successfully Connected/i)).toBeInTheDocument();
-            }, { timeout: 500 });
+            await advanceToSuccessState();
+            expect(screen.getByText(/Successfully Connected/i)).toBeInTheDocument();
 
-            await waitFor(() => {
-                expect(mockPush).toHaveBeenCalledWith("/studio");
-            }, { timeout: 5000 });
+            await advanceThroughCountdown();
+            expect(mockPush).toHaveBeenCalledWith("/studio");
         });
 
         it("should reject protocol-relative URLs (//)", async () => {
@@ -121,9 +156,9 @@ describe("PollinationsCallbackPage", () => {
 
             render(<PollinationsCallbackPage />);
 
-            await waitFor(() => {
-                expect(mockPush).toHaveBeenCalledWith("/studio");
-            }, { timeout: 5000 });
+            await advanceToSuccessState();
+            await advanceThroughCountdown();
+            expect(mockPush).toHaveBeenCalledWith("/studio");
         });
 
         it("should reject javascript: protocol", async () => {
@@ -132,9 +167,9 @@ describe("PollinationsCallbackPage", () => {
 
             render(<PollinationsCallbackPage />);
 
-            await waitFor(() => {
-                expect(mockPush).toHaveBeenCalledWith("/studio");
-            }, { timeout: 5000 });
+            await advanceToSuccessState();
+            await advanceThroughCountdown();
+            expect(mockPush).toHaveBeenCalledWith("/studio");
         });
 
         it("should reject data: protocol", async () => {
@@ -143,9 +178,9 @@ describe("PollinationsCallbackPage", () => {
 
             render(<PollinationsCallbackPage />);
 
-            await waitFor(() => {
-                expect(mockPush).toHaveBeenCalledWith("/studio");
-            }, { timeout: 5000 });
+            await advanceToSuccessState();
+            await advanceThroughCountdown();
+            expect(mockPush).toHaveBeenCalledWith("/studio");
         });
 
         it("should reject paths with @ (potential username in URL)", async () => {
@@ -154,9 +189,9 @@ describe("PollinationsCallbackPage", () => {
 
             render(<PollinationsCallbackPage />);
 
-            await waitFor(() => {
-                expect(mockPush).toHaveBeenCalledWith("/studio");
-            }, { timeout: 5000 });
+            await advanceToSuccessState();
+            await advanceThroughCountdown();
+            expect(mockPush).toHaveBeenCalledWith("/studio");
         });
 
         it("should reject paths with encoded slashes (%2f)", async () => {
@@ -165,9 +200,9 @@ describe("PollinationsCallbackPage", () => {
 
             render(<PollinationsCallbackPage />);
 
-            await waitFor(() => {
-                expect(mockPush).toHaveBeenCalledWith("/studio");
-            }, { timeout: 5000 });
+            await advanceToSuccessState();
+            await advanceThroughCountdown();
+            expect(mockPush).toHaveBeenCalledWith("/studio");
         });
 
         it("should reject paths with encoded backslashes (%5c)", async () => {
@@ -176,9 +211,9 @@ describe("PollinationsCallbackPage", () => {
 
             render(<PollinationsCallbackPage />);
 
-            await waitFor(() => {
-                expect(mockPush).toHaveBeenCalledWith("/studio");
-            }, { timeout: 5000 });
+            await advanceToSuccessState();
+            await advanceThroughCountdown();
+            expect(mockPush).toHaveBeenCalledWith("/studio");
         });
 
         it("should reject paths with backslashes (potential Windows-style redirect)", async () => {
@@ -187,9 +222,9 @@ describe("PollinationsCallbackPage", () => {
 
             render(<PollinationsCallbackPage />);
 
-            await waitFor(() => {
-                expect(mockPush).toHaveBeenCalledWith("/studio");
-            }, { timeout: 5000 });
+            await advanceToSuccessState();
+            await advanceThroughCountdown();
+            expect(mockPush).toHaveBeenCalledWith("/studio");
         });
 
         it("should default to /studio when returnTo is null", async () => {
@@ -198,9 +233,9 @@ describe("PollinationsCallbackPage", () => {
 
             render(<PollinationsCallbackPage />);
 
-            await waitFor(() => {
-                expect(mockPush).toHaveBeenCalledWith("/studio");
-            }, { timeout: 5000 });
+            await advanceToSuccessState();
+            await advanceThroughCountdown();
+            expect(mockPush).toHaveBeenCalledWith("/studio");
         });
 
         it("should default to /studio when returnTo is empty string", async () => {
@@ -209,9 +244,9 @@ describe("PollinationsCallbackPage", () => {
 
             render(<PollinationsCallbackPage />);
 
-            await waitFor(() => {
-                expect(mockPush).toHaveBeenCalledWith("/studio");
-            }, { timeout: 5000 });
+            await advanceToSuccessState();
+            await advanceThroughCountdown();
+            expect(mockPush).toHaveBeenCalledWith("/studio");
         });
     });
 
@@ -222,13 +257,13 @@ describe("PollinationsCallbackPage", () => {
 
             render(<PollinationsCallbackPage />);
 
-            await waitFor(() => {
-                expect(window.history.replaceState).toHaveBeenCalledWith(
-                    null,
-                    "",
-                    "/auth/pollinations/callback?returnTo=/dashboard"
-                );
-            }, { timeout: 500 });
+            await advanceToSuccessState();
+
+            expect(window.history.replaceState).toHaveBeenCalledWith(
+                null,
+                "",
+                "/auth/pollinations/callback?returnTo=/dashboard"
+            );
         });
 
         it("should work correctly when there is no query string", async () => {
@@ -237,13 +272,68 @@ describe("PollinationsCallbackPage", () => {
 
             render(<PollinationsCallbackPage />);
 
-            await waitFor(() => {
-                expect(window.history.replaceState).toHaveBeenCalledWith(
-                    null,
-                    "",
-                    "/auth/pollinations/callback"
-                );
-            }, { timeout: 500 });
+            await advanceToSuccessState();
+
+            expect(window.history.replaceState).toHaveBeenCalledWith(
+                null,
+                "",
+                "/auth/pollinations/callback"
+            );
+        });
+    });
+
+    describe("error states", () => {
+        it("should show error when API key is missing", async () => {
+            window.location.hash = "";
+            mockGet.mockReturnValue("/studio");
+
+            render(<PollinationsCallbackPage />);
+
+            await advancePastProcessingDelay();
+
+            expect(screen.getByText(/Authorization Cancelled/i)).toBeInTheDocument();
+            expect(screen.getByText(/No API key was received/i)).toBeInTheDocument();
+        });
+
+        it("should show error when API key format is invalid", async () => {
+            window.location.hash = "#api_key=invalid_key";
+            mockGet.mockReturnValue("/studio");
+
+            render(<PollinationsCallbackPage />);
+
+            await advancePastProcessingDelay();
+
+            expect(screen.getByText(/Invalid API Key/i)).toBeInTheDocument();
+        });
+
+        it("should show processing state initially", () => {
+            window.location.hash = "#api_key=sk_test123";
+
+            render(<PollinationsCallbackPage />);
+
+            expect(screen.getByText(/Connecting to Pollinations/i)).toBeInTheDocument();
+        });
+    });
+
+    describe("countdown display", () => {
+        it("should display countdown correctly", async () => {
+            window.location.hash = "#api_key=sk_test123";
+            mockGet.mockReturnValue("/studio");
+
+            render(<PollinationsCallbackPage />);
+
+            await advanceToSuccessState();
+            expect(screen.getByText(/Redirecting in 3 seconds/i)).toBeInTheDocument();
+
+            await act(async () => {
+                vi.advanceTimersByTime(1000);
+            });
+            expect(screen.getByText(/Redirecting in 2 seconds/i)).toBeInTheDocument();
+
+            await act(async () => {
+                vi.advanceTimersByTime(1000);
+            });
+            expect(screen.getByText(/Redirecting in 1 seconds/i)).toBeInTheDocument();
         });
     });
 });
