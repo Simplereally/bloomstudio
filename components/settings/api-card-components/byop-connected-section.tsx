@@ -44,8 +44,7 @@ export function ByopConnectedSection({
         <span className="font-medium text-foreground">Connected via BYOP</span>
       </div>
       <p className="text-sm text-muted-foreground">
-        Your Pollinations connection is active and will automatically renew when
-        needed.
+        Your Pollinations connection is active.
         {daysUntilExpiry !== null && (
           <span className="block mt-1">
             Expires in{" "}

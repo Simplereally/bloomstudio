@@ -17,27 +17,27 @@ export function StarRepoCard() {
                 </div>
             </CardHeader>
             <CardContent className="space-y-6">
-                 {/* Pollinations Branding + Visual Context */}
-                 <div className="flex items-center gap-6 p-4 rounded-xl bg-gradient-to-r from-gray-900 to-black text-white shadow-md">
-                     <Image
-                         src="/branding/pollinations/logo-white.svg"
-                         alt="Pollinations AI"
-                         width={140} 
-                         height={40}
-                         className="h-10 w-auto object-contain"
-                     />
-                     <div className="h-8 w-px bg-white/20" /> {/* Divider */}
-                     <p className="text-sm font-medium text-white/90">
-                         Official Partner
-                     </p>
-                 </div>
+                {/* Pollinations Branding + Visual Context */}
+                <div className="flex items-center gap-6 p-4 rounded-xl bg-gradient-to-r from-gray-900 to-black text-white shadow-md">
+                    <Image
+                        src="/branding/pollinations/logo-white.svg"
+                        alt="Pollinations AI"
+                        width={140}
+                        height={40}
+                        className="h-10 w-auto object-contain"
+                    />
+                    <div className="h-8 w-px bg-white/20" /> {/* Divider */}
+                    <p className="text-sm font-medium text-white/90">
+                        Official Partner
+                    </p>
+                </div>
 
                 <div className="space-y-4">
                     <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
-                        Default API keys are limited to <span className="font-semibold">180 generations/day</span>. 
-                        By connecting your own Pollinations API key, you can boost this limit to <span className="font-semibold text-green-600 dark:text-green-500">~540 generations/day</span>.
+                        Default API keys are limited to <span className="font-semibold">180 generations/day</span>.
+                        You may be eligible for <span className="font-semibold text-green-600 dark:text-green-500">~540 generations/day</span> based on your Github account.
                     </p>
-                    
+
                     <Button
                         variant="outline"
                         onClick={() => window.open("https://enter.pollinations.ai/", "_blank", "noopener,noreferrer")}
