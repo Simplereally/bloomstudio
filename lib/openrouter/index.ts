@@ -5,7 +5,7 @@
  */
 
 export {
-    OpenRouterError, createOpenRouterClient, generate,
+    OpenRouterError, clearClientCache, createOpenRouterClient, generate,
     generateStream, type GenerateOptions
 } from "./openrouter-client"
 
