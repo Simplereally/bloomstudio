@@ -17,14 +17,14 @@ export type ModelType = "image" | "video";
 
 /** Duration constraints for video models */
 export interface VideoDurationConstraints {
-    /** Minimum duration in seconds */
-    readonly min: number
-    /** Maximum duration in seconds */
-    readonly max: number
-    /** Fixed duration options (if not provided, any value in range is allowed) */
-    readonly fixedOptions?: readonly number[]
-    /** Default duration in seconds */
-    readonly defaultDuration: number
+  /** Minimum duration in seconds */
+  readonly min: number
+  /** Maximum duration in seconds */
+  readonly max: number
+  /** Fixed duration options (if not provided, any value in range is allowed) */
+  readonly fixedOptions?: readonly number[]
+  /** Default duration in seconds */
+  readonly defaultDuration: number
 }
 
 /** Complete model definition with all configuration */
@@ -163,36 +163,37 @@ const GPTIMAGE_LARGE_ASPECT_RATIOS: readonly AspectRatioOption[] = (
 ).map(withAspectRatioTags);
 
 /**
- * Z-Image Turbo aspect ratios - Optimized for SPAN upscaler limit
+ * Z-Image Turbo aspect ratios - Uses HD standard dimensions within SPAN upscaler limit
  *
  * Pollinations enforces a max of 2,359,296 pixels (768×768 base × 2 upscale = 1536×1536 max square).
- * All dimensions are aligned to step=32 and maximize quality within the pixel budget.
+ * Uses HD standard resolutions where possible, with ultrawide ratios optimized for pixel budget.
+ * All dimensions are aligned to step=32.
  *
  * | Ratio | Width | Height | Pixels    |
- * |-------|-------|--------|-----------||
- * | 1:1   | 1536  | 1536   | 2,359,296 |
- * | 16:9  | 2048  | 1152   | 2,359,296 |
- * | 9:16  | 1152  | 2048   | 2,359,296 |
- * | 4:3   | 1664  | 1248   | 2,076,672 |
- * | 3:4   | 1248  | 1664   | 2,076,672 |
- * | 3:2   | 1824  | 1216   | 2,218,784 |
- * | 2:3   | 1216  | 1824   | 2,218,784 |
- * | 4:5   | 1280  | 1600   | 2,048,000 |
- * | 5:4   | 1600  | 1280   | 2,048,000 |
- * | 21:9  | 2240  | 960    | 2,150,400 |
- * | 9:21  | 960   | 2240   | 2,150,400 |
+ * |-------|-------|--------|-----------|
+ * | 1:1   | 1536  | 1536   | 2,359,296 | (max MP cap)
+ * | 16:9  | 1920  | 1080   | 2,073,600 | (HD standard)
+ * | 9:16  | 1080  | 1920   | 2,073,600 | (HD standard)
+ * | 4:3   | 1440  | 1080   | 1,555,200 | (HD standard)
+ * | 3:4   | 1080  | 1440   | 1,555,200 | (HD standard)
+ * | 3:2   | 1632  | 1088   | 1,775,616 | (step=32 aligned)
+ * | 2:3   | 1088  | 1632   | 1,775,616 | (step=32 aligned)
+ * | 4:5   | 1088  | 1344   | 1,462,272 | (step=32 aligned)
+ * | 5:4   | 1344  | 1088   | 1,462,272 | (step=32 aligned)
+ * | 21:9  | 2240  | 960    | 2,150,400 | (optimized for pixel budget)
+ * | 9:21  | 960   | 2240   | 2,150,400 | (optimized for pixel budget)
  */
 const ZIMAGE_ASPECT_RATIOS: readonly AspectRatioOption[] = (
   [
     { label: "Square", value: "1:1", width: 1536, height: 1536, icon: "square", category: "square" },
-    { label: "Landscape", value: "16:9", width: 2048, height: 1152, icon: "rectangle-horizontal", category: "landscape" },
-    { label: "Portrait", value: "9:16", width: 1152, height: 2048, icon: "rectangle-vertical", category: "portrait" },
-    { label: "Photo", value: "4:3", width: 1664, height: 1248, icon: "image", category: "landscape" },
-    { label: "Portrait Photo", value: "3:4", width: 1248, height: 1664, icon: "frame", category: "portrait" },
-    { label: "Photo Wide", value: "3:2", width: 1824, height: 1216, icon: "image", category: "landscape" },
-    { label: "Photo Tall", value: "2:3", width: 1216, height: 1824, icon: "frame", category: "portrait" },
-    { label: "Social", value: "4:5", width: 1280, height: 1600, icon: "smartphone", category: "portrait" },
-    { label: "Social Wide", value: "5:4", width: 1600, height: 1280, icon: "monitor", category: "landscape" },
+    { label: "Landscape", value: "16:9", width: 1920, height: 1080, icon: "rectangle-horizontal", category: "landscape" },
+    { label: "Portrait", value: "9:16", width: 1080, height: 1920, icon: "rectangle-vertical", category: "portrait" },
+    { label: "Photo", value: "4:3", width: 1440, height: 1080, icon: "image", category: "landscape" },
+    { label: "Portrait Photo", value: "3:4", width: 1080, height: 1440, icon: "frame", category: "portrait" },
+    { label: "Photo Wide", value: "3:2", width: 1632, height: 1088, icon: "image", category: "landscape" },
+    { label: "Photo Tall", value: "2:3", width: 1088, height: 1632, icon: "frame", category: "portrait" },
+    { label: "Social", value: "4:5", width: 1088, height: 1344, icon: "smartphone", category: "portrait" },
+    { label: "Social Wide", value: "5:4", width: 1344, height: 1088, icon: "monitor", category: "landscape" },
     { label: "Ultrawide", value: "21:9", width: 2240, height: 960, icon: "monitor", category: "ultrawide" },
     { label: "Ultra Tall", value: "9:21", width: 960, height: 2240, icon: "smartphone", category: "ultrawide" },
     { label: "Custom", value: "custom", width: 1536, height: 1536, icon: "sliders", category: "square" },
@@ -364,22 +365,22 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     logo: "/image-models/bytedance.svg",
     description: "Pro video generation with enhanced quality",
     constraints: {
-        maxPixels: Infinity,
-        minPixels: 0,
-        minDimension: 720,
-        maxDimension: 1920,
-        step: 1,
-        defaultDimensions: { width: 1920, height: 1080 },
-        dimensionsEnabled: false,
-        maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
-        supportedTiers: ["sd", "hd"],
+      maxPixels: Infinity,
+      minPixels: 0,
+      minDimension: 720,
+      maxDimension: 1920,
+      step: 1,
+      defaultDimensions: { width: 1920, height: 1080 },
+      dimensionsEnabled: false,
+      maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
+      supportedTiers: ["sd", "hd"],
     },
     aspectRatios: VIDEO_ASPECT_RATIOS,
     supportsNegativePrompt: false,
     durationConstraints: {
-        min: 2,
-        max: 10,
-        defaultDuration: 5,
+      min: 2,
+      max: 10,
+      defaultDuration: 5,
     },
   },
 
@@ -391,25 +392,25 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     logo: "/image-models/google.svg",
     description: "Google Veo video with audio and frame interpolation",
     constraints: {
-        maxPixels: Infinity,
-        minPixels: 0,
-        minDimension: 720,
-        maxDimension: 1920,
-        step: 1,
-        defaultDimensions: { width: 1920, height: 1080 },
-        dimensionsEnabled: false,
-        maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
-        supportedTiers: ["sd", "hd"],
+      maxPixels: Infinity,
+      minPixels: 0,
+      minDimension: 720,
+      maxDimension: 1920,
+      step: 1,
+      defaultDimensions: { width: 1920, height: 1080 },
+      dimensionsEnabled: false,
+      maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
+      supportedTiers: ["sd", "hd"],
     },
     aspectRatios: VIDEO_ASPECT_RATIOS,
     supportsNegativePrompt: false,
     supportsAudio: true,
     supportsInterpolation: true,
     durationConstraints: {
-        min: 4,
-        max: 8,
-        fixedOptions: [4, 6, 8],
-        defaultDuration: 4,
+      min: 4,
+      max: 8,
+      fixedOptions: [4, 6, 8],
+      defaultDuration: 4,
     },
   },
 
@@ -557,9 +558,9 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     aspectRatios: VIDEO_ASPECT_RATIOS,
     supportsNegativePrompt: false,
     durationConstraints: {
-        min: 2,
-        max: 10,
-        defaultDuration: 5,
+      min: 2,
+      max: 10,
+      defaultDuration: 5,
     },
   },
 } as const;
