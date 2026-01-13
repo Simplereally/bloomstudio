@@ -367,7 +367,9 @@ export const getBatchJob = query({
             return null
         }
 
-        return batchJob
+        // Filter out apiKey to prevent exposing sensitive data to clients
+        const { apiKey: _, ...safeBatchJob } = batchJob
+        return safeBatchJob
     },
 })
 
@@ -390,7 +392,10 @@ export const getUserActiveBatches = query({
             .collect()
 
         // Filter to only active (pending/processing/paused) jobs
-        return jobs.filter((job) => job.status === "pending" || job.status === "processing" || job.status === "paused")
+        // Filter out apiKey to prevent exposing sensitive data to clients
+        return jobs
+            .filter((job) => job.status === "pending" || job.status === "processing" || job.status === "paused")
+            .map(({ apiKey: _, ...safeJob }) => safeJob)
     },
 })
 
@@ -415,7 +420,8 @@ export const getUserBatchJobs = query({
             .order("desc")
             .take(limit)
 
-        return jobs
+        // Filter out apiKey to prevent exposing sensitive data to clients
+        return jobs.map(({ apiKey: _, ...safeJob }) => safeJob)
     },
 })
 

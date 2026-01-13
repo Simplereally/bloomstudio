@@ -1,4 +1,6 @@
 import { Building2, Crown, Sparkles, type LucideIcon } from "lucide-react"
+import Link from "next/link"
+
 
 export type TierName = "Starter" | "Pro" | "Competitors"
 
@@ -81,12 +83,18 @@ export const pricingFaqs = [
     {
         question: "What happens if I need more images?",
         answer:
-            "You can upgrade to the Pro tier ($3/month) to get 180 images per month and additional features. Or simply wait for your daily reset.",
+            "You have three options:\n\n1. Upgrade to Pro ($3/month) for exclusive features like private generations, NSFW generations, advanced prompt enhancement, and a 1,000+ image batch queue. Note: This plan includes the same 180 images/month quota as the Starter plan.\n\n2. Wait for your daily reset.\n\n3. Purchase additional Pollen credits directly from Pollinations to extend your quota beyond the included 180 images/month.",
     },
     {
         question: "What AI models are included?",
-        answer:
-            "We offer 12+ cutting-edge models including Flux, GPT-4 Image, Seedream, and more. Both Free and Pro users get access to all models.",
+        answer: (
+            <span>
+                We offer 12+ cutting-edge models including Flux, GPT-4 Image, Seedream, and more. Both Free and Pro users get access to all models.{" "}
+                <Link href="/#models" className="text-primary hover:underline font-medium">
+                    View the full list of supported models here.
+                </Link>
+            </span>
+        ),
     },
     {
         question: "Why is this so much cheaper than competitors?",

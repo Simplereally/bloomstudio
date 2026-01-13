@@ -88,7 +88,7 @@ describe("ApiKeyOnboardingModal", () => {
       render(<ApiKeyOnboardingModal />);
 
       await waitFor(() => {
-        expect(screen.getByRole("heading", { name: /connect to pollinations/i })).toBeInTheDocument();
+        expect(screen.getByRole("dialog", { name: /connect to pollinations/i })).toBeInTheDocument();
         expect(screen.getByText(/zero api costs/i)).toBeInTheDocument();
       });
     });
@@ -99,9 +99,6 @@ describe("ApiKeyOnboardingModal", () => {
       render(<ApiKeyOnboardingModal />);
 
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("heading", { name: /connect to pollinations/i })
-      ).not.toBeInTheDocument();
     });
 
     it("does not render when user has existing API key", () => {
@@ -110,9 +107,6 @@ describe("ApiKeyOnboardingModal", () => {
       render(<ApiKeyOnboardingModal />);
 
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("heading", { name: /connect to pollinations/i })
-      ).not.toBeInTheDocument();
     });
 
     it("does not render while pollen auth is loading", () => {
@@ -121,9 +115,6 @@ describe("ApiKeyOnboardingModal", () => {
       render(<ApiKeyOnboardingModal />);
 
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("heading", { name: /connect to pollinations/i })
-      ).not.toBeInTheDocument();
     });
 
     it("does not render while convex auth is loading", () => {
@@ -132,9 +123,6 @@ describe("ApiKeyOnboardingModal", () => {
       render(<ApiKeyOnboardingModal />);
 
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("heading", { name: /connect to pollinations/i })
-      ).not.toBeInTheDocument();
     });
 
     it("does not render when user is not authenticated", () => {
@@ -143,9 +131,6 @@ describe("ApiKeyOnboardingModal", () => {
       render(<ApiKeyOnboardingModal />);
 
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("heading", { name: /connect to pollinations/i })
-      ).not.toBeInTheDocument();
     });
 
     it("calls getOrCreateUser on mount when authenticated", async () => {
@@ -165,16 +150,14 @@ describe("ApiKeyOnboardingModal", () => {
       render(<ApiKeyOnboardingModal forceOpen={true} onClose={vi.fn()} />);
 
       await waitFor(() => {
-        expect(screen.getByRole("heading", { name: /connect to pollinations/i })).toBeInTheDocument();
+        expect(screen.getByRole("dialog", { name: /connect to pollinations/i })).toBeInTheDocument();
       });
     });
 
     it("does not render when forceOpen is false", () => {
       render(<ApiKeyOnboardingModal forceOpen={false} onClose={vi.fn()} />);
 
-      expect(
-        screen.queryByRole("heading", { name: /connect to pollinations/i })
-      ).not.toBeInTheDocument();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
     it("calls onClose when modal is closed via escape", async () => {
@@ -196,7 +179,7 @@ describe("ApiKeyOnboardingModal", () => {
       render(<ApiKeyOnboardingModal forceOpen={true} onClose={vi.fn()} />);
 
       await waitFor(() => {
-        expect(screen.getByRole("heading", { name: /connect to pollinations/i })).toBeInTheDocument();
+        expect(screen.getByRole("dialog", { name: /connect to pollinations/i })).toBeInTheDocument();
         expect(
           screen.getByText(/one-click setup\. generate unlimited images for free\./i)
         ).toBeInTheDocument();

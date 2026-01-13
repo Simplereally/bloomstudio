@@ -28,6 +28,8 @@ import {
   CALLBACK_KEY_PARAM,
   storeApiKey,
   isValidApiKeyFormat,
+  buildAuthorizationUrl,
+  getCallbackUrl,
 } from "@/lib/pollen-auth";
 
 /** Possible states of the callback handler */
@@ -179,13 +181,15 @@ export default function PollinationsCallbackPage() {
   }, [processCallback]);
 
   // Redirect countdown for success state
+  // Note: We must NOT call router.push inside setRedirectCountdown, as this would
+  // trigger a state update in Router while React is rendering this component.
+  // Instead, we track the countdown separately and navigate in a separate effect.
   useEffect(() => {
     if (state !== "success") return;
 
     const timer = setInterval(() => {
       setRedirectCountdown((prev) => {
         if (prev <= 1) {
-          router.push(getSafeReturnTo(searchParams));
           return 0;
         }
         return prev - 1;
@@ -193,16 +197,21 @@ export default function PollinationsCallbackPage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [state, router, searchParams]);
+  }, [state]);
+
+  // Separate effect to handle navigation when countdown reaches 0
+  useEffect(() => {
+    if (state === "success" && redirectCountdown === 0) {
+      router.push(getSafeReturnTo(searchParams));
+    }
+  }, [state, redirectCountdown, router, searchParams]);
 
   /**
    * Handles retry by redirecting back to Pollinations auth.
    */
   const handleRetry = useCallback(() => {
-    // Import authorize function from context would require provider
-    // For the callback page, we redirect directly
-    const currentUrl = window.location.origin + "/auth/pollinations/callback";
-    window.location.href = `https://enter.pollinations.ai/authorize?redirect_url=${encodeURIComponent(currentUrl)}`;
+    // Use centralized helpers to construct the authorization URL
+    window.location.href = buildAuthorizationUrl(getCallbackUrl());
   }, []);
 
   /**

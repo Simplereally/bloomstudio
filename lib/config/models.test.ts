@@ -259,9 +259,9 @@ describe("Model Constraints", () => {
             expect(model.supportsNegativePrompt).toBe(true)
         })
 
-        it("should only support SD tier", () => {
+        it("should only support SD and HD tiers", () => {
             const model = getModel("flux")!
-            expect(model.constraints.supportedTiers).toEqual(["sd"])
+            expect(model.constraints.supportedTiers).toEqual(["sd", "hd"])
         })
 
         it("should have all presets under 589,824 pixel limit and step-aligned to 8", () => {
