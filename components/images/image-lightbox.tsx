@@ -10,9 +10,11 @@ import { useImageDetails } from "@/hooks/queries/use-image-history"
 import { useImageLightbox, type LightboxImage } from "@/hooks/use-image-lightbox"
 import { getModelDisplayName } from "@/lib/config/models"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@clerk/nextjs"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 import { AnimatePresence, motion } from "framer-motion"
-import { BookmarkPlus, Check, Copy, Loader2, ZoomIn } from "lucide-react"
+import { BookmarkPlus, Check, Copy, Loader2, LogIn, ZoomIn } from "lucide-react"
+import Link from "next/link"
 import NextImage from "next/image"
 import * as React from "react"
 
@@ -74,6 +76,9 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
     isHovering,
     setIsHovering
   } = useImageLightbox({ image: displayImage, isOpen })
+
+  // Auth state for gating features
+  const { isSignedIn } = useAuth()
 
   // Prompt library state for saving prompts
   const [libraryOpen, setLibraryOpen] = React.useState(false)
@@ -295,29 +300,51 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
 
                       {/* Action buttons */}
                       <div className="flex items-center gap-2">
-                        {/* Save to Library Button */}
-                        <Tooltip delayDuration={200}>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-10 w-10 mb-1 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-md transition-all shrink-0 hover:scale-105 active:scale-95 shadow-lg"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                if (displayImage.prompt) {
-                                  setSaveContent(displayImage.prompt)
-                                  setLibraryOpen(true)
-                                }
-                              }}
-                              disabled={isLoadingDetails || !displayImage.prompt}
-                            >
-                              <BookmarkPlus className="h-5 w-5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="z-[100]">
-                            <p className="font-medium">Save to Library</p>
-                          </TooltipContent>
-                        </Tooltip>
+                        {/* Save to Library Button - auth-gated with sign-in prompt */}
+                        {isSignedIn ? (
+                          <Tooltip delayDuration={200}>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-10 w-10 mb-1 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-md transition-all shrink-0 hover:scale-105 active:scale-95 shadow-lg"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  if (displayImage.prompt) {
+                                    setSaveContent(displayImage.prompt)
+                                    setLibraryOpen(true)
+                                  }
+                                }}
+                                disabled={isLoadingDetails || !displayImage.prompt}
+                              >
+                                <BookmarkPlus className="h-5 w-5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="z-[100]">
+                              <p className="font-medium">Save to Library</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <Tooltip delayDuration={200}>
+                            <TooltipTrigger asChild>
+                              <Link href="/sign-in" onClick={(e) => e.stopPropagation()}>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-10 w-10 mb-1 rounded-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white border border-white/10 backdrop-blur-md transition-all shrink-0 hover:scale-105 active:scale-95 shadow-lg"
+                                >
+                                  <BookmarkPlus className="h-5 w-5" />
+                                </Button>
+                              </Link>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="z-[100]">
+                              <div className="flex items-center gap-2">
+                                <LogIn className="h-3.5 w-3.5" />
+                                <p className="font-medium">Sign in to save prompts</p>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
 
                         {/* Copy Prompt Button */}
                         <Tooltip delayDuration={200}>

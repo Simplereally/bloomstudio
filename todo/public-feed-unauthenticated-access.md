@@ -43,15 +43,15 @@ This approach is modeled after **Leonardo AI's** community creations page (`app.
 - However, the feed uses `useFeed()` hook which calls Convex queries
 
 **Research Needed:**
-- [ ] Verify if `getPublicFeed` Convex query requires authentication
-- [ ] Check if Convex client works without Clerk auth token for public queries
+- [x] Verify if `getPublicFeed` Convex query requires authentication ✓ (no auth check)
+- [x] Check if Convex client works without Clerk auth token for public queries ✓ (works)
 
 **Implementation:**
-- [ ] Audit `convex/generatedImages.ts` → `getPublicFeed` query
+- [x] Audit `convex/generatedImages.ts` → `getPublicFeed` query
   - Currently: No auth check - queries `by_visibility` index for `"public"` images
   - Appears to already work without auth ✓
-- [ ] Test feed page in incognito/logged-out state
-- [ ] Ensure `ConvexClientProvider` works without auth for public queries
+- [x] Test feed page in incognito/logged-out state ✓
+- [x] Ensure `ConvexClientProvider` works without auth for public queries ✓
 
 **Files to Modify:**
 - `app/feed/[type]/page.tsx` - May need conditional rendering for auth state
@@ -65,15 +65,15 @@ This approach is modeled after **Leonardo AI's** community creations page (`app.
 - Following feed requires auth (calls `getFollowingFeed` which checks `ctx.auth`)
 
 **Implementation:**
-- [ ] Add route-level access control for `/feed/following`
-  - Option A: Add to `isProtectedRoute` in `proxy.ts`
+- [x] Add route-level access control for `/feed/following`
+  - Option A: Add to `isProtectedRoute` in `proxy.ts` ✓ (implemented)
   - Option B: Redirect unauthenticated users from following feed to public feed
-- [ ] Update `FeedTabs` component to hide/disable "Following" tab for unauthenticated users
-- [ ] Show sign-in prompt if unauthenticated user tries to access following feed
+- [x] Update `FeedTabs` component to hide/disable "Following" tab for unauthenticated users ✓
+- [x] Show sign-in prompt if unauthenticated user tries to access following feed ✓ (Clerk handles redirect)
 
 **Files to Modify:**
-- `proxy.ts` - Add `/feed/following` to protected routes (preferred)
-- `components/gallery/feed-tabs.tsx` - Conditional tab rendering
+- `proxy.ts` - Add `/feed/following` to protected routes (preferred) ✓
+- `components/gallery/feed-tabs.tsx` - Conditional tab rendering ✓
 
 ---
 
@@ -360,18 +360,18 @@ This approach is modeled after **Leonardo AI's** community creations page (`app.
 ## Implementation Priority Order
 
 ### High Priority (MVP)
-1. [ ] Verify public feed works without auth
-2. [ ] Hide "Following" tab for unauthenticated users
-3. [ ] Add feed to sitemap
-4. [ ] Add feed page metadata
-5. [ ] Disable "Save to Library" for unauthenticated (show prompt)
+1. [x] Verify public feed works without auth ✓ (getPublicFeed has no auth check)
+2. [x] Hide "Following" tab for unauthenticated users ✓ (feed-tabs.tsx updated)
+3. [x] Add feed to sitemap ✓ (sitemap.ts updated with /feed/public)
+4. [x] Add feed page metadata ✓ (generateMetadata added to feed page)
+5. [x] Disable "Save to Library" for unauthenticated (show prompt) ✓ (image-lightbox.tsx + image-card.tsx updated)
 
 ### Medium Priority (Enhancement)
 6. [ ] Optimize feed query for thumbnail-only data
 7. [ ] Add responsive images (srcset)
 8. [ ] Video hover-to-play
-9. [ ] Add sign-up CTA component
-10. [ ] Structured data (JSON-LD)
+9. [x] Add sign-up CTA component ✓ (feed-cta.tsx created)
+10. [x] Structured data (JSON-LD) ✓ (added to feed page)
 
 ### Low Priority (Polish)
 11. [ ] Lightbox thumbnail-to-full-res crossfade

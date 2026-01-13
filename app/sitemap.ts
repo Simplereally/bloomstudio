@@ -25,5 +25,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
         priority: route === "" ? 1 : 0.8,
     }))
 
-    return [...staticPages, ...solutions]
+    // Feed page - crawlable for SEO (showcases community content)
+    const feedPages = [
+        {
+            url: `${baseUrl}/feed/public`,
+            lastModified: new Date(),
+            changeFrequency: "hourly" as const, // Feed updates frequently
+            priority: 0.9, // High priority - great discovery content
+        },
+    ]
+
+    return [...staticPages, ...feedPages, ...solutions]
 }

@@ -278,8 +278,8 @@ export const ImageCard = React.memo(function ImageCard({
                         </TooltipContent>
                     </Tooltip>
 
-                    {/* Favorite button */}
-                    {isSignedIn && (
+                    {/* Favorite button - shows sign-in prompt for unauthenticated users */}
+                    {isSignedIn ? (
                         <Tooltip delayDuration={200}>
                             <TooltipTrigger asChild>
                                 <Button
@@ -305,6 +305,23 @@ export const ImageCard = React.memo(function ImageCard({
                                 <p className="font-medium">
                                     {displayFavorited ? "Remove from favorites" : "Add to favorites"}
                                 </p>
+                            </TooltipContent>
+                        </Tooltip>
+                    ) : (
+                        <Tooltip delayDuration={200}>
+                            <TooltipTrigger asChild>
+                                <Link href="/sign-in" onClick={(e) => e.stopPropagation()}>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white backdrop-blur-md transition-colors shrink-0 border border-white/10"
+                                    >
+                                        <Heart className="h-3.5 w-3.5" />
+                                    </Button>
+                                </Link>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="z-[200]">
+                                <p className="font-medium">Sign in to save favorites</p>
                             </TooltipContent>
                         </Tooltip>
                     )}

@@ -4,6 +4,11 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ImageLightbox } from './image-lightbox'
 
+// Mock Clerk auth
+vi.mock('@clerk/nextjs', () => ({
+    useAuth: () => ({ isSignedIn: true }),
+}))
+
 // Mock react-zoom-pan-pinch
 vi.mock('react-zoom-pan-pinch', () => ({
     TransformWrapper: ({ children, onTransformed }: any) => {
@@ -171,6 +176,7 @@ vi.mock('lucide-react', () => ({
     Check: () => <span>✓</span>,
     Copy: () => <span>📋</span>,
     Loader2: () => <span>⏳</span>,
+    LogIn: () => <span>🔑</span>,
     ZoomIn: () => <span>🔍</span>,
     X: () => <span>✕</span>,
 }))
