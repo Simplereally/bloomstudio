@@ -167,7 +167,7 @@ const GPTIMAGE_LARGE_ASPECT_RATIOS: readonly AspectRatioOption[] = (
  *
  * Pollinations enforces a max of 2,359,296 pixels (768×768 base × 2 upscale = 1536×1536 max square).
  * Uses HD standard resolutions where possible, with ultrawide ratios optimized for pixel budget.
- * All dimensions are aligned to step=32.
+ * All dimensions are aligned to step=8.
  *
  * | Ratio | Width | Height | Pixels    |
  * |-------|-------|--------|-----------|
@@ -176,10 +176,10 @@ const GPTIMAGE_LARGE_ASPECT_RATIOS: readonly AspectRatioOption[] = (
  * | 9:16  | 1080  | 1920   | 2,073,600 | (HD standard)
  * | 4:3   | 1440  | 1080   | 1,555,200 | (HD standard)
  * | 3:4   | 1080  | 1440   | 1,555,200 | (HD standard)
- * | 3:2   | 1632  | 1088   | 1,775,616 | (step=32 aligned)
- * | 2:3   | 1088  | 1632   | 1,775,616 | (step=32 aligned)
- * | 4:5   | 1088  | 1344   | 1,462,272 | (step=32 aligned)
- * | 5:4   | 1344  | 1088   | 1,462,272 | (step=32 aligned)
+ * | 3:2   | 1624  | 1080   | 1,753,920 | (step=8 aligned)
+ * | 2:3   | 1080  | 1624   | 1,753,920 | (step=8 aligned)
+ * | 4:5   | 1080  | 1352   | 1,460,160 | (step=8 aligned)
+ * | 5:4   | 1352  | 1080   | 1,460,160 | (step=8 aligned)
  * | 21:9  | 2240  | 960    | 2,150,400 | (optimized for pixel budget)
  * | 9:21  | 960   | 2240   | 2,150,400 | (optimized for pixel budget)
  */
@@ -190,10 +190,10 @@ const ZIMAGE_ASPECT_RATIOS: readonly AspectRatioOption[] = (
     { label: "Portrait", value: "9:16", width: 1080, height: 1920, icon: "rectangle-vertical", category: "portrait" },
     { label: "Photo", value: "4:3", width: 1440, height: 1080, icon: "image", category: "landscape" },
     { label: "Portrait Photo", value: "3:4", width: 1080, height: 1440, icon: "frame", category: "portrait" },
-    { label: "Photo Wide", value: "3:2", width: 1632, height: 1088, icon: "image", category: "landscape" },
-    { label: "Photo Tall", value: "2:3", width: 1088, height: 1632, icon: "frame", category: "portrait" },
-    { label: "Social", value: "4:5", width: 1088, height: 1344, icon: "smartphone", category: "portrait" },
-    { label: "Social Wide", value: "5:4", width: 1344, height: 1088, icon: "monitor", category: "landscape" },
+    { label: "Photo Wide", value: "3:2", width: 1624, height: 1080, icon: "image", category: "landscape" },
+    { label: "Photo Tall", value: "2:3", width: 1080, height: 1624, icon: "frame", category: "portrait" },
+    { label: "Social", value: "4:5", width: 1080, height: 1352, icon: "smartphone", category: "portrait" },
+    { label: "Social Wide", value: "5:4", width: 1352, height: 1080, icon: "monitor", category: "landscape" },
     { label: "Ultrawide", value: "21:9", width: 2240, height: 960, icon: "monitor", category: "ultrawide" },
     { label: "Ultra Tall", value: "9:21", width: 960, height: 2240, icon: "smartphone", category: "ultrawide" },
     { label: "Custom", value: "custom", width: 1536, height: 1536, icon: "sliders", category: "square" },
@@ -349,7 +349,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
       defaultDimensions: { width: 768, height: 768 },
       dimensionsEnabled: true,
       maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
-      supportedTiers: ["sd", "hd"], // Limited to SD tier (768px max)
+      supportedTiers: ["sd"], // Limited to SD tier (768px max)
       outputCertainty: "variable",
       dimensionWarning: "Output may be adjusted by gateway to fit constraints",
     },
@@ -430,7 +430,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
       minPixels: 0,
       minDimension: 64,
       maxDimension: 2048, // Max single dimension (e.g., 2048×1152 landscape)
-      step: 32,
+      step: 8,
       defaultDimensions: { width: 1536, height: 1536 },
       dimensionsEnabled: true,
       maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
