@@ -20,6 +20,7 @@ import { Suspense } from "react"
 import { pricingTiers, pricingFaqs, featureComparison } from "./pricing-data"
 import { CheckoutButton, PaymentToastHandler } from "./checkout-button"
 import { FeatureDetailDialog } from "@/components/pricing/feature-detail-dialog"
+import { ModelValueShowcase } from "@/components/pricing/model-value-showcase"
 
 export const metadata: Metadata = {
     title: "Pricing | Bloom Studio",
@@ -76,7 +77,7 @@ export default function PricingPage() {
             <div className="min-h-svh bg-background">
                 {/* Hero + Value Proposition - Static SSR */}
                 <section className="container mx-auto px-6 pt-24 sm:pt-32 md:pt-36 pb-10 text-center">
-                    <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
+                    <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-3">
                         Simple pricing. <span className="text-primary">Unbeatable value.</span>
                     </h1>
                 </section>
@@ -90,19 +91,17 @@ export default function PricingPage() {
                             return (
                                 <div
                                     key={tier.name}
-                                    className={`relative rounded-2xl p-8 text-left transition-all duration-300 ${
-                                        tier.highlighted
-                                            ? "bg-gradient-to-b from-primary/10 via-card to-card border-2 border-primary/50 shadow-xl shadow-primary/10 scale-[1.02]"
-                                            : tier.name === "Starter"
-                                                ? "bg-gradient-to-b from-green-600/5 via-card/80 to-card border border-green-600/20 shadow-lg shadow-green-900/5 hover:border-green-600/40"
-                                                : "bg-card/40 backdrop-blur-[2px] border border-border/50 hover:border-primary/20 opacity-90"
-                                    }`}
+                                    className={`relative rounded-2xl p-8 text-left transition-all duration-300 ${tier.highlighted
+                                        ? "bg-gradient-to-b from-primary/10 via-card to-card border-2 border-primary/50 shadow-xl shadow-primary/10 scale-[1.02]"
+                                        : tier.name === "Starter"
+                                            ? "bg-gradient-to-b from-green-600/5 via-card/80 to-card border border-green-600/20 shadow-lg shadow-green-900/5 hover:border-green-600/40"
+                                            : "bg-card/40 backdrop-blur-[2px] border border-border/50 hover:border-primary/20 opacity-90"
+                                        }`}
                                 >
                                     {tier.badge && (
                                         <Badge
-                                            className={`absolute -top-3 left-1/2 -translate-x-1/2 px-4 ${
-                                                tier.name === "Starter" ? "bg-green-700 hover:bg-green-800" : "bg-primary"
-                                            } text-primary-foreground`}
+                                            className={`absolute -top-3 left-1/2 -translate-x-1/2 px-4 ${tier.name === "Starter" ? "bg-green-700 hover:bg-green-800" : "bg-primary"
+                                                } text-primary-foreground`}
                                         >
                                             {tier.badge}
                                         </Badge>
@@ -110,14 +109,12 @@ export default function PricingPage() {
 
                                     <div className="flex items-center gap-3 mb-4">
                                         <div
-                                            className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-                                                tier.highlighted ? "bg-primary/20" : tier.name === "Starter" ? "bg-green-600/10" : "bg-muted"
-                                            }`}
+                                            className={`flex h-10 w-10 items-center justify-center rounded-xl ${tier.highlighted ? "bg-primary/20" : tier.name === "Starter" ? "bg-green-600/10" : "bg-muted"
+                                                }`}
                                         >
                                             <Icon
-                                                className={`h-5 w-5 ${
-                                                    tier.highlighted ? "text-primary" : tier.name === "Starter" ? "text-green-700" : "text-muted-foreground"
-                                                }`}
+                                                className={`h-5 w-5 ${tier.highlighted ? "text-primary" : tier.name === "Starter" ? "text-green-700" : "text-muted-foreground"
+                                                    }`}
                                             />
                                         </div>
                                         <h3 className="text-xl font-semibold text-foreground">{tier.name}</h3>
@@ -179,8 +176,6 @@ export default function PricingPage() {
                                         ) : (
                                             <div className="text-2xl font-bold text-foreground">Custom</div>
                                         )}
-                                        {tier.name === "Pro" && <p className="text-xs text-primary font-medium mt-1">= $0.017 per image</p>}
-                                        {tier.name === "Competitors" && <p className="text-xs text-muted-foreground mt-1">= $0.20 per image</p>}
                                     </div>
 
                                     {/* Checkout Button - Client Component */}
@@ -233,6 +228,9 @@ export default function PricingPage() {
                     </div>
                 </section>
 
+                {/* Model Value Showcase - Visualize monthly quotas across all models */}
+                <ModelValueShowcase />
+
                 {/* Competitor Comparison - Static SSR */}
                 <section className="container mx-auto px-6 py-16 md:py-20 lg:py-24 xl:py-28 2xl:py-32">
                     <div className="max-w-[1172px] mx-auto">
@@ -279,7 +277,7 @@ export default function PricingPage() {
                                             <div className="flex items-center">
                                                 {row.feature}
                                                 {"details" in row && row.details && (
-                                                    <FeatureDetailDialog 
+                                                    <FeatureDetailDialog
                                                         title={row.details.title}
                                                         description={row.details.description}
                                                         cardTitle={row.details.cardTitle}

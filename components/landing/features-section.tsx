@@ -29,7 +29,7 @@ export function FeaturesSection() {
           <ScrollReveal delay={100}>
             <FeatureCard
               icon={Layers}
-              title="10+ AI Models"
+              title="12+ AI Models"
               description="Access GPT-4 Image, Flux Kontext, Seedream 4.5, NanoBanana Pro, and more. All models included in every plan."
             />
           </ScrollReveal>
@@ -44,7 +44,7 @@ export function FeaturesSection() {
             <FeatureCard
               icon={ImageIcon}
               title="High Resolution"
-              description="Up to 4096×4096 pixels with Z-Image Turbo. Create print-ready artwork and detailed visuals."
+              description="4K support with Seedream 4.5 Pro. Create print-ready artwork and detailed visuals."
             />
           </ScrollReveal>
           <ScrollReveal delay={400}>
@@ -64,8 +64,8 @@ export function FeaturesSection() {
           <ScrollReveal delay={600}>
             <FeatureCard
               icon={Lock}
-              title="Private by Default"
-              description="Your generations are yours alone. No public galleries, no training on your images."
+              title="Privacy Enabled"
+              description="Your generations can be private or public. Private generations will not be visible to the public."
             />
           </ScrollReveal>
         </div>
@@ -73,7 +73,7 @@ export function FeaturesSection() {
         {/* Interactive demo hint */}
         <ScrollReveal delay={700}>
           <div className="mt-16 3xl:mt-24 4xl:mt-32 text-center">
-            <Link 
+            <Link
               href="/studio"
               className="inline-flex items-center gap-3 px-6 py-4 rounded-2xl glass-effect-home hover:bg-white/10 transition-colors group cursor-pointer border border-white/10 hover:border-primary/50"
             >

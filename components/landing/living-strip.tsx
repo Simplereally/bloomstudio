@@ -198,18 +198,31 @@ export function LivingStrip({ className }: LivingStripProps) {
                 </div>
             </div>
 
-            {/* Subtle label */}
+            {/* CTA - Ember glow aesthetic matching header */}
             <div className="flex justify-center mt-4 md:mt-6">
                 <Link
                     href="/feed/public"
-                    className="group inline-flex items-center gap-2 text-xs md:text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    className="group"
                 >
-                    <span className="h-px w-8 bg-current opacity-30" />
-                    <Button variant="default" size="sm">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                            // Base styling - glass-like with ember border
+                            "relative border border-primary/30 bg-primary/5",
+                            // Typography
+                            "font-medium tracking-wide",
+                            // Hover state - intensify the ember glow
+                            "hover:border-primary/60 hover:bg-primary/10",
+                            // Subtle transition
+                            "transition-all duration-300 ease-out",
+                            // The ember glow effect
+                            "shadow-[0_0_15px_-3px_var(--primary)] hover:shadow-[0_0_25px_-3px_var(--primary)]"
+                        )}
+                    >
                         Get inspired
                         <ArrowRight className="h-4 w-4 ml-2 transition-transform group-hover:translate-x-1" />
                     </Button>
-                    <span className="h-px w-8 bg-current opacity-30" />
                 </Link>
             </div>
 

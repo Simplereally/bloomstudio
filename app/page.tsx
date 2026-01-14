@@ -6,7 +6,7 @@ import { Footer } from "@/components/layout/footer";
 import { GLBackground } from "@/components/landing/gl-background";
 import { HeroSection } from "@/components/landing/hero-section";
 import { LandingHeader } from "@/components/landing/landing-header";
-import { LivingStrip } from "@/components/landing/living-strip";
+// import { LivingStrip } from "@/components/landing/living-strip";
 import { ModelsSection } from "@/components/landing/models-section";
 import { ShowcaseSection } from "@/components/landing/showcase-section";
 import { ValuePropSection } from "@/components/landing/value-prop-section";
@@ -60,12 +60,12 @@ export default function LandingPage() {
         {/* <FloatingGallery /> */}
 
         <HeroSection />
-        <LivingStrip />
+        {/* LivingStrip removed as requested */}
         <ShowcaseSection />
         <ValuePropSection />
         <FeaturesSection />
         <ModelsSection />
-        <CommunitySection />
+        {/*<CommunitySection />*/}
         <CtaSection />
 
         {/* Footer */}

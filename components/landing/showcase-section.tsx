@@ -1,6 +1,10 @@
 import { ScrollReveal } from "./scroll-reveal";
 import { ShowcaseImage } from "./showcase-image";
 import { Slideshow, SlideshowSlide } from "@/components/ui/slideshow";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 interface ShowcaseItem {
   label: string;
@@ -22,11 +26,11 @@ interface ShowcaseSectionProps {
  */
 export function ShowcaseSection({ items }: ShowcaseSectionProps) {
   const defaultItems: ShowcaseItem[] = [
+    { label: "Influencer", aspectRatio: "portrait", className: "h-full", src: "/showcase/influencer.jpeg" },
     { label: "Photorealistic Closeup", aspectRatio: "portrait", className: "h-full", src: "/showcase/photorealistic-closeup.jpeg" },
     { label: "Abstract Art", aspectRatio: "portrait", className: "h-full", src: "/showcase/abstract-art.jpeg" },
     { label: "Product Shot", aspectRatio: "portrait", className: "h-full", src: "/showcase/product-shot.jpeg" },
     { label: "Landscape Scene", aspectRatio: "portrait", className: "h-full", src: "/showcase/landscape-scene.jpeg" },
-    { label: "Influencer", aspectRatio: "portrait", className: "h-full", src: "/showcase/influencer.jpeg" },
   ];
 
   const displayItems = items || defaultItems;
@@ -69,6 +73,28 @@ export function ShowcaseSection({ items }: ShowcaseSectionProps) {
               <p className="text-sm lg:text-base text-muted-foreground/80 text-balance max-w-lg xl:max-w-xl">
                 Generate high-resolution artwork, professional product photography, lifestyle influencer photos, and creative digital art — all powered by the latest AI models including GPT-4 Image, Flux, and Seedream. Perfect for designers, marketers, and creative professionals who need instant, high-quality visual content.
               </p>
+
+
+              {/* Stylistic CTA - Centered relative to text block */}
+              <div className="mt-10 flex justify-center w-full max-w-lg xl:max-w-xl">
+                <Link href="/feed/public" className="group">
+                  <Button
+                    size="lg"
+                    className={cn(
+                      // Shape & Base
+                      "h-12 px-8 relative overflow-hidden",
+                      // Typography - Editorial Style
+                      "text-xs font-bold uppercase tracking-[0.2em]",
+                      // Hover Interaction
+                    )}
+                  >
+                    <span className="relative z-10 flex items-center">
+                      Get Inspired
+                      <ArrowRight className="h-4 w-4 ml-3 transition-transform group-hover:translate-x-1" />
+                    </span>
+                  </Button>
+                </Link>
+              </div>
             </div>
           </ScrollReveal>
 
@@ -89,6 +115,7 @@ export function ShowcaseSection({ items }: ShowcaseSectionProps) {
             />
           </ScrollReveal>
         </div>
+
       </div>
     </section>
   );

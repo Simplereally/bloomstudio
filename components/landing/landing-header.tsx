@@ -86,93 +86,112 @@ export function LandingHeader() {
           <Link href="/" className="flex items-center gap-2">
             <span className="text-xl sm:text-2xl md:text-3xl font-bold text-primary font-brand tracking-tight -skew-x-6 whitespace-nowrap">Bloom Studio</span>
           </Link>
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden md:flex items-center gap-6">
             <Link
               href={pathname === "/" ? "#showcase" : "/#showcase"}
               onClick={(e) => handleNavClick(e, pathname === "/" ? "#showcase" : "/#showcase")}
+              className="group"
             >
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors",
-                  activeSection === "showcase" && "text-primary bg-white/5"
-                )}
-              >
+              <span className={cn(
+                "relative inline-flex items-center text-sm font-medium transition-colors cursor-pointer py-2",
+                activeSection === "showcase" ? "text-primary" : "text-foreground/70 hover:text-foreground"
+              )}>
                 Showcase
-              </Button>
+                <span className={cn(
+                  "absolute bottom-1 left-0 h-px transition-all duration-300 ease-out",
+                  activeSection === "showcase" ? "w-full bg-primary/60" : "w-0 bg-foreground/40 group-hover:w-full"
+                )} />
+              </span>
             </Link>
             <Link
               href={pathname === "/" ? "#compare" : "/#compare"}
               onClick={(e) => handleNavClick(e, pathname === "/" ? "#compare" : "/#compare")}
+              className="group"
             >
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors",
-                  activeSection === "compare" && "text-primary bg-white/5"
-                )}
-              >
+              <span className={cn(
+                "relative inline-flex items-center text-sm font-medium transition-colors cursor-pointer py-2",
+                activeSection === "compare" ? "text-primary" : "text-foreground/70 hover:text-foreground"
+              )}>
                 Compare
-              </Button>
+                <span className={cn(
+                  "absolute bottom-1 left-0 h-px transition-all duration-300 ease-out",
+                  activeSection === "compare" ? "w-full bg-primary/60" : "w-0 bg-foreground/40 group-hover:w-full"
+                )} />
+              </span>
             </Link>
             <Link
               href={pathname === "/" ? "#features" : "/#features"}
               onClick={(e) => handleNavClick(e, pathname === "/" ? "#features" : "/#features")}
+              className="group"
             >
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors",
-                  activeSection === "features" && "text-primary bg-white/5"
-                )}
-              >
+              <span className={cn(
+                "relative inline-flex items-center text-sm font-medium transition-colors cursor-pointer py-2",
+                activeSection === "features" ? "text-primary" : "text-foreground/70 hover:text-foreground"
+              )}>
                 Features
-              </Button>
+                <span className={cn(
+                  "absolute bottom-1 left-0 h-px transition-all duration-300 ease-out",
+                  activeSection === "features" ? "w-full bg-primary/60" : "w-0 bg-foreground/40 group-hover:w-full"
+                )} />
+              </span>
             </Link>
             <Link
               href={pathname === "/" ? "#models" : "/#models"}
               onClick={(e) => handleNavClick(e, pathname === "/" ? "#models" : "/#models")}
+              className="group"
             >
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors",
-                  activeSection === "models" && "text-primary bg-white/5"
-                )}
-              >
+              <span className={cn(
+                "relative inline-flex items-center text-sm font-medium transition-colors cursor-pointer py-2",
+                activeSection === "models" ? "text-primary" : "text-foreground/70 hover:text-foreground"
+              )}>
                 Models
-              </Button>
+                <span className={cn(
+                  "absolute bottom-1 left-0 h-px transition-all duration-300 ease-out",
+                  activeSection === "models" ? "w-full bg-primary/60" : "w-0 bg-foreground/40 group-hover:w-full"
+                )} />
+              </span>
             </Link>
 
-            <Link href="/pricing">
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "text-foreground/70 hover:text-foreground hover:bg-white/5",
-                  pathname === "/pricing" && "text-primary bg-white/5"
-                )}
-              >
+            <Link href="/pricing" className="group">
+              <span className={cn(
+                "relative inline-flex items-center text-sm font-medium transition-colors cursor-pointer py-2",
+                pathname === "/pricing" ? "text-primary" : "text-foreground/70 hover:text-foreground"
+              )}>
                 Pricing
-              </Button>
+                <span className={cn(
+                  "absolute bottom-1 left-0 h-px transition-all duration-300 ease-out",
+                  pathname === "/pricing" ? "w-full bg-primary/60" : "w-0 bg-foreground/40 group-hover:w-full"
+                )} />
+              </span>
             </Link>
           </nav>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Community Feed CTA - Important funnel page, always visible */}
-          <Link href="/feed/public" className="hidden md:block">
+          {/* Community Feed - Soft glow portal effect, visually distinct from primary CTAs */}
+          <Link href="/feed/public" className="hidden md:block group">
             <Button
-              variant="default"
+              variant="ghost"
+              className={cn(
+                // Base styling - glass-like with ember border
+                "relative border border-primary/20 bg-primary/5",
+                // Typography
+                "font-medium tracking-wide",
+                // Hover state - intensify the ember glow
+                "hover:border-primary/40 hover:bg-primary/10",
+                // Subtle transition
+                "transition-all duration-300 ease-out",
+                // The ember glow effect - subtle
+                "shadow-[0_0_10px_-4px_var(--primary)] hover:shadow-[0_0_15px_-3px_var(--primary)]"
+              )}
             >
-              Go to Community Feed
-              <ArrowRight className="h-4 w-4 ml-2 transition-transform group-hover:translate-x-1" />
+              <Users className="h-4 w-4 mr-2 text-primary opacity-80 group-hover:opacity-100 transition-opacity" />
+              Community Feed
             </Button>
           </Link>
+
+          {/* Visual separator between community link and auth actions */}
+          <div className="hidden md:block h-5 w-px bg-white/10" />
           {isLoaded &&
             (isSignedIn ? (
               <div className="hidden md:flex items-center gap-4">
@@ -186,10 +205,13 @@ export function LandingHeader() {
               </div>
             ) : (
               <div className="hidden md:flex items-center gap-3">
-                <Link href="/sign-in">
-                  <Button variant="ghost" className="text-foreground hover:bg-white/5">
+                <Link href="/sign-in" className="group">
+                  {/* Elegant text link - matches "See Pricing" styling */}
+                  <span className="relative inline-flex items-center text-sm font-medium text-foreground/80 hover:text-foreground transition-colors cursor-pointer py-2">
                     Sign in
-                  </Button>
+                    {/* Animated underline */}
+                    <span className="absolute bottom-1 left-0 w-0 h-px bg-foreground/40 group-hover:w-full transition-all duration-300 ease-out" />
+                  </span>
                 </Link>
                 <Link href="/sign-up">
                   <Button variant="default" className="group">
@@ -287,19 +309,26 @@ export function LandingHeader() {
             </Link>
           </nav>
 
-          {/* Community Feed - Prominent CTA separated from nav */}
+          {/* Community Feed - Soft glow portal (matches desktop aesthetic) */}
           <div className="pt-2">
-            <Link href="/feed/public" onClick={() => setMobileMenuOpen(false)}>
+            <Link href="/feed/public" onClick={() => setMobileMenuOpen(false)} className="group block">
               <Button
-                variant="secondary"
+                variant="ghost"
                 size="lg"
                 className={cn(
-                  "w-full border border-primary/20 bg-primary/10 text-foreground",
-                  "hover:bg-primary/20 hover:border-primary/40 transition-colors",
-                  pathname.startsWith("/feed") && "bg-primary/25 border-primary/50"
+                  // Base styling - glass-like with ember border (matches desktop)
+                  "w-full border border-primary/20 bg-primary/5",
+                  // Typography
+                  "font-medium tracking-wide justify-center",
+                  // Hover state
+                  "hover:border-primary/40 hover:bg-primary/10",
+                  // The ember glow effect - subtle
+                  "shadow-[0_0_10px_-4px_var(--primary)] hover:shadow-[0_0_15px_-3px_var(--primary)]",
+                  // Active state
+                  pathname.startsWith("/feed") && "border-primary/60 bg-primary/15"
                 )}
               >
-                <Users className="h-4 w-4 mr-2 text-primary" />
+                <Users className="h-4 w-4 mr-2 text-primary opacity-80 group-hover:opacity-100 transition-opacity" />
                 Community Feed
               </Button>
             </Link>

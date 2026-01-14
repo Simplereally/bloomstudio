@@ -41,7 +41,7 @@ export function ValuePropSection() {
               <div className="h-full p-6 rounded-2xl glass-effect-home">
                 <h3 className="font-bold text-foreground mb-2">All Models Included</h3>
                 <p className="text-sm text-muted-foreground">
-                  No extra tokens for premium models. GPT-4 Image, Seedream Pro, everything is included.
+                  All premium image and video models are included. Nanobanana Pro, Veo3.1, Seedance, Seedream Pro - everything is included.
                 </p>
               </div>
             </ScrollReveal>
