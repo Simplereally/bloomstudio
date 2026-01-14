@@ -10,7 +10,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
 
-const LANDING_SECTIONS = ["hero", "showcase", "compare", "features", "models", "get-started"];
+const LANDING_SECTIONS = ["hero", "showcase", "compare", "features", "models", "community", "get-started"];
 
 /**
  * Custom hook to detect scroll position for header shrinking effect
@@ -147,6 +147,19 @@ export function LandingHeader() {
                 Models
               </Button>
             </Link>
+            <Link href="/feed/public">
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors",
+                  pathname.startsWith("/feed") && "text-primary bg-white/5"
+                )}
+              >
+                <Sparkles className="h-3.5 w-3.5 mr-1.5 text-primary" />
+                Community
+              </Button>
+            </Link>
             <Link href="/pricing">
               <Button
                 variant="ghost"
@@ -263,6 +276,12 @@ export function LandingHeader() {
                 className={cn("w-full justify-start text-lg", activeSection === "models" && "text-primary bg-white/5")}
               >
                 Models
+              </Button>
+            </Link>
+            <Link href="/feed/public" onClick={() => setMobileMenuOpen(false)}>
+              <Button variant="ghost" className={cn("w-full justify-start text-lg", pathname.startsWith("/feed") && "text-primary bg-white/5")}>
+                <Sparkles className="h-4 w-4 mr-2 text-primary" />
+                Community
               </Button>
             </Link>
             <Link href="/pricing" onClick={() => setMobileMenuOpen(false)}>

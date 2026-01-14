@@ -1,3 +1,4 @@
+import { CommunitySection } from "@/components/landing/community-section";
 import { CtaSection } from "@/components/landing/cta-section";
 import { FeaturesSection } from "@/components/landing/features-section";
 // import { FloatingGallery } from "@/components/landing/floating-gallery";
@@ -9,7 +10,6 @@ import { ModelsSection } from "@/components/landing/models-section";
 import { ShowcaseSection } from "@/components/landing/showcase-section";
 import { ValuePropSection } from "@/components/landing/value-prop-section";
 import { JsonLd } from "@/components/seo/json-ld";
-import Link from "next/link";
 
 /**
  * Landing Page - Server Component
@@ -63,6 +63,7 @@ export default function LandingPage() {
         <ValuePropSection />
         <FeaturesSection />
         <ModelsSection />
+        <CommunitySection />
         <CtaSection />
 
         {/* Footer */}
