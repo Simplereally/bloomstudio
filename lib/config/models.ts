@@ -244,7 +244,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     type: "image",
     icon: "camera",
     logo: "/image-models/openai.svg",
-    description: "DALL-E 3 HD with higher quality output",
+    description: "GPT Image 1.5 with higher quality output",
     constraints: {
       maxPixels: Infinity,
       minPixels: 0,
@@ -471,7 +471,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     type: "image",
     icon: "camera",
     logo: "/image-models/openai.svg",
-    description: "DALL-E powered image generation with fixed sizes",
+    description: "GPT Image 1, powered image generation with fixed sizes",
     constraints: {
       maxPixels: Infinity,
       minPixels: 0,

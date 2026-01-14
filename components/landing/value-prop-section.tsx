@@ -31,7 +31,7 @@ export function ValuePropSection() {
             </ScrollReveal>
             <ScrollReveal delay={400}>
               <div className="h-full p-6 rounded-2xl glass-effect-home">
-                <h3 className="font-bold text-foreground mb-2">1,000+ Batch Queue</h3>
+                <h3 className="font-bold text-foreground mb-2">1,000 Image Batch Queue</h3>
                 <p className="text-sm text-muted-foreground">
                   Queue up massive batches while competitors limit you to 4-8 images at a time.
                 </p>

@@ -50,7 +50,8 @@ export const pricingTiers: PricingTier[] = [
             "Daily resets",
             "12+ AI models included",
             "Advanced prompt enhancement",
-            "1,000+ image batch queue",
+            "Custom prompt library",
+            "1,000 image batch queue",
             "Private generations",
             "NSFW Generations (on supported models)",
         ],
@@ -83,7 +84,7 @@ export const pricingFaqs = [
     {
         question: "What happens if I need more images?",
         answer:
-            "You have three options:\n\n1. Upgrade to Pro ($3/month) for exclusive features like private generations, NSFW generations, advanced prompt enhancement, and a 1,000+ image batch queue. Note: This plan includes the same 180 images/month quota as the Starter plan.\n\n2. Wait for your daily reset.\n\n3. Purchase additional Pollen credits directly from Pollinations to extend your quota beyond the included 180 images/month.",
+            "You have three options:\n\n1. Upgrade to Pro ($3/month) for exclusive features like private generations, NSFW generations, advanced prompt enhancement, and a 1,000 image batch queue. Note: This plan includes the same 180 images/month quota as the Starter plan.\n\n2. Wait for your daily reset.\n\n3. Purchase additional Pollen credits directly from Pollinations to extend your quota beyond the included 180 images/month.",
     },
     {
         question: "What AI models are included?",
@@ -126,7 +127,7 @@ export const featureComparison = [
             footer: "Zero throttle. No gatekeeping.",
         },
     },
-    { feature: "Batch queue size", starter: "1,000+", pro: "1,000+", competitors: "10-20" },
+    { feature: "Batch queue size", starter: "1,000", pro: "1,000", competitors: "10-20" },
     { feature: "AI Models", starter: "12+", pro: "12+", competitors: "12+" },
     { feature: "Prompt library", starter: true, pro: true, competitors: false },
     { feature: "Prompt enhancement", starter: true, pro: true, competitors: "Basic" },

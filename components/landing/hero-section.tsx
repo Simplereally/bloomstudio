@@ -82,7 +82,6 @@ export function HeroSection({
                                     <div className="absolute inset-0 bg-primary/20 blur-sm rounded-full group-hover/badge:bg-primary/30 transition-colors" />
                                     <span className="relative flex items-center gap-2 bg-[#0D0D0D] px-3 py-1 3xl:px-5 3xl:py-2 text-xs 3xl:text-sm 4xl:text-base font-bold uppercase tracking-[0.2em] text-foreground/90 border border-white/20 rounded-full shadow-lg whitespace-nowrap overflow-hidden">
                                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover/badge:animate-shimmer" />
-                                        <Sparkles className="h-3 w-3 3xl:h-4 3xl:w-4 text-primary/80" />
                                         Premium Models
                                     </span>
                                 </div>

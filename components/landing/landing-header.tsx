@@ -4,7 +4,7 @@ import { ClerkUserButton } from "@/components/clerk-user-button";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useUser } from "@clerk/nextjs";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
@@ -147,19 +147,7 @@ export function LandingHeader() {
                 Models
               </Button>
             </Link>
-            <Link href="/feed/public">
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "text-foreground/70 hover:text-foreground hover:bg-white/5 transition-colors",
-                  pathname.startsWith("/feed") && "text-primary bg-white/5"
-                )}
-              >
-                <Sparkles className="h-3.5 w-3.5 mr-1.5 text-primary" />
-                Community
-              </Button>
-            </Link>
+
             <Link href="/pricing">
               <Button
                 variant="ghost"
@@ -175,7 +163,16 @@ export function LandingHeader() {
           </nav>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          {/* Community Feed CTA - Important funnel page, always visible */}
+          <Link href="/feed/public" className="hidden md:block">
+            <Button
+              variant="default"
+            >
+              Go to Community Feed
+              <ArrowRight className="h-4 w-4 ml-2 transition-transform group-hover:translate-x-1" />
+            </Button>
+          </Link>
           {isLoaded &&
             (isSignedIn ? (
               <div className="hidden md:flex items-center gap-4">
@@ -278,12 +275,6 @@ export function LandingHeader() {
                 Models
               </Button>
             </Link>
-            <Link href="/feed/public" onClick={() => setMobileMenuOpen(false)}>
-              <Button variant="ghost" className={cn("w-full justify-start text-lg", pathname.startsWith("/feed") && "text-primary bg-white/5")}>
-                <Sparkles className="h-4 w-4 mr-2 text-primary" />
-                Community
-              </Button>
-            </Link>
             <Link href="/pricing" onClick={() => setMobileMenuOpen(false)}>
               <Button variant="ghost" className={cn("w-full justify-start text-lg", pathname === "/pricing" && "text-primary bg-white/5")}>
                 Pricing
@@ -295,7 +286,26 @@ export function LandingHeader() {
               </Button>
             </Link>
           </nav>
-          <div className="h-px bg-white/10 my-2" />
+
+          {/* Community Feed - Prominent CTA separated from nav */}
+          <div className="pt-2">
+            <Link href="/feed/public" onClick={() => setMobileMenuOpen(false)}>
+              <Button
+                variant="secondary"
+                size="lg"
+                className={cn(
+                  "w-full border border-primary/20 bg-primary/10 text-foreground",
+                  "hover:bg-primary/20 hover:border-primary/40 transition-colors",
+                  pathname.startsWith("/feed") && "bg-primary/25 border-primary/50"
+                )}
+              >
+                <Users className="h-4 w-4 mr-2 text-primary" />
+                Community Feed
+              </Button>
+            </Link>
+          </div>
+
+          <div className="h-px bg-border my-2" />
           <div className="flex flex-col gap-3">
             {isSignedIn ? (
               <>

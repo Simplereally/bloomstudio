@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { isVideoContent } from "@/components/ui/media-player"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
@@ -79,12 +80,13 @@ export const ImageCard = React.memo(function ImageCard({
     const [isHovered, setIsHovered] = React.useState(false)
     const [optimisticFavorited, setOptimisticFavorited] = React.useState<boolean | null>(null)
     const [isVideoPlaying, setIsVideoPlaying] = React.useState(false)
-    
+    const [isLoaded, setIsLoaded] = React.useState(false)
+
     // Ref for video element to control playback on hover
     const videoRef = React.useRef<HTMLVideoElement>(null)
 
     const { isSignedIn } = useUser()
-    
+
     // Detect if content is video
     const isVideo = isVideoContent(image.contentType, image.url)
 
@@ -142,7 +144,7 @@ export const ImageCard = React.memo(function ImageCard({
         // Clear optimistic state after server confirms
         setOptimisticFavorited(null)
     }, [isSignedIn, displayFavorited, toggleFavorite, image._id])
-    
+
     // Handle mouse enter - play video if it's video content
     const handleMouseEnter = React.useCallback(() => {
         setIsHovered(true)
@@ -155,7 +157,7 @@ export const ImageCard = React.memo(function ImageCard({
             })
         }
     }, [isVideo, isSignedIn])
-    
+
     // Handle mouse leave - pause video and reset to start
     const handleMouseLeave = React.useCallback(() => {
         setIsHovered(false)
@@ -165,6 +167,10 @@ export const ImageCard = React.memo(function ImageCard({
             videoRef.current.currentTime = 0
         }
     }, [isVideo])
+
+    const handleLoad = React.useCallback(() => {
+        setIsLoaded(true)
+    }, [])
 
     const modelName = getModelDisplayName(image.generationParams?.model || image.model) || image.generationParams?.model || image.model
     const width = image.generationParams?.width || image.width || 1024
@@ -201,6 +207,13 @@ export const ImageCard = React.memo(function ImageCard({
             )}
 
             {/* Image or Video Thumbnail */}
+            {!isLoaded && (
+                <Skeleton
+                    className="absolute inset-0 z-10 bg-muted"
+                    style={{ aspectRatio: clampedAspectRatio }}
+                />
+            )}
+
             {isVideo ? (
                 <>
                     <video
@@ -210,14 +223,18 @@ export const ImageCard = React.memo(function ImageCard({
                         loop
                         playsInline
                         preload="metadata"
-                        className="w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                        onCanPlay={handleLoad}
+                        className={cn(
+                            "w-full object-cover transition-all duration-700 group-hover:scale-[1.02]",
+                            isLoaded ? "opacity-100" : "opacity-0"
+                        )}
                         style={{ aspectRatio: clampedAspectRatio }}
                     />
                     {/* Video play indicator - fades out when video is playing */}
-                    <div 
+                    <div
                         className={cn(
                             "absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-300",
-                            isVideoPlaying ? "opacity-0" : "opacity-100"
+                            (isVideoPlaying || !isLoaded) ? "opacity-0" : "opacity-100"
                         )}
                     >
                         <div className="bg-black/60 rounded-full p-3 backdrop-blur-sm">
@@ -231,12 +248,16 @@ export const ImageCard = React.memo(function ImageCard({
                     alt={image.prompt || "Generated image"}
                     width={width}
                     height={height}
-                    className="w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                    className={cn(
+                        "w-full object-cover transition-all duration-700 group-hover:scale-[1.02]",
+                        isLoaded ? "opacity-100" : "opacity-0"
+                    )}
                     style={{ aspectRatio: clampedAspectRatio }}
                     loading={priority ? "eager" : "lazy"}
                     priority={priority}
+                    onLoad={handleLoad}
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1536px) 33vw, 25vw"
-/>
+                />
             )}
 
             {/* User badge - top left (only on community feed) */}
