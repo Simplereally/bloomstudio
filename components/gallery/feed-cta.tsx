@@ -1,6 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { trackCtaClick, trackCtaDismiss, trackCtaView } from "@/lib/analytics"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@clerk/nextjs"
 import { motion, AnimatePresence } from "framer-motion"
@@ -28,14 +29,18 @@ export function FeedCta({ className }: FeedCtaProps) {
 
         const handleScroll = () => {
             // Show after scrolling 300px (roughly 2-3 images viewed)
-            if (window.scrollY > 300) {
+            if (window.scrollY > 300 && !isVisible) {
                 setIsVisible(true)
+                trackCtaView()
             }
         }
 
         // Also show after a short delay if user doesn't scroll
         const timer = setTimeout(() => {
-            setIsVisible(true)
+            if (!isVisible) {
+                setIsVisible(true)
+                trackCtaView()
+            }
         }, 5000)
 
         window.addEventListener("scroll", handleScroll, { passive: true })
@@ -85,7 +90,7 @@ export function FeedCta({ className }: FeedCtaProps) {
                             </div>
 
                             {/* Sign up button */}
-                            <Link href="/sign-up">
+                            <Link href="/sign-up" onClick={trackCtaClick}>
                                 <Button
                                     size="sm"
                                     className="rounded-full px-5 gap-2 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white font-semibold shadow-lg hover:shadow-primary/25 transition-all hover:scale-105"
@@ -98,7 +103,10 @@ export function FeedCta({ className }: FeedCtaProps) {
                             {/* Dismiss button */}
                             <button
                                 type="button"
-                                onClick={() => setIsDismissed(true)}
+                                onClick={() => {
+                                    setIsDismissed(true)
+                                    trackCtaDismiss()
+                                }}
                                 className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-muted hover:bg-muted-foreground/20 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
                                 aria-label="Dismiss"
                             >

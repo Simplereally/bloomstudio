@@ -21,6 +21,7 @@ import type * as lib_pollinations from "../lib/pollinations.js";
 import type * as lib_r2 from "../lib/r2.js";
 import type * as lib_retry from "../lib/retry.js";
 import type * as lib_subscription from "../lib/subscription.js";
+import type * as lib_videoPreview from "../lib/videoPreview.js";
 import type * as lib_videoThumbnail from "../lib/videoThumbnail.js";
 import type * as orphanCleanup from "../orphanCleanup.js";
 import type * as orphanCleanupQueries from "../orphanCleanupQueries.js";
@@ -55,6 +56,7 @@ declare const fullApi: ApiFromModules<{
   "lib/r2": typeof lib_r2;
   "lib/retry": typeof lib_retry;
   "lib/subscription": typeof lib_subscription;
+  "lib/videoPreview": typeof lib_videoPreview;
   "lib/videoThumbnail": typeof lib_videoThumbnail;
   orphanCleanup: typeof orphanCleanup;
   orphanCleanupQueries: typeof orphanCleanupQueries;

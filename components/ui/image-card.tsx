@@ -6,6 +6,7 @@ import { isVideoContent } from "@/components/ui/media-player"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
+import { trackPromptCopy, trackVideoPlay } from "@/lib/analytics"
 import { getModelDisplayName } from "@/lib/config/models"
 import { getClampedAspectRatio } from "@/lib/image-models"
 import { cn } from "@/lib/utils"
@@ -19,6 +20,8 @@ import * as React from "react"
 export interface ImageCardData {
     _id: string
     url: string
+    /** Original full-size URL (for lightbox/download) - if not provided, uses url */
+    originalUrl?: string
     prompt: string
     model: string
     width?: number
@@ -52,12 +55,15 @@ interface ImageCardProps {
     /** Called when selection state changes */
     onSelectionChange?: (id: string, selected: boolean) => void
     className?: string
+    /** If true, image loads with high priority and eager loading (for above-the-fold) */
+    priority?: boolean
 }
 
 /**
  * A card component for displaying images in a masonry grid.
  * Shows a hover overlay with metadata similar to the lightbox component.
  * Optionally displays user avatar/name in the top-left corner for community feeds.
+ * Videos auto-play on hover for a GIF-like preview experience.
  */
 export const ImageCard = React.memo(function ImageCard({
     image,
@@ -67,12 +73,20 @@ export const ImageCard = React.memo(function ImageCard({
     isSelected = false,
     onSelectionChange,
     className,
+    priority = false,
 }: ImageCardProps) {
     const [copied, setCopied] = React.useState(false)
     const [isHovered, setIsHovered] = React.useState(false)
     const [optimisticFavorited, setOptimisticFavorited] = React.useState<boolean | null>(null)
+    const [isVideoPlaying, setIsVideoPlaying] = React.useState(false)
+    
+    // Ref for video element to control playback on hover
+    const videoRef = React.useRef<HTMLVideoElement>(null)
 
     const { isSignedIn } = useUser()
+    
+    // Detect if content is video
+    const isVideo = isVideoContent(image.contentType, image.url)
 
     // Favorite state
     const isFavorited = useQuery(
@@ -89,8 +103,9 @@ export const ImageCard = React.memo(function ImageCard({
         if (!image.prompt) return
         await navigator.clipboard.writeText(image.prompt)
         setCopied(true)
+        trackPromptCopy("feed", !!isSignedIn)
         setTimeout(() => setCopied(false), 2000)
-    }, [image.prompt])
+    }, [image.prompt, isSignedIn])
 
     const handleSelect = React.useCallback(() => {
         // In selection mode, clicking the card toggles selection
@@ -127,6 +142,29 @@ export const ImageCard = React.memo(function ImageCard({
         // Clear optimistic state after server confirms
         setOptimisticFavorited(null)
     }, [isSignedIn, displayFavorited, toggleFavorite, image._id])
+    
+    // Handle mouse enter - play video if it's video content
+    const handleMouseEnter = React.useCallback(() => {
+        setIsHovered(true)
+        if (isVideo && videoRef.current) {
+            videoRef.current.play().then(() => {
+                setIsVideoPlaying(true)
+                trackVideoPlay(!!isSignedIn)
+            }).catch(() => {
+                // Autoplay may fail due to browser policies, ignore silently
+            })
+        }
+    }, [isVideo, isSignedIn])
+    
+    // Handle mouse leave - pause video and reset to start
+    const handleMouseLeave = React.useCallback(() => {
+        setIsHovered(false)
+        setIsVideoPlaying(false)
+        if (isVideo && videoRef.current) {
+            videoRef.current.pause()
+            videoRef.current.currentTime = 0
+        }
+    }, [isVideo])
 
     const modelName = getModelDisplayName(image.generationParams?.model || image.model) || image.generationParams?.model || image.model
     const width = image.generationParams?.width || image.width || 1024
@@ -144,8 +182,8 @@ export const ImageCard = React.memo(function ImageCard({
                 className
             )}
             onClick={handleSelect}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
         >
             {/* Selection checkbox - top right */}
             {selectionMode && (
@@ -163,18 +201,25 @@ export const ImageCard = React.memo(function ImageCard({
             )}
 
             {/* Image or Video Thumbnail */}
-            {isVideoContent(image.contentType, image.url) ? (
+            {isVideo ? (
                 <>
                     <video
+                        ref={videoRef}
                         src={image.url}
                         muted
+                        loop
                         playsInline
                         preload="metadata"
                         className="w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
                         style={{ aspectRatio: clampedAspectRatio }}
                     />
-                    {/* Video play indicator */}
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    {/* Video play indicator - fades out when video is playing */}
+                    <div 
+                        className={cn(
+                            "absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-300",
+                            isVideoPlaying ? "opacity-0" : "opacity-100"
+                        )}
+                    >
                         <div className="bg-black/60 rounded-full p-3 backdrop-blur-sm">
                             <Play className="h-6 w-6 text-white fill-white" />
                         </div>
@@ -188,9 +233,10 @@ export const ImageCard = React.memo(function ImageCard({
                     height={height}
                     className="w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
                     style={{ aspectRatio: clampedAspectRatio }}
-                    loading="lazy"
+                    loading={priority ? "eager" : "lazy"}
+                    priority={priority}
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1536px) 33vw, 25vw"
-                />
+/>
             )}
 
             {/* User badge - top left (only on community feed) */}

@@ -4,7 +4,9 @@ import { FeedTabs } from "@/components/gallery/feed-tabs"
 import { PaginatedImageGrid } from "@/components/gallery/paginated-image-grid"
 import { Button } from "@/components/ui/button"
 import { useFeed } from "@/hooks/queries/use-image-history"
+import { trackFeedView } from "@/lib/analytics"
 import type { FeedType } from "@/lib/feed-types"
+import { useAuth } from "@clerk/nextjs"
 import { ImageOffIcon, ScanSearch } from "lucide-react"
 import Link from "next/link"
 import * as React from "react"
@@ -19,6 +21,14 @@ interface FeedClientProps {
  */
 export function FeedClient({ feedType }: FeedClientProps) {
     const { results, status, loadMore } = useFeed(feedType)
+    const { isSignedIn, isLoaded } = useAuth()
+
+    // Track feed view on mount (once auth state is loaded)
+    React.useEffect(() => {
+        if (isLoaded) {
+            trackFeedView(feedType, !!isSignedIn)
+        }
+    }, [feedType, isSignedIn, isLoaded])
 
     // Auto-load more if we got an empty page but aren't done
     // This is particularly useful for the following feed which can be sparse

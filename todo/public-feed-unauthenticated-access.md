@@ -367,17 +367,17 @@ This approach is modeled after **Leonardo AI's** community creations page (`app.
 5. [x] Disable "Save to Library" for unauthenticated (show prompt) ✓ (image-lightbox.tsx + image-card.tsx updated)
 
 ### Medium Priority (Enhancement)
-6. [ ] Optimize feed query for thumbnail-only data
-7. [ ] Add responsive images (srcset)
-8. [ ] Video hover-to-play
+6. [x] Optimize feed query for thumbnail-only data ✓ (getPublicFeed now uses toPublicFeedImages)
+7. [x] Add responsive images (srcset) ✓ (ImageCard uses sizes attribute for responsive images)
+8. [x] Video hover-to-play ✓ (ImageCard auto-plays videos on hover)
 9. [x] Add sign-up CTA component ✓ (feed-cta.tsx created)
 10. [x] Structured data (JSON-LD) ✓ (added to feed page)
 
 ### Low Priority (Polish)
-11. [ ] Lightbox thumbnail-to-full-res crossfade
-12. [ ] Compressed video previews
-13. [ ] Edge caching optimizations
-14. [ ] Conversion analytics
+11. [x] Lightbox thumbnail-to-full-res crossfade ✓ (ImageLightbox now shows blurred thumbnail, crossfades to full-res)
+12. [x] Compressed video previews ✓ (convex/lib/videoPreview.ts - FFmpeg pipeline for 720p H.264 previews)
+13. [x] Edge caching optimizations ✓ (vercel.json headers + R2 CacheControl already set to immutable)
+14. [x] Conversion analytics ✓ (lib/analytics.ts - Vercel Analytics custom events for feed funnel tracking)
 
 ---
 

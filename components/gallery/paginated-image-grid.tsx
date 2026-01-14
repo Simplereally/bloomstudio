@@ -73,6 +73,11 @@ export function PaginatedImageGrid({
 }: PaginatedImageGridProps) {
     const [selectedImage, setSelectedImage] = useState<ImageCardData | null>(null)
     
+    // Track the initial image count to only prioritize first batch (not paginated images)
+    // First 8 images get priority loading for above-the-fold performance
+    const PRIORITY_COUNT = 8
+    const [initialImageCount] = useState(() => images.length)
+    
     // Ref for the infinite scroll sentinel element
     const sentinelRef = useRef<HTMLDivElement>(null)
 
@@ -157,6 +162,12 @@ export function PaginatedImageGrid({
     if (isExhausted && images.length === 0 && emptyState) {
         return <>{emptyState}</>
     }
+    
+    // Determine if an image should get priority loading:
+    // - Must be in the first PRIORITY_COUNT images
+    // - Must be from the initial batch (not appended via pagination)
+    const shouldPrioritize = (index: number): boolean => 
+        index < PRIORITY_COUNT && index < initialImageCount
 
     return (
         <div className="space-y-12 px-1 md:px-2 max-w-[2400px] mx-auto">
@@ -164,7 +175,7 @@ export function PaginatedImageGrid({
                 minColumnWidth={360}
                 gap={4}
             >
-                {images.map((image) => (
+                {images.map((image, index) => (
                     <ImageCard
                         key={image._id}
                         image={image}
@@ -173,6 +184,7 @@ export function PaginatedImageGrid({
                         selectionMode={selectionMode}
                         isSelected={selectedIds.has(image._id)}
                         onSelectionChange={onSelectionChange}
+                        priority={shouldPrioritize(index)}
                     />
                 ))}
             </MasonryGrid>

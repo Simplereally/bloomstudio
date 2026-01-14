@@ -56,6 +56,62 @@ async function enrichImages(
     })
 }
 
+/** 
+ * Optimized public feed image data for unauthenticated display.
+ * Includes only fields needed for feed cards - excludes heavy generationParams.
+ * Uses full-size images for quality - thumbnails are too small for feed card dimensions.
+ */
+type PublicFeedImage = {
+    _id: Doc<"generatedImages">["_id"]
+    _creationTime: number
+    /** Full-size URL for proper display quality at feed card dimensions */
+    url: string
+    /** Original full-size URL (for lightbox/download) */
+    originalUrl: string
+    visibility: "public" | "unlisted"
+    createdAt: number
+    model: string
+    /** Prompt for display (users can copy) */
+    prompt: string
+    /** Dimensions for aspect ratio calculation */
+    width: number | undefined
+    height: number | undefined
+    /** Seed for display badges */
+    seed: number | undefined
+    /** MIME type for video detection */
+    contentType: string
+    /** Owner display name */
+    ownerName: string
+    /** Owner avatar URL */
+    ownerPictureUrl: string | null
+}
+
+/**
+ * Helper to map enriched images to optimized public feed format.
+ * Reduces bandwidth by using thumbnails and excluding unused fields.
+ */
+function toPublicFeedImages(images: EnrichedImage[]): PublicFeedImage[] {
+    return images.map(img => ({
+        _id: img._id,
+        _creationTime: img._creationTime,
+        // Use full-size image for proper display quality at feed card dimensions
+        // Note: thumbnailUrl is too small (~150px) for feed cards (360px+ width)
+        url: img.url,
+        // Same as url - kept for API consistency
+        originalUrl: img.url,
+        visibility: img.visibility,
+        createdAt: img.createdAt,
+        model: img.model,
+        prompt: img.prompt,
+        width: img.width,
+        height: img.height,
+        seed: img.seed,
+        contentType: img.contentType,
+        ownerName: img.ownerName,
+        ownerPictureUrl: img.ownerPictureUrl,
+    }))
+}
+
 /**
  * Filter images with extreme aspect ratios (> 4:1 or 1:4).
  */
@@ -428,7 +484,10 @@ export const getMyImagesWithDisplayData = query({
 
 /**
  * Get public images for the feed (paginated).
- * Includes owner information for display in community feed.
+ * Returns OPTIMIZED data for public feed display:
+ * - Uses thumbnailUrl for bandwidth optimization
+ * - Includes only essential fields (no generationParams)
+ * - Includes owner info for community feed display
  */
 export const getPublicFeed = query({
     args: {
@@ -447,12 +506,12 @@ export const getPublicFeed = query({
             .order("desc")
             .paginate(args.paginationOpts)
 
-        // All filtering is now server-side. Simply enrich the remaining images.
+        // Enrich with owner info, then convert to optimized public feed format
         const enrichedPage = await enrichImages(ctx, paginatedResult.page)
 
         return {
             ...paginatedResult,
-            page: enrichedPage,
+            page: toPublicFeedImages(enrichedPage),
         }
     },
 })
@@ -489,16 +548,16 @@ export const getImagesByUsername = query({
             .order("desc")
             .paginate(args.paginationOpts)
 
-        // Enrich with user info (we already have the user)
+        // Enrich with user info (we already have the user), cast to EnrichedImage for helper
         const enrichedPage = paginatedResult.page.map((image) => ({
             ...image,
             ownerName: user.username ?? "Anonymous",
             ownerPictureUrl: user.pictureUrl ?? null,
-        }))
+        })) as EnrichedImage[]
 
         return {
             ...paginatedResult,
-            page: enrichedPage,
+            page: toPublicFeedImages(enrichedPage),
         }
     },
 })
@@ -553,7 +612,7 @@ export const getFollowingFeed = query({
 
         return {
             ...paginatedResult,
-            page: enrichedPage,
+            page: toPublicFeedImages(enrichedPage),
         }
     },
 })

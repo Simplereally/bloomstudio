@@ -4,7 +4,10 @@ import { isVideoContent } from "@/components/ui/media-player"
 import * as React from "react"
 
 export interface LightboxImage {
+  /** Display URL - may be thumbnail for optimized feeds */
   url: string
+  /** Original full-size URL for lightbox display - if not provided, uses url */
+  originalUrl?: string
   prompt?: string
   params?: {
     model?: string

@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useRef, useState } from "react"
 import { SolutionStep } from "@/lib/seo-config"
 import { ScrollReveal } from "@/components/landing/scroll-reveal"
 
@@ -9,6 +10,39 @@ interface SolutionStepsProps {
 }
 
 export function SolutionSteps({ steps, shortTitle }: SolutionStepsProps) {
+    const [visibleStepIndex, setVisibleStepIndex] = useState(-1)
+    const containerRef = useRef<HTMLDivElement>(null)
+    const timersRef = useRef<NodeJS.Timeout[]>([])
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    // Start sequence when container is in view
+                    steps.forEach((_, index) => {
+                        const timer = setTimeout(() => {
+                            setVisibleStepIndex(current => Math.max(current, index))
+                        }, index * 1000)
+                        timersRef.current.push(timer)
+                    })
+                    
+                    // Only trigger once
+                    observer.disconnect()
+                }
+            },
+            { threshold: 0.2 }
+        )
+
+        if (containerRef.current) {
+            observer.observe(containerRef.current)
+        }
+
+        return () => {
+            observer.disconnect()
+            timersRef.current.forEach(clearTimeout)
+        }
+    }, [steps])
+
     return (
         <section className="py-24 relative overflow-hidden">
             <div className="container mx-auto px-6 relative z-10">
@@ -21,15 +55,19 @@ export function SolutionSteps({ steps, shortTitle }: SolutionStepsProps) {
                     </div>
                 </ScrollReveal>
 
-                <div className="grid md:grid-cols-3 gap-8 relative">
+                <div ref={containerRef} className="grid md:grid-cols-3 gap-8 relative">
                     {/* Connecting line */}
                     <div className="hidden md:block absolute top-12 left-[16%] right-[16%] h-0.5 bg-gradient-to-r from-transparent via-primary/30 to-transparent z-0" />
 
                     {steps.map((step, index) => (
                         <ScrollReveal key={index} delay={index * 150}>
                             <div className="relative text-center group">
-                                <div className="w-24 h-24 mx-auto rounded-full bg-background border-4 border-white/5 group-hover:border-primary/30 transition-colors flex items-center justify-center mb-6 relative z-10 shadow-xl">
-                                    <span className="text-4xl font-bold text-white/10 group-hover:text-primary transition-colors">
+                                <div className={`w-24 h-24 mx-auto rounded-full bg-background border-4 transition-all duration-700 flex items-center justify-center mb-6 relative z-10 shadow-xl ${
+                                    index <= visibleStepIndex ? "border-primary/30" : "border-white/5"
+                                }`}>
+                                    <span className={`text-4xl font-bold transition-colors duration-700 ${
+                                        index <= visibleStepIndex ? "text-primary" : "text-white/10"
+                                    }`}>
                                         {index + 1}
                                     </span>
                                 </div>

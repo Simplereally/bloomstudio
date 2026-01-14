@@ -84,12 +84,21 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
   const [libraryOpen, setLibraryOpen] = React.useState(false)
   const [saveContent, setSaveContent] = React.useState<string | undefined>(undefined)
 
-  const [isImageLoaded, setIsImageLoaded] = React.useState(false)
+  // Track loading states for thumbnail-to-full-res crossfade
+  const [isThumbnailLoaded, setIsThumbnailLoaded] = React.useState(false)
+  const [isFullResLoaded, setIsFullResLoaded] = React.useState(false)
+  
+  // Determine URLs for progressive loading
+  // If originalUrl exists and differs from url, we have a thumbnail/full-res pair
+  const thumbnailUrl = displayImage?.url
+  const fullResUrl = displayImage?.originalUrl || displayImage?.url
+  const hasSeparateThumbnail = displayImage?.originalUrl && displayImage.originalUrl !== displayImage.url
 
-  // Reset image loaded state when URL changes
+  // Reset loading states when image changes
   React.useEffect(() => {
-    setIsImageLoaded(false)
-  }, [displayImage?.url])
+    setIsThumbnailLoaded(false)
+    setIsFullResLoaded(false)
+  }, [displayImage?.url, displayImage?.originalUrl])
 
   return (
     <>
@@ -164,7 +173,7 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
                         </div>
                       </div>
                     ) : (
-                      /* Image: opacity transition for smooth loading */
+                      /* Image: Progressive loading with thumbnail blur-up crossfade */
                       <div
                         className="relative"
                         style={isZoomed ? {
@@ -185,30 +194,54 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
                           onMouseEnter={() => setIsHovering(true)}
                           onMouseLeave={() => setIsHovering(false)}
                         >
+                          {/* Thumbnail layer - shows immediately with blur when we have separate thumbnail */}
+                          {hasSeparateThumbnail && thumbnailUrl && (
+                            <NextImage
+                              src={thumbnailUrl}
+                              alt={displayImage.prompt || "Generated image"}
+                              onLoad={() => setIsThumbnailLoaded(true)}
+                              draggable={false}
+                              width={displayImage.width || displayImage.params?.width || 1000}
+                              height={displayImage.height || displayImage.params?.height || 1000}
+                              priority
+                              unoptimized={thumbnailUrl.startsWith('http')}
+                              className={cn(
+                                "w-auto h-auto object-contain select-none transition-all duration-500",
+                                isZoomed ? "" : "max-w-[100vw] max-h-[100vh]",
+                                // Show thumbnail immediately, blur it, fade out when full-res is ready
+                                !isThumbnailLoaded ? "opacity-0" : "opacity-100",
+                                isFullResLoaded ? "opacity-0 pointer-events-none absolute inset-0" : "blur-[2px]"
+                              )}
+                            />
+                          )}
+                          
+                          {/* Full resolution layer - loads in background, crossfades in when ready */}
                           <NextImage
-                            src={displayImage.url}
+                            src={fullResUrl || displayImage.url}
                             alt={displayImage.prompt || "Generated image"}
                             onLoad={(e) => {
                               handleImageLoad(e as unknown as React.SyntheticEvent<HTMLImageElement>)
-                              setIsImageLoaded(true)
+                              setIsFullResLoaded(true)
                             }}
                             draggable={false}
                             width={displayImage.width || displayImage.params?.width || 1000}
                             height={displayImage.height || displayImage.params?.height || 1000}
-                            priority
-                            unoptimized={displayImage.url.startsWith('http')} // Don't re-optimize if it's already a full URL (likely from storage)
+                            priority={!hasSeparateThumbnail} // Lower priority when we have thumbnail to show first
+                            unoptimized={(fullResUrl || displayImage.url).startsWith('http')}
                             className={cn(
-                              "w-auto h-auto object-contain select-none transition-opacity duration-300",
-                              isZoomed
-                                ? ""
-                                : "max-w-[100vw] max-h-[100vh]",
-                              !isImageLoaded ? "opacity-0" : "opacity-100"
+                              "w-auto h-auto object-contain select-none transition-opacity duration-500",
+                              isZoomed ? "" : "max-w-[100vw] max-h-[100vh]",
+                              // When no separate thumbnail, behave like before (fade in)
+                              // When separate thumbnail exists, position behind and fade in
+                              hasSeparateThumbnail
+                                ? (isFullResLoaded ? "opacity-100" : "opacity-0")
+                                : (!isFullResLoaded ? "opacity-0" : "opacity-100")
                             )}
                           />
                         </div>
 
                         {/* Zoom indicator - only show if zoomable and not zoomed */}
-                        {canZoom && !isZoomed && isImageLoaded && (
+                        {canZoom && !isZoomed && (isThumbnailLoaded || isFullResLoaded) && (
                           <div
                             className="absolute top-4 right-4 z-10 opacity-0 group-hover/image:opacity-100 transition-opacity pointer-events-none"
                           >
@@ -222,7 +255,8 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
                   </React.Fragment>
                 )}
 
-                {(isLoadingDetails || (!isVideo && !isImageLoaded)) && (
+                {/* Loading spinner - show when no thumbnail loaded yet */}
+                {(isLoadingDetails || (!isVideo && !isThumbnailLoaded && !isFullResLoaded)) && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
                     <Loader2 className="w-10 h-10 animate-spin text-white/50" />
                   </div>
