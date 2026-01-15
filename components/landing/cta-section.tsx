@@ -26,8 +26,11 @@ export function CtaSection() {
                                         size="lg"
                                         className="px-10 h-14 text-lg transition-all group"
                                     >
-                                        Start Your Free Trial
-                                        <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                                        <span className="relative opacity-90 group-hover:opacity-100 transition-opacity">
+                                            Start Your Free Trial
+                                            <span className="absolute -bottom-1 left-0 w-0 h-px bg-primary-foreground/50 group-hover:w-full transition-all duration-300 ease-out" />
+                                        </span>
+                                        <ArrowRight className="ml-2 h-5 w-5 opacity-70 group-hover:opacity-100 transition-all group-hover:translate-x-1" />
                                     </Button>
                                 </Link>
                                 <Link href="/pricing">

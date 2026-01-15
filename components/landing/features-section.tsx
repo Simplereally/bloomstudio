@@ -75,7 +75,7 @@ export function FeaturesSection() {
           <div className="mt-16 3xl:mt-24 4xl:mt-32 text-center">
             <Link
               href="/studio"
-              className="inline-flex items-center gap-3 px-6 py-4 rounded-2xl glass-effect-home hover:bg-white/10 transition-colors group cursor-pointer border border-white/10 hover:border-primary/50"
+              className="inline-flex items-center gap-3 px-6 py-4 rounded-2xl bg-gradient-to-br from-white/5 via-card/80 to-purple-500/5 border border-white/10 hover:bg-white/10 transition-colors group cursor-pointer hover:border-primary/50"
             >
               <MousePointer2 className="h-5 w-5 text-primary animate-bounce group-hover:scale-110 transition-transform" />
               <span className="text-foreground/90">

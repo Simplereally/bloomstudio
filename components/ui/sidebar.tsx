@@ -69,7 +69,7 @@ function SidebarProvider({
   cookieName?: string
 }) {
   const isMobile = useIsMobile()
-  const [openMobile, setOpenMobile] = React.useState(false)
+  const [openMobile, setOpenMobileInternal] = React.useState(false)
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
@@ -90,9 +90,39 @@ function SidebarProvider({
     [setOpenProp, open, cookieName]
   )
 
+  // Track openMobile in a ref to avoid recreating setOpenMobile on every state change
+  const openMobileRef = React.useRef(openMobile)
+  React.useEffect(() => {
+    openMobileRef.current = openMobile
+  }, [openMobile])
+
+  // Wrapped setOpenMobile that also notifies the parent (setOpenProp) when on mobile.
+  // This ensures bidirectional sync: when the Sheet closes via overlay click,
+  // the parent state (e.g., useStudioUI's showLeftSidebar) gets updated.
+  // Using ref to avoid recreating this callback on every openMobile change.
+  const setOpenMobile = React.useCallback(
+    (value: boolean | ((prev: boolean) => boolean)) => {
+      const newValue = typeof value === "function" ? value(openMobileRef.current) : value
+      setOpenMobileInternal(newValue)
+      // Sync back to parent if we have an external handler
+      if (setOpenProp) {
+        setOpenProp(newValue)
+      }
+    },
+    [setOpenProp]
+  )
+
+  // Mobile Sidebar Sync (parent -> mobile):
+  // When the open prop changes from an external toggle, sync to mobile state.
+  React.useEffect(() => {
+    if (isMobile && openProp !== undefined && openProp !== openMobile) {
+      setOpenMobileInternal(openProp)
+    }
+  }, [isMobile, openProp, openMobile])
+
   // Helper to toggle the sidebar.
   const toggleSidebar = React.useCallback(() => {
-    return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open)
+    return isMobile ? setOpenMobile((prev) => !prev) : setOpen((prev) => !prev)
   }, [isMobile, setOpen, setOpenMobile])
 
   // Adds a keyboard shortcut to toggle the sidebar.
@@ -184,26 +214,40 @@ function Sidebar({
 
   if (isMobile) {
     return (
-      <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
-        <SheetContent
+      <>
+        {/* Overlay - clickable backdrop to close sidebar */}
+        {openMobile && (
+          <div
+            className="fixed inset-0 z-40 bg-black/50 animate-in fade-in-0 duration-200"
+            onClick={() => setOpenMobile(false)}
+            aria-hidden="true"
+          />
+        )}
+        {/* Always-mounted sidebar container - uses CSS transforms like desktop */}
+        <div
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
-          className="bg-sidebar text-sidebar-foreground w-(--sidebar-width) p-0 [&>button]:hidden"
-          style={
-            {
-              "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
-            } as React.CSSProperties
-          }
-          side={side}
+          data-state={openMobile ? "expanded" : "collapsed"}
+          className={cn(
+            "bg-sidebar text-sidebar-foreground fixed inset-y-0 z-50 flex h-svh flex-col transition-transform duration-200 ease-out",
+            side === "left" && "left-0",
+            side === "right" && "right-0",
+            // Transform based on state
+            side === "left" && !openMobile && "-translate-x-full",
+            side === "right" && !openMobile && "translate-x-full",
+            side === "left" && "border-r",
+            side === "right" && "border-l",
+            className
+          )}
+          style={{
+            width: "var(--sidebar-width)",
+          } as React.CSSProperties}
+          {...props}
         >
-          <SheetHeader className="sr-only">
-            <SheetTitle>Sidebar</SheetTitle>
-            <SheetDescription>Displays the mobile sidebar.</SheetDescription>
-          </SheetHeader>
           <div className="flex h-full w-full flex-col">{children}</div>
-        </SheetContent>
-      </Sheet>
+        </div>
+      </>
     )
   }
 

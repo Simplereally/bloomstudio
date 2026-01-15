@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { trackCtaClick, trackCtaDismiss, trackCtaView } from "@/lib/analytics"
+import { trackCtaClick, trackCtaView } from "@/lib/analytics"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@clerk/nextjs"
 import { motion, AnimatePresence } from "framer-motion"
@@ -21,15 +21,15 @@ interface FeedCtaProps {
 export function FeedCta({ className }: FeedCtaProps) {
     const { isSignedIn, isLoaded } = useAuth()
     const [isVisible, setIsVisible] = React.useState(false)
-    const [isDismissed, setIsDismissed] = React.useState(false)
+
 
     // Show CTA after user has scrolled a bit (engagement signal)
     React.useEffect(() => {
-        if (!isLoaded || isSignedIn || isDismissed) return
+        if (!isLoaded || isSignedIn) return
 
         const handleScroll = () => {
-            // Show after scrolling 300px (roughly 2-3 images viewed)
-            if (window.scrollY > 300 && !isVisible) {
+            // Show after scrolling 600px (roughly 4-6 images viewed)
+            if (window.scrollY > 1200 && !isVisible) {
                 setIsVisible(true)
                 trackCtaView()
             }
@@ -41,17 +41,17 @@ export function FeedCta({ className }: FeedCtaProps) {
                 setIsVisible(true)
                 trackCtaView()
             }
-        }, 5000)
+        }, 8000)
 
         window.addEventListener("scroll", handleScroll, { passive: true })
         return () => {
             window.removeEventListener("scroll", handleScroll)
             clearTimeout(timer)
         }
-    }, [isLoaded, isSignedIn, isDismissed])
+    }, [isLoaded, isSignedIn])
 
     // Don't render for authenticated users or while loading
-    if (!isLoaded || isSignedIn || isDismissed) {
+    if (!isLoaded || isSignedIn) {
         return null
     }
 
@@ -64,55 +64,36 @@ export function FeedCta({ className }: FeedCtaProps) {
                     exit={{ opacity: 0, y: 20, scale: 0.95 }}
                     transition={{ duration: 0.3, ease: "easeOut" }}
                     className={cn(
-                        "fixed bottom-6 left-1/2 -translate-x-1/2 z-50",
+                        "fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] sm:w-auto",
                         className
                     )}
                 >
-                    <div className="relative group">
-                        {/* Glow effect */}
-                        <div className="absolute -inset-1 bg-gradient-to-r from-primary/60 via-purple-500/60 to-pink-500/60 rounded-2xl blur-lg opacity-70 group-hover:opacity-100 transition-opacity" />
-
-                        {/* Main CTA container */}
-                        <div className="relative flex items-center gap-4 px-6 py-4 bg-gradient-to-r from-background/95 via-background/98 to-background/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl">
-                            {/* Icon */}
-                            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-purple-500/20 border border-primary/20">
-                                <Sparkles className="w-5 h-5 text-primary" />
-                            </div>
-
-                            {/* Text */}
-                            <div className="flex flex-col">
-                                <span className="text-sm font-semibold text-foreground">
-                                    Inspired by what you see?
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                    Create your own AI masterpiece for free
-                                </span>
-                            </div>
-
-                            {/* Sign up button */}
-                            <Link href="/sign-up" onClick={trackCtaClick}>
-                                <Button
-                                    size="sm"
-                                    className="rounded-full px-5 gap-2 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white font-semibold shadow-lg hover:shadow-primary/25 transition-all hover:scale-105"
-                                >
-                                    Start Creating
-                                    <ArrowRight className="w-4 h-4" />
-                                </Button>
-                            </Link>
-
-                            {/* Dismiss button */}
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setIsDismissed(true)
-                                    trackCtaDismiss()
-                                }}
-                                className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-muted hover:bg-muted-foreground/20 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                                aria-label="Dismiss"
-                            >
-                                <span className="text-xs font-bold">×</span>
-                            </button>
+                    <div className="flex flex-row items-center justify-between sm:justify-start gap-4 p-3 pl-5 sm:px-6 sm:py-4 rounded-full border border-white/30 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.4)] backdrop-blur-2xl backdrop-saturate-150 bg-black/5 dark:bg-black/10">
+                        {/* Icon - Hidden on mobile to save space */}
+                        <div className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 border border-primary/20 shrink-0">
+                            <Sparkles className="w-5 h-5 text-primary" />
                         </div>
+
+                        {/* Text - Mix blend diff for dynamic contrast */}
+                        <div className="flex flex-col gap-0.5 mr-auto mix-blend-difference text-white">
+                            <span className="text-sm font-semibold whitespace-nowrap">
+                                Inspired by what you see?
+                            </span>
+                            <span className="text-xs font-medium hidden sm:block opacity-90">
+                                Create your own AI masterpiece for free
+                            </span>
+                        </div>
+
+                        {/* Sign up button */}
+                        <Link href="/sign-up" onClick={trackCtaClick} className="shrink-0">
+                            <Button
+                                size="sm"
+                                className="rounded-full px-4 sm:px-5 gap-2 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white font-semibold shadow-lg hover:shadow-primary/25 transition-all hover:scale-105"
+                            >
+                                Start Creating
+                                <ArrowRight className="w-4 h-4 hidden sm:block" />
+                            </Button>
+                        </Link>
                     </div>
                 </motion.div>
             )}

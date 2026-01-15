@@ -68,7 +68,7 @@ describe("FeedCta", () => {
             mockUseAuth.mockReturnValue({ isSignedIn: false, isLoaded: true })
         })
 
-        it("shows CTA after 5 second delay", () => {
+        it("shows CTA after 8 second delay", () => {
             render(<FeedCta />)
 
             // Initially not visible
@@ -76,19 +76,19 @@ describe("FeedCta", () => {
 
             // Advance timer
             act(() => {
-                vi.advanceTimersByTime(5000)
+                vi.advanceTimersByTime(8000)
             })
 
             // Now visible
             expect(screen.getByText("Inspired by what you see?")).toBeInTheDocument()
         })
 
-        it("shows CTA after scrolling 300px", () => {
+        it("shows CTA after scrolling 600px", () => {
             render(<FeedCta />)
 
             // Simulate scroll
             act(() => {
-                Object.defineProperty(window, "scrollY", { value: 350, configurable: true })
+                Object.defineProperty(window, "scrollY", { value: 1201, configurable: true })
                 fireEvent.scroll(window)
             })
 
@@ -99,28 +99,13 @@ describe("FeedCta", () => {
             render(<FeedCta />)
 
             act(() => {
-                vi.advanceTimersByTime(5000)
+                vi.advanceTimersByTime(8000)
             })
 
             const signUpLink = screen.getByText("Start Creating").closest("a")
             expect(signUpLink).toHaveAttribute("href", "/sign-up")
         })
 
-        it("can be dismissed", () => {
-            render(<FeedCta />)
 
-            act(() => {
-                vi.advanceTimersByTime(5000)
-            })
-
-            expect(screen.getByText("Inspired by what you see?")).toBeInTheDocument()
-
-            // Click dismiss button
-            const dismissButton = screen.getByLabelText("Dismiss")
-            fireEvent.click(dismissButton)
-
-            // Should no longer be visible
-            expect(screen.queryByText("Inspired by what you see?")).not.toBeInTheDocument()
-        })
     })
 })

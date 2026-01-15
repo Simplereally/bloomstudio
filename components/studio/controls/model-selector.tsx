@@ -231,7 +231,7 @@ export const ModelSelector = React.memo(function ModelSelector({
                 </Label>
             )}
             <div
-                className="grid grid-cols-1 sm:grid-cols-2 gap-2"
+                className="grid grid-cols-2 gap-2"
                 data-testid="model-buttons"
             >
                 {hasMultipleTypes && imageModels.length > 0 && (

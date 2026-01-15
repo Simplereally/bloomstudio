@@ -9,7 +9,7 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        default: "group/btn bg-primary text-primary-foreground relative overflow-hidden active:bg-primary/90",
         destructive:
           "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
         outline:
@@ -41,6 +41,7 @@ function Button({
   variant = "default",
   size = "default",
   asChild = false,
+  children,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
@@ -55,7 +56,23 @@ function Button({
       data-size={size}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
-    />
+    >
+      {/* Layer 1: Persistent hover glow - fades in and stays while hovering */}
+      {variant === "default" && (
+        <span
+          className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/15 via-white/5 to-transparent opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300"
+          aria-hidden="true"
+        />
+      )}
+      {/* Layer 2: Sweep sheen - rapid diagonal animation on hover entry */}
+      {variant === "default" && (
+        <span
+          className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-full skew-x-[-15deg] group-hover/btn:animate-button-sheen"
+          aria-hidden="true"
+        />
+      )}
+      {children}
+    </Comp>
   )
 }
 

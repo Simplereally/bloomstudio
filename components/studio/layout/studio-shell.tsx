@@ -396,6 +396,8 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
                     gallery={galleryContent}
                     showSidebar={studioUI.showLeftSidebar}
                     showGallery={studioUI.showGallery}
+                    onSidebarOpenChange={studioUI.setShowLeftSidebar}
+                    onGalleryOpenChange={studioUI.setShowGallery}
                     defaultSidebarSize="22%"
                     defaultGallerySize="18%"
                     defaultLayout={defaultLayout}

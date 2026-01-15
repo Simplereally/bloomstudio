@@ -17,7 +17,7 @@ export function FeatureCard({
       "group relative p-6 rounded-2xl transition-all duration-300",
       accent 
         ? "bg-gradient-to-br from-primary/20 via-primary/10 to-transparent border border-primary/30" 
-        : "glass-effect-home hover:border-primary/20"
+        : "bg-gradient-to-br from-white/5 via-card/80 to-purple-500/5 border border-white/10 hover:border-primary/20"
     )}>
       <div className={cn(
         "w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-transform",

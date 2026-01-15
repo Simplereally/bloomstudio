@@ -77,7 +77,7 @@ export default function PricingPage() {
             <div className="min-h-svh bg-background">
                 {/* Hero + Value Proposition - Static SSR */}
                 <section className="container mx-auto px-6 pt-24 sm:pt-32 md:pt-36 pb-10 text-center">
-                    <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-3">
+                    <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-3 font-brand">
                         Simple pricing. <span className="text-primary">Unbeatable value.</span>
                     </h1>
                 </section>
@@ -265,7 +265,7 @@ export default function PricingPage() {
                                     <th className="text-center py-4 px-4 text-sm font-medium text-muted-foreground">
                                         <div className="flex flex-col items-center">
                                             <span>Competitors</span>
-                                            <span className="text-[10px] text-muted-foreground/40 font-bold uppercase tracking-widest mt-0.5">Varies</span>
+                                            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-0.5">Varies</span>
                                         </div>
                                     </th>
                                 </tr>

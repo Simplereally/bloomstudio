@@ -102,6 +102,7 @@
   --font-mono: "Geist Mono", "Geist Mono Fallback";
   --font-brand: var(--font-bricolage);
 
+  --breakpoint-xs: 480px;    /* Small mobile landscape / large mobile portrait */
   --breakpoint-3xl: 2000px;  /* Above 1080p monitors (effectively targets 1440p+ when combined with scaling) */
   --breakpoint-4xl: 2400px;  /* 1440p monitors (2560px - browser chrome) */
   --breakpoint-5xl: 3600px;  /* 4K monitors (3840px - browser chrome) */
@@ -257,22 +258,57 @@
       transform: translateX(-50%);
     }
   }
+
+  --animate-text-sheen: text-sheen 5s ease-in-out infinite;
+  @keyframes text-sheen {
+    0% {
+      background-position: 200% center;
+    }
+    100% {
+      background-position: -200% center;
+    }
+  }
+
+  /* Button hover sheen - rapid diagonal sweep */
+  --animate-button-sheen: button-sheen 0.4s ease-out forwards;
+  @keyframes button-sheen {
+    0% {
+      transform: translateX(-100%) skewX(-15deg);
+    }
+    100% {
+      transform: translateX(200%) skewX(-15deg);
+    }
+  }
 }
 
 @utility glass-effect {
-  background-color: rgba(255, 255, 255, 0.09);
-  backdrop-filter: blur(50px) saturate(80%);
-  -webkit-backdrop-filter: blur(50px) saturate(80%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  /* Apple-style 'Liquid Glass' - Light Mode */
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.35),
+    rgba(255, 255, 255, 0.15)
+  );
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow: 
+    0 8px 32px 0 rgba(31, 38, 135, 0.07),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.2);
 }
 
 @utility glass-effect-home {
-  background-color: rgba(2, 2, 2, 0.8);
-  backdrop-filter: blur(50px) saturate(80%);
-  -webkit-backdrop-filter: blur(50px) saturate(80%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  /* Apple-style 'Liquid Glass' - Dark Mode */
+  background: linear-gradient(
+    135deg,
+    rgba(17, 25, 40, 0.75),
+    rgba(17, 25, 40, 0.45)
+  );
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 
+    0 8px 32px 0 rgba(0, 0, 0, 0.4),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
 

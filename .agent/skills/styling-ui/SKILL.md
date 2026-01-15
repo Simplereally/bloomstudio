@@ -131,7 +131,8 @@ Use semantic tokens exclusively:
 
 | Token | Width | Target |
 |-------|-------|--------|
-| `sm` | 640px | Mobile landscape |
+| `xs` | 480px | Mobile landscape |
+| `sm` | 640px | Large mobile |
 | `md` | 768px | Tablet |
 | `lg` | 1024px | Laptop |
 | `xl` | 1280px | Desktop |

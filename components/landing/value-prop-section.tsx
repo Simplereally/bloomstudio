@@ -22,7 +22,7 @@ export function ValuePropSection() {
           {/* Feature highlights */}
           <div className="grid sm:grid-cols-2 gap-4">
             <ScrollReveal delay={300}>
-              <div className="h-full p-6 rounded-2xl bg-gradient-to-br from-indigo-500/10 via-indigo-500/5 to-transparent border border-indigo-500/20">
+              <div className="h-full p-6 rounded-2xl bg-gradient-to-br from-white/5 via-card/80 to-purple-500/5 border border-white/10">
                 <h3 className="font-bold text-foreground mb-2">Daily Resets</h3>
                 <p className="text-sm text-muted-foreground">
                   Your quota resets every 24 hours. Never lose unused generations like with monthly-reset competitors.
@@ -30,7 +30,7 @@ export function ValuePropSection() {
               </div>
             </ScrollReveal>
             <ScrollReveal delay={400}>
-              <div className="h-full p-6 rounded-2xl glass-effect-home">
+              <div className="h-full p-6 rounded-2xl bg-gradient-to-br from-white/5 via-card/80 to-purple-500/5 border border-white/10">
                 <h3 className="font-bold text-foreground mb-2">1,000 Image Batch Queue</h3>
                 <p className="text-sm text-muted-foreground">
                   Queue up massive batches while competitors limit you to 4-8 images at a time.
@@ -38,7 +38,7 @@ export function ValuePropSection() {
               </div>
             </ScrollReveal>
             <ScrollReveal delay={500}>
-              <div className="h-full p-6 rounded-2xl glass-effect-home">
+              <div className="h-full p-6 rounded-2xl bg-gradient-to-br from-white/5 via-card/80 to-purple-500/5 border border-white/10">
                 <h3 className="font-bold text-foreground mb-2">All Models Included</h3>
                 <p className="text-sm text-muted-foreground">
                   All premium image and video models are included. Nanobanana Pro, Veo3.1, Seedance, Seedream Pro - everything is included.
@@ -46,7 +46,7 @@ export function ValuePropSection() {
               </div>
             </ScrollReveal>
             <ScrollReveal delay={600}>
-              <div className="h-full p-6 rounded-2xl bg-gradient-to-br from-purple-500/20 via-purple-500/10 to-transparent border border-purple-500/30">
+              <div className="h-full p-6 rounded-2xl bg-gradient-to-br from-white/5 via-card/80 to-purple-500/5 border border-white/10">
                 <h3 className="font-bold text-foreground mb-2">NSFW Enabled 🤭</h3>
                 <p className="text-sm text-muted-foreground">
                   Creative freedom without arbitrary restrictions on models that support it. Generate what you imagine.

@@ -18,7 +18,7 @@ function ModelBadgeDetailed({ model }: { model: (typeof MODEL_REGISTRY)[keyof ty
       )}
       <div className="flex flex-col min-w-0">
         <span className="text-[14px] font-bold font-brand text-foreground uppercase tracking-tight truncate">{model.displayName}</span>
-        <span className="text-[11px] text-muted-foreground/90 leading-tight line-clamp-1">{model.description}</span>
+        <span className="text-[11px] text-muted-foreground leading-tight line-clamp-1">{model.description}</span>
       </div>
     </div>
   );

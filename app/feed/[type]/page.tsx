@@ -64,12 +64,6 @@ export default async function FeedTypePage({ params }: FeedPageProps) {
     return (
         <div className="min-h-screen bg-background">
             <main className="py-8">
-                {/* Title Section - Constrained for readability */}
-                <div className="container mx-auto px-4">
-                    <p className="text-muted-foreground text-lg max-w-2xl">
-                        Community Feed
-                    </p>
-                </div>
 
                 {/* Grid Section - Full width */}
                 <FeedClient feedType={feedType} />

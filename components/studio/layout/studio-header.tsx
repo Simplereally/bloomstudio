@@ -38,7 +38,7 @@ export function StudioHeader({
     return (
         <div
             className={cn(
-                "flex h-10 items-center justify-center gap-1 border-b border-border/50",
+                "relative z-50 flex h-10 items-center justify-center gap-1 border-b border-border/50",
                 "bg-card/50 backdrop-blur-sm px-4",
                 className
             )}

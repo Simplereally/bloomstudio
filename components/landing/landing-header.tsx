@@ -77,16 +77,16 @@ export function LandingHeader() {
     <header
       className={cn(
         "fixed top-0 left-0 right-0 z-50 backdrop-blur-md transition-all duration-300 ease-out border-b",
-        scrolled ? "py-1.5 bg-black/60 border-white/5 shadow-sm" : "py-6 bg-black/5 border-transparent shadow-none",
+        scrolled ? "py-1.5 bg-black/60 border-white/5 shadow-sm" : "py-2 lg:py-6 bg-black/5 border-transparent shadow-none",
         mobileMenuOpen && "bg-black/90 border-white/10"
       )}
     >
       <div className="container mx-auto px-6 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2">
-            <span className="text-xl sm:text-2xl md:text-3xl font-bold text-primary font-brand tracking-tight -skew-x-6 whitespace-nowrap">Bloom Studio</span>
+            <span className="text-xl sm:text-2xl lg:text-3xl font-bold text-primary font-brand tracking-tight -skew-x-6 whitespace-nowrap">Bloom Studio</span>
           </Link>
-          <nav className="hidden md:flex items-center gap-6">
+          <nav className="hidden lg:flex items-center gap-6">
             <Link
               href={pathname === "/" ? "#showcase" : "/#showcase"}
               onClick={(e) => handleNavClick(e, pathname === "/" ? "#showcase" : "/#showcase")}
@@ -167,44 +167,55 @@ export function LandingHeader() {
           </nav>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 ml-4">
           {/* Community Feed - Soft glow portal effect, visually distinct from primary CTAs */}
-          <Link href="/feed/public" className="hidden md:block group">
+          <Link href="/feed/public" className="hidden lg:block group/feed">
             <Button
               variant="ghost"
               className={cn(
-                // Base styling - glass-like with ember border
-                "relative border border-primary/20 bg-primary/5",
-                // Typography
-                "font-medium tracking-wide",
-                // Hover state - intensify the ember glow
-                "hover:border-primary/40 hover:bg-primary/10",
-                // Subtle transition
-                "transition-all duration-300 ease-out",
-                // The ember glow effect - subtle
-                "shadow-[0_0_10px_-4px_var(--primary)] hover:shadow-[0_0_15px_-3px_var(--primary)]"
+                // Base styling: Refined glass-outline
+                "relative h-9 px-4 border transition-all duration-300 ease-out overflow-hidden bg-white/5 border-white/10",
+                // Typography: Editorial Style matching 'Open Studio'
+                "text-[10px] font-bold uppercase tracking-[0.15em] text-foreground/80",
+                // Hover state: Subtle lift and color shift
+                "hover:bg-primary/5 hover:border-primary/30 hover:text-foreground",
+                // Active state
+                pathname.startsWith("/feed") && "bg-primary/10 border-primary/40 text-primary shadow-[0_0_15px_-7px_var(--primary)]"
               )}
             >
-              <Users className="h-4 w-4 mr-2 text-primary opacity-80 group-hover:opacity-100 transition-opacity" />
+              {/* Refined glint effect on hover */}
+              <div className="absolute inset-0 -translate-x-full group-hover/feed:animate-shimmer bg-gradient-to-r from-transparent via-white/10 to-transparent pointer-events-none" />
+              
+              <Users className={cn(
+                "h-3.5 w-3.5 mr-2 transition-colors",
+                pathname.startsWith("/feed") ? "text-primary" : "text-primary/60 group-hover/feed:text-primary"
+              )} />
               Community Feed
             </Button>
           </Link>
 
           {/* Visual separator between community link and auth actions */}
-          <div className="hidden md:block h-5 w-px bg-white/10" />
+          <div className="hidden lg:block h-5 w-px bg-muted-foreground/50" />
           {isLoaded &&
             (isSignedIn ? (
-              <div className="hidden md:flex items-center gap-4">
+              <div className="hidden lg:flex items-center gap-4">
                 <Link href="/studio">
-                  <Button variant="default" className="group">
-                    Open Studio
-                    <ArrowRight className="h-4 w-4 ml-2 transition-transform group-hover:translate-x-1" />
+                  <Button variant="default" className={cn(
+                      "group",
+                      // Typography - Editorial Style
+                      "text-xs font-bold uppercase tracking-[0.2em]",
+                    )}>
+                    <span className="relative opacity-90 group-hover:opacity-100 transition-opacity">
+                      Open Studio
+                      <span className="absolute -bottom-1 left-0 w-0 h-px bg-primary-foreground/50 group-hover:w-full transition-all duration-300 ease-out" />
+                    </span>
+                    <ArrowRight className="h-4 w-4 ml-2 opacity-70 group-hover:opacity-100 transition-all group-hover:translate-x-1" />
                   </Button>
                 </Link>
                 <ClerkUserButton />
               </div>
             ) : (
-              <div className="hidden md:flex items-center gap-3">
+              <div className="hidden lg:flex items-center gap-3">
                 <Link href="/sign-in" className="group">
                   {/* Elegant text link - matches "See Pricing" styling */}
                   <span className="relative inline-flex items-center text-sm font-medium text-foreground/80 hover:text-foreground transition-colors cursor-pointer py-2">
@@ -222,8 +233,15 @@ export function LandingHeader() {
               </div>
             ))}
 
+          {/* Mobile User Button - Visible only on mobile when signed in */}
+          {isLoaded && isSignedIn && (
+            <div className="lg:hidden flex items-center">
+              <ClerkUserButton />
+            </div>
+          )}
+
           {/* Mobile Menu Toggle */}
-          <Button variant="ghost" size="icon" className="md:hidden text-foreground" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+          <Button variant="ghost" size="icon" className="lg:hidden text-foreground" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
             {mobileMenuOpen ? (
               <ArrowRight className="h-5 w-5 rotate-90" />
             ) : (
@@ -239,7 +257,7 @@ export function LandingHeader() {
 
       {/* Mobile Navigation */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-white/10 bg-black/95 absolute top-full left-0 right-0 p-6 flex flex-col gap-4 animate-in slide-in-from-top-2">
+        <div className="lg:hidden border-t border-white/10 bg-black/95 absolute top-full left-0 right-0 p-6 flex flex-col gap-4 animate-in slide-in-from-top-2">
           <nav className="flex flex-col gap-2">
             <Link
               href={pathname === "/" ? "#showcase" : "/#showcase"}
@@ -343,9 +361,6 @@ export function LandingHeader() {
                     Open Studio
                   </Button>
                 </Link>
-                <div className="flex justify-center py-2">
-                  <ClerkUserButton />
-                </div>
               </>
             ) : (
               <>

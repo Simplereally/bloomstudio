@@ -70,7 +70,7 @@ export function ShowcaseSection({ items }: ShowcaseSectionProps) {
               <p className="text-base lg:text-lg xl:text-xl text-muted-foreground mb-4 lg:mb-6 text-balance max-w-lg xl:max-w-xl">
                 From photorealistic renders to artistic illustrations, bring any vision to life with our state-of-the-art AI image generator and text-to-image models.
               </p>
-              <p className="text-sm lg:text-base text-muted-foreground/80 text-balance max-w-lg xl:max-w-xl">
+              <p className="text-sm lg:text-base text-muted-foreground/85 text-balance max-w-lg xl:max-w-xl">
                 Generate high-resolution artwork, professional product photography, lifestyle influencer photos, and creative digital art — all powered by the latest AI models including GPT-4 Image, Flux, and Seedream. Perfect for designers, marketers, and creative professionals who need instant, high-quality visual content.
               </p>
 
@@ -82,15 +82,17 @@ export function ShowcaseSection({ items }: ShowcaseSectionProps) {
                     size="lg"
                     className={cn(
                       // Shape & Base
-                      "h-12 px-8 relative overflow-hidden",
+                      "h-12 px-8",
                       // Typography - Editorial Style
                       "text-xs font-bold uppercase tracking-[0.2em]",
-                      // Hover Interaction
                     )}
                   >
                     <span className="relative z-10 flex items-center">
-                      Get Inspired
-                      <ArrowRight className="h-4 w-4 ml-3 transition-transform group-hover:translate-x-1" />
+                      <span className="relative opacity-90 group-hover:opacity-100 transition-opacity">
+                        Get Inspired
+                        <span className="absolute -bottom-1 left-0 w-0 h-px bg-primary-foreground/50 group-hover:w-full transition-all duration-300 ease-out" />
+                      </span>
+                      <ArrowRight className="h-4 w-4 ml-3 opacity-70 group-hover:opacity-100 transition-all group-hover:translate-x-1" />
                     </span>
                   </Button>
                 </Link>

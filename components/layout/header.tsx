@@ -53,11 +53,11 @@ export function Header() {
 
     return (
         <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/60 backdrop-blur-xl supports-[backdrop-filter]:bg-background/40">
-            <div className="container mx-auto flex h-14 items-center px-6">
+            <div className="container mx-auto flex h-14 items-center justify-between gap-4 px-6">
                 {/* Left Side: Logo */}
-                <div className="flex-1 flex justify-start">
+                <div className="flex-shrink-0">
                     <Link href="/" className="flex items-center gap-2">
-                        <span className="text-2xl sm:text-3xl font-bold text-primary font-brand tracking-tight -skew-x-6">
+                        <span className="text-2xl font-bold text-primary font-brand tracking-tight -skew-x-6 whitespace-nowrap">
                             Bloom Studio
                         </span>
                     </Link>
@@ -65,7 +65,7 @@ export function Header() {
 
                 {/* Center: Desktop Navigation - Pill Style */}
                 {showAuthUI && isSignedIn && (
-                    <nav className="hidden md:flex items-center p-1 rounded-full bg-muted/30 border border-border/50 shadow-inner backdrop-blur-md">
+                    <nav className="hidden lg:flex items-center p-1 rounded-full bg-muted/30 border border-border/50 shadow-inner backdrop-blur-md">
                         {navItems.map((item) => {
                             const isActive = pathname.startsWith(item.href)
                             const Icon = item.icon
@@ -75,7 +75,7 @@ export function Header() {
                                         className={cn(
                                             "relative px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-300 flex items-center gap-2",
                                             isActive
-                                                ? "text-primary bg-primary/10 shadow-sm"
+                                                ? "text-primary transition-all duration-300"
                                                 : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
                                         )}
                                     >
@@ -97,7 +97,7 @@ export function Header() {
                 )}
 
                 {/* Right Side: Settings & Auth */}
-                <div className="flex-1 flex justify-end items-center gap-3">
+                <div className="flex-shrink-0 flex items-center gap-3">
                     <div className="flex items-center gap-1.5 p-1 rounded-full bg-muted/30 border border-border/50">
                         {/* Test Modals - Dev Only */}
                         {isLocalDev && (
@@ -198,7 +198,7 @@ export function Header() {
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="md:hidden h-9 w-9 rounded-full bg-muted/30 border border-border/50"
+                            className="lg:hidden h-9 w-9 rounded-full bg-muted/30 border border-border/50"
                             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                         >
                             <span className="sr-only">Toggle menu</span>
@@ -214,7 +214,7 @@ export function Header() {
 
             {/* Mobile Navigation */}
             {showAuthUI && isSignedIn && mobileMenuOpen && (
-                <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-2xl animate-in slide-in-from-top-1 duration-200">
+                <div className="lg:hidden border-t border-border bg-background/95 backdrop-blur-2xl animate-in slide-in-from-top-1 duration-200">
                     <nav className="container mx-auto px-6 py-6 flex flex-col gap-2">
                         {navItems.map((item) => {
                             const isActive = pathname.startsWith(item.href)
