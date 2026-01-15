@@ -15,39 +15,39 @@ import { useAspectRatioDimensions } from "@/hooks/use-aspect-ratio-dimensions";
 import { RESOLUTION_TIERS } from "@/lib/config/resolution-tiers";
 import type { AspectRatio, AspectRatioOption, ModelConstraints, ResolutionTier } from "@/types/pollinations";
 import { cn } from "@/lib/utils";
-import { 
-  Frame, 
-  SlidersHorizontal, 
-  Instagram, 
-  Youtube, 
-  Facebook, 
-  Linkedin, 
-  Monitor, 
-  Smartphone, 
-  Globe, 
-  Laptop, 
-  UserCircle, 
-  Music, 
-  Film, 
-  Camera, 
-  ShoppingBag, 
-  FileText, 
-  Printer, 
-  Megaphone, 
-  Clapperboard, 
-  Gamepad2, 
-  Pin, 
-  LayoutTemplate, 
-  RectangleVertical, 
+import {
+  Frame,
+  SlidersHorizontal,
+  Instagram,
+  Youtube,
+  Facebook,
+  Linkedin,
+  Monitor,
+  Smartphone,
+  Globe,
+  Laptop,
+  UserCircle,
+  Music,
+  Film,
+  Camera,
+  ShoppingBag,
+  FileText,
+  Printer,
+  Megaphone,
+  Clapperboard,
+  Gamepad2,
+  Pin,
+  LayoutTemplate,
+  RectangleVertical,
   Image as ImageIcon,
-  type LucideIcon 
+  type LucideIcon
 } from "lucide-react";
 import * as React from "react";
 
 // Helper to get icon for tag
-const getIconForTag = (tag: string): LucideIcon | null => {
+const getIconForTag = (tag: string): LucideIcon => {
   const t = tag.toLowerCase();
-  
+
   // Social Media & Platforms
   if (t.includes("instagram")) return Instagram;
   if (t.includes("youtube") || t.includes("shorts")) return Youtube;
@@ -56,20 +56,20 @@ const getIconForTag = (tag: string): LucideIcon | null => {
   if (t.includes("tiktok") || t.includes("snapchat")) return Smartphone;
   if (t.includes("pinterest")) return Pin;
   if (t.includes("stream") || t.includes("twitch")) return Gamepad2;
-  
+
   // Photography & Art
   if (t.includes("portrait") || t.includes("dslr") || t.includes("photo")) return Camera;
   if (t.includes("album") || t.includes("cover art") || t.includes("music")) return Music;
   if (t.includes("cinematic") || t.includes("movie")) return Clapperboard;
   if (t.includes("art") || t.includes("illustration")) return ImageIcon;
-  
+
   // Business & Marketing
   if (t.includes("ad") || t.includes("advertisement") || t.includes("marketing")) return Megaphone;
   if (t.includes("product") || t.includes("shop") || t.includes("store")) return ShoppingBag;
   if (t.includes("presentation") || t.includes("slide")) return Laptop;
   if (t.includes("poster") || t.includes("print")) return Printer;
   if (t.includes("blog") || t.includes("newsletter") || t.includes("article")) return FileText;
-  
+
   // Devices & Formats
   if (t.includes("desktop") || t.includes("monitor") || t.includes("wallpaper")) return Monitor;
   if (t.includes("mobile") || t.includes("phone") || t.includes("story")) return Smartphone;
@@ -77,7 +77,7 @@ const getIconForTag = (tag: string): LucideIcon | null => {
   if (t.includes("profile")) return UserCircle;
   if (t.includes("video") || t.includes("film")) return Film;
   if (t.includes("vertical")) return RectangleVertical;
-  
+
   return Frame; // Default fallback instead of null for better consistency
 };
 
@@ -152,10 +152,10 @@ export const AspectRatioSelector = React.memo(function AspectRatioSelector({
 
   const shouldShowTiers = showTierSelector && constraints && onTierChange;
 
-    // Active selection styling - matching the emerald green from other controls
-    const activeClasses = "bg-emerald-500/15 text-emerald-700 border border-emerald-500 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500 ring-1 ring-emerald-500/20"
+  // Active selection styling - matching the emerald green from other controls
+  const activeClasses = "bg-emerald-500/15 text-emerald-700 border border-emerald-500 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500 ring-1 ring-emerald-500/20"
 
-    return (
+  return (
     <div className={cn("space-y-2", className)} data-testid="aspect-ratio-selector">
       {!hideHeader && (
         <div className="flex items-center justify-between">
@@ -273,7 +273,7 @@ export const AspectRatioSelector = React.memo(function AspectRatioSelector({
                             key={tag}
                             className="flex items-center gap-2 text-xs text-muted-foreground"
                           >
-                            {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground/70" />}
+                            <Icon className="h-3.5 w-3.5 text-muted-foreground/70" />
                             <span>{tag}</span>
                           </div>
                         );

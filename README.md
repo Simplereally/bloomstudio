@@ -23,8 +23,8 @@
 
 ## Features
 
-- 🎨 **13+ AI Models** — Choose from Nano Banana Pro, GPT1.5, Seedream, Veo 3.1, Seedance and more
-- ⚡ **Generous Limits** — 5000+ Z-image turbo generations per day
+- 🎨 **13+ AI Models** — Choose from Nano Banana Pro, GPT 1.5, Seedream, Veo 3.1, Seedance and more
+- ⚡ **Generous Limits** — 5000~ Z-image turbo generations per day
 - 📐 **Full Dimension Control** — Create logos, banners, or any custom image size
 - 💾 **Cloud History** — Access your generated images from any device
 - 🔐 **Secure Auth** — Powered by Clerk with SSO support

@@ -431,6 +431,6 @@ export function ModelValueShowcase() {
                     </div>
                 </motion.div>
             </div>
-        </section >
+        </section>
     )
 }

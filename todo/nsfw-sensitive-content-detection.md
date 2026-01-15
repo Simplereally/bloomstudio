@@ -395,7 +395,7 @@ export function analyzePromptForNSFW(prompt: string): PromptAnalysisResult {
     const hasBodyPart = words.some(w => BODY_PARTS.has(w));
     const hasModifier = words.some(w => CONTEXT_MODIFIERS.has(w));
     if (hasBodyPart && hasModifier) {
-        score += 0.5;
+        score += 0.7;
     }
     
     // Normalize score to 0-1 range

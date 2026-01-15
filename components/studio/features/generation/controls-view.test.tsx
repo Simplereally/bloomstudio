@@ -111,6 +111,7 @@ describe("ControlsView", () => {
         constraints: {} as any,
         aspectRatios: [],
         supportsNegativePrompt: true,
+        supportsReferenceImage: true,
       },
     ],
     isLoadingModels: false,

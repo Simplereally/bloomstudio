@@ -362,15 +362,16 @@ export const ImageCard = React.memo(function ImageCard({
                     ) : (
                         <Tooltip delayDuration={200}>
                             <TooltipTrigger asChild>
-                                <Link href="/sign-in" onClick={(e) => e.stopPropagation()}>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white backdrop-blur-md transition-colors shrink-0 border border-white/10"
-                                    >
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white backdrop-blur-md transition-colors shrink-0 border border-white/10"
+                                    asChild
+                                >
+                                    <Link href="/sign-in" onClick={(e) => e.stopPropagation()}>
                                         <Heart className="h-3.5 w-3.5" />
-                                    </Button>
-                                </Link>
+                                    </Link>
+                                </Button>
                             </TooltipTrigger>
                             <TooltipContent side="top" className="z-[200]">
                                 <p className="font-medium">Sign in to save favorites</p>

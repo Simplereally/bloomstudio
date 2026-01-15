@@ -48,10 +48,10 @@ export function analyzePromptForNSFW(prompt: string): PromptAnalysisResult {
     // Improved tokenizer: split by non-word characters but keep internal apostrophes/hyphens if needed
     // Simple split by whitespace and common punctuation for now is usually sufficient
     const words = normalizedPrompt.split(/[\s,.;:!?()\[\]"']+/).filter(w => w.length > 0);
-    
+
     const matchedTerms: string[] = [];
     let score = 0;
-    
+
     // Check explicit and suggestive keywords
     for (const word of words) {
         if (EXPLICIT_KEYWORDS.has(word)) {
@@ -62,20 +62,20 @@ export function analyzePromptForNSFW(prompt: string): PromptAnalysisResult {
             score += 0.4;
         }
     }
-    
+
     // Check body part + context modifier combinations
     // We look for proximity or just co-occurrence in the prompt
     // For simplicity/perf, we check global co-occurrence in the prompt
     const hasBodyPart = words.some(w => BODY_PARTS.has(w));
     const hasModifier = words.some(w => CONTEXT_MODIFIERS.has(w));
-    
+
     if (hasBodyPart && hasModifier) {
         score += 0.7;
     }
-    
+
     // Normalize score to 0-1 range
     const confidence = Math.min(score, 1);
-    
+
     // Use the matched terms to determine method
     let detectionMethod: "explicit" | "contextual" | "none" = "none";
     if (matchedTerms.length > 0) {
@@ -83,9 +83,9 @@ export function analyzePromptForNSFW(prompt: string): PromptAnalysisResult {
     } else if (hasBodyPart && hasModifier) {
         detectionMethod = "contextual";
     }
-    
+
     return {
-        // Threshold of 0.6 means one explicit term (0.9) OR suggestive (0.4) + contextual(0.5) = 0.9 -> sensitive
+        // Threshold of 0.6 means one explicit term (0.9) OR suggestive (0.4) + contextual (0.7) = 1.1 -> sensitive
         // suggestive (0.4) alone -> not sensitive
         isSensitive: confidence >= 0.6,
         confidence,

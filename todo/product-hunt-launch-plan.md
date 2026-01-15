@@ -61,7 +61,7 @@ This is your chance to humanize the product.
 
 ### Pre-Launch (Now - 1 Week Out)
 *   [ ] **Create "Coming Soon" Page:** Capture emails if possible.
-*   [ ] ** engage:** Log in to PH daily. Upvote, comment on other launches. (New accounts with 0 activity get deprioritized).
+*   [ ] **engage:** Log in to PH daily. Upvote, comment on other launches. (New accounts with 0 activity get deprioritized).
 *   [ ] **Social Tease:** Share "building in public" updates on Twitter/X, Discord.
 
 ### Launch Day (Target: Tues/Wed/Thurs @ 12:01 AM PST)
