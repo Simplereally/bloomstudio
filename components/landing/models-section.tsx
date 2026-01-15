@@ -8,7 +8,7 @@ function ModelBadgeDetailed({ model }: { model: (typeof MODEL_REGISTRY)[keyof ty
   const isMonochrome = model.logo?.includes("openai.svg") || model.logo?.includes("flux.svg");
 
   return (
-    <div className="group relative flex items-center gap-3 p-3 px-4 rounded-xl bg-white/[0.06] border border-primary/50 transition-all duration-300">
+    <div className="group relative flex items-center gap-3 p-3 px-4 rounded-xl bg-white/[0.06] border border-white/10 transition-all duration-300">
       {model.logo ? (
         <div className="relative w-6 h-6 opacity-100 flex-shrink-0">
           <Image src={model.logo} alt={`${model.displayName} logo`} fill className={cn("object-contain", isMonochrome && "dark:invert")} />
@@ -16,9 +16,8 @@ function ModelBadgeDetailed({ model }: { model: (typeof MODEL_REGISTRY)[keyof ty
       ) : (
         <Sparkles className="h-5 w-5 text-primary flex-shrink-0" />
       )}
-      <div className="flex flex-col min-w-0">
-        <span className="text-[14px] font-bold font-brand text-foreground uppercase tracking-tight truncate">{model.displayName}</span>
-        <span className="text-[11px] text-muted-foreground leading-tight line-clamp-1">{model.description}</span>
+      <div className="min-w-0">
+        <span className="text-[14px] font-bold font-brand text-foreground uppercase tracking-tight truncate block">{model.displayName}</span>
       </div>
     </div>
   );
@@ -26,8 +25,8 @@ function ModelBadgeDetailed({ model }: { model: (typeof MODEL_REGISTRY)[keyof ty
 
 export function ModelsSection() {
   const allModels = Object.values(MODEL_REGISTRY);
-  const imageModels = allModels.filter((m) => m.type === "image");
-  const videoModels = allModels.filter((m) => m.type === "video");
+  const imageModels = allModels.filter((m) => m.type === "image").sort((a, b) => a.displayName.localeCompare(b.displayName));
+  const videoModels = allModels.filter((m) => m.type === "video").sort((a, b) => a.displayName.localeCompare(b.displayName));
 
   return (
     /**
@@ -59,7 +58,7 @@ export function ModelsSection() {
             <div className="absolute inset-0 bg-primary/10 blur-[40px] rounded-[32px] pointer-events-none transition-colors duration-500" />
 
             {/* Main Card */}
-            <div className="relative rounded-[32px] bg-[#0A0A0A]/80 border border-white/10 shadow-2xl backdrop-blur-sm overflow-hidden p-6 md:p-10 3xl:p-14 4xl:p-16 pt-14 md:pt-16 3xl:pt-20 4xl:pt-24">
+            <div className="relative rounded-[32px] bg-[#0A0A0A]/80 border border-white/10 shadow-2xl backdrop-blur-sm overflow-hidden p-6 md:p-10 3xl:p-14 4xl:p-16 pt-14 md:pt-10 3xl:pt-14 4xl:pt-16">
               {/* Card Header Badge - Centered without translate to avoid blur */}
               <div className="absolute top-0 left-0 right-0 flex justify-center">
                 <div className="bg-[#0D0D0D] px-8 py-3 border-x border-b border-white/10 rounded-b-2xl shadow-xl">

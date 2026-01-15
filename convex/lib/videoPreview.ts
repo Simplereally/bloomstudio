@@ -49,9 +49,6 @@ export interface VideoPreviewResult {
     buffer: Buffer
     /** Size reduction percentage */
     compressionRatio: number
-    /** Final dimensions */
-    width: number
-    height: number
 }
 
 // ============================================================
@@ -202,9 +199,6 @@ export async function generateVideoPreview(
         return {
             buffer: previewBuffer,
             compressionRatio,
-            // Dimensions are approximate - ffmpeg handles the scaling
-            width: 1280, // Max width at 720p 16:9
-            height: Math.min(config.maxHeight, 720),
         }
 
     } catch (error) {

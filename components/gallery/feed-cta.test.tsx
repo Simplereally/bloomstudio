@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react"
 import { act } from "react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { FeedCta } from "./feed-cta"
+import { trackCtaView } from "@/lib/analytics"
 
 // Mock Clerk auth - parametrizable for different test scenarios
 const mockUseAuth = vi.fn()
@@ -29,6 +30,12 @@ vi.mock("framer-motion", () => ({
 vi.mock("lucide-react", () => ({
     Sparkles: () => <span data-testid="sparkles-icon">✨</span>,
     ArrowRight: () => <span data-testid="arrow-icon">→</span>,
+}))
+
+// Mock analytics
+vi.mock("@/lib/analytics", () => ({
+    trackCtaView: vi.fn(),
+    trackCtaClick: vi.fn(),
 }))
 
 describe("FeedCta", () => {
@@ -83,7 +90,7 @@ describe("FeedCta", () => {
             expect(screen.getByText("Inspired by what you see?")).toBeInTheDocument()
         })
 
-        it("shows CTA after scrolling 600px", () => {
+        it("shows CTA after scrolling 1200px", () => {
             render(<FeedCta />)
 
             // Simulate scroll
@@ -106,6 +113,22 @@ describe("FeedCta", () => {
             expect(signUpLink).toHaveAttribute("href", "/sign-up")
         })
 
+        it("calls trackCtaView only once even with multiple scroll events", () => {
+             render(<FeedCta />)
+ 
+             // Simulate scroll
+             act(() => {
+                 Object.defineProperty(window, "scrollY", { value: 1201, configurable: true })
+                 fireEvent.scroll(window)
+             })
+             
+             // Simulate another scroll event immediately after
+             act(() => {
+                 fireEvent.scroll(window)
+             })
 
+             // Check that trackCtaView was called
+             expect(trackCtaView).toHaveBeenCalledTimes(1)
+        })
     })
 })

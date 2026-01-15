@@ -1,5 +1,5 @@
 /// <reference types="@testing-library/jest-dom" />
-import { render, screen, fireEvent } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import { MediaPlayer, isVideoContent } from "./media-player"
 import * as React from "react"
@@ -89,11 +89,12 @@ describe("MediaPlayer", () => {
         expect(handleError).toHaveBeenCalled()
     })
 
-    it("handles video click to play/pause when controls are disabled", () => {
+    it("handles video click to play/pause when controls are disabled", async () => {
         render(<MediaPlayer url={videoUrl} controls={false} />)
         const video = screen.getByTestId("media-video") as HTMLVideoElement
 
         // Mock play/pause since they aren't implemented in JSDOM
+        // play() returns a Promise in the real implementation
         video.play = vi.fn().mockResolvedValue(undefined)
         video.pause = vi.fn()
 
@@ -104,12 +105,20 @@ describe("MediaPlayer", () => {
         })
         video.dataset.paused = "true"
 
+        // Click to play - the handler is async
         fireEvent.click(video)
-        expect(video.play).toHaveBeenCalled()
+        await waitFor(() => {
+            expect(video.play).toHaveBeenCalled()
+        })
 
+        // Simulate that video is now playing
         video.dataset.paused = "false"
+        
+        // Click to pause - the handler waits for any pending play() before calling pause()
         fireEvent.click(video)
-        expect(video.pause).toHaveBeenCalled()
+        await waitFor(() => {
+            expect(video.pause).toHaveBeenCalled()
+        })
     })
 
     it("passes custom className to the container", () => {

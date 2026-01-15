@@ -113,15 +113,17 @@ describe("ImageCard", () => {
             contentType: "video/mp4",
         }
 
-        it("renders a video element for video content", () => {
+        it("renders a video element with autoPlay for video content", () => {
             const { container } = render(<ImageCard {...defaultProps} image={videoImage} />)
 
-            const video = container.querySelector("video")
+            const video = container.querySelector("video") as HTMLVideoElement
             expect(video).toBeInTheDocument()
             expect(video).toHaveAttribute("src", videoImage.url)
-            // Check for play icon
-            const playIcon = container.querySelector("svg.lucide-play")
-            expect(playIcon).toBeInTheDocument()
+            // Videos should auto-play and loop
+            expect(video).toHaveAttribute("autoplay")
+            expect(video).toHaveAttribute("loop")
+            // muted is a boolean property, not an attribute in the DOM
+            expect(video.muted).toBe(true)
         })
     })
 })

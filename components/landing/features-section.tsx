@@ -29,8 +29,8 @@ export function FeaturesSection() {
           <ScrollReveal delay={100}>
             <FeatureCard
               icon={Layers}
-              title="12+ AI Models"
-              description="Access GPT-4 Image, Flux Kontext, Seedream 4.5, NanoBanana Pro, and more. All models included in every plan."
+              title="13+ AI Models"
+              description="Access GPT-4 Image, Flux Kontext, Seedream 4.5, Nano Banana Pro, and more. All models included in every plan."
             />
           </ScrollReveal>
           <ScrollReveal delay={200}>

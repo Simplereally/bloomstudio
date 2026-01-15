@@ -7,13 +7,13 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
-import { trackPromptCopy, trackVideoPlay } from "@/lib/analytics"
+import { trackPromptCopy } from "@/lib/analytics"
 import { getModelDisplayName } from "@/lib/config/models"
 import { getClampedAspectRatio } from "@/lib/image-models"
 import { cn } from "@/lib/utils"
 import { useUser } from "@clerk/nextjs"
 import { useMutation, useQuery } from "convex/react"
-import { Check, Copy, Heart, Play } from "lucide-react"
+import { Check, Copy, Heart } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import * as React from "react"
@@ -64,7 +64,7 @@ interface ImageCardProps {
  * A card component for displaying images in a masonry grid.
  * Shows a hover overlay with metadata similar to the lightbox component.
  * Optionally displays user avatar/name in the top-left corner for community feeds.
- * Videos auto-play on hover for a GIF-like preview experience.
+ * Videos auto-play and loop continuously for a dynamic browsing experience.
  */
 export const ImageCard = React.memo(function ImageCard({
     image,
@@ -79,11 +79,7 @@ export const ImageCard = React.memo(function ImageCard({
     const [copied, setCopied] = React.useState(false)
     const [isHovered, setIsHovered] = React.useState(false)
     const [optimisticFavorited, setOptimisticFavorited] = React.useState<boolean | null>(null)
-    const [isVideoPlaying, setIsVideoPlaying] = React.useState(false)
     const [isLoaded, setIsLoaded] = React.useState(false)
-
-    // Ref for video element to control playback on hover
-    const videoRef = React.useRef<HTMLVideoElement>(null)
 
     const { isSignedIn } = useUser()
 
@@ -145,28 +141,13 @@ export const ImageCard = React.memo(function ImageCard({
         setOptimisticFavorited(null)
     }, [isSignedIn, displayFavorited, toggleFavorite, image._id])
 
-    // Handle mouse enter - play video if it's video content
     const handleMouseEnter = React.useCallback(() => {
         setIsHovered(true)
-        if (isVideo && videoRef.current) {
-            videoRef.current.play().then(() => {
-                setIsVideoPlaying(true)
-                trackVideoPlay(!!isSignedIn)
-            }).catch(() => {
-                // Autoplay may fail due to browser policies, ignore silently
-            })
-        }
-    }, [isVideo, isSignedIn])
+    }, [])
 
-    // Handle mouse leave - pause video and reset to start
     const handleMouseLeave = React.useCallback(() => {
         setIsHovered(false)
-        setIsVideoPlaying(false)
-        if (isVideo && videoRef.current) {
-            videoRef.current.pause()
-            videoRef.current.currentTime = 0
-        }
-    }, [isVideo])
+    }, [])
 
     const handleLoad = React.useCallback(() => {
         setIsLoaded(true)
@@ -215,33 +196,19 @@ export const ImageCard = React.memo(function ImageCard({
             )}
 
             {isVideo ? (
-                <>
-                    <video
-                        ref={videoRef}
-                        src={image.url}
-                        muted
-                        loop
-                        playsInline
-                        preload="metadata"
-                        onCanPlay={handleLoad}
-                        className={cn(
-                            "w-full object-cover transition-all duration-700 group-hover:scale-[1.02]",
-                            isLoaded ? "opacity-100" : "opacity-0"
-                        )}
-                        style={{ aspectRatio: clampedAspectRatio }}
-                    />
-                    {/* Video play indicator - fades out when video is playing */}
-                    <div
-                        className={cn(
-                            "absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-300",
-                            (isVideoPlaying || !isLoaded) ? "opacity-0" : "opacity-100"
-                        )}
-                    >
-                        <div className="bg-black/60 rounded-full p-3 backdrop-blur-sm">
-                            <Play className="h-6 w-6 text-white fill-white" />
-                        </div>
-                    </div>
-                </>
+                <video
+                    src={image.url}
+                    muted
+                    loop
+                    playsInline
+                    autoPlay
+                    onCanPlay={handleLoad}
+                    className={cn(
+                        "w-full object-cover transition-all duration-700",
+                        isLoaded ? "opacity-100" : "opacity-0"
+                    )}
+                    style={{ aspectRatio: clampedAspectRatio }}
+                />
             ) : (
                 <Image
                     src={image.url}
@@ -249,7 +216,7 @@ export const ImageCard = React.memo(function ImageCard({
                     width={width}
                     height={height}
                     className={cn(
-                        "w-full object-cover transition-all duration-700 group-hover:scale-[1.02]",
+                        "w-full object-cover transition-all duration-700",
                         isLoaded ? "opacity-100" : "opacity-0"
                     )}
                     style={{ aspectRatio: clampedAspectRatio }}

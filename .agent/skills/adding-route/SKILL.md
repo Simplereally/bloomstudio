@@ -47,7 +47,7 @@ Creates a new App Router page with proper structure and loading/error states.
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: '[Page Title] | Pixelstream',
+  title: '[Page Title] | Bloom Studio',
   description: '[Page description for SEO]',
 };
 

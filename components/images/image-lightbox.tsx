@@ -127,7 +127,7 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
                   "w-full h-full",
                   isZoomed
                     ? cn(
-                      "overflow-auto flex items-center justify-center",
+                      "overflow-auto flex",
                       isDragging ? "cursor-grabbing" : "cursor-grab"
                     )
                     : "flex items-center justify-center overflow-hidden"
@@ -224,9 +224,10 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
                               setIsFullResLoaded(true)
                             }}
                             draggable={false}
+                            decoding="sync"
                             width={displayImage.width || displayImage.params?.width || 1000}
                             height={displayImage.height || displayImage.params?.height || 1000}
-                            priority={!hasSeparateThumbnail} // Lower priority when we have thumbnail to show first
+                            priority={true}
                             unoptimized={(fullResUrl || displayImage.url).startsWith('http')}
                             className={cn(
                               "w-auto h-auto object-contain select-none transition-opacity duration-500",

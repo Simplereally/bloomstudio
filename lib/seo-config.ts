@@ -118,7 +118,7 @@ export const SOLUTIONS: Solution[] = [
     shortTitle: "Images",
     slug: "ai-image-generator",
     description:
-      "Generate stunning high-resolution images from any prompt. Powered by a diverse library of world-class AI models like NanoBanana Pro, GPT Image 1.5, and Seedream 4.5.",
+      "Generate stunning high-resolution images from any prompt. Powered by a diverse library of world-class AI models like Nano Banana Pro, GPT Image 1.5, and Seedream 4.5.",
     heroSuffix: "images",
     heroImages: [
       "/solutions/ai-image-generator/hero-1.jpg",
@@ -719,7 +719,7 @@ export const SOLUTIONS: Solution[] = [
       {
         question: "How realistic are the results?",
         answer:
-          "Our pro-tier models like NanoBanana Pro, GPT Image 1.5 and Seedream 4.5 are designed to produce imagery that is often indistinguishable from real photography.",
+          "Our pro-tier models like Nano Banana Pro, GPT Image 1.5 and Seedream 4.5 are designed to produce imagery that is often indistinguishable from real photography.",
       },
       {
         question: "Can I use these for my website?",

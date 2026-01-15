@@ -53,6 +53,8 @@ export interface ModelDefinition {
   readonly durationConstraints?: VideoDurationConstraints
   /** Whether this model supports reference image interpolation (first/last frame) */
   readonly supportsInterpolation?: boolean
+  /** Whether this model supports image-to-image generation (reference image) */
+  readonly supportsReferenceImage?: boolean
 }
 
 // ============================================================================
@@ -223,6 +225,113 @@ const VIDEO_ASPECT_RATIOS: readonly AspectRatioOption[] = (
   ] as const
 ).map(withAspectRatioTags);
 
+/**
+ * Nano Banana aspect ratios - Fixed output dimensions per aspect ratio (no tiers)
+ *
+ * Gemini 2.5 Flash Image has fixed output resolutions per aspect ratio:
+ * - Supported ratios: 1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9
+ * - NO 9:21 (ultra tall) support
+ * - Max dimension: 1536px (long edge)
+ * - Max pixels: ~1.05 MP (1024×1024 = 1,048,576)
+ *
+ * | Ratio | Width | Height | Pixels    |
+ * |-------|-------|--------|-----------|
+ * | 1:1   | 1024  | 1024   | 1,048,576 |
+ * | 16:9  | 1344  | 768    | 1,032,192 |
+ * | 9:16  | 768   | 1344   | 1,032,192 |
+ * | 4:3   | 1184  | 864    | 1,023,296 |
+ * | 3:4   | 864   | 1184   | 1,023,296 |
+ * | 3:2   | 1248  | 832    | 1,038,336 |
+ * | 2:3   | 832   | 1248   | 1,038,336 |
+ * | 4:5   | 896   | 1152   | 1,032,192 |
+ * | 5:4   | 1152  | 896    | 1,032,192 |
+ * | 21:9  | 1536  | 672    | 1,032,192 |
+ */
+const NANOBANANA_ASPECT_RATIOS: readonly AspectRatioOption[] = (
+  [
+    { label: "Square", value: "1:1", width: 1024, height: 1024, icon: "square", category: "square" },
+    { label: "Landscape", value: "16:9", width: 1344, height: 768, icon: "rectangle-horizontal", category: "landscape" },
+    { label: "Portrait", value: "9:16", width: 768, height: 1344, icon: "rectangle-vertical", category: "portrait" },
+    { label: "Photo", value: "4:3", width: 1184, height: 864, icon: "image", category: "landscape" },
+    { label: "Portrait Photo", value: "3:4", width: 864, height: 1184, icon: "frame", category: "portrait" },
+    { label: "Photo Wide", value: "3:2", width: 1248, height: 832, icon: "image", category: "landscape" },
+    { label: "Photo Tall", value: "2:3", width: 832, height: 1248, icon: "frame", category: "portrait" },
+    { label: "Social", value: "4:5", width: 896, height: 1152, icon: "smartphone", category: "portrait" },
+    { label: "Social Wide", value: "5:4", width: 1152, height: 896, icon: "monitor", category: "landscape" },
+    { label: "Ultrawide", value: "21:9", width: 1536, height: 672, icon: "monitor", category: "ultrawide" },
+  ] as const
+).map(withAspectRatioTags);
+
+/**
+ * Nano Banana Pro aspect ratios - Uses tiered output dimensions (1K / 2K / 4K)
+ *
+ * Gemini 3 Pro Image Preview supports 3 output tiers with exact dimensions:
+ * - Supported ratios: 1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9
+ * - NO 9:21 (ultra tall) support
+ * - Max dimension: 6336px (long edge at 4K tier)
+ * - Max pixels: ~17.2 MP
+ *
+ * Maps to our tier system as: HD→1K, 2K→2K, 4K→4K
+ * Default aspect ratios shown are for HD (1K) tier; actual dimensions
+ * are calculated per tier in the resolution system.
+ *
+ * HD (1K) Tier:
+ * | Ratio | Width | Height |
+ * |-------|-------|--------|
+ * | 1:1   | 1024  | 1024   |
+ * | 2:3   | 848   | 1264   |
+ * | 3:2   | 1264  | 848    |
+ * | 3:4   | 896   | 1200   |
+ * | 4:3   | 1200  | 896    |
+ * | 4:5   | 928   | 1152   |
+ * | 5:4   | 1152  | 928    |
+ * | 9:16  | 768   | 1376   |
+ * | 16:9  | 1376  | 768    |
+ * | 21:9  | 1584  | 672    |
+ *
+ * 2K Tier:
+ * | Ratio | Width | Height |
+ * |-------|-------|--------|
+ * | 1:1   | 2048  | 2048   |
+ * | 2:3   | 1696  | 2528   |
+ * | 3:2   | 2528  | 1696   |
+ * | 3:4   | 1792  | 2400   |
+ * | 4:3   | 2400  | 1792   |
+ * | 4:5   | 1856  | 2304   |
+ * | 5:4   | 2304  | 1856   |
+ * | 9:16  | 1536  | 2752   |
+ * | 16:9  | 2752  | 1536   |
+ * | 21:9  | 3168  | 1344   |
+ *
+ * 4K Tier:
+ * | Ratio | Width | Height |
+ * |-------|-------|--------|
+ * | 1:1   | 4096  | 4096   |
+ * | 2:3   | 3392  | 5056   |
+ * | 3:2   | 5056  | 3392   |
+ * | 3:4   | 3584  | 4800   |
+ * | 4:3   | 4800  | 3584   |
+ * | 4:5   | 3712  | 4608   |
+ * | 5:4   | 4608  | 3712   |
+ * | 9:16  | 3072  | 5504   |
+ * | 16:9  | 5504  | 3072   |
+ * | 21:9  | 6336  | 2688   |
+ */
+const NANOBANANA_PRO_ASPECT_RATIOS: readonly AspectRatioOption[] = (
+  [
+    { label: "Square", value: "1:1", width: 1024, height: 1024, icon: "square", category: "square" },
+    { label: "Landscape", value: "16:9", width: 1376, height: 768, icon: "rectangle-horizontal", category: "landscape" },
+    { label: "Portrait", value: "9:16", width: 768, height: 1376, icon: "rectangle-vertical", category: "portrait" },
+    { label: "Photo", value: "4:3", width: 1200, height: 896, icon: "image", category: "landscape" },
+    { label: "Portrait Photo", value: "3:4", width: 896, height: 1200, icon: "frame", category: "portrait" },
+    { label: "Photo Wide", value: "3:2", width: 1264, height: 848, icon: "image", category: "landscape" },
+    { label: "Photo Tall", value: "2:3", width: 848, height: 1264, icon: "frame", category: "portrait" },
+    { label: "Social", value: "4:5", width: 928, height: 1152, icon: "smartphone", category: "portrait" },
+    { label: "Social Wide", value: "5:4", width: 1152, height: 928, icon: "monitor", category: "landscape" },
+    { label: "Ultrawide", value: "21:9", width: 1584, height: 672, icon: "monitor", category: "ultrawide" },
+  ] as const
+).map(withAspectRatioTags);
+
 
 
 // ============================================================================
@@ -244,7 +353,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     type: "image",
     icon: "camera",
     logo: "/image-models/openai.svg",
-    description: "GPT Image 1.5 with higher quality output",
+    description: "Precision editing, stronger consistency, sharper text/detail rendering",
     constraints: {
       maxPixels: Infinity,
       minPixels: 0,
@@ -260,6 +369,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     },
     aspectRatios: GPTIMAGE_LARGE_ASPECT_RATIOS,
     supportsNegativePrompt: false,
+    supportsReferenceImage: true,
   },
 
   "seedream-pro": {
@@ -268,7 +378,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     type: "image",
     icon: "cloud",
     logo: "/image-models/bytedance.svg",
-    description: "Pro version with enhanced quality",
+    description: "Campaign suites, multi-image consistency, typography-forward layouts",
     constraints: {
       maxPixels: 16_777_216,
       minPixels: 262_144, // 512x512
@@ -284,29 +394,31 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     },
     aspectRatios: SEEDREAM_ASPECT_RATIOS,
     supportsNegativePrompt: false,
+    supportsReferenceImage: true,
   },
 
   "nanobanana-pro": {
     id: "nanobanana-pro",
-    displayName: "NanoBanana Pro",
+    displayName: "Nano Banana Pro",
     type: "image",
     icon: "zap",
     logo: "/image-models/google.svg",
-    description: "Pro version with enhanced quality and 4k support",
+    description: "Premium assets, brand/identity consistency, crisp typography",
     constraints: {
-      maxPixels: 10_000_000,
+      maxPixels: 17_203_200, // ~17.2 MP at 4K tier (e.g., 4800×3584)
       minPixels: 0,
-      minDimension: 1024,
-      maxDimension: 4096,
+      minDimension: 672, // Smallest dimension in 1K tier (21:9 = 1584×672)
+      maxDimension: 6336, // Largest dimension in 4K tier (21:9 = 6336×2688)
       step: 16,
       defaultDimensions: { width: 1024, height: 1024 },
-      dimensionsEnabled: true,
+      dimensionsEnabled: false, // Model uses fixed dimensions per ratio+tier, no custom dimensions
       maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
-      supportedTiers: ["sd", "hd", "2k", "4k"],
+      supportedTiers: ["hd", "2k", "4k"], // Maps to 1K/2K/4K imageSize tiers
       outputCertainty: "likely",
     },
-    aspectRatios: SEEDREAM_ASPECT_RATIOS, // NanoBanana Pro supports 4K tiers, same as Seedream
+    aspectRatios: NANOBANANA_PRO_ASPECT_RATIOS,
     supportsNegativePrompt: false,
+    supportsReferenceImage: true,
   },
 
   kontext: {
@@ -315,7 +427,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     type: "image",
     icon: "pen-tool",
     logo: "/image-models/flux.svg",
-    description: "Context-aware image generation",
+    description: "Image-to-image refinement, precise edits, consistent subject/style",
     constraints: {
       maxPixels: 1_048_576,
       minPixels: 0,
@@ -331,6 +443,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     },
     aspectRatios: STANDARD_ASPECT_RATIOS,
     supportsNegativePrompt: false,
+    supportsReferenceImage: true,
   },
 
   flux: {
@@ -339,7 +452,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     type: "image",
     icon: "zap",
     logo: "/image-models/flux.svg",
-    description: "Fast image generation with 768px max dimension",
+    description: "Rapid ideation, strong prompt following, clean high-detail renders",
     constraints: {
       maxPixels: 589_824, // 768×768 cap from Pollinations backend
       minPixels: 65_536, // Minimum 256×256 (area divisible by 65,536)
@@ -363,7 +476,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     type: "video",
     icon: "video",
     logo: "/image-models/bytedance.svg",
-    description: "Pro video generation with enhanced quality",
+    description: "Native audio+video generation, cinematic camera moves, coherent short-form storytelling, expressive characters, ads & short dramas",
     constraints: {
       maxPixels: Infinity,
       minPixels: 0,
@@ -390,7 +503,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     type: "video",
     icon: "video",
     logo: "/image-models/google.svg",
-    description: "Google Veo video with audio and frame interpolation",
+    description: "Reference-guided generation, character/product consistency across shots, native audio, “ingredients” style control, social-ready storytelling",
     constraints: {
       maxPixels: Infinity,
       minPixels: 0,
@@ -424,7 +537,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     type: "image",
     icon: "zap",
     logo: "/image-models/alibaba.svg",
-    description: "Fast image generation with SPAN upscaling (max 2.36MP)",
+    description: "Super fast, Photorealistic people, products, posters",
     constraints: {
       maxPixels: 2_359_296, // SPAN upscaler limit: 768×768 base × 2 = 1536×1536 max
       minPixels: 0,
@@ -447,7 +560,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     type: "image",
     icon: "zap",
     logo: "/image-models/stability.svg",
-    description: "Fast generation with 768px max dimension",
+    description: "Instant previews, high-fidelity draft renders, rapid exploration",
     constraints: {
       maxPixels: 589_825,
       minPixels: 0,
@@ -471,7 +584,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     type: "image",
     icon: "camera",
     logo: "/image-models/openai.svg",
-    description: "GPT Image 1, powered image generation with fixed sizes",
+    description: "Reliable generation+edits, high-fidelity outputs, versatile creative work",
     constraints: {
       maxPixels: Infinity,
       minPixels: 0,
@@ -487,6 +600,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     },
     aspectRatios: GPTIMAGE_ASPECT_RATIOS,
     supportsNegativePrompt: false,
+    supportsReferenceImage: true,
   },
 
   seedream: {
@@ -495,7 +609,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     type: "image",
     icon: "cloud",
     logo: "/image-models/bytedance.svg",
-    description: "Ultra-high resolution artistic generation",
+    description: "High-fidelity creatives, reference-consistent series, polished illustration/photo",
     constraints: {
       maxPixels: 16_777_216,
       minPixels: 262_144, // 512x512
@@ -511,30 +625,31 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     },
     aspectRatios: SEEDREAM_ASPECT_RATIOS,
     supportsNegativePrompt: false,
+    supportsReferenceImage: true,
   },
 
   nanobanana: {
     id: "nanobanana",
-    displayName: "NanoBanana",
+    displayName: "Nano Banana",
     type: "image",
     icon: "zap",
     logo: "/image-models/google.svg",
-    description: "Lightweight fast image generation",
+    description: "Everyday edits, instruction-heavy transforms, quick creative iteration",
     constraints: {
-      maxPixels: 1_048_576,
+      maxPixels: 1_048_576, // ~1.05 MP (1024×1024)
       minPixels: 0,
-      minDimension: 64,
-      maxDimension: 2048,
-      step: 32,
+      minDimension: 672, // Smallest dimension in fixed output (21:9 = 1536×672)
+      maxDimension: 1536, // Largest dimension in fixed output (21:9 = 1536×672)
+      step: 16, // Dimensions are fixed, step is for validation only
       defaultDimensions: { width: 1024, height: 1024 },
-      dimensionsEnabled: true,
+      dimensionsEnabled: false, // Model uses fixed output dimensions per aspect ratio
       maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
-      supportedTiers: ["sd", "hd"],
-      outputCertainty: "variable",
-      dimensionWarning: "Output dimensions may vary from request",
+      supportedTiers: ["hd"], // Single tier - fixed output dimensions per aspect ratio
+      outputCertainty: "exact", // Fixed dimensions per aspect ratio
     },
-    aspectRatios: STANDARD_ASPECT_RATIOS,
+    aspectRatios: NANOBANANA_ASPECT_RATIOS,
     supportsNegativePrompt: false,
+    supportsReferenceImage: true,
   },
 
   seedance: {
@@ -543,7 +658,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     type: "video",
     icon: "video",
     logo: "/image-models/bytedance.svg",
-    description: "Video generation",
+    description: "Multi-shot generation, strong prompt following, smooth motion + physical realism, cinematic look, text+image driven scenes",
     constraints: {
       maxPixels: Infinity,
       minPixels: 0,
@@ -602,6 +717,13 @@ export function getModelDisplayName(modelId: string): string | undefined {
  */
 export function getModelSupportsNegativePrompt(modelId: string): boolean {
   return getModel(modelId)?.supportsNegativePrompt ?? false;
+}
+
+/**
+ * Check if a model supports reference image input. Returns false if model not found or doesn't support it.
+ */
+export function getModelSupportsReferenceImage(modelId: string): boolean {
+  return getModel(modelId)?.supportsReferenceImage ?? false;
 }
 
 // ============================================================================

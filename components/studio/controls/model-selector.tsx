@@ -174,9 +174,12 @@ export const ModelSelector = React.memo(function ModelSelector({
                         )}>{model.displayName}</span>
                     </Button>
                 </TooltipTrigger>
-                <TooltipContent side="bottom" className="flex flex-col items-center text-center max-w-[200px]">
-                    <p className="font-medium">{model.displayName}</p>
-                    <p className="text-xs opacity-70">
+                <TooltipContent
+                  side="bottom"
+                  className="p-3 max-w-[240px] bg-popover border border-border dark:border-white/15 text-popover-foreground shadow-[0_20px_60px_0px_rgba(0,0,0,0.8)] animate-in fade-in-0 zoom-in-95 duration-200"
+                >
+                    <p className="font-semibold text-sm tracking-tight">{model.displayName}</p>
+                    <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
                         {model.description}
                     </p>
                 </TooltipContent>

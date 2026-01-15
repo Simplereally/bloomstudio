@@ -55,9 +55,9 @@ describe("Model Registry", () => {
             expect(MODEL_REGISTRY["seedream"].displayName).toBe("Seedream 4.0")
             expect(MODEL_REGISTRY["kontext"].displayName).toBe("Flux Kontext")
             expect(MODEL_REGISTRY["flux"].displayName).toBe("Flux Schnell")
-            expect(MODEL_REGISTRY["nanobanana"].displayName).toBe("NanoBanana")
+            expect(MODEL_REGISTRY["nanobanana"].displayName).toBe("Nano Banana")
             expect(MODEL_REGISTRY["seedream-pro"].displayName).toBe("Seedream 4.5 Pro")
-            expect(MODEL_REGISTRY["nanobanana-pro"].displayName).toBe("NanoBanana Pro")
+            expect(MODEL_REGISTRY["nanobanana-pro"].displayName).toBe("Nano Banana Pro")
             expect(MODEL_REGISTRY["seedance-pro"].displayName).toBe("Seedance Pro")
             expect(MODEL_REGISTRY["seedance"].displayName).toBe("Seedance")
             expect(MODEL_REGISTRY["veo"].displayName).toBe("Veo 3.1")
@@ -252,12 +252,37 @@ describe("Model Constraints", () => {
         })
     })
 
-    describe("NanoBanana Pro", () => {
-        it("should have 4k pixel budget (approx 10MP) and 1k min dimension", () => {
+    describe("Nano Banana Pro", () => {
+        it("should have ~17.2MP pixel budget and correct dimension limits from spec", () => {
             const model = getModel("nanobanana-pro")!
-            expect(model.constraints.maxPixels).toBe(10_000_000)
-            expect(model.constraints.maxDimension).toBe(4096)
-            expect(model.constraints.minDimension).toBe(1024)
+            // Per spec: max ~17.2 MP at 4K tier (e.g., 4800×3584)
+            expect(model.constraints.maxPixels).toBe(17_203_200)
+            // Max dimension from 4K tier 21:9 = 6336×2688
+            expect(model.constraints.maxDimension).toBe(6336)
+            // Min dimension from 1K tier 21:9 = 1584×672
+            expect(model.constraints.minDimension).toBe(672)
+            // Fixed output dimensions - no custom
+            expect(model.constraints.dimensionsEnabled).toBe(false)
+            // Supports HD→1K, 2K→2K, 4K→4K tiers
+            expect(model.constraints.supportedTiers).toEqual(["hd", "2k", "4k"])
+        })
+    })
+
+    describe("Nano Banana", () => {
+        it("should have ~1.05MP pixel budget and correct dimension limits from spec", () => {
+            const model = getModel("nanobanana")!
+            // Per spec: max ~1.05 MP (1024×1024 max)
+            expect(model.constraints.maxPixels).toBe(1_048_576)
+            // Max dimension from 21:9 = 1536×672
+            expect(model.constraints.maxDimension).toBe(1536)
+            // Min dimension from 21:9 = 1536×672
+            expect(model.constraints.minDimension).toBe(672)
+            // Fixed output dimensions - no custom
+            expect(model.constraints.dimensionsEnabled).toBe(false)
+            // Single tier only - fixed output per aspect ratio
+            expect(model.constraints.supportedTiers).toEqual(["hd"])
+            // Exact output dimensions per aspect ratio
+            expect(model.constraints.outputCertainty).toBe("exact")
         })
     })
 
@@ -327,17 +352,51 @@ describe("Aspect Ratio Presets", () => {
         }
     })
 
-    it("should have NanoBanana Pro presets reflecting 4k resolution and min 1k", () => {
+    it("should have Nano Banana Pro presets with correct 1K tier dimensions from spec", () => {
         const ratios = getModelAspectRatios("nanobanana-pro")!
         expect(ratios).not.toBeNull()
-        for (const ratio of ratios) {
-            expect(ratio.width).toBeGreaterThanOrEqual(1024)
-            expect(ratio.height).toBeGreaterThanOrEqual(1024)
-            // Check for 4k dim in 16:9
-            if (ratio.value === "16:9") {
-                expect(ratio.width).toBe(3840)
-            }
-        }
+        // Default dimensions shown are for 1K (HD) tier
+        // Should NOT include 9:21 (not supported per spec)
+        expect(ratios.every(r => r.value !== "9:21")).toBe(true)
+        
+        // Check specific dimensions from spec for 1K tier
+        const square = ratios.find(r => r.value === "1:1")
+        expect(square?.width).toBe(1024)
+        expect(square?.height).toBe(1024)
+        
+        const landscape = ratios.find(r => r.value === "16:9")
+        expect(landscape?.width).toBe(1376)
+        expect(landscape?.height).toBe(768)
+        
+        const ultrawide = ratios.find(r => r.value === "21:9")
+        expect(ultrawide?.width).toBe(1584)
+        expect(ultrawide?.height).toBe(672)
+    })
+
+    it("should have Nano Banana presets with correct fixed dimensions from spec", () => {
+        const ratios = getModelAspectRatios("nanobanana")!
+        expect(ratios).not.toBeNull()
+        // Should NOT include 9:21 (not supported per spec)
+        expect(ratios.every(r => r.value !== "9:21")).toBe(true)
+        // Should NOT include custom (fixed output only)
+        expect(ratios.every(r => r.value !== "custom")).toBe(true)
+        
+        // Check specific dimensions from spec
+        const square = ratios.find(r => r.value === "1:1")
+        expect(square?.width).toBe(1024)
+        expect(square?.height).toBe(1024)
+        
+        const landscape = ratios.find(r => r.value === "16:9")
+        expect(landscape?.width).toBe(1344)
+        expect(landscape?.height).toBe(768)
+        
+        const portrait = ratios.find(r => r.value === "9:16")
+        expect(portrait?.width).toBe(768)
+        expect(portrait?.height).toBe(1344)
+        
+        const ultrawide = ratios.find(r => r.value === "21:9")
+        expect(ultrawide?.width).toBe(1536)
+        expect(ultrawide?.height).toBe(672)
     })
 
     it("should have Flux Schnell presets within 768px limit", () => {

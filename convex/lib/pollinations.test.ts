@@ -223,7 +223,7 @@ describe("pollinations utilities", () => {
         it("excludes lastFrameImage for image models even when provided", () => {
             const url = buildPollinationsUrl({
                 prompt: "test",
-                model: "nanobanana",
+                model: "Nano Banana",
                 image: "https://example.com/first.jpg",
                 lastFrameImage: "https://example.com/last.jpg",
             })

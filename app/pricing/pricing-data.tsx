@@ -34,7 +34,7 @@ export const pricingTiers: PricingTier[] = [
     },
     {
         name: "Pro",
-        description: "180 Nano Banana Pro images/mo for a fraction of the cost",
+        description: "Access to every feature and model",
         poweredBy: {
             name: "Nano Banana Pro",
             logo: "/image-models/google.svg",
@@ -48,7 +48,7 @@ export const pricingTiers: PricingTier[] = [
         features: [
             "180 Nano Banana Pro images/month",
             "Daily resets",
-            "12+ AI models included",
+            "13+ AI models included",
             "Advanced prompt enhancement",
             "Custom prompt library",
             "1,000 image batch queue",
@@ -90,7 +90,7 @@ export const pricingFaqs = [
         question: "What AI models are included?",
         answer: (
             <span>
-                We offer 12+ cutting-edge models including Flux, GPT-4 Image, Seedream, and more. Both Free and Pro users get access to all models.{" "}
+                We offer 13+ cutting-edge and popular models including Flux, GPT-4 Image, Seedream, and more. Both Free and Pro users get access to all models.{" "}
                 <Link href="/#models" className="text-primary hover:underline font-medium">
                     View the full list of supported models here.
                 </Link>
@@ -128,7 +128,7 @@ export const featureComparison = [
         },
     },
     { feature: "Batch queue size", starter: "1,000", pro: "1,000", competitors: "10-20" },
-    { feature: "AI Models", starter: "12+", pro: "12+", competitors: "12+" },
+    { feature: "AI Models", starter: "13+", pro: "13+", competitors: "13+" },
     { feature: "Prompt library", starter: true, pro: true, competitors: false },
     { feature: "Prompt enhancement", starter: true, pro: true, competitors: "Basic" },
     { feature: "Private gallery", starter: true, pro: true, competitors: "Varies" },

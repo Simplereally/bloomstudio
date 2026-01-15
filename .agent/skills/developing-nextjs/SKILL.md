@@ -6,7 +6,7 @@ description: |
   DO NOT use for: Convex mutations (use managing-convex), styling (use styling-ui).
 ---
 
-# Developing Next.js
+# Developing with Next.js 16
 
 Next.js 16 App Router overview. **Use the specific skills below for actual tasks.**
 

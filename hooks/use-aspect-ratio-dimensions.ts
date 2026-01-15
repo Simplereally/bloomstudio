@@ -145,13 +145,50 @@ export function useAspectRatioDimensions({
     )
 
     /**
-     * Get dimensions for a ratio (alias for getConstrainedDimensions).
+     * Get dimensions for a ratio.
+     * For models with fixed output dimensions (dimensionsEnabled=false):
+     * - Single tier models: use exact dimensions from availableRatios
+     * - Multi-tier models: scale dimensions based on tier (HD=1×, 2K=2×, 4K=4×)
+     * For models with dynamic dimensions (dimensionsEnabled=true):
+     * - Calculate dimensions based on tier and model constraints
      */
     const getDimensionsForRatio = React.useCallback(
         (ratio: AspectRatio): StandardDimensions => {
+            // For models with fixed output dimensions (dimensionsEnabled=false),
+            // use dimensions from availableRatios, scaled by tier if multi-tier
+            if (constraints?.dimensionsEnabled === false && availableRatios && availableRatios.length > 0) {
+                const matchingRatio = availableRatios.find(r => r.value === ratio)
+                if (matchingRatio && matchingRatio.width && matchingRatio.height) {
+                    // Check if this is a multi-tier model (more than 1 supported tier)
+                    const supportedTiers = constraints.supportedTiers ?? ["hd"]
+                    const isMultiTier = supportedTiers.length > 1
+
+                    if (!isMultiTier) {
+                        // Single tier model (e.g., Nano Banana) - use exact dimensions
+                        return { width: matchingRatio.width, height: matchingRatio.height }
+                    }
+
+                    // Multi-tier model (e.g., Nano Banana Pro)
+                    // availableRatios contains base (HD/1K) dimensions
+                    // Scale based on selected tier: HD=1×, 2K=2×, 4K=4×
+                    let scale = 1
+                    if (tier === "2k") {
+                        scale = 2
+                    } else if (tier === "4k") {
+                        scale = 4
+                    }
+
+                    return {
+                        width: matchingRatio.width * scale,
+                        height: matchingRatio.height * scale,
+                    }
+                }
+            }
+
+            // For models with dynamic dimensions, calculate based on tier and constraints
             return getConstrainedDimensions(ratio)
         },
-        [getConstrainedDimensions]
+        [tier, constraints?.dimensionsEnabled, constraints?.supportedTiers, availableRatios, getConstrainedDimensions]
     )
 
     /**
@@ -179,13 +216,29 @@ export function useAspectRatioDimensions({
 
     /**
      * Build aspect ratio options array with dimensions.
+     * Uses dimensions from availableRatios directly when provided (for models with fixed output dimensions),
+     * otherwise calculates dimensions based on tier and constraints.
      */
     const aspectRatioOptions = React.useMemo((): AspectRatioOption[] => {
-        // If specific ratios are provided, filter to those
-        const ratioValues = availableRatios
-            ? availableRatios.map(r => r.value)
-            : getAllAspectRatioDefinitions().map(d => d.value)
+        // If model provides specific ratios with dimensions, use those directly
+        if (availableRatios && availableRatios.length > 0) {
+            return availableRatios.map((ratio): AspectRatioOption => {
+                // Use the dimensions already defined in the model's aspect ratio preset
+                // This is important for models with fixed output dimensions (e.g., Nano Banana)
+                return {
+                    label: ratio.label,
+                    value: ratio.value,
+                    width: ratio.width,
+                    height: ratio.height,
+                    icon: ratio.icon,
+                    category: ratio.category,
+                    tags: ratio.tags,
+                }
+            })
+        }
 
+        // Fallback: calculate dimensions for all standard ratios
+        const ratioValues = getAllAspectRatioDefinitions().map(d => d.value)
         return ratioValues.map((ratio): AspectRatioOption => {
             const definition = getAspectRatioDefinition(ratio)
             const dimensions = getDimensionsForRatio(ratio)

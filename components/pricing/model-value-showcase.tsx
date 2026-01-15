@@ -4,12 +4,13 @@ import { cn } from "@/lib/utils"
 import { motion, useInView } from "framer-motion"
 import Image from "next/image"
 import { useEffect, useRef, useState } from "react"
+import { Video, Image as ImageIcon } from "lucide-react"
 
 /**
  * Model Value Showcase — Premium Editorial Redesign
  *
  * A stunning visual representation of the monthly usage across all models.
- * Shows that credits are SHARED, but demonstrates "if you ONLY used this model"
+ * Shows that usage is SHARED, but demonstrates "if you ONLY used this model"
  * quotas to illustrate incredible value.
  *
  * Design direction: Editorial elegance meets data visualization.
@@ -21,7 +22,7 @@ interface ModelValueData {
     displayName: string
     logo: string
     monthlyQuota: number
-    costPerImage: string
+    type: "image" | "video"
     nsfw?: boolean
 }
 
@@ -31,57 +32,102 @@ const MODEL_VALUE_DATA: ModelValueData[] = [
         displayName: "Flux Schnell",
         logo: "/image-models/flux.svg",
         monthlyQuota: 150_000,
-        costPerImage: "~$0.00002",
+        type: "image",
     },
     {
         id: "zimage",
         displayName: "Z-Image Turbo",
         logo: "/image-models/alibaba.svg",
         monthlyQuota: 150_000,
-        costPerImage: "~$0.00002",
         nsfw: true,
+        type: "image",
+    },
+    {
+        id: "turbo",
+        displayName: "SDXL Turbo",
+        logo: "/image-models/stability.svg",
+        monthlyQuota: 99_000,
+        type: "image",
     },
     {
         id: "gptimage",
         displayName: "GPT Image 1.0",
         logo: "/image-models/openai.svg",
         monthlyQuota: 2_100,
-        costPerImage: "~$0.0014",
+        type: "image",
     },
     {
-        id: "nanobanana-pro",
-        displayName: "NanoBanana Pro",
+        id: "nanobanana",
+        displayName: "Nano Banana",
         logo: "/image-models/google.svg",
-        monthlyQuota: 180,
-        costPerImage: "~$0.017",
+        monthlyQuota: 750,
+        type: "image",
     },
     {
         id: "seedream",
         displayName: "Seedream 4.0",
         logo: "/image-models/bytedance.svg",
         monthlyQuota: 1_050,
-        costPerImage: "~$0.0029",
+        type: "image",
     },
     {
         id: "seedream-pro",
         displayName: "Seedream 4.5 Pro",
         logo: "/image-models/bytedance.svg",
         monthlyQuota: 750,
-        costPerImage: "~$0.004",
+        type: "image",
+    },
+    {
+        id: "seedance-pro",
+        displayName: "Seedance Pro",
+        logo: "/image-models/bytedance.svg",
+        monthlyQuota: 300,
+        type: "video",
+    },
+    {
+        id: "seedance",
+        displayName: "Seedance",
+        logo: "/image-models/bytedance.svg",
+        monthlyQuota: 180,
+        type: "video",
+    },
+    {
+        id: "veo",
+        displayName: "Veo 3.1",
+        logo: "/image-models/google.svg",
+        monthlyQuota: 30,
+        type: "video",
+    },
+    {
+        id: "kontext",
+        displayName: "Flux Kontext",
+        logo: "/image-models/flux.svg",
+        monthlyQuota: 750,
+        type: "image",
     },
     {
         id: "gptimage-large",
         displayName: "GPT Image 1.5",
         logo: "/image-models/openai.svg",
         monthlyQuota: 600,
-        costPerImage: "~$0.005",
+        type: "image",
+    },
+    {
+        id: "nanobanana-pro",
+        displayName: "Nano Banana Pro",
+        logo: "/image-models/google.svg",
+        monthlyQuota: 180,
+        type: "image",
     },
 ]
 
+// Sort alphabetically by displayName initially
+const ORDERED_MODEL_DATA = [...MODEL_VALUE_DATA].sort((a, b) => a.displayName.localeCompare(b.displayName))
+
 // Separate into tiers for visual hierarchy
-const FAST_MODELS = MODEL_VALUE_DATA.filter((m) => m.monthlyQuota >= 100_000)
-const STANDARD_MODELS = MODEL_VALUE_DATA.filter((m) => m.monthlyQuota >= 500 && m.monthlyQuota < 100_000)
-const PREMIUM_MODELS = MODEL_VALUE_DATA.filter((m) => m.monthlyQuota < 500)
+const FAST_MODELS = ORDERED_MODEL_DATA.filter((m) => m.monthlyQuota >= 99_000)
+const STANDARD_MODELS = ORDERED_MODEL_DATA.filter((m) => m.monthlyQuota >= 500 && m.monthlyQuota < 99_000)
+const PREMIUM_MODELS = ORDERED_MODEL_DATA.filter((m) => m.monthlyQuota < 500)
 
 function AnimatedNumber({ value, delay = 0 }: { value: number; delay?: number }) {
     const [displayValue, setDisplayValue] = useState(0)
@@ -91,6 +137,7 @@ function AnimatedNumber({ value, delay = 0 }: { value: number; delay?: number })
     useEffect(() => {
         if (!isInView) return
 
+        let rafId: number
         const timeout = setTimeout(() => {
             const duration = 1200
             const startTime = Date.now()
@@ -103,7 +150,7 @@ function AnimatedNumber({ value, delay = 0 }: { value: number; delay?: number })
                 setDisplayValue(Math.floor(eased * value))
 
                 if (progress < 1) {
-                    requestAnimationFrame(animate)
+                    rafId = requestAnimationFrame(animate)
                 } else {
                     setDisplayValue(value)
                 }
@@ -111,7 +158,10 @@ function AnimatedNumber({ value, delay = 0 }: { value: number; delay?: number })
             animate()
         }, delay)
 
-        return () => clearTimeout(timeout)
+        return () => {
+            clearTimeout(timeout)
+            if (rafId) cancelAnimationFrame(rafId)
+        }
     }, [isInView, value, delay])
 
     return (
@@ -136,6 +186,13 @@ function ModelRow({ model, index }: { model: ModelValueData; index: number }) {
             }}
             className="group relative"
         >
+            {model.nsfw && (
+                <div className="absolute top-0 -mt-1.5 left-1/2 -translate-x-1/2 z-20">
+                    <span className="inline-flex items-center px-3 py-1 rounded-b-md text-[9px] font-bold uppercase tracking-widest bg-pink-900/75 text-white leading-none whitespace-nowrap">
+                        nsfw supported
+                    </span>
+                </div>
+            )}
             <div
                 className={cn(
                     "relative flex items-center gap-4 md:gap-6 py-4 md:py-5 px-4 md:px-6",
@@ -163,14 +220,16 @@ function ModelRow({ model, index }: { model: ModelValueData; index: number }) {
                         <h4 className="text-sm md:text-base font-semibold text-foreground truncate">
                             {model.displayName}
                         </h4>
-                        {model.nsfw && (
-                            <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">
-                                NSFW Supported
-                            </span>
-                        )}
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                            {model.type === "video" ? (
+                                <Video className="w-5 h-5" />
+                            ) : (
+                                <ImageIcon className="w-5 h-5" />
+                            )}
+                        </div>
                     </div>
-                    <p className="text-xs text-muted-foreground font-mono mt-0.5">
-                        ~{Math.floor(model.monthlyQuota / 30).toLocaleString()} / day
+                    <p className="text-sm text-muted-foreground font-mono mt-0.5">
+                        ~{Math.floor(model.monthlyQuota / 30).toLocaleString()}/day
                     </p>
                 </div>
 
@@ -183,6 +242,7 @@ function ModelRow({ model, index }: { model: ModelValueData; index: number }) {
                         per month
                     </p>
                 </div>
+
             </div>
         </motion.div>
     )
@@ -251,7 +311,7 @@ export function ModelValueShowcase() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.7, ease: [0.25, 0.46, 0.45, 0.94] }}
-                    className="max-w-3xl mx-auto text-center mb-16 md:mb-20"
+                    className="max-w-3xl mx-auto text-center mb-8 md:mb-12"
                 >
                     <p className="text-[11px] uppercase tracking-[0.3em] text-primary font-semibold mb-4">
                         Monthly Capacity
@@ -262,37 +322,39 @@ export function ModelValueShowcase() {
                     </h2>
 
                     <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
-                        Your credits work across every model.
+                        Your usage is shared across every model.
                         <br />
                         Here's what you could generate if you focused on just one.
                     </p>
                 </motion.div>
 
-                {/* Model Tiers — Stacked editorial layout */}
-                <div className="max-w-2xl mx-auto space-y-10 md:space-y-12">
+                {/* Model Tiers — Stacked on mobile, Columns on desktop */}
+                <div className="max-w-7xl mx-auto flex flex-col lg:grid lg:grid-cols-[1fr_auto_1fr_auto_1fr] lg:gap-0 gap-8 items-stretch justify-center">
                     {/* Fast Tier — Most prominent */}
                     <motion.div
                         initial={{ opacity: 0, y: 40 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
                         transition={{ duration: 0.6 }}
+                        className="flex-1 w-full max-w-2xl lg:max-w-none mx-auto"
                     >
                         <TierSection
                             title="High Volume"
-                            subtitle="150,000 images each"
+                            subtitle="Highest generation capacity"
                             models={FAST_MODELS}
                             accent="ember"
                             startIndex={0}
                         />
                     </motion.div>
 
-                    {/* Divider */}
-                    <div className="flex items-center gap-4 px-2">
-                        <div className="flex-1 h-px bg-border/30" />
-                        <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-medium">
-                            or
-                        </span>
-                        <div className="flex-1 h-px bg-border/30" />
+                    {/* Divider 1 - Desktop */}
+                    <div className="hidden lg:block px-8 h-full">
+                        <div className="w-px h-full bg-border/30 mx-auto" />
+                    </div>
+
+                    {/* Divider 1 - Mobile */}
+                    <div className="lg:hidden flex items-center justify-center px-8">
+                        <div className="w-full h-px bg-border/30" />
                     </div>
 
                     {/* Standard Tier */}
@@ -301,23 +363,25 @@ export function ModelValueShowcase() {
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
                         transition={{ duration: 0.6, delay: 0.1 }}
+                        className="flex-1 w-full max-w-2xl lg:max-w-none mx-auto"
                     >
                         <TierSection
                             title="Balanced"
                             subtitle="High quality, good volume"
                             models={STANDARD_MODELS}
-                            accent="neutral"
+                            accent="ember"
                             startIndex={FAST_MODELS.length}
                         />
                     </motion.div>
 
-                    {/* Divider */}
-                    <div className="flex items-center gap-4 px-2">
-                        <div className="flex-1 h-px bg-border/30" />
-                        <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-medium">
-                            or
-                        </span>
-                        <div className="flex-1 h-px bg-border/30" />
+                    {/* Divider 2 - Desktop */}
+                    <div className="hidden lg:block px-8 h-full">
+                        <div className="w-px h-full bg-border/30 mx-auto" />
+                    </div>
+
+                    {/* Divider 2 - Mobile */}
+                    <div className="lg:hidden flex items-center justify-center px-8">
+                        <div className="w-full h-px bg-border/30" />
                     </div>
 
                     {/* Premium Tier */}
@@ -326,12 +390,13 @@ export function ModelValueShowcase() {
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
                         transition={{ duration: 0.6, delay: 0.2 }}
+                        className="flex-1 w-full max-w-2xl lg:max-w-none mx-auto"
                     >
                         <TierSection
-                            title="Frontier"
+                            title="Premium"
                             subtitle="Maximum quality"
                             models={PREMIUM_MODELS}
-                            accent="muted"
+                            accent="ember"
                             startIndex={FAST_MODELS.length + STANDARD_MODELS.length}
                         />
                     </motion.div>
@@ -346,7 +411,7 @@ export function ModelValueShowcase() {
                     className="mt-16 md:mt-20 text-center"
                 >
                     <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                        Credits are shared across all models. Mix and match to fit your workflow.
+                        Mix and match to fit your workflow.
                     </p>
 
                     <div className="mt-6 flex flex-wrap justify-center gap-6 text-xs text-muted-foreground">

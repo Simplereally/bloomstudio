@@ -362,28 +362,30 @@ export const ControlsView = React.memo(function ControlsView({
       )}
 
       {/* Reference Image */}
-      <CollapsibleSection
-        title="Reference"
-        icon={<ImageIcon className="h-3.5 w-3.5" />}
-        testId="reference-image-section"
-        collapsedContent={referenceImage ? <span className={badgeClassName}>1 reference</span> : undefined}
-        rightContent={
-          referenceImage && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onReferenceImageChange(undefined)}
-              className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-destructive flex items-center gap-1"
-            >
-              <X className="h-3 w-3" />
-              Clear
-            </Button>
-          )
-        }
-      >
-        <ReferenceImagePicker selectedImage={referenceImage} onSelect={onReferenceImageChange} disabled={isGenerating} hideHeader />
-        <Separator className="bg-border/50" />
-      </CollapsibleSection>
+      {selectedModelData?.supportsReferenceImage && (
+        <CollapsibleSection
+          title="Reference"
+          icon={<ImageIcon className="h-3.5 w-3.5" />}
+          testId="reference-image-section"
+          collapsedContent={referenceImage ? <span className={badgeClassName}>1 reference</span> : undefined}
+          rightContent={
+            referenceImage && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onReferenceImageChange(undefined)}
+                className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-destructive flex items-center gap-1"
+              >
+                <X className="h-3 w-3" />
+                Clear
+              </Button>
+            )
+          }
+        >
+          <ReferenceImagePicker selectedImage={referenceImage} onSelect={onReferenceImageChange} disabled={isGenerating} hideHeader />
+          <Separator className="bg-border/50" />
+        </CollapsibleSection>
+      )}
 
       {/* Seed */}
       <CollapsibleSection

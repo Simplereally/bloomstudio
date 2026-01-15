@@ -19,7 +19,7 @@ const competitors: CompetitorData[] = [
     generations: 180,
     concurrent: "10 generations a second (600 a minute!)",
     queueLimit: "1,000 generations",
-    waitTimes: "No artifical wait times",
+    waitTimes: "No artificial wait times",
     isUs: true,
   },
   {

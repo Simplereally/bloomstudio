@@ -21,6 +21,7 @@ interface FeedCtaProps {
 export function FeedCta({ className }: FeedCtaProps) {
     const { isSignedIn, isLoaded } = useAuth()
     const [isVisible, setIsVisible] = React.useState(false)
+    const isVisibleRef = React.useRef(false)
 
 
     // Show CTA after user has scrolled a bit (engagement signal)
@@ -29,16 +30,18 @@ export function FeedCta({ className }: FeedCtaProps) {
 
         const handleScroll = () => {
             // Show after scrolling 600px (roughly 4-6 images viewed)
-            if (window.scrollY > 1200 && !isVisible) {
+            if (window.scrollY > 1200 && !isVisibleRef.current) {
                 setIsVisible(true)
+                isVisibleRef.current = true
                 trackCtaView()
             }
         }
 
         // Also show after a short delay if user doesn't scroll
         const timer = setTimeout(() => {
-            if (!isVisible) {
+            if (!isVisibleRef.current) {
                 setIsVisible(true)
+                isVisibleRef.current = true
                 trackCtaView()
             }
         }, 8000)
