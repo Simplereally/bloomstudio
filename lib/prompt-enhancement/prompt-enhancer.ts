@@ -3,9 +3,12 @@
  *
  * Service layer for enhancing image generation prompts using LLM.
  * Provides methods for both main prompts and negative prompts.
+ * 
+ * Uses unified AI provider with Groq as primary (14,400 RPD free tier)
+ * and OpenRouter as fallback.
  */
 
-import { generate } from "@/lib/openrouter"
+import { generateText } from "@/lib/ai-provider"
 import {
   NEGATIVE_PROMPT_ENHANCEMENT_SYSTEM,
   PROMPT_ENHANCEMENT_SYSTEM,
@@ -48,16 +51,16 @@ export async function enhancePrompt(
   }
 
   try {
-    const enhancedText = await generate({
+    const result = await generateText({
       system: PROMPT_ENHANCEMENT_SYSTEM,
       prompt: buildPromptEnhancementMessage(prompt),
       abortSignal: options?.abortSignal,
       temperature: 0.7,
-      maxOutputTokens: 512,
+      maxTokens: 512,
     })
 
     // Trim and strip wrapping quotes if present
-    let cleanedText = enhancedText.trim()
+    let cleanedText = result.text.trim()
     if ((cleanedText.startsWith('"') && cleanedText.endsWith('"')) ||
       (cleanedText.startsWith("'") && cleanedText.endsWith("'"))) {
       cleanedText = cleanedText.slice(1, -1).trim()
@@ -96,16 +99,16 @@ export async function enhanceNegativePrompt(
   }
 
   try {
-    const enhancedText = await generate({
+    const result = await generateText({
       system: NEGATIVE_PROMPT_ENHANCEMENT_SYSTEM,
       prompt: buildNegativePromptEnhancementMessage(mainPrompt, existingNegativePrompt),
       abortSignal: options?.abortSignal,
       temperature: 0.7,
-      maxOutputTokens: 256,
+      maxTokens: 256,
     })
 
     // Trim and strip wrapping quotes if present
-    let cleanedText = enhancedText.trim()
+    let cleanedText = result.text.trim()
     if ((cleanedText.startsWith('"') && cleanedText.endsWith('"')) ||
       (cleanedText.startsWith("'") && cleanedText.endsWith("'"))) {
       cleanedText = cleanedText.slice(1, -1).trim()

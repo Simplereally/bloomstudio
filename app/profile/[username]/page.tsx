@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { api } from "@/convex/_generated/api"
 import { useProfileImages } from "@/hooks/queries/use-image-history"
+import { invalidateFollowChange } from "@/app/_server/actions/invalidation"
 import { useMutation, useQuery } from "convex/react"
-import { Loader2, Plus, UserCheck } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Loader2, LogIn, Plus, UserCheck } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -91,7 +93,32 @@ function FollowButton({ followeeId }: { followeeId: string }) {
     const isSelf = currentUser?.clerkId === followeeId
 
     if (isSelf) return null
-    if (isFollowing === undefined) return <Button disabled variant="outline" className="w-32"><Loader2 className="h-4 w-4 animate-spin" /></Button>
+    if (isFollowing === undefined || currentUser === undefined) return <Button disabled variant="outline" className="w-32"><Loader2 className="h-4 w-4 animate-spin" /></Button>
+
+    if (currentUser === null) {
+        return (
+            <Tooltip delayDuration={200}>
+                <TooltipTrigger asChild>
+                    <Button
+                        variant="default"
+                        className="w-32 rounded-full font-medium"
+                        asChild
+                    >
+                        <Link href="/sign-in">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Follow
+                        </Link>
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                    <div className="flex items-center gap-2">
+                        <LogIn className="h-3.5 w-3.5" />
+                        <p className="font-medium">Sign in to follow</p>
+                    </div>
+                </TooltipContent>
+            </Tooltip>
+        )
+    }
 
     const handleFollowToggle = async () => {
         setIsLoading(true)
@@ -103,6 +130,8 @@ function FollowButton({ followeeId }: { followeeId: string }) {
                 await follow({ followeeId })
                 toast.success("Followed")
             }
+            // Invalidate following feed cache so it reflects the change
+            await invalidateFollowChange()
         } catch (error) {
             toast.error("Failed to update follow status")
             console.error(error)

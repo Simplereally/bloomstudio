@@ -38,6 +38,11 @@ vi.mock("sonner", () => ({
     },
 }))
 
+// Mock server actions
+vi.mock("@/app/_server/actions/invalidation", () => ({
+    invalidateImageDeletion: vi.fn(),
+}))
+
 function createWrapper() {
     const queryClient = new QueryClient({
         defaultOptions: {
@@ -69,7 +74,7 @@ describe("useDeleteImage", () => {
     describe("useDeleteGeneratedImage", () => {
         it("deletes from Convex and then R2 (including thumbnail)", async () => {
             const mockRemove = vi.fn().mockResolvedValue({ r2Key: "test-r2-key", thumbnailR2Key: "test-thumbnail-key" })
-            ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemove)
+                ; (useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemove)
 
             const { result } = renderHook(() => useDeleteGeneratedImage(), {
                 wrapper: createWrapper(),
@@ -93,7 +98,7 @@ describe("useDeleteImage", () => {
 
         it("handles image without thumbnail", async () => {
             const mockRemove = vi.fn().mockResolvedValue({ r2Key: "test-r2-key", thumbnailR2Key: undefined })
-            ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemove)
+                ; (useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemove)
 
             const { result } = renderHook(() => useDeleteGeneratedImage(), {
                 wrapper: createWrapper(),
@@ -111,7 +116,7 @@ describe("useDeleteImage", () => {
 
         it("handles R2 deletion failure gracefully", async () => {
             const mockRemove = vi.fn().mockResolvedValue({ r2Key: "test-r2-key", thumbnailR2Key: "test-thumbnail-key" })
-            ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemove)
+                ; (useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemove)
 
             global.fetch = vi.fn().mockImplementation(() =>
                 Promise.resolve({
@@ -135,7 +140,7 @@ describe("useDeleteImage", () => {
 
         it("handles Convex deletion failure", async () => {
             const mockRemove = vi.fn().mockRejectedValue(new Error("Convex error"))
-            ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemove)
+                ; (useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemove)
 
             const { result } = renderHook(() => useDeleteGeneratedImage(), {
                 wrapper: createWrapper(),
@@ -149,7 +154,7 @@ describe("useDeleteImage", () => {
     describe("useDeleteReferenceImage", () => {
         it("deletes reference image from Convex and R2", async () => {
             const mockRemove = vi.fn().mockResolvedValue({ r2Key: "ref-r2-key" })
-            ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemove)
+                ; (useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemove)
 
             const { result } = renderHook(() => useDeleteReferenceImage(), {
                 wrapper: createWrapper(),
@@ -174,7 +179,7 @@ describe("useDeleteImage", () => {
                 r2Keys: ["key1", "key2", "key3"],
                 thumbnailR2Keys: ["thumb1", "thumb2", "thumb3"],
             })
-            ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemoveMany)
+                ; (useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemoveMany)
 
             const { result } = renderHook(() => useBulkDeleteGeneratedImages(), {
                 wrapper: createWrapper(),
@@ -207,7 +212,7 @@ describe("useDeleteImage", () => {
                 r2Keys: ["key1"],
                 thumbnailR2Keys: ["thumb1"],
             })
-            ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemoveMany)
+                ; (useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemoveMany)
 
             const { result } = renderHook(() => useBulkDeleteGeneratedImages(), {
                 wrapper: createWrapper(),
@@ -231,7 +236,7 @@ describe("useDeleteImage", () => {
                 r2Keys: ["key1", "key2"],
                 thumbnailR2Keys: [], // No thumbnails (legacy images)
             })
-            ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemoveMany)
+                ; (useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemoveMany)
 
             const { result } = renderHook(() => useBulkDeleteGeneratedImages(), {
                 wrapper: createWrapper(),
@@ -249,7 +254,7 @@ describe("useDeleteImage", () => {
 
         it("handles bulk Convex deletion failure", async () => {
             const mockRemoveMany = vi.fn().mockRejectedValue(new Error("Bulk delete failed"))
-            ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemoveMany)
+                ; (useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemoveMany)
 
             const { result } = renderHook(() => useBulkDeleteGeneratedImages(), {
                 wrapper: createWrapper(),
@@ -271,7 +276,7 @@ describe("useDeleteImage", () => {
                 r2Keys: [],
                 thumbnailR2Keys: [],
             })
-            ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemoveMany)
+                ; (useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemoveMany)
 
             const { result } = renderHook(() => useBulkDeleteGeneratedImages(), {
                 wrapper: createWrapper(),
@@ -293,7 +298,7 @@ describe("useDeleteImage", () => {
                 r2Keys: [],
                 thumbnailR2Keys: [],
             })
-            ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemoveMany)
+                ; (useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemoveMany)
 
             const { result } = renderHook(() => useBulkDeleteGeneratedImages(), {
                 wrapper: createWrapper(),
@@ -314,7 +319,7 @@ describe("useDeleteImage", () => {
                 r2Keys: ["key1", "key2"],
                 thumbnailR2Keys: ["thumb1", "thumb2"],
             })
-            ;(useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemoveMany)
+                ; (useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemoveMany)
 
             // Make the bulk R2 delete fail
             global.fetch = vi.fn().mockImplementation(() =>

@@ -64,9 +64,26 @@ import { useConvexAuth } from "convex/react"
 import { useSearchParams } from "next/navigation"
 import * as React from "react"
 import { toast } from "sonner"
+import { invalidateUserHistoryCache } from "@/app/_server/actions/invalidation"
+
+// Type for the paginated result from server cache
+type PaginatedGalleryResult = {
+    page: Array<{
+        _id: string
+        _creationTime: number
+        url: string
+        visibility?: "public" | "unlisted"
+        model?: string
+        contentType?: string
+    }>
+    isDone: boolean
+    continueCursor: string
+}
 
 export interface StudioShellProps {
     defaultLayout?: Record<string, number>
+    /** Server-cached initial gallery page (reduces Convex bandwidth on initial load) */
+    initialGalleryPage?: PaginatedGalleryResult
 }
 
 /**
@@ -83,7 +100,7 @@ export interface StudioShellProps {
  * <StudioShell defaultLayout={{ sidebar: 22, gallery: 18 }} />
  * ```
  */
-export function StudioShell({ defaultLayout }: StudioShellProps) {
+export function StudioShell({ defaultLayout, initialGalleryPage }: StudioShellProps) {
     // ========================================
     // Initialize Feature Hooks
     // ========================================
@@ -153,9 +170,14 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
     // Image Generation
     // ========================================
     const { generate, isGenerating } = useGenerateImage({
-        onSuccess: (image) => {
+        onSuccess: async (image) => {
             galleryState.addImage(image)
             generationSettings.refreshSeedIfNeeded()
+
+            if (isSignedIn) {
+                // Invalidate history cache so new image appears on history page
+                await invalidateUserHistoryCache().catch(console.error)
+            }
         },
         onError: (error) => {
             if (error.code === "UNAUTHORIZED") {
@@ -381,6 +403,7 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
             activeImageId={galleryState.currentImage?.id}
             onSelectImage={handleSelectGalleryImage}
             thumbnailSize="md"
+            initialPage={initialGalleryPage}
         />
     )
 

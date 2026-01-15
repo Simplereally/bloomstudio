@@ -32,7 +32,8 @@ generatedImages: defineTable({
     prompt: v.string(),
     negativePrompt: v.optional(v.string()),
     model: v.string(),
-    // No sensitive content fields exist
+    // Sensitive content: null = pending, false = safe, true = sensitive
+    isSensitive: v.optional(v.union(v.boolean(), v.null())),
 })
 ```
 
@@ -277,14 +278,8 @@ contentReports: defineTable({
 ```typescript
     // --- Sensitive Content Fields ---
     
-    /** Whether this content is marked as sensitive/NSFW */
-    isSensitive: v.optional(v.boolean()),
-
-    /** 
-     * Helper for indexing: explicitly true if the image has passed moderation.
-     * Used to filter out untagged/pending images from the public feed.
-     */
-    isTagged: v.optional(v.boolean()),
+    /** Whether this content is marked as sensitive/NSFW. null = pending/untagged. */
+    isSensitive: v.optional(v.union(v.boolean(), v.null())),
     
     /** How the sensitive flag was determined */
     sensitiveSource: v.optional(v.union(
@@ -305,10 +300,10 @@ contentReports: defineTable({
         analyzedAt: v.number(),
     })),
 })
-    // Index for "Block" preference (Safe only)
+    // Index for "Block" preference (Safe only) or finding pending
     .index("by_visibility_sensitive", ["visibility", "isSensitive", "createdAt"])
-    // Index for "Blur/Allow" preference (All tagged content)
-    .index("by_visibility_tagged", ["visibility", "isTagged", "createdAt"])
+    // Index for scanning/filtering (Finding pending = null)
+    .index("by_sensitivity", ["isSensitive", "createdAt"])
 ```
 
 **1.2 Update `users` schema for preferences:**
@@ -663,12 +658,18 @@ crons.interval(
             return { ...results, page: await enrichImages(ctx, results.page) };
         }
         
-        // CASE 2 & 3: BLUR / ALLOW - Show ALL tagged content (filtering out untagged)
-        // Client handles the blurring based on 'isSensitive' flag
+        // CASE 2 & 3: BLUR / ALLOW - Show ALL tagged content (safe OR sensitive)
+        // We filter out 'null' (pending)
         const results = await ctx.db
             .query("generatedImages")
-            .withIndex("by_visibility_tagged", (q) => 
-                q.eq("visibility", "public").eq("isTagged", true)
+            .withIndex("by_visibility", (q) => 
+                q.eq("visibility", "public")
+            )
+            .filter((q) =>
+                q.and(
+                    q.not(q.gt(q.field("aspectRatio"), 4)),
+                    q.neq(q.field("isSensitive"), null)
+                )
             )
             .order("desc")
             .paginate(args.paginationOpts);

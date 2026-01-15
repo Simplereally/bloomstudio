@@ -112,14 +112,8 @@ export default defineSchema({
 
         // --- Sensitive Content Fields ---
 
-        /** Whether the content is flagged as sensitive/NSFW */
-        isSensitive: v.optional(v.boolean()),
-
-        /**
-         * Helper for indexing: explicitly true if the image has passed moderation (safe OR sensitive).
-         * Used to filter out untagged/pending images from the public feed.
-         */
-        isTagged: v.optional(v.boolean()),
+        /** Whether the content is flagged as sensitive/NSFW. null = pending/untagged. */
+        isSensitive: v.optional(v.union(v.boolean(), v.null())),
 
         /** Source of the sensitivity tagging */
         sensitiveSource: v.optional(v.union(
@@ -128,6 +122,8 @@ export default defineSchema({
             v.literal("manual_review"),
             v.literal("user_report")
         )),
+
+
 
         /** Confidence score of the automated detection (0-1) */
         sensitiveConfidence: v.optional(v.number()),
@@ -150,10 +146,10 @@ export default defineSchema({
         .index("by_owner_visibility", ["ownerId", "visibility", "createdAt"])
         .index("by_owner_model", ["ownerId", "model", "createdAt"])
         .index("by_owner_visibility_model", ["ownerId", "visibility", "model", "createdAt"])
-        // Index for "Block" preference (Safe only)
+        // Index for "Block" preference (Safe only) or finding pending (isSensitive=null)
         .index("by_visibility_sensitive", ["visibility", "isSensitive", "createdAt"])
-        // Index for "Blur/Allow" preference (All tagged content)
-        .index("by_visibility_tagged", ["visibility", "isTagged", "createdAt"]),
+        // Index for scanning by sensitivity (e.g. finding pending)
+        .index("by_sensitivity", ["isSensitive", "createdAt"]),
 
     /**
      * Reference images - user uploads for image-to-image generation

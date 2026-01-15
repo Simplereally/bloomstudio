@@ -37,6 +37,8 @@ export interface CollapsibleSectionProps {
     open?: boolean
     /** Callback when expanded state changes */
     onOpenChange?: (open: boolean) => void
+    /** Keep children mounted when collapsed to preserve internal state */
+    forceMount?: boolean
 }
 
 export const CollapsibleSection = React.memo(function CollapsibleSection({
@@ -51,6 +53,7 @@ export const CollapsibleSection = React.memo(function CollapsibleSection({
     disabled = false,
     open: controlledOpen,
     onOpenChange,
+    forceMount = false,
 }: CollapsibleSectionProps) {
     const [internalOpen, setInternalOpen] = React.useState(defaultExpanded)
 
@@ -75,7 +78,7 @@ export const CollapsibleSection = React.memo(function CollapsibleSection({
             aria-disabled={disabled}
         >
             <Collapsible open={isExpanded} onOpenChange={disabled ? undefined : handleOpenChange}>
-                {/* Header row: using bg-black/20 for darker header */ }
+                {/* Header row: using bg-black/20 for darker header */}
                 {/* Fixed: Moved 'group' here so it only triggers when hovering header, not content */}
                 <div className={cn(
                     "group/header flex items-center gap-1 p-0 transition-colors cursor-pointer bg-black/20",
@@ -93,26 +96,30 @@ export const CollapsibleSection = React.memo(function CollapsibleSection({
                         <span className="text-[13px] uppercase tracking-wider font-semibold text-muted-foreground group-hover/header:text-foreground transition-colors truncate">
                             {title}
                         </span>
-                        
-                        {/* When collapsed: show non-interactive summary badge */}
-                        {!isExpanded && (collapsedContent || rightContent) && (
-                            <div className="shrink-0 ml-auto pl-2 opacity-90">
-                                {collapsedContent ?? rightContent}
-                            </div>
+
+                        {/* Spacer to push collapsed chevron to the right when no rightContent */}
+                        {!isExpanded && !collapsedContent && !rightContent && (
+                            <div className="flex-1" />
                         )}
-                        
+
                         {!isExpanded && (
                             <ChevronRight
                                 data-testid={testId ? `${testId}-chevron` : undefined}
                                 className={cn(
                                     "h-4 w-4 text-muted-foreground/50 transition-transform shrink-0",
-                                    isExpanded ? "rotate-90" : "",
-                                    !isExpanded && (collapsedContent || rightContent) ? "ml-2" : "ml-auto"
+                                    !collapsedContent && !rightContent ? "" : "ml-2"
                                 )}
                             />
                         )}
                     </CollapsibleTrigger>
-                    
+
+                    {/* rightContent/collapsedContent OUTSIDE the trigger to prevent nested buttons */}
+                    {!isExpanded && (collapsedContent || rightContent) && (
+                        <div className="shrink-0 pr-1 opacity-90 ml-auto leading-none flex items-center">
+                            {collapsedContent ?? rightContent}
+                        </div>
+                    )}
+
                     {/* Interactive rightContent OUTSIDE the main trigger */}
                     {isExpanded && rightContent && (
                         <div className="shrink-0 pr-1 animate-in fade-in slide-in-from-left-1 duration-200 ml-auto leading-none flex items-center">
@@ -140,13 +147,17 @@ export const CollapsibleSection = React.memo(function CollapsibleSection({
                 </div>
 
                 <CollapsibleContent
-                    className="w-full min-w-0 overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up"
+                    className={cn(
+                        "w-full min-w-0 overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up",
+                        forceMount && !isExpanded && "hidden"
+                    )}
                     data-testid={testId ? `${testId}-content` : undefined}
+                    forceMount={forceMount || undefined}
                 >
-                     {/* Content area: using lighter background */ }
-                     <div className="px-1.5 pb-1.5 pt-1.5 bg-card/10">
+                    {/* Content area: using lighter background */}
+                    <div className="px-1.5 pb-1.5 pt-1.5 bg-card/10">
                         {children}
-                     </div>
+                    </div>
                 </CollapsibleContent>
             </Collapsible>
         </div>

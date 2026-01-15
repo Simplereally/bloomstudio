@@ -1,9 +1,8 @@
 /**
  * @vitest-environment jsdom
- * 
+ *
  * Tests for HistoryClient Component
  */
-import { useImageHistoryWithDisplayData } from "@/hooks/queries/use-image-history"
 import { useImageSelection } from "@/hooks/use-image-selection"
 import { useLocalStorage } from "@/hooks/use-local-storage"
 import { useUser } from "@clerk/nextjs"
@@ -39,8 +38,15 @@ vi.mock("@clerk/nextjs", () => ({
     useUser: vi.fn(),
 }))
 
-vi.mock("@/hooks/queries/use-image-history", () => ({
-    useImageHistoryWithDisplayData: vi.fn(),
+// Mock the server action for loading more pages
+vi.mock("@/app/_server/actions/history", () => ({
+    loadMyHistoryWithDisplayPage: vi.fn(() =>
+        Promise.resolve({
+            page: [],
+            continueCursor: null,
+            isDone: true,
+        })
+    ),
 }))
 
 vi.mock("@/hooks/use-image-selection", () => ({
@@ -52,10 +58,15 @@ vi.mock("@/hooks/use-local-storage", () => ({
 }))
 
 describe("HistoryClient", () => {
-    const mockResults = [
-        { _id: "img1" },
-        { _id: "img2" },
-    ]
+    // Mock initial page data that simulates server-side cached response
+    const mockInitialPage = {
+        page: [
+            { _id: "img1" as any },
+            { _id: "img2" as any },
+        ] as any[],
+        continueCursor: "cursor123",
+        isDone: false,
+    }
 
     const mockSelection = {
         selectionMode: false,
@@ -73,25 +84,20 @@ describe("HistoryClient", () => {
     beforeEach(() => {
         vi.clearAllMocks()
         vi.mocked(useUser).mockReturnValue({ user: { id: "user1" } } as any)
-        vi.mocked(useImageHistoryWithDisplayData).mockReturnValue({
-            results: mockResults,
-            status: "CanLoadMore",
-            loadMore: vi.fn(),
-        } as any)
         vi.mocked(useImageSelection).mockReturnValue(mockSelection as any)
         vi.mocked(useLocalStorage).mockReturnValue([{ selectedVisibility: [], selectedModels: [] }, vi.fn()] as any)
     })
 
     it("renders core components", () => {
-        render(<HistoryClient />)
+        render(<HistoryClient initialPage={mockInitialPage} />)
         expect(screen.getByTestId("filters-dropdown")).toBeInTheDocument()
         expect(screen.getByTestId("selection-toolbar")).toBeInTheDocument()
         expect(screen.getByTestId("image-grid")).toBeInTheDocument()
     })
 
     it("wires up selection handlers correctly", () => {
-        render(<HistoryClient />)
-        
+        render(<HistoryClient initialPage={mockInitialPage} />)
+
         // Test toggle selection
         screen.getByRole("button", { name: /toggle selection/i }).click()
         expect(mockSelection.toggleSelection).toHaveBeenCalledWith("img1")
@@ -121,7 +127,7 @@ describe("HistoryClient", () => {
             selectionMode: true,
         } as any)
 
-        render(<HistoryClient />)
+        render(<HistoryClient initialPage={mockInitialPage} />)
 
         act(() => {
             setFilterState({ selectedVisibility: ["public"], selectedModels: [] })
@@ -131,3 +137,4 @@ describe("HistoryClient", () => {
         expect(mockSelection.deselectAll).toHaveBeenCalled()
     })
 })
+

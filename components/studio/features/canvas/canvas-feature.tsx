@@ -47,7 +47,7 @@ import type { Id } from "@/convex/_generated/dataModel"
  * />
  * ```
  */
-export function CanvasFeature({ 
+export function CanvasFeature({
     currentImage,
     isGenerating = false,
     onOpenLightbox,
@@ -67,10 +67,10 @@ export function CanvasFeature({
 
     const handleToggleFavorite = React.useCallback(async () => {
         if (!currentImage) return
-        
+
         try {
-            await toggleFavoriteMutation({ 
-                imageId: currentImage.id as Id<"generatedImages"> 
+            await toggleFavoriteMutation.mutateAsync({
+                imageId: currentImage.id as Id<"generatedImages">
             })
         } catch (error) {
             console.error("Failed to toggle favorite:", error)

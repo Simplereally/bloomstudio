@@ -87,7 +87,7 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
   // Track loading states for thumbnail-to-full-res crossfade
   const [isThumbnailLoaded, setIsThumbnailLoaded] = React.useState(false)
   const [isFullResLoaded, setIsFullResLoaded] = React.useState(false)
-  
+
   // Determine URLs for progressive loading
   // If originalUrl exists and differs from url, we have a thumbnail/full-res pair
   const thumbnailUrl = displayImage?.url
@@ -214,7 +214,7 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
                               )}
                             />
                           )}
-                          
+
                           {/* Full resolution layer - loads in background, crossfades in when ready */}
                           <NextImage
                             src={fullResUrl || displayImage.url}
@@ -381,27 +381,49 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
                           </Tooltip>
                         )}
 
-                        {/* Copy Prompt Button */}
-                        <Tooltip delayDuration={200}>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-10 w-10 mb-1 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-md transition-all shrink-0 hover:scale-105 active:scale-95 shadow-lg"
-                              onClick={handleCopyPrompt}
-                              disabled={isLoadingDetails || !displayImage.prompt}
-                            >
-                              {copied ? (
-                                <Check className="h-5 w-5 text-green-400" />
-                              ) : (
-                                <Copy className="h-5 w-5" />
-                              )}
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="z-[100]">
-                            <p className="font-medium">{copied ? "Copied!" : "Copy prompt"}</p>
-                          </TooltipContent>
-                        </Tooltip>
+                        {/* Copy Prompt Button - auth-gated with sign-in prompt */}
+                        {isSignedIn ? (
+                          <Tooltip delayDuration={200}>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-10 w-10 mb-1 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-md transition-all shrink-0 hover:scale-105 active:scale-95 shadow-lg"
+                                onClick={handleCopyPrompt}
+                                disabled={isLoadingDetails || !displayImage.prompt}
+                              >
+                                {copied ? (
+                                  <Check className="h-5 w-5 text-green-400" />
+                                ) : (
+                                  <Copy className="h-5 w-5" />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="z-[100]">
+                              <p className="font-medium">{copied ? "Copied!" : "Copy prompt"}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <Tooltip delayDuration={200}>
+                            <TooltipTrigger asChild>
+                              <Link href="/sign-in" onClick={(e) => e.stopPropagation()}>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-10 w-10 mb-1 rounded-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white border border-white/10 backdrop-blur-md transition-all shrink-0 hover:scale-105 active:scale-95 shadow-lg"
+                                >
+                                  <Copy className="h-5 w-5" />
+                                </Button>
+                              </Link>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="z-[100]">
+                              <div className="flex items-center gap-2">
+                                <LogIn className="h-3.5 w-3.5" />
+                                <p className="font-medium">Sign in to copy prompts</p>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                       </div>
                     </div>
                   </motion.div>

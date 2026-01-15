@@ -9,6 +9,26 @@ import { useQuery } from "convex/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { ImageCard, type ImageCardData } from "./image-card"
 
+// Mock server actions to avoid server-only import error
+vi.mock("server-only", () => { return {} })
+vi.mock("@/app/_server/actions/invalidation", () => ({
+    invalidateUserFavoritesCache: vi.fn(),
+    invalidateUserHistoryCache: vi.fn(),
+    invalidatePublicFeedCache: vi.fn(),
+    invalidateVisibilityChange: vi.fn(),
+    invalidateImageDeletion: vi.fn(),
+    invalidateFollowChange: vi.fn(),
+    invalidateUserFollowingFeedCache: vi.fn(),
+}))
+
+// Mock use-favorites hook to avoid TanStack Query dependency
+vi.mock("@/hooks/queries/use-favorites", () => ({
+    useToggleFavorite: vi.fn(() => ({
+        mutateAsync: vi.fn(),
+        isPending: false,
+    })),
+}))
+
 // Mock Clerk
 vi.mock("@clerk/nextjs", () => ({
     useUser: vi.fn(),
@@ -124,6 +144,32 @@ describe("ImageCard", () => {
             expect(video).toHaveAttribute("loop")
             // muted is a boolean property, not an attribute in the DOM
             expect(video.muted).toBe(true)
+        })
+    })
+
+    describe("Unauthenticated User", () => {
+        beforeEach(() => {
+            vi.mocked(useUser).mockReturnValue({ isSignedIn: false, user: null } as any)
+        })
+
+        it("renders sign-in link for copy button", () => {
+            render(<ImageCard {...defaultProps} />)
+            // There are two links to sign-in: one for favorite, one for copy.
+            // We can find them by href.
+            const links = screen.getAllByRole("link", { hidden: true })
+            const signInLinks = links.filter(link => link.getAttribute("href") === "/sign-in")
+
+            // Should be at least 2 (Copy and Favorite)
+            expect(signInLinks.length).toBeGreaterThanOrEqual(2)
+        })
+
+        it("renders sign-in link for favorite button", () => {
+            render(<ImageCard {...defaultProps} />)
+            const links = screen.getAllByRole("link", { hidden: true })
+            const signInLinks = links.filter(link => link.getAttribute("href") === "/sign-in")
+
+            // Should be at least 2 (Copy and Favorite)
+            expect(signInLinks.length).toBeGreaterThanOrEqual(2)
         })
     })
 })

@@ -8,6 +8,17 @@ import { usePaginatedQuery, useQuery } from "convex/react"
 import { describe, expect, it, vi } from "vitest"
 import { useBatchIsFavorited, useFavorites, useIsFavorited } from "./use-favorites"
 
+// Mock server actions to avoid server-only import error
+vi.mock("@/app/_server/actions/invalidation", () => ({
+    invalidateUserFavoritesCache: vi.fn(),
+    invalidateUserHistoryCache: vi.fn(),
+    invalidatePublicFeedCache: vi.fn(),
+    invalidateVisibilityChange: vi.fn(),
+    invalidateImageDeletion: vi.fn(),
+    invalidateFollowChange: vi.fn(),
+    invalidateUserFollowingFeedCache: vi.fn(),
+}))
+
 vi.mock("convex/react", () => ({
     usePaginatedQuery: vi.fn(),
     useQuery: vi.fn(),

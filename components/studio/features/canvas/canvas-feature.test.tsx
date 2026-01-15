@@ -11,7 +11,7 @@ import { useIsFavorited } from "@/hooks/queries/use-favorites" // Import for typ
 const mockMutateAsync = vi.fn()
 vi.mock("@/hooks/queries/use-favorites", () => ({
     useIsFavorited: vi.fn(),
-    useToggleFavorite: () => mockMutateAsync,
+    useToggleFavorite: () => ({ mutateAsync: mockMutateAsync }),
 }))
 
 // Mock CanvasView
@@ -96,7 +96,7 @@ describe("CanvasFeature", () => {
         })
         // Mock window.open
         window.open = vi.fn()
-        
+
         // Default mock implementation for useIsFavorited
         // @ts-expect-error - vitest mock types
         useIsFavorited.mockReturnValue(false)
@@ -235,16 +235,16 @@ describe("CanvasFeature", () => {
 
     it("handles favorite toggle error gracefully", async () => {
         const user = userEvent.setup()
-        const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+        const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => { })
         mockMutateAsync.mockRejectedValue(new Error("Favorite failed"))
-        
+
         render(<CanvasFeature {...defaultProps} currentImage={mockImage} />)
 
         await user.click(screen.getByTestId("toggle-favorite"))
 
         // Should not throw, should log error (and show toast, handled by mock)
         expect(mockMutateAsync).toHaveBeenCalled()
-        
+
         // Cleanup
         consoleSpy.mockRestore()
     })

@@ -1,6 +1,6 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { isVideoContent } from "@/components/ui/media-player"
 import { SensitiveContentOverlay } from "@/components/ui/sensitive-content-overlay"
@@ -13,11 +13,12 @@ import { getModelDisplayName } from "@/lib/config/models"
 import { getClampedAspectRatio } from "@/lib/image-models"
 import { cn } from "@/lib/utils"
 import { useUser } from "@clerk/nextjs"
-import { useMutation, useQuery } from "convex/react"
+import { useQuery } from "convex/react"
 import { Check, Copy, Heart } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import * as React from "react"
+import { useToggleFavorite } from "@/hooks/queries/use-favorites"
 
 export interface ImageCardData {
     _id: string
@@ -97,7 +98,7 @@ export const ImageCard = React.memo(function ImageCard({
         api.favorites.isFavorited,
         isSignedIn ? { imageId: image._id as Id<"generatedImages"> } : "skip"
     )
-    const toggleFavorite = useMutation(api.favorites.toggle)
+    const toggleFavorite = useToggleFavorite()
 
     // Use optimistic state if set, otherwise use server state
     const displayFavorited = optimisticFavorited ?? isFavorited ?? false
@@ -138,7 +139,7 @@ export const ImageCard = React.memo(function ImageCard({
         setOptimisticFavorited(!displayFavorited)
 
         try {
-            await toggleFavorite({ imageId: image._id as Id<"generatedImages"> })
+            await toggleFavorite.mutateAsync({ imageId: image._id as Id<"generatedImages"> })
         } catch {
             // Revert on error
             setOptimisticFavorited(null)
@@ -310,25 +311,45 @@ export const ImageCard = React.memo(function ImageCard({
                     </div>
 
                     {/* Copy button */}
-                    <Tooltip delayDuration={200}>
-                        <TooltipTrigger asChild>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-md transition-colors shrink-0"
-                                onClick={handleCopyPrompt}
-                            >
-                                {copied ? (
-                                    <Check className="h-3.5 w-3.5 text-green-400" />
-                                ) : (
+                    {isSignedIn ? (
+                        <Tooltip delayDuration={200}>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-md transition-colors shrink-0"
+                                    onClick={handleCopyPrompt}
+                                >
+                                    {copied ? (
+                                        <Check className="h-3.5 w-3.5 text-green-400" />
+                                    ) : (
+                                        <Copy className="h-3.5 w-3.5" />
+                                    )}
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="z-[200]">
+                                <p className="font-medium">{copied ? "Copied!" : "Copy prompt"}</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    ) : (
+                        <Tooltip delayDuration={200}>
+                            <TooltipTrigger asChild>
+                                <Link
+                                    href="/sign-in"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className={cn(
+                                        buttonVariants({ variant: "ghost", size: "icon" }),
+                                        "h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white backdrop-blur-md transition-colors shrink-0 border border-white/10"
+                                    )}
+                                >
                                     <Copy className="h-3.5 w-3.5" />
-                                )}
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="z-[200]">
-                            <p className="font-medium">{copied ? "Copied!" : "Copy prompt"}</p>
-                        </TooltipContent>
-                    </Tooltip>
+                                </Link>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="z-[200]">
+                                <p className="font-medium">Sign in to copy prompt</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    )}
 
                     {/* Favorite button - shows sign-in prompt for unauthenticated users */}
                     {isSignedIn ? (
@@ -362,16 +383,16 @@ export const ImageCard = React.memo(function ImageCard({
                     ) : (
                         <Tooltip delayDuration={200}>
                             <TooltipTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white backdrop-blur-md transition-colors shrink-0 border border-white/10"
-                                    asChild
+                                <Link
+                                    href="/sign-in"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className={cn(
+                                        buttonVariants({ variant: "ghost", size: "icon" }),
+                                        "h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white backdrop-blur-md transition-colors shrink-0 border border-white/10"
+                                    )}
                                 >
-                                    <Link href="/sign-in" onClick={(e) => e.stopPropagation()}>
-                                        <Heart className="h-3.5 w-3.5" />
-                                    </Link>
-                                </Button>
+                                    <Heart className="h-3.5 w-3.5" />
+                                </Link>
                             </TooltipTrigger>
                             <TooltipContent side="top" className="z-[200]">
                                 <p className="font-medium">Sign in to save favorites</p>

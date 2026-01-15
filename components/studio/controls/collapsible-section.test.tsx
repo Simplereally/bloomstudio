@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { Sparkles } from "lucide-react"
+import * as React from "react"
 import { describe, expect, it } from "vitest"
 import { CollapsibleSection } from "./collapsible-section"
 
@@ -37,27 +38,27 @@ describe("CollapsibleSection", () => {
 
     it("starts collapsed when defaultExpanded is false", () => {
         render(<CollapsibleSection {...defaultProps} defaultExpanded={false} />)
-        
+
         // Content should not be in the document (Radix default without forceMount)
         expect(screen.queryByTestId("test-content")).not.toBeInTheDocument()
     })
 
     it("collapses when trigger is clicked", async () => {
         render(<CollapsibleSection {...defaultProps} />)
-        
+
         // Initially expanded
         expect(screen.getByTestId("test-content")).toBeVisible()
-        
+
         // Click to collapse
         await userEvent.click(screen.getByTestId("test-section-trigger"))
-        
+
         // Content should be removed from DOM
         expect(screen.queryByTestId("test-content")).not.toBeInTheDocument()
     })
 
     it("expands when trigger is clicked on collapsed section", async () => {
         render(<CollapsibleSection {...defaultProps} defaultExpanded={false} />)
-        
+
         // Initially collapsed (not in DOM)
         expect(screen.queryByTestId("test-content")).not.toBeInTheDocument()
 
@@ -88,15 +89,15 @@ describe("CollapsibleSection", () => {
 
     it("toggles chevron rotation on expand/collapse", async () => {
         render(<CollapsibleSection {...defaultProps} />)
-        
+
         const chevron = screen.getByTestId("test-section-chevron")
-        
+
         // Initially expanded - chevron should be rotated
         expect(chevron).toHaveClass("rotate-90")
-        
+
         // Click to collapse
         await userEvent.click(screen.getByTestId("test-section-trigger"))
-        
+
         const collapsedChevron = screen.getByTestId("test-section-chevron")
         // Chevron should not be rotated
         expect(collapsedChevron).not.toHaveClass("rotate-90")
@@ -203,7 +204,7 @@ describe("CollapsibleSection", () => {
         it("uses the provided open prop", () => {
             const { rerender } = render(<CollapsibleSection {...defaultProps} open={false} />)
             expect(screen.queryByTestId("test-content")).not.toBeInTheDocument()
-            
+
             rerender(<CollapsibleSection {...defaultProps} open={true} />)
             expect(screen.getByTestId("test-content")).toBeVisible()
         })
@@ -240,6 +241,83 @@ describe("CollapsibleSection", () => {
         expect(container).not.toHaveClass("opacity-50")
         expect(container).not.toHaveClass("pointer-events-none")
         expect(container).toHaveAttribute("aria-disabled", "false")
+    })
+
+    describe("forceMount", () => {
+        it("keeps content in DOM when collapsed with forceMount", async () => {
+            render(<CollapsibleSection {...defaultProps} forceMount />)
+
+            // Initially expanded
+            expect(screen.getByTestId("test-content")).toBeInTheDocument()
+            expect(screen.getByTestId("test-content")).toBeVisible()
+
+            // Click to collapse
+            await userEvent.click(screen.getByTestId("test-section-trigger"))
+
+            // Content should still be in DOM (unlike without forceMount)
+            expect(screen.getByTestId("test-content")).toBeInTheDocument()
+        })
+
+        it("hides content visually when collapsed with forceMount", async () => {
+            render(<CollapsibleSection {...defaultProps} forceMount />)
+
+            // Click to collapse
+            await userEvent.click(screen.getByTestId("test-section-trigger"))
+
+            // Content container should have hidden class
+            const contentWrapper = screen.getByTestId("test-section-content")
+            expect(contentWrapper).toHaveClass("hidden")
+        })
+
+        it("shows content visually when expanded with forceMount", async () => {
+            render(<CollapsibleSection {...defaultProps} forceMount defaultExpanded={false} />)
+
+            // Initially collapsed but in DOM (with hidden class)
+            expect(screen.getByTestId("test-content")).toBeInTheDocument()
+            const contentWrapper = screen.getByTestId("test-section-content")
+            expect(contentWrapper).toHaveClass("hidden")
+
+            // Click to expand
+            await userEvent.click(screen.getByTestId("test-section-trigger"))
+
+            // Should be visible now
+            expect(screen.getByTestId("test-content")).toBeVisible()
+            expect(contentWrapper).not.toHaveClass("hidden")
+        })
+
+        it("preserves child state across collapse/expand with forceMount", async () => {
+            // Use a stateful child component
+            const StatefulChild = () => {
+                const [value, setValue] = React.useState("")
+                return (
+                    <input
+                        data-testid="stateful-input"
+                        value={value}
+                        onChange={(e) => setValue(e.target.value)}
+                    />
+                )
+            }
+
+            render(
+                <CollapsibleSection {...defaultProps} forceMount>
+                    <StatefulChild />
+                </CollapsibleSection>
+            )
+
+            // Type something in the input
+            const input = screen.getByTestId("stateful-input")
+            await userEvent.type(input, "test value")
+            expect(input).toHaveValue("test value")
+
+            // Collapse
+            await userEvent.click(screen.getByTestId("test-section-trigger"))
+
+            // Expand again
+            await userEvent.click(screen.getByTestId("test-section-trigger"))
+
+            // Value should be preserved
+            expect(screen.getByTestId("stateful-input")).toHaveValue("test value")
+        })
     })
 })
 

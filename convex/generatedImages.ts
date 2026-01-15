@@ -113,7 +113,7 @@ function toPublicFeedImages(images: EnrichedImage[]): PublicFeedImage[] {
         contentType: img.contentType,
         ownerName: img.ownerName,
         ownerPictureUrl: img.ownerPictureUrl,
-        isSensitive: img.isSensitive ?? false,
+        isSensitive: !!img.isSensitive, // Convert null/undefined to false for client boolean (default safe)
     }))
 }
 
@@ -174,36 +174,22 @@ export const create = mutation({
             seed: args.seed,
             generationParams: args.generationParams,
             createdAt: Date.now(),
-            
+
             // Initial sensitive content tagging based on prompt
-            isSensitive: promptAnalysis.isSensitive,
-            // If prompt is explicitly sensitive, we mark it as tagged + prompt_analysis
-            // If prompt is NOT sensitive, we might still want vision analysis if it was "borderline" or just safe?
-            // User requirement: "tagged content" means passed moderation.
-            // If prompt is clearly safe (score < 0.3), can we mark isTagged=true? 
-            // The plan says: "Schedule async vision analysis if prompt was borderline" 
-            // But if we DON'T schedule it, the image remains untagged? and thus hidden from "tagged" views?
-            // Schema comment says: "explicitly true if the image has passed moderation."
-            // We should probably mark isTagged=true if we are confident enough in the prompt analysis.
-            // E.g. prompt analysis says "safe" (low score).
-            // Let's adopt a policy:
-            // - Explicit/High triggers sensitive=true, tagged=true immediately (safe fail).
-            // - Medium triggers sensitive=false(initially), tagged=false(pending vision).
-            // - Low triggers sensitive=false, tagged=true (safe pass).
-            // Plan logic: "Step 2.2 ... Schedule async vision if prompt was borderline (>0.3 && <0.8)"
-            // So if < 0.3, it is safe.
-            // If >= 0.8 it is sensitive? The util returns isSensitive for >= 0.6.
-            
-            isTagged: promptAnalysis.confidence < 0.3 || promptAnalysis.confidence >= 0.9,
+            // Tri-state logic: true=NSFW, false=Safe, null=Pending/Unknown
+
+            // If prompt is clear (<0.3 or >=0.9), we create it as 'tagged' (bool).
+            // If borderline, we create it as 'pending' (null).
+            isSensitive: (promptAnalysis.confidence < 0.3 || promptAnalysis.confidence >= 0.9)
+                ? promptAnalysis.isSensitive
+                : null,
+
             sensitiveSource: promptAnalysis.isSensitive ? "prompt_analysis" : undefined,
             sensitiveConfidence: promptAnalysis.confidence,
         })
 
         // Schedule async vision analysis if prompt was borderline or we want extra safety
-        // Thresholds: 
-        // - < 0.3: Safe, no analysis needed (tagged immediately above)
-        // - 0.3 - 0.9: Borderline or suggestive, check with vision
-        // - >= 0.9: Explicit, already caught (tagged immediately above)
+        // Now defined as: isSensitive is NULL.
         if (promptAnalysis.confidence >= 0.3 && promptAnalysis.confidence < 0.9) {
             await ctx.scheduler.runAfter(0, internal.contentAnalysis.analyzeImage, {
                 imageId,
@@ -546,7 +532,7 @@ export const getPublicFeed = query({
         if (filterPreference === "block") {
             paginatedResult = await ctx.db
                 .query("generatedImages")
-                .withIndex("by_visibility_sensitive", (q) => 
+                .withIndex("by_visibility_sensitive", (q) =>
                     q.eq("visibility", "public").eq("isSensitive", false)
                 )
                 .filter((q) =>
@@ -555,18 +541,24 @@ export const getPublicFeed = query({
                 )
                 .order("desc")
                 .paginate(args.paginationOpts);
+
         }
-        // CASE 2 & 3: BLUR / ALLOW - Show ALL tagged content (filtering out untagged)
-        // Client handles the blurring based on 'isSensitive' flag
+        // CASE 2 & 3: BLUR / ALLOW - Show ALL tagged content (safe OR sensitive)
+        // We filter out 'null' (pending)
         else {
             paginatedResult = await ctx.db
                 .query("generatedImages")
-                .withIndex("by_visibility_tagged", (q) => 
-                    q.eq("visibility", "public").eq("isTagged", true)
+                // Use the main index and filter
+                .withIndex("by_visibility", (q) =>
+                    q.eq("visibility", "public")
                 )
                 .filter((q) =>
-                    // Filter extreme aspect ratios
-                    q.not(q.gt(q.field("aspectRatio"), 4))
+                    q.and(
+                        // Not extreme aspect ratio
+                        q.not(q.gt(q.field("aspectRatio"), 4)),
+                        // Has been analyzed (not null)
+                        q.neq(q.field("isSensitive"), null)
+                    )
                 )
                 .order("desc")
                 .paginate(args.paginationOpts);
@@ -853,23 +845,40 @@ export const updateImageSensitivity = internalMutation({
             sensitiveSource: "vision_analysis",
             sensitiveConfidence: args.confidence,
             contentAnalysis: args.contentAnalysis,
-            // Mark as tagged now that analysis is complete
-            isTagged: true, 
         });
     },
 });
 
 /**
  * Find images that haven't been tagged yet for the cron job.
+ * Using 'isSensitive' == null (or undefined for legacy)
  */
 export const getUnanalyzedImages = internalQuery({
     args: { limit: v.number() },
     handler: async (ctx, args) => {
-        return await ctx.db
+        // We want images where isSensitive is NULL (pending) or UNDEFINED (legacy).
+        // Index `by_sensitivity` contains keys for `isSensitive` values.
+        // However, standard indexing of `null` allows efficient lookup.
+
+        // Priority 1: Check explicit nulls (new schema)
+        let pending = await ctx.db
             .query("generatedImages")
-            // Filter where isTagged is missing or false
-            .filter(q => q.eq(q.field("isTagged"), undefined))
+            .withIndex("by_sensitivity", q => q.eq("isSensitive", null))
             .take(args.limit);
+
+        // Priority 2: Legacy undefined (backlog) - Only if we need more items
+        if (pending.length < args.limit) {
+            const legacyPending = await ctx.db
+                .query("generatedImages")
+                // Scan recent first to clear new stuff, or old first? 
+                // Default order is sufficient.
+                .filter(q => q.eq(q.field("isSensitive"), undefined))
+                .take(args.limit - pending.length);
+
+            pending = [...pending, ...legacyPending];
+        }
+
+        return pending;
     },
 });
 
@@ -987,3 +996,4 @@ export const getByR2Key = query({
         return null
     },
 })
+

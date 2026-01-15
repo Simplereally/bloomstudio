@@ -375,4 +375,69 @@ describe('ImageLightbox - Prompt Library Integration', () => {
             vi.mocked(useImageHistory.useImageDetails).mockReturnValue(null)
         })
     })
+
+    describe('copy prompt auth-gating', () => {
+        const mockImage = {
+            url: 'https://example.com/test-image.jpg',
+            prompt: 'A beautiful landscape',
+            model: 'test-model',
+            width: 1024,
+            height: 1024,
+        }
+
+        it('shows copy prompt button when authenticated', async () => {
+            // Default mock already has isSignedIn: true
+            render(<ImageLightbox image={mockImage} isOpen={true} onClose={vi.fn()} />)
+
+            // Copy button should be present (not a link)
+            const copyButton = screen.getAllByRole('button')[1] // Second button after save to library
+            expect(copyButton).toBeInTheDocument()
+        })
+
+        it('shows sign-in link for copy prompt when not authenticated', async () => {
+            // Reset modules to clear cache
+            vi.resetModules()
+
+            // Set up mocks before importing the component
+            vi.doMock('@clerk/nextjs', () => ({
+                useAuth: () => ({ isSignedIn: false }),
+            }))
+
+            // Re-mock all the dependencies that the component needs
+            vi.doMock('@/hooks/use-image-lightbox', () => ({
+                useImageLightbox: () => ({
+                    copied: false,
+                    isZoomed: false,
+                    toggleZoom: vi.fn(),
+                    handleCopyPrompt: vi.fn(),
+                    handleImageLoad: vi.fn(),
+                    canZoom: true,
+                    isHovering: true,
+                    setIsHovering: vi.fn(),
+                    naturalSize: { width: 1000, height: 1000 },
+                    isDragging: false,
+                    scrollContainerRef: { current: null },
+                    handleMouseDown: vi.fn(),
+                    handleMouseMove: vi.fn(),
+                    handleMouseUp: vi.fn(),
+                    handleMouseLeave: vi.fn(),
+                    hasDragged: { current: false },
+                }),
+            }))
+
+            vi.doMock('@/hooks/queries/use-image-history', () => ({
+                useImageDetails: vi.fn(() => null)
+            }))
+
+            // Import fresh module with new mocks
+            const { ImageLightbox: UnauthLightbox } = await import('./image-lightbox')
+
+            const { container } = render(<UnauthLightbox image={mockImage} isOpen={true} onClose={vi.fn()} />)
+
+            // Should have links to sign-in for both the save to library and copy prompt buttons
+            const signInLinks = container.querySelectorAll('a[href="/sign-in"]')
+            // There should be 2 sign-in links now - one for save to library and one for copy prompt
+            expect(signInLinks.length).toBe(2)
+        })
+    })
 })

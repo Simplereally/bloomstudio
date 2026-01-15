@@ -3,16 +3,17 @@
  *
  * Service layer for generating contextual prompt suggestions using LLM.
  * Provides real-time suggestions based on user input.
+ * 
+ * Uses unified AI provider with Groq as primary (14,400 RPD free tier)
+ * and OpenRouter as fallback.
  */
 
-import { generate, OPENROUTER_MODELS } from "@/lib/openrouter"
+import { generateText } from "@/lib/ai-provider"
 
 /**
  * System prompt for generating suggestions
- * Note: "detailed thinking off" disables Nemotron's chain-of-thought reasoning
  */
-const SUGGESTIONS_SYSTEM = `detailed thinking off
-You are a prompt suggestion assistant for an AI image generation tool.
+const SUGGESTIONS_SYSTEM = `You are a prompt suggestion assistant for an AI image generation tool.
 Return ONLY 3 comma-separated enhancement phrases to compliment the core idea the user is trying to express. No duplicates from input. No explanations.
 Rules: 2-4 words each, visually descriptive, no quotes, no numbering.`
 
@@ -57,18 +58,19 @@ export async function generateSuggestions(
   }
 
   try {
-    const response = await generate({
-      model: OPENROUTER_MODELS.SUGGESTIONS,
+    const result = await generateText({
+      useCase: "suggestions",
       system: SUGGESTIONS_SYSTEM,
       prompt: buildSuggestionsPrompt(prompt.trim()),
       abortSignal: options?.abortSignal,
-      temperature: 0.8, // Slightly higher for creative variety
-      maxOutputTokens: 10000, // Needs buffer since reasoning tokens still count even when "disabled"
-      disableReasoning: true, // Skip chain-of-thought, just answer directly
+      temperature: 1,
+      maxTokens: 512, // Increased for reasoning models that think before answering
     })
 
+    console.log("[Suggestions] Raw AI response:", JSON.stringify(result))
+
     // Parse the comma-separated response
-    const suggestions = response
+    const suggestions = result.text
       .split(",")
       .map(s => s.trim())
       .filter(s => s.length > 0 && s.length < 50) // Filter out empty or too long

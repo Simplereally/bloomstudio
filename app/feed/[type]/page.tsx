@@ -1,5 +1,7 @@
 import { FeedClient } from "@/components/gallery/feed-client"
 import { FeedCta } from "@/components/gallery/feed-cta"
+import { getPublicFeedPageCached, getFollowingFeedPageCached } from "@/app/_server/cache/feed"
+import { getCurrentUserId } from "@/app/_server/convex/client"
 import { FEED_TYPES, isValidFeedType, type FeedType } from "@/lib/feed-types"
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
@@ -61,12 +63,26 @@ export default async function FeedTypePage({ params }: FeedPageProps) {
     const feedType: FeedType = type
     const isPublicFeed = feedType === "public"
 
+    // Fetch initial page on server (cached)
+    // Public feed: shared cache across all users
+    // Following feed: per-user cache, requires auth
+    let initialPage
+    if (isPublicFeed) {
+        initialPage = await getPublicFeedPageCached(null)
+    } else {
+        // Following feed requires authentication
+        const userId = await getCurrentUserId()
+        if (userId) {
+            initialPage = await getFollowingFeedPageCached(userId, null)
+        }
+    }
+
     return (
         <div className="min-h-screen bg-background">
             <main className="py-8">
 
                 {/* Grid Section - Full width */}
-                <FeedClient feedType={feedType} />
+                <FeedClient feedType={feedType} initialPage={initialPage} />
             </main>
 
             {/* Footer */}
@@ -105,3 +121,4 @@ export default async function FeedTypePage({ params }: FeedPageProps) {
         </div>
     )
 }
+

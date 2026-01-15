@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
 import { toast } from "sonner"
+import { invalidateImageDeletion } from "@/app/_server/actions/invalidation"
 
 /**
  * Hook to delete a generated image.
@@ -17,7 +18,7 @@ export function useDeleteGeneratedImage() {
     return useMutation({
         mutationFn: async (imageId: Id<"generatedImages">) => {
             const result = await removeImage({ imageId })
-            
+
             // Mutation throws on error, no need to check success
 
 
@@ -76,11 +77,15 @@ export function useDeleteGeneratedImage() {
 
             return { previousHistory, previousFeed }
         },
-        onSuccess: () => {
+        onSuccess: async () => {
             toast.success("Image deleted")
-            // Invalidate relevant queries
+
+            // Invalidate client-side TanStack Query caches
             queryClient.invalidateQueries({ queryKey: ["image-history"] })
             queryClient.invalidateQueries({ queryKey: ["public-feed"] })
+
+            // Invalidate server-side Next.js cache
+            await invalidateImageDeletion()
         },
         onError: (error, _imageId, context) => {
             // If the mutation fails, use the context returned from onMutate to roll back
@@ -152,11 +157,16 @@ export function useBulkDeleteGeneratedImages() {
 
             return { previousHistory, previousFeed }
         },
-        onSuccess: (result) => {
+        onSuccess: async (result) => {
             const count = result.successCount
             toast.success(`Deleted ${count} image${count !== 1 ? "s" : ""}`)
+
+            // Invalidate client-side TanStack Query caches
             queryClient.invalidateQueries({ queryKey: ["image-history"] })
             queryClient.invalidateQueries({ queryKey: ["public-feed"] })
+
+            // Invalidate server-side Next.js cache
+            await invalidateImageDeletion()
         },
         onError: (error, _imageIds, context) => {
             if (context) {

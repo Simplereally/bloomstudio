@@ -7,6 +7,22 @@ import type { GeneratedImage } from "@/types/pollinations"
 import { toast } from "sonner"
 import { useSubscriptionStatus } from "@/hooks/use-subscription-status"
 
+// Mock server actions to avoid server-only import error
+vi.mock("@/app/_server/actions/invalidation", () => ({
+    invalidateUserFavoritesCache: vi.fn(),
+    invalidateUserHistoryCache: vi.fn(),
+    invalidatePublicFeedCache: vi.fn(),
+    invalidateVisibilityChange: vi.fn(),
+    invalidateImageDeletion: vi.fn(),
+    invalidateFollowChange: vi.fn(),
+    invalidateUserFollowingFeedCache: vi.fn(),
+}))
+
+vi.mock("@/app/_server/actions/history", () => ({
+    loadMyHistoryPage: vi.fn(),
+    loadMyHistoryWithDisplayPage: vi.fn(),
+}))
+
 // Mock sonner
 vi.mock("sonner", () => ({
     toast: {

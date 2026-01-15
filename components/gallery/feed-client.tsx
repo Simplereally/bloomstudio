@@ -3,7 +3,7 @@
 import { FeedTabs } from "@/components/gallery/feed-tabs"
 import { PaginatedImageGrid } from "@/components/gallery/paginated-image-grid"
 import { Button } from "@/components/ui/button"
-import { useFeed } from "@/hooks/queries/use-image-history"
+import { loadPublicFeedPage, loadFollowingFeedPage } from "@/app/_server/actions/feed"
 import { trackFeedView } from "@/lib/analytics"
 import type { FeedType } from "@/lib/feed-types"
 import { useAuth } from "@clerk/nextjs"
@@ -11,17 +11,34 @@ import { ImageOffIcon, ScanSearch } from "lucide-react"
 import Link from "next/link"
 import * as React from "react"
 
+// Type for the paginated result from Convex/cached query
+type PaginatedFeedResult = Awaited<ReturnType<typeof loadPublicFeedPage>>
+
 interface FeedClientProps {
     feedType: FeedType
+    /** Server-provided initial page (from cache) */
+    initialPage?: PaginatedFeedResult
 }
 
 /**
  * Client component for the feed page.
- * Uses useFeed hook for client-side reactivity and pagination.
+ * 
+ * Both PUBLIC and FOLLOWING feeds now use server-side caching:
+ * - PUBLIC feed: Shared cache across all users
+ * - FOLLOWING feed: Per-user cache keyed by userId
+ * 
+ * Uses server-provided initial page + server actions for "load more" pagination.
  */
-export function FeedClient({ feedType }: FeedClientProps) {
-    const { results, status, loadMore } = useFeed(feedType)
+export function FeedClient({ feedType, initialPage }: FeedClientProps) {
     const { isSignedIn, isLoaded } = useAuth()
+
+    // State for cached feed data (works for both public and following)
+    const [items, setItems] = React.useState(() => initialPage?.page ?? [])
+    const [cursor, setCursor] = React.useState(() => initialPage?.continueCursor ?? null)
+    const [isDone, setIsDone] = React.useState(() => initialPage?.isDone ?? false)
+    const [isLoadingMore, setIsLoadingMore] = React.useState(false)
+
+    const isPublicFeed = feedType === "public"
 
     // Track feed view on mount (once auth state is loaded)
     React.useEffect(() => {
@@ -30,13 +47,42 @@ export function FeedClient({ feedType }: FeedClientProps) {
         }
     }, [feedType, isSignedIn, isLoaded])
 
+    // Reset state when feedType or initialPage changes
+    React.useEffect(() => {
+        setItems(initialPage?.page ?? [])
+        setCursor(initialPage?.continueCursor ?? null)
+        setIsDone(initialPage?.isDone ?? false)
+    }, [feedType, initialPage])
+
+    // Load more handler using server action
+    const loadMore = React.useCallback(async () => {
+        if (isDone || isLoadingMore || !cursor) return
+
+        setIsLoadingMore(true)
+        try {
+            const result = isPublicFeed
+                ? await loadPublicFeedPage({ cursor })
+                : await loadFollowingFeedPage({ cursor })
+            setItems(prev => [...prev, ...result.page])
+            setCursor(result.continueCursor)
+            setIsDone(result.isDone)
+        } catch (error) {
+            console.error("Failed to load more:", error)
+        } finally {
+            setIsLoadingMore(false)
+        }
+    }, [cursor, isDone, isLoadingMore, isPublicFeed])
+
+    // Determine status for PaginatedImageGrid
+    const status = isDone ? "Exhausted" : isLoadingMore ? "LoadingMore" : "CanLoadMore"
+
     // Auto-load more if we got an empty page but aren't done
     // This is particularly useful for the following feed which can be sparse
     React.useEffect(() => {
-        if (status === "CanLoadMore" && results.length === 0) {
-            loadMore(20)
+        if (status === "CanLoadMore" && items.length === 0) {
+            loadMore()
         }
-    }, [status, results.length, loadMore])
+    }, [status, items.length, loadMore])
 
     const emptyState = feedType === "public" ? (
         <PublicEmptyState />
@@ -48,7 +94,7 @@ export function FeedClient({ feedType }: FeedClientProps) {
         <div className="space-y-6">
             <FeedTabs activeType={feedType} />
             <PaginatedImageGrid
-                images={results}
+                images={items}
                 status={status}
                 loadMore={loadMore}
                 emptyState={emptyState}
@@ -96,3 +142,4 @@ function FollowingEmptyState() {
         </div>
     )
 }
+

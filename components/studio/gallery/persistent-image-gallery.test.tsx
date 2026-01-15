@@ -7,6 +7,22 @@ import { useBulkDeleteGeneratedImages } from "@/hooks/mutations/use-delete-image
 import { useImageHistory } from "@/hooks/queries/use-image-history"
 import type { Id } from "@/convex/_generated/dataModel"
 
+// Mock server actions to avoid server-only import error
+vi.mock("@/app/_server/actions/history", () => ({
+    loadMyHistoryPage: vi.fn(),
+    loadMyHistoryWithDisplayPage: vi.fn(),
+}))
+
+vi.mock("@/app/_server/actions/invalidation", () => ({
+    invalidateUserFavoritesCache: vi.fn(),
+    invalidateUserHistoryCache: vi.fn(),
+    invalidatePublicFeedCache: vi.fn(),
+    invalidateVisibilityChange: vi.fn(),
+    invalidateImageDeletion: vi.fn(),
+    invalidateFollowChange: vi.fn(),
+    invalidateUserFollowingFeedCache: vi.fn(),
+}))
+
 // Mock the hooks
 vi.mock("@/hooks/mutations/use-set-visibility", () => ({
     useSetBulkVisibility: vi.fn(),
