@@ -42,6 +42,8 @@ export interface CanvasViewProps {
     isFavorited?: boolean
     /** Handle favorite toggle */
     onToggleFavorite?: () => void
+    /** Generation progress percentage (0-100) */
+    progress?: number
 }
 
 export const CanvasView = React.memo(function CanvasView({
@@ -55,6 +57,7 @@ export const CanvasView = React.memo(function CanvasView({
     onFullscreen,
     isFavorited,
     onToggleFavorite,
+    progress,
 }: CanvasViewProps) {
     return (
         <div className="h-full flex flex-col overflow-hidden">
@@ -62,6 +65,7 @@ export const CanvasView = React.memo(function CanvasView({
                 <ImageCanvas
                     image={image}
                     isGenerating={isGenerating}
+                    progress={progress}
                     onImageClick={onImageClick}
                     className="h-full"
                 >

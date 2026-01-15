@@ -69,7 +69,7 @@ export function StudioLayout({
                 <Sidebar
                     side="left"
                     collapsible="offcanvas"
-                    className="!absolute !h-full border-r border-border/50 bg-card/50"
+                    className="!absolute !h-full border-r border-border/50 bg-transparent"
                     data-testid="studio-sidebar-panel"
                 >
                     <SidebarContent className="h-full min-h-0 overflow-hidden">

@@ -39,6 +39,19 @@ export default defineSchema({
         followingCount: v.optional(v.number()),
         /** Count of public images */
         imagesCount: v.optional(v.number()),
+        /**
+         * Content filter preference:
+         * - 'block': Do not show sensitive content at all
+         * - 'blur': Show sensitive content with a blur overlay (default)
+         * - 'allow': Show sensitive content without overlay
+         */
+        contentFilterPreference: v.optional(
+            v.union(
+                v.literal("block"),
+                v.literal("blur"),
+                v.literal("allow")
+            )
+        ),
     })
         .index("by_clerk_id", ["clerkId"])
         .index("by_email", ["email"])
@@ -97,6 +110,36 @@ export default defineSchema({
         /** Full generation parameters for reproducibility */
         generationParams: v.optional(v.any()),
 
+        // --- Sensitive Content Fields ---
+
+        /** Whether the content is flagged as sensitive/NSFW */
+        isSensitive: v.optional(v.boolean()),
+
+        /**
+         * Helper for indexing: explicitly true if the image has passed moderation (safe OR sensitive).
+         * Used to filter out untagged/pending images from the public feed.
+         */
+        isTagged: v.optional(v.boolean()),
+
+        /** Source of the sensitivity tagging */
+        sensitiveSource: v.optional(v.union(
+            v.literal("prompt_analysis"),
+            v.literal("vision_analysis"),
+            v.literal("manual_review"),
+            v.literal("user_report")
+        )),
+
+        /** Confidence score of the automated detection (0-1) */
+        sensitiveConfidence: v.optional(v.number()),
+
+        /** Detailed analysis of the content */
+        contentAnalysis: v.optional(v.object({
+            nudity: v.optional(v.string()), // none, partial, full
+            sexual: v.optional(v.string()), // none, suggestive, explicit
+            violence: v.optional(v.string()), // none, mild, graphic
+            analyzedAt: v.number(),
+        })),
+
         /** Timestamp of creation */
         createdAt: v.number(),
     })
@@ -106,7 +149,11 @@ export default defineSchema({
         // NEW: Composite indexes for filtered queries
         .index("by_owner_visibility", ["ownerId", "visibility", "createdAt"])
         .index("by_owner_model", ["ownerId", "model", "createdAt"])
-        .index("by_owner_visibility_model", ["ownerId", "visibility", "model", "createdAt"]),
+        .index("by_owner_visibility_model", ["ownerId", "visibility", "model", "createdAt"])
+        // Index for "Block" preference (Safe only)
+        .index("by_visibility_sensitive", ["visibility", "isSensitive", "createdAt"])
+        // Index for "Blur/Allow" preference (All tagged content)
+        .index("by_visibility_tagged", ["visibility", "isTagged", "createdAt"]),
 
     /**
      * Reference images - user uploads for image-to-image generation

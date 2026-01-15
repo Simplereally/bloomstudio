@@ -38,8 +38,8 @@ export function StudioHeader({
     return (
         <div
             className={cn(
-                "relative z-50 flex h-10 items-center justify-center gap-1 border-b border-border/50",
-                "bg-card/50 backdrop-blur-sm px-4",
+                "relative z-50 flex h-10 items-center justify-center gap-1 border-b border-border/40",
+                "bg-background/60 backdrop-blur-xl supports-[backdrop-filter]:bg-background/40 px-4",
                 className
             )}
             data-testid="studio-header"

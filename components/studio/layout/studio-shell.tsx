@@ -28,6 +28,7 @@ import { api } from "@/convex/_generated/api"
 import { ImageLightbox } from "@/components/images/image-lightbox"
 import {
     ApiKeyOnboardingModal,
+    BatchConfigButton,
     StudioHeader,
     StudioLayout,
     UpgradeModal,
@@ -160,7 +161,7 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
             if (error.code === "UNAUTHORIZED") {
                 showAuthRequiredToast()
             } else if (isTrialExpiredError(error)) {
-                // Show upgrade modal instead of toast for trial expiration
+                // Show upgrade modal instead of trial expired error
                 setShowUpgradeModal(true)
             } else {
                 showErrorToast(error)
@@ -293,9 +294,9 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
     // Sidebar Content
     // ========================================
     const sidebarContent = (
-        <div className="h-full flex flex-col bg-card/50 backdrop-blur-sm border-r border-border/50 mr-1">
+        <div className="h-full flex flex-col">
             <ScrollArea className="flex-1 min-h-0 overflow-hidden">
-                <div className="p-2 space-y-1 w-full min-w-0 overflow-x-hidden">
+                <div className="p-0 space-y-0.5 w-full min-w-0 overflow-x-hidden">
                     {/* Prompt Feature */}
                     <PromptManagerContext.Provider value={promptManager}>
                         <PromptFeature
@@ -315,7 +316,7 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
             </ScrollArea>
 
             {/* Generate / Pause / Resume Batch Button */}
-            <div className="p-2 border-t border-border/50 bg-card/80">
+            <div className="p-1.5 border-t border-border/50 bg-card/80">
                 {batchMode.isBatchActive ? (
                     <BatchActionButton
                         isPaused={batchMode.isBatchPaused}
@@ -327,26 +328,33 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
                         onCancel={batchMode.cancelBatchGeneration}
                     />
                 ) : (
-                    <Button
-                        onClick={handleGenerateClick}
-                        disabled={isGenerating || !promptManager.hasPromptContent}
-                        className="w-full h-11 text-base font-semibold"
-                        size="lg"
-                    >
-                        {isGenerating ? (
-                            "Generating..."
-                        ) : batchMode.batchSettings.enabled ? (
-                            <>
-                                <Sparkles className="mr-2 h-4 w-4" />
-                                Generate Batch ({batchMode.batchSettings.count})
-                            </>
-                        ) : (
-                            <>
-                                <Sparkles className="mr-2 h-4 w-4" />
-                                Generate Image
-                            </>
-                        )}
-                    </Button>
+                    <div className="flex gap-1.5 w-full">
+                        <Button
+                            onClick={handleGenerateClick}
+                            disabled={isGenerating || !promptManager.hasPromptContent}
+                            className="flex-1 h-11 text-base font-semibold"
+                            size="lg"
+                        >
+                            {isGenerating ? (
+                                "Generating..."
+                            ) : batchMode.batchSettings.enabled ? (
+                                <>
+                                    <Sparkles className="mr-2 h-4 w-4" />
+                                    Generate Batch ({batchMode.batchSettings.count})
+                                </>
+                            ) : (
+                                <>
+                                    <Sparkles className="mr-2 h-4 w-4" />
+                                    Generate Image
+                                </>
+                            )}
+                        </Button>
+                        <BatchConfigButton
+                            settings={batchMode.batchSettings}
+                            onSettingsChange={batchMode.setBatchSettings}
+                            disabled={isGenerating || batchMode.isBatchActive}
+                        />
+                    </div>
                 )}
             </div>
         </div>
@@ -358,7 +366,8 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
     const canvasContent = (
         <CanvasFeature
             currentImage={galleryState.currentImage}
-            isGenerating={isGenerating}
+            isGenerating={isGenerating || batchMode.isBatchActive}
+            progress={batchMode.isBatchActive ? (batchMode.batchProgress.totalCount > 0 ? (batchMode.batchProgress.completedCount / batchMode.batchProgress.totalCount) * 100 : 0) : undefined}
             onOpenLightbox={studioUI.openLightbox}
             onRegenerate={handleRegenerate}
         />

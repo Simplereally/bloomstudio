@@ -34,7 +34,6 @@ import {
 } from "@/components/studio";
 import type { BatchModeSettings } from "@/components/studio/batch";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import type { ModelDefinition, VideoDurationConstraints } from "@/lib/config/models";
 import { cn } from "@/lib/utils";
 import type { AspectRatio, AspectRatioOption, ModelConstraints, ResolutionTier } from "@/types/pollinations";
@@ -182,7 +181,7 @@ export const ControlsView = React.memo(function ControlsView({
     "flex items-center gap-1.5 px-2 h-5 rounded-full text-xs font-bold bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/20";
 
   return (
-    <>
+    <div className="flex flex-col gap-1.5">
       {/* Model Selection */}
       <CollapsibleSection
         title="Model"
@@ -217,7 +216,6 @@ export const ControlsView = React.memo(function ControlsView({
           disabled={isGenerating || isLoadingModels}
           hideHeader
         />
-        <Separator className="bg-border/50" />
       </CollapsibleSection>
 
       {/* Aspect Ratio */}
@@ -242,7 +240,6 @@ export const ControlsView = React.memo(function ControlsView({
           onTierChange={onResolutionTierChange}
           showTierSelector={!!constraints && !!onResolutionTierChange}
         />
-        <Separator className="bg-border/50" />
       </CollapsibleSection>
 
       {/* Video Frames (video models only) */}
@@ -279,7 +276,6 @@ export const ControlsView = React.memo(function ControlsView({
                   disabled={isGenerating}
                   hideHeader
               />
-              <Separator className="bg-border/50" />
           </CollapsibleSection>
       )}
 
@@ -303,7 +299,6 @@ export const ControlsView = React.memo(function ControlsView({
                   supportsAudio={supportsAudio}
                   disabled={isGenerating}
               />
-              <Separator className="bg-border/50" />
           </CollapsibleSection>
       )}
 
@@ -357,7 +352,6 @@ export const ControlsView = React.memo(function ControlsView({
             linked={dimensionsLinked}
             onLinkedChange={onDimensionsLinkedChange}
           />
-          <Separator className="bg-border/50" />
         </CollapsibleSection>
       )}
 
@@ -383,7 +377,6 @@ export const ControlsView = React.memo(function ControlsView({
           }
         >
           <ReferenceImagePicker selectedImage={referenceImage} onSelect={onReferenceImageChange} disabled={isGenerating} hideHeader />
-          <Separator className="bg-border/50" />
         </CollapsibleSection>
       )}
 
@@ -402,7 +395,6 @@ export const ControlsView = React.memo(function ControlsView({
           disabled={isGenerating}
           hideHeader
         />
-        <Separator className="bg-border/50" />
       </CollapsibleSection>
 
       {/* Options */}
@@ -422,7 +414,6 @@ export const ControlsView = React.memo(function ControlsView({
         }
       >
         <OptionsPanel options={options} onOptionsChange={onOptionsChange} disabled={isGenerating} />
-        <Separator className="bg-border/50" />
       </CollapsibleSection>
 
       {/* Batch Mode */}
@@ -440,6 +431,6 @@ export const ControlsView = React.memo(function ControlsView({
       >
         <BatchModePanel settings={batchSettings} onSettingsChange={onBatchSettingsChange} disabled={isGenerating || isBatchActive} />
       </CollapsibleSection>
-    </>
+    </div>
   );
 });

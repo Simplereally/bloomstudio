@@ -152,7 +152,10 @@ export const AspectRatioSelector = React.memo(function AspectRatioSelector({
 
   const shouldShowTiers = showTierSelector && constraints && onTierChange;
 
-  return (
+    // Active selection styling - matching the emerald green from other controls
+    const activeClasses = "bg-emerald-500/15 text-emerald-700 border border-emerald-500 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500 ring-1 ring-emerald-500/20"
+
+    return (
     <div className={cn("space-y-2", className)} data-testid="aspect-ratio-selector">
       {!hideHeader && (
         <div className="flex items-center justify-between">
@@ -203,7 +206,7 @@ export const AspectRatioSelector = React.memo(function AspectRatioSelector({
                   disabled={disabled}
                   className={cn(
                     "flex flex-col items-center justify-between h-24 py-3 px-1 transition-all",
-                    isSelected && "bg-primary/10 border-primary/30 ring-1 ring-primary/20"
+                    isSelected && activeClasses
                   )}
                   data-testid={`ratio-${ratio.value.replace(":", "-")}`}
                 >
@@ -212,22 +215,35 @@ export const AspectRatioSelector = React.memo(function AspectRatioSelector({
                     <div
                       className={cn(
                         "flex items-center justify-center border rounded-sm transition-colors",
-                        isSelected ? "border-primary/50 bg-primary/20" : "border-zinc-500/40 bg-accent dark:bg-background/50"
+                        isSelected ? "border-emerald-500/50 bg-emerald-500/30" : "border-zinc-500/40 bg-accent dark:bg-background/50"
                       )}
                       style={{
                         width: isCustom ? 32 : Math.min(32, 32 * (ratio.width / Math.max(ratio.width, ratio.height))),
                         height: isCustom ? 32 : Math.min(32, 32 * (ratio.height / Math.max(ratio.width, ratio.height))),
                       }}
                     >
-                      {isCustom && <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />}
+                      {isCustom && (
+                        <SlidersHorizontal className={cn(
+                          "h-4 w-4",
+                          isSelected ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
+                        )} />
+                      )}
                     </div>
                   </div>
 
                   {/* Label and dimensions - bottom aligned for parody of x-axis */}
                   <div className="flex flex-col items-center gap-0.5 w-full mt-auto">
-                    <span className="text-sm font-bold leading-none truncate w-full text-center">{isCustom ? "Custom" : ratio.value}</span>
+                    <span className={cn(
+                      "text-sm font-bold leading-none truncate w-full text-center",
+                      isSelected && "text-emerald-700 dark:text-emerald-400"
+                    )}>
+                      {isCustom ? "Custom" : ratio.value}
+                    </span>
                     {!isCustom ? (
-                      <span className="text-[11px] text-muted-foreground/90 font-medium leading-none tabular-nums truncate w-full text-center">
+                      <span className={cn(
+                        "text-[11px] font-medium leading-none tabular-nums truncate w-full text-center",
+                        isSelected ? "text-emerald-600/80 dark:text-emerald-400/80" : "text-muted-foreground/90"
+                      )}>
                         {dimensions.width}×{dimensions.height}
                       </span>
                     ) : (

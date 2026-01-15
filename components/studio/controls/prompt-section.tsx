@@ -245,9 +245,9 @@ export function PromptSection({
   };
 
   return (
-    <div className={`space-y-3 w-full min-w-0 ${className || ""}`} data-testid="prompt-section">
+    <div className={`space-y-1.5 w-full min-w-0 ${className || ""}`} data-testid="prompt-section">
       {/* Main Prompt */}
-      <div className="space-y-2 w-full min-w-0">
+      <div className="space-y-1 w-full min-w-0">
         {!hideHeader && (
           <div className="flex items-center justify-between">
             <Label htmlFor="prompt" className="text-sm font-medium flex items-center gap-2">
@@ -292,7 +292,7 @@ export function PromptSection({
             onKeyDown={handleKeyDown}
             disabled={isGenerating || isEnhancingPrompt}
             maxLength={maxLength}
-            className="min-h-24 max-h-[360px] overflow-y-auto resize-none pr-8 pb-10 bg-background/50 border-border/50 focus-visible:ring-0 focus-visible:border-primary transition-all duration-200 break-words [overflow-wrap:anywhere] block w-0 min-w-full"
+            className="min-h-24 max-h-[360px] overflow-y-auto resize-none px-2 pr-8 pb-10 bg-background/50 border-border/50 focus-visible:ring-0 focus-visible:border-primary transition-all duration-200 break-words [overflow-wrap:anywhere] block w-0 min-w-full"
             data-testid="prompt-input"
           />
           {hasContent && !isGenerating && !isEnhancingPrompt && (
@@ -394,7 +394,7 @@ export function PromptSection({
               type="button"
               variant="ghost"
               size="sm"
-              className="w-full justify-between text-muted-foreground hover:text-foreground"
+              className="w-full justify-between text-muted-foreground hover:text-foreground cursor-pointer"
               data-testid="negative-prompt-toggle"
             >
               <span className="text-xs">Negative Prompt</span>

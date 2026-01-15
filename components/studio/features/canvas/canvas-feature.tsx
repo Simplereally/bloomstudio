@@ -27,6 +27,8 @@ export interface CanvasFeatureProps {
     onOpenLightbox?: (image: GeneratedImage | null) => void
     /** Callback to regenerate current image */
     onRegenerate?: () => void
+    /** Generation progress percentage (0-100) */
+    progress?: number
 }
 
 import { useIsFavorited, useToggleFavorite } from "@/hooks/queries/use-favorites"
@@ -50,6 +52,7 @@ export function CanvasFeature({
     isGenerating = false,
     onOpenLightbox,
     onRegenerate,
+    progress,
 }: CanvasFeatureProps) {
     // Download functionality
     const { download } = useDownloadImage({
@@ -121,6 +124,7 @@ export function CanvasFeature({
             onFullscreen={handleFullscreen}
             isFavorited={isFavorited}
             onToggleFavorite={handleToggleFavorite}
+            progress={progress}
         />
     )
 }

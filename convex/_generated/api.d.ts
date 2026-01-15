@@ -10,6 +10,7 @@
 
 import type * as batchGeneration from "../batchGeneration.js";
 import type * as batchProcessor from "../batchProcessor.js";
+import type * as contentAnalysis from "../contentAnalysis.js";
 import type * as crons from "../crons.js";
 import type * as favorites from "../favorites.js";
 import type * as follows from "../follows.js";
@@ -17,6 +18,8 @@ import type * as generatedImages from "../generatedImages.js";
 import type * as http from "../http.js";
 import type * as lib_crypto from "../lib/crypto.js";
 import type * as lib_index from "../lib/index.js";
+import type * as lib_nsfwDetection from "../lib/nsfwDetection.js";
+import type * as lib_openrouter from "../lib/openrouter.js";
 import type * as lib_pollinations from "../lib/pollinations.js";
 import type * as lib_r2 from "../lib/r2.js";
 import type * as lib_retry from "../lib/retry.js";
@@ -45,6 +48,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   batchGeneration: typeof batchGeneration;
   batchProcessor: typeof batchProcessor;
+  contentAnalysis: typeof contentAnalysis;
   crons: typeof crons;
   favorites: typeof favorites;
   follows: typeof follows;
@@ -52,6 +56,8 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "lib/crypto": typeof lib_crypto;
   "lib/index": typeof lib_index;
+  "lib/nsfwDetection": typeof lib_nsfwDetection;
+  "lib/openrouter": typeof lib_openrouter;
   "lib/pollinations": typeof lib_pollinations;
   "lib/r2": typeof lib_r2;
   "lib/retry": typeof lib_retry;

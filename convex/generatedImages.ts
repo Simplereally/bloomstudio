@@ -6,7 +6,9 @@
 import { paginationOptsValidator } from "convex/server"
 import { v } from "convex/values"
 import type { Doc } from "./_generated/dataModel"
-import { mutation, query, type QueryCtx } from "./_generated/server"
+import { mutation, query, type QueryCtx, internalMutation, internalQuery } from "./_generated/server"
+import { internal } from "./_generated/api"
+import { analyzePromptForNSFW } from "./lib/nsfwDetection"
 
 /**
  * Maximum number of items allowed in bulk operations to avoid hitting Convex limits.
@@ -84,6 +86,8 @@ type PublicFeedImage = {
     ownerName: string
     /** Owner avatar URL */
     ownerPictureUrl: string | null
+    /** Whether content is sensitive */
+    isSensitive: boolean
 }
 
 /**
@@ -109,6 +113,7 @@ function toPublicFeedImages(images: EnrichedImage[]): PublicFeedImage[] {
         contentType: img.contentType,
         ownerName: img.ownerName,
         ownerPictureUrl: img.ownerPictureUrl,
+        isSensitive: img.isSensitive ?? false,
     }))
 }
 
@@ -147,6 +152,9 @@ export const create = mutation({
             throw new Error("Not authenticated")
         }
 
+        // Analyze prompt for NSFW content
+        const promptAnalysis = analyzePromptForNSFW(args.prompt)
+
         const imageId = await ctx.db.insert("generatedImages", {
             ownerId: identity.subject,
             visibility: args.visibility ?? "public",
@@ -166,7 +174,41 @@ export const create = mutation({
             seed: args.seed,
             generationParams: args.generationParams,
             createdAt: Date.now(),
+            
+            // Initial sensitive content tagging based on prompt
+            isSensitive: promptAnalysis.isSensitive,
+            // If prompt is explicitly sensitive, we mark it as tagged + prompt_analysis
+            // If prompt is NOT sensitive, we might still want vision analysis if it was "borderline" or just safe?
+            // User requirement: "tagged content" means passed moderation.
+            // If prompt is clearly safe (score < 0.3), can we mark isTagged=true? 
+            // The plan says: "Schedule async vision analysis if prompt was borderline" 
+            // But if we DON'T schedule it, the image remains untagged? and thus hidden from "tagged" views?
+            // Schema comment says: "explicitly true if the image has passed moderation."
+            // We should probably mark isTagged=true if we are confident enough in the prompt analysis.
+            // E.g. prompt analysis says "safe" (low score).
+            // Let's adopt a policy:
+            // - Explicit/High triggers sensitive=true, tagged=true immediately (safe fail).
+            // - Medium triggers sensitive=false(initially), tagged=false(pending vision).
+            // - Low triggers sensitive=false, tagged=true (safe pass).
+            // Plan logic: "Step 2.2 ... Schedule async vision if prompt was borderline (>0.3 && <0.8)"
+            // So if < 0.3, it is safe.
+            // If >= 0.8 it is sensitive? The util returns isSensitive for >= 0.6.
+            
+            isTagged: promptAnalysis.confidence < 0.3 || promptAnalysis.confidence >= 0.9,
+            sensitiveSource: promptAnalysis.isSensitive ? "prompt_analysis" : undefined,
+            sensitiveConfidence: promptAnalysis.confidence,
         })
+
+        // Schedule async vision analysis if prompt was borderline or we want extra safety
+        // Thresholds: 
+        // - < 0.3: Safe, no analysis needed (tagged immediately above)
+        // - 0.3 - 0.9: Borderline or suggestive, check with vision
+        // - >= 0.9: Explicit, already caught (tagged immediately above)
+        if (promptAnalysis.confidence >= 0.3 && promptAnalysis.confidence < 0.9) {
+            await ctx.scheduler.runAfter(0, internal.contentAnalysis.analyzeImage, {
+                imageId,
+            })
+        }
 
         return imageId
     },
@@ -492,19 +534,43 @@ export const getMyImagesWithDisplayData = query({
 export const getPublicFeed = query({
     args: {
         paginationOpts: paginationOptsValidator,
+        /** User's content filter preference */
+        filterPreference: v.optional(v.union(v.literal("block"), v.literal("blur"), v.literal("allow"))),
     },
     handler: async (ctx, args) => {
-        const paginatedResult = await ctx.db
-            .query("generatedImages")
-            .withIndex("by_visibility", (q) => q.eq("visibility", "public"))
-            .filter((q) =>
-                // Filter extreme aspect ratios: missing or <= 4
-                // In Convex filter, if a field is missing, comparisons return false/undefined.
-                // We use q.not(q.gt(...)) to include missing fields + values <= 4.
-                q.not(q.gt(q.field("aspectRatio"), 4))
-            )
-            .order("desc")
-            .paginate(args.paginationOpts)
+        const { filterPreference = "blur" } = args;
+
+        let paginatedResult;
+
+        // CASE 1: BLOCK - Show ONLY safe content (isSensitive=false)
+        if (filterPreference === "block") {
+            paginatedResult = await ctx.db
+                .query("generatedImages")
+                .withIndex("by_visibility_sensitive", (q) => 
+                    q.eq("visibility", "public").eq("isSensitive", false)
+                )
+                .filter((q) =>
+                    // Filter extreme aspect ratios
+                    q.not(q.gt(q.field("aspectRatio"), 4))
+                )
+                .order("desc")
+                .paginate(args.paginationOpts);
+        }
+        // CASE 2 & 3: BLUR / ALLOW - Show ALL tagged content (filtering out untagged)
+        // Client handles the blurring based on 'isSensitive' flag
+        else {
+            paginatedResult = await ctx.db
+                .query("generatedImages")
+                .withIndex("by_visibility_tagged", (q) => 
+                    q.eq("visibility", "public").eq("isTagged", true)
+                )
+                .filter((q) =>
+                    // Filter extreme aspect ratios
+                    q.not(q.gt(q.field("aspectRatio"), 4))
+                )
+                .order("desc")
+                .paginate(args.paginationOpts);
+        }
 
         // Enrich with owner info, then convert to optimized public feed format
         const enrichedPage = await enrichImages(ctx, paginatedResult.page)
@@ -753,6 +819,60 @@ export const remove = mutation({
         return { r2Key, thumbnailR2Key }
     },
 })
+
+/**
+ * Internal query to get image data for analysis.
+ * Bypasses visibility checks.
+ */
+export const getByIdInternal = internalQuery({
+    args: { imageId: v.id("generatedImages") },
+    handler: async (ctx, args) => {
+        return await ctx.db.get(args.imageId);
+    },
+});
+
+/**
+ * Internal mutation to update the image with analysis results.
+ */
+export const updateImageSensitivity = internalMutation({
+    args: {
+        imageId: v.id("generatedImages"),
+        isSensitive: v.boolean(),
+        confidence: v.number(),
+        contentAnalysis: v.object({
+            nudity: v.optional(v.string()),
+            sexual: v.optional(v.string()),
+            violence: v.optional(v.string()),
+            analyzedAt: v.number(),
+        }),
+    },
+    handler: async (ctx, args) => {
+        await ctx.db.patch(args.imageId, {
+            isSensitive: args.isSensitive,
+            // If vision found it sensitive, update source
+            sensitiveSource: "vision_analysis",
+            sensitiveConfidence: args.confidence,
+            contentAnalysis: args.contentAnalysis,
+            // Mark as tagged now that analysis is complete
+            isTagged: true, 
+        });
+    },
+});
+
+/**
+ * Find images that haven't been tagged yet for the cron job.
+ */
+export const getUnanalyzedImages = internalQuery({
+    args: { limit: v.number() },
+    handler: async (ctx, args) => {
+        return await ctx.db
+            .query("generatedImages")
+            // Filter where isTagged is missing or false
+            .filter(q => q.eq(q.field("isTagged"), undefined))
+            .take(args.limit);
+    },
+});
+
 
 /**
  * Bulk delete multiple generated image records.

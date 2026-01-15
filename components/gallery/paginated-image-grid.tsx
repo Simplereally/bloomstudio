@@ -6,6 +6,8 @@ import { MasonryGrid } from "@/components/ui/masonry-grid"
 import { Skeleton } from "@/components/ui/skeleton"
 import { motion, type Variants } from "framer-motion"
 import { ArrowUp, Loader2, Sparkles } from "lucide-react"
+import { api } from "@/convex/_generated/api"
+import { useQuery } from "convex/react"
 import React, { useCallback, useEffect, useRef, useState } from "react"
 
 interface PaginatedImageGridProps {
@@ -73,8 +75,11 @@ export function PaginatedImageGrid({
 }: PaginatedImageGridProps) {
     const [selectedImage, setSelectedImage] = useState<ImageCardData | null>(null)
 
-    // Ref for the infinite scroll sentinel element
     const sentinelRef = useRef<HTMLDivElement>(null)
+    
+    // Get user's sensitive content preference
+    const filterPreference = useQuery(api.users.getSensitiveContentPreference)
+    const userShowsSensitive = filterPreference === "allow"
 
     const handleSelectImage = useCallback((image: ImageCardData) => {
         setSelectedImage(image)
@@ -173,6 +178,7 @@ export function PaginatedImageGrid({
                         selectionMode={selectionMode}
                         isSelected={selectedIds.has(image._id)}
                         onSelectionChange={onSelectionChange}
+                        userShowsSensitive={userShowsSensitive}
                     />
                 ))}
             </MasonryGrid>

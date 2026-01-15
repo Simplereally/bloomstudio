@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { isVideoContent } from "@/components/ui/media-player"
+import { SensitiveContentOverlay } from "@/components/ui/sensitive-content-overlay"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { api } from "@/convex/_generated/api"
@@ -41,12 +42,16 @@ export interface ImageCardData {
     ownerPictureUrl?: string | null
     /** MIME type of the content (e.g., "video/mp4", "image/jpeg") */
     contentType?: string
+    /** Whether content is sensitive */
+    isSensitive?: boolean
 }
 
 interface ImageCardProps {
     image: ImageCardData
     /** Show user avatar and name overlay (for community feed) */
     showUser?: boolean
+    /** Whether user chooses to see sensitive content without overlay. If false, sensitive content gets blurred. */
+    userShowsSensitive?: boolean
     /** Called when the card is clicked with the image data */
     onSelect?: (image: ImageCardData) => void
     /** Whether selection mode is active (shows checkbox) */
@@ -69,6 +74,7 @@ interface ImageCardProps {
 export const ImageCard = React.memo(function ImageCard({
     image,
     showUser = false,
+    userShowsSensitive = false,
     onSelect,
     selectionMode = false,
     isSelected = false,
@@ -161,6 +167,13 @@ export const ImageCard = React.memo(function ImageCard({
     // Calculate clamped aspect ratio to prevent weird image sizes
     const clampedAspectRatio = getClampedAspectRatio(width, height)
 
+    // Check if sensitive overlay is needed
+    // Show overlay if: image is sensitive AND user preference is NOT 'allow' (implied by userShowsSensitive passed from parent)
+    // Note: If user preference was "block", we wouldn't receive this image at all from the query.
+    // So if we see it and it's sensitive, it means user is "blur" (or "allow" but we check that prop).
+    const showSensitiveOverlay = image.isSensitive && !userShowsSensitive
+    const [isRevealed, setIsRevealed] = React.useState(false) // Local reveal state for this session
+
     return (
         <div
             className={cn(
@@ -172,6 +185,11 @@ export const ImageCard = React.memo(function ImageCard({
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
         >
+            {/* Sensitive Overlay */}
+            {showSensitiveOverlay && !isRevealed && (
+                <SensitiveContentOverlay onReveal={() => setIsRevealed(true)} />
+            )}
+
             {/* Selection checkbox - top right */}
             {selectionMode && (
                 // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions

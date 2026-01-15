@@ -37,31 +37,29 @@ describe("CollapsibleSection", () => {
 
     it("starts collapsed when defaultExpanded is false", () => {
         render(<CollapsibleSection {...defaultProps} defaultExpanded={false} />)
-
-        // Content is still in DOM (forceMount) but hidden
-        expect(screen.getByTestId("test-content")).toBeInTheDocument()
-        expect(screen.getByTestId("test-content")).not.toBeVisible()
+        
+        // Content should not be in the document (Radix default without forceMount)
+        expect(screen.queryByTestId("test-content")).not.toBeInTheDocument()
     })
 
     it("collapses when trigger is clicked", async () => {
         render(<CollapsibleSection {...defaultProps} />)
-
+        
         // Initially expanded
         expect(screen.getByTestId("test-content")).toBeVisible()
-
+        
         // Click to collapse
         await userEvent.click(screen.getByTestId("test-section-trigger"))
-
-        // Content should be hidden but still in DOM (forceMount)
-        expect(screen.getByTestId("test-content")).toBeInTheDocument()
-        expect(screen.getByTestId("test-content")).not.toBeVisible()
+        
+        // Content should be removed from DOM
+        expect(screen.queryByTestId("test-content")).not.toBeInTheDocument()
     })
 
     it("expands when trigger is clicked on collapsed section", async () => {
         render(<CollapsibleSection {...defaultProps} defaultExpanded={false} />)
-
-        // Initially collapsed (hidden but in DOM)
-        expect(screen.getByTestId("test-content")).not.toBeVisible()
+        
+        // Initially collapsed (not in DOM)
+        expect(screen.queryByTestId("test-content")).not.toBeInTheDocument()
 
         // Click to expand
         await userEvent.click(screen.getByTestId("test-section-trigger"))
@@ -90,18 +88,18 @@ describe("CollapsibleSection", () => {
 
     it("toggles chevron rotation on expand/collapse", async () => {
         render(<CollapsibleSection {...defaultProps} />)
-
-        const trigger = screen.getByTestId("test-section-trigger")
-        const chevron = trigger.querySelector('svg')
-
+        
+        const chevron = screen.getByTestId("test-section-chevron")
+        
         // Initially expanded - chevron should be rotated
         expect(chevron).toHaveClass("rotate-90")
-
+        
         // Click to collapse
-        await userEvent.click(trigger)
-
+        await userEvent.click(screen.getByTestId("test-section-trigger"))
+        
+        const collapsedChevron = screen.getByTestId("test-section-chevron")
         // Chevron should not be rotated
-        expect(chevron).not.toHaveClass("rotate-90")
+        expect(collapsedChevron).not.toHaveClass("rotate-90")
     })
 
     it("renders rightContent when provided", () => {
@@ -204,8 +202,8 @@ describe("CollapsibleSection", () => {
     describe("Controlled mode", () => {
         it("uses the provided open prop", () => {
             const { rerender } = render(<CollapsibleSection {...defaultProps} open={false} />)
-            expect(screen.getByTestId("test-content")).not.toBeVisible()
-
+            expect(screen.queryByTestId("test-content")).not.toBeInTheDocument()
+            
             rerender(<CollapsibleSection {...defaultProps} open={true} />)
             expect(screen.getByTestId("test-content")).toBeVisible()
         })

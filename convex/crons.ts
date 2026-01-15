@@ -17,5 +17,11 @@ crons.daily(
     internal.orphanCleanup.scheduledCleanup,
 );
 
-export default crons;
+// Ongoing analysis of unanalyzed images (catch-up mechanism)
+crons.interval(
+    "analyze unanalyzed images",
+    { minutes: 30 }, // Run every 30 minutes to catch up reasonably fast without hammering API
+    internal.contentAnalysis.analyzeRecentImages,
+);
 
+export default crons;

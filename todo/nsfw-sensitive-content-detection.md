@@ -22,7 +22,7 @@ Implement an automated system to detect and tag sensitive (NSFW) content in user
 
 ### Relevant Schema (from `convex/schema.ts`)
 
-The `generatedImages` table currently lacks any sensitive content fields:
+The `generatedImages` table now includes sensitive content fields:
 
 ```typescript
 generatedImages: defineTable({
@@ -275,19 +275,23 @@ contentReports: defineTable({
 **1.1 Update `generatedImages` schema:**
 
 ```typescript
-generatedImages: defineTable({
-    // ... existing fields
+    // --- Sensitive Content Fields ---
     
     /** Whether this content is marked as sensitive/NSFW */
     isSensitive: v.optional(v.boolean()),
+
+    /** 
+     * Helper for indexing: explicitly true if the image has passed moderation.
+     * Used to filter out untagged/pending images from the public feed.
+     */
+    isTagged: v.optional(v.boolean()),
     
     /** How the sensitive flag was determined */
     sensitiveSource: v.optional(v.union(
         v.literal("prompt_analysis"),
         v.literal("vision_analysis"),
-        v.literal("community_report"),
-        v.literal("owner_marked"),
-        v.literal("admin_override")
+        v.literal("manual_review"),
+        v.literal("user_report")
     )),
     
     /** Confidence score from automated detection (0-1) */
@@ -301,8 +305,10 @@ generatedImages: defineTable({
         analyzedAt: v.number(),
     })),
 })
-    // Add index for filtering sensitive content
+    // Index for "Block" preference (Safe only)
     .index("by_visibility_sensitive", ["visibility", "isSensitive", "createdAt"])
+    // Index for "Blur/Allow" preference (All tagged content)
+    .index("by_visibility_tagged", ["visibility", "isTagged", "createdAt"])
 ```
 
 **1.2 Update `users` schema for preferences:**
@@ -311,8 +317,19 @@ generatedImages: defineTable({
 users: defineTable({
     // ... existing fields
     
-    /** Whether to show sensitive content without blur (default: false) */
-    showSensitiveContent: v.optional(v.boolean()),
+    /** 
+     * Content filter preference:
+     * - 'block': Do not show sensitive content at all
+     * - 'blur': Show sensitive content with a blur overlay (default)
+     * - 'allow': Show sensitive content without overlay
+     */
+    contentFilterPreference: v.optional(
+        v.union(
+            v.literal("block"),
+            v.literal("blur"),
+            v.literal("allow")
+        )
+    ),
 })
 ```
 
@@ -625,40 +642,38 @@ crons.interval(
 ```typescript
 // convex/generatedImages.ts
 
-export const getPublicFeed = query({
     args: {
         paginationOpts: paginationOptsValidator,
-        /** Whether to include sensitive content (requires user preference) */
-        includeSensitive: v.optional(v.boolean()),
+        /** User's content filter preference */
+        filterPreference: v.optional(v.union(v.literal("block"), v.literal("blur"), v.literal("allow"))),
     },
     handler: async (ctx, args) => {
-        const { includeSensitive = false } = args;
+        const { filterPreference = "blur" } = args; // Default to blur/hide
         
-        // Build query with optional sensitive filter
-        let results;
-        if (includeSensitive) {
-            results = await ctx.db
-                .query("generatedImages")
-                .withIndex("by_visibility", (q) => q.eq("visibility", "public"))
-                .order("desc")
-                .paginate(args.paginationOpts);
-        } else {
-            results = await ctx.db
+        // CASE 1: BLOCK - Show ONLY safe content
+        if (filterPreference === "block") {
+            const results = await ctx.db
                 .query("generatedImages")
                 .withIndex("by_visibility_sensitive", (q) => 
                     q.eq("visibility", "public").eq("isSensitive", false)
                 )
                 .order("desc")
                 .paginate(args.paginationOpts);
+                
+            return { ...results, page: await enrichImages(ctx, results.page) };
         }
         
-        // Enrich with owner info
-        const enrichedPage = await enrichImages(ctx, results.page);
+        // CASE 2 & 3: BLUR / ALLOW - Show ALL tagged content (filtering out untagged)
+        // Client handles the blurring based on 'isSensitive' flag
+        const results = await ctx.db
+            .query("generatedImages")
+            .withIndex("by_visibility_tagged", (q) => 
+                q.eq("visibility", "public").eq("isTagged", true)
+            )
+            .order("desc")
+            .paginate(args.paginationOpts);
         
-        return {
-            ...results,
-            page: enrichedPage,
-        };
+        return { ...results, page: await enrichImages(ctx, results.page) };
     },
 });
 ```

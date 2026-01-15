@@ -145,7 +145,7 @@ export const ModelSelector = React.memo(function ModelSelector({
                         onClick={() => onModelChange(model.id)}
                         disabled={disabled}
                         className={cn(
-                            "h-12 px-3 gap-2.5 justify-start transition-all",
+                            "h-10 px-2 gap-2 justify-start transition-all border border-border/40 rounded-md",
                             isSelected && activeClasses
                         )}
                         data-testid={`model-button-${model.id}`}
@@ -234,7 +234,7 @@ export const ModelSelector = React.memo(function ModelSelector({
                 </Label>
             )}
             <div
-                className="grid grid-cols-2 gap-2"
+                className="grid grid-cols-2 gap-1.5"
                 data-testid="model-buttons"
             >
                 {hasMultipleTypes && imageModels.length > 0 && (

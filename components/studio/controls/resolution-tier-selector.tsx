@@ -45,7 +45,7 @@ export const ResolutionTierSelector = React.memo(function ResolutionTierSelector
     )
 
     // Active selection styling - matching the emerald green from other controls
-    const activeClasses = "bg-emerald-500/15 text-emerald-700 border-emerald-500 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500 ring-1 ring-emerald-500/20"
+    const activeClasses = "bg-emerald-500/15 text-emerald-700 border border-emerald-500 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500 ring-1 ring-emerald-500/20"
 
     return (
         <div
