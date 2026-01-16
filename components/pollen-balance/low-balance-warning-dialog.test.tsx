@@ -33,9 +33,10 @@ describe("LowBalanceWarningDialog", () => {
     it("displays balance information", () => {
         render(<LowBalanceWarningDialog {...defaultProps} />)
 
-        expect(screen.getByText("1.50 pollen")).toBeInTheDocument()
-        expect(screen.getByText("-0.75 pollen")).toBeInTheDocument()
-        expect(screen.getByText("0.75 pollen")).toBeInTheDocument()
+        expect(screen.getByText(/You have/)).toBeInTheDocument()
+        expect(screen.getByText(/1\.50/)).toBeInTheDocument()
+        expect(screen.getByText(/But this costs/)).toBeInTheDocument()
+        expect(screen.getByText(/0\.75/)).toBeInTheDocument()
     })
 
     it("displays model name", () => {
@@ -105,7 +106,7 @@ describe("LowBalanceWarningDialog", () => {
 
         // Should render without crashing and still show the dialog
         expect(screen.getByRole("alertdialog")).toBeInTheDocument()
-        // Should show placeholder dashes for null values
-        expect(screen.getAllByText(/— pollen/)).toHaveLength(3)
+        // Should show placeholder dashes for null values (2 now: current balance + cost)
+        expect(screen.getAllByText(/—/)).toHaveLength(2)
     })
 })

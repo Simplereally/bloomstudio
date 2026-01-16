@@ -9,12 +9,13 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { ApiKeyOnboardingModal } from "@/components/studio/api-key-onboarding-modal"
+import { LowBalanceWarningDialog } from "@/components/pollen-balance/low-balance-warning-dialog"
 import { UpgradeModal } from "@/components/studio/upgrade-modal"
 import { cn, isLocalhost } from "@/lib/utils"
 import { SubscriptionBadge } from "@/components/subscription/subscription-badge"
 import { PollenBalanceDisplay } from "@/components/pollen-balance"
 import { UserButton, useUser } from "@clerk/nextjs"
-import { Crown, Heart, HelpCircle, History, Key, Menu, Moon, Settings, Sparkles, Sun, Users, X } from "lucide-react"
+import { Crown, Heart, HelpCircle, History, Key, Menu, Moon, Settings, Sparkles, Sun, Users, Wallet, X } from "lucide-react"
 import { useTheme } from "next-themes"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -38,6 +39,7 @@ export function Header() {
     const { theme, setTheme } = useTheme()
     const [upgradeModalOpen, setUpgradeModalOpen] = useState(false)
     const [onboardingModalOpen, setOnboardingModalOpen] = useState(false)
+    const [lowBalanceModalOpen, setLowBalanceModalOpen] = useState(false)
 
     const isClient = useSyncExternalStore(
         () => () => {},
@@ -57,6 +59,11 @@ export function Header() {
                 {/* Left Side: Logo - Start Aligned */}
                 <div className="justify-self-start">
                     <Link href="/" className="flex items-center gap-2">
+                        <img
+                            src="/icon.png"
+                            alt="Bloom Studio Logo"
+                            className="h-7 w-7"
+                        />
                         <span className="text-2xl font-bold text-primary font-brand tracking-tight -skew-x-6 whitespace-nowrap">
                             Bloom Studio
                         </span>
@@ -121,6 +128,15 @@ export function Header() {
                                     title="Test API Key Onboarding"
                                 >
                                     <Key className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 rounded-full hover:bg-accent text-rose-500"
+                                    onClick={() => setLowBalanceModalOpen(true)}
+                                    title="Test Low Balance Dialog"
+                                >
+                                    <Wallet className="h-3.5 w-3.5" />
                                 </Button>
                             </div>
                         )}
@@ -264,6 +280,16 @@ export function Header() {
                     <ApiKeyOnboardingModal
                         forceOpen={onboardingModalOpen}
                         onClose={() => setOnboardingModalOpen(false)}
+                    />
+                    <LowBalanceWarningDialog
+                        isOpen={lowBalanceModalOpen}
+                        onClose={() => setLowBalanceModalOpen(false)}
+                        onConfirm={() => setLowBalanceModalOpen(false)}
+                        currentBalance="0.1"
+                        estimatedCost="1.5"
+                        remainingBalance="-1.4"
+                        cannotAfford={true}
+                        modelName="SVD (Video)"
                     />
                 </>
             )}

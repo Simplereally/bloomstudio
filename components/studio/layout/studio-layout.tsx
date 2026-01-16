@@ -10,7 +10,9 @@ import {
     SidebarContent,
     SidebarInset,
     SidebarProvider,
+    SidebarRail,
 } from "@/components/ui/sidebar"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import * as React from "react"
 
@@ -75,6 +77,13 @@ export function StudioLayout({
                     <SidebarContent className="h-full min-h-0 overflow-hidden">
                         {sidebar}
                     </SidebarContent>
+                    <SidebarRail className="group/rail">
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-background shadow-sm border opacity-0 group-hover/rail:opacity-100 transition-all">
+                                <ChevronLeft className="h-3 w-3" />
+                            </div>
+                        </div>
+                    </SidebarRail>
                 </Sidebar>
 
                 <SidebarInset className="h-full min-h-0 min-w-0 flex-1 overflow-hidden relative">
@@ -108,6 +117,13 @@ export function StudioLayout({
                                 <SidebarContent className="h-full min-h-0 overflow-hidden">
                                     {gallery}
                                 </SidebarContent>
+                                <SidebarRail className="group/rail">
+                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-background shadow-sm border opacity-0 group-hover/rail:opacity-100 transition-all">
+                                            <ChevronRight className="h-3 w-3" />
+                                        </div>
+                                    </div>
+                                </SidebarRail>
                             </Sidebar>
                         )}
                     </SidebarProvider>

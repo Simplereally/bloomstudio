@@ -26,7 +26,6 @@ import { ImageLightbox } from "@/components/images/image-lightbox"
 import {
     ApiKeyOnboardingModal,
     BatchConfigButton,
-    StudioHeader,
     StudioLayout,
     UpgradeModal,
 } from "@/components/studio"
@@ -171,7 +170,7 @@ export function StudioShell({ defaultLayout, initialGalleryPage }: StudioShellPr
     const {
         estimatedCost,
         canAfford,
-        willDepletBalance,
+        willDepleteBalance,
         remainingAfter,
         formattedCost,
     } = useEstimatedCost({
@@ -312,7 +311,7 @@ export function StudioShell({ defaultLayout, initialGalleryPage }: StudioShellPr
 
         // Check if we should show low balance warning
         // Show warning if: can't afford OR will deplete balance below threshold
-        if (!canAfford || willDepletBalance) {
+        if (!canAfford || willDepleteBalance) {
             // Store the generation function to call after confirmation
             pendingGenerationRef.current = executeGeneration
             setShowLowBalanceWarning(true)
@@ -326,7 +325,7 @@ export function StudioShell({ defaultLayout, initialGalleryPage }: StudioShellPr
         searchParams,
         subscriptionStatus,
         canAfford,
-        willDepletBalance,
+        willDepleteBalance,
         executeGeneration
     ])
 
@@ -544,14 +543,6 @@ export function StudioShell({ defaultLayout, initialGalleryPage }: StudioShellPr
     // ========================================
     return (
         <div className="h-[calc(100vh-3.5rem)] flex flex-col bg-background overflow-hidden">
-            {/* Panel Toggle Header */}
-            <StudioHeader
-                leftSidebarOpen={studioUI.showLeftSidebar}
-                onToggleLeftSidebar={studioUI.toggleLeftSidebar}
-                rightPanelOpen={studioUI.showGallery}
-                onToggleRightPanel={studioUI.toggleGallery}
-            />
-
             {/* Main Layout */}
             <main className="flex-1 overflow-hidden">
                 <StudioLayout

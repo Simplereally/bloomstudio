@@ -208,52 +208,32 @@ export const ImageCanvas = React.memo(function ImageCanvas({
                             initial="initial"
                             animate={isGenerating ? "generating" : "idle"}
                             exit={{ opacity: 0, scale: 0.98 }}
-                            className="absolute inset-0" // Removed flex-col centering
+                            className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
                             transition={{ duration: 0.4 }}
                         >
-                            {/* --- ABSOLUTE CENTER LAYER --- */}
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                {/* Only show Idle icon. During generation, center is handled by canvas */}
-                                <AnimatePresence mode="wait">
-                                    {!isGenerating && (
-                                        <motion.div
-                                            key="core-idle"
-                                            initial={{ opacity: 0 }}
-                                            animate={{ opacity: 1 }}
-                                            exit={{ opacity: 0 }}
-                                            className="relative flex items-center justify-center"
-                                        >
-                                            <div className={cn(
-                                                "w-20 h-20 flex items-center justify-center rounded-3xl",
-                                                "bg-foreground/[0.02] backdrop-blur-sm border border-white/5",
-                                                "shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)]"
-                                            )}>
-                                                <ImagePlus className="h-8 w-8 text-foreground/20" strokeWidth={1.5} />
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </div>
+                            <AnimatePresence mode="popLayout">
+                                {!isGenerating ? (
+                                    <motion.div
+                                        key="idle-content"
+                                        initial={{ opacity: 0, scale: 0.95 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }}
+                                        transition={{ duration: 0.4, ease: EXPO_OUT }}
+                                        className="flex flex-col items-center justify-center gap-6"
+                                    >
+                                        <div className={cn(
+                                            "w-20 h-20 flex items-center justify-center rounded-3xl",
+                                            "bg-foreground/[0.02] backdrop-blur-sm border border-white/5",
+                                            "shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)]"
+                                        )}>
+                                            <ImagePlus className="h-8 w-8 text-foreground/20" strokeWidth={1.5} />
+                                        </div>
 
-                            {/* --- STATUS LAYER (Offset from Center) --- */}
-                            {/* Positioned relative to center but pushed down */}
-                            <div className="absolute top-1/2 left-0 right-0 pt-16 flex flex-col items-center justify-start pointer-events-none">
-                                <AnimatePresence mode="popLayout">
-                                    {!isGenerating ? (
-                                        <motion.div
-                                            key="idle-text"
-                                            initial={{ opacity: 0, y: 16 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, y: -10, filter: "blur(4px)" }}
-                                            transition={{ duration: 0.5, ease: EXPO_OUT }}
-                                            className="text-center flex flex-col items-center"
-                                        >
+                                        <div className="flex flex-col items-center text-center">
                                             <h3 className="text-lg font-medium tracking-tight text-foreground/85">
                                                 Create something amazing
                                             </h3>
-                                            <div
-                                                className="mt-5 flex items-center gap-2 opacity-85 transition-opacity duration-300 pointer-events-auto"
-                                            >
+                                            <div className="mt-5 flex items-center gap-2 opacity-85 transition-opacity duration-300 pointer-events-auto">
                                                 <span className="text-sm text-muted-foreground font-light">
                                                     Powered by
                                                 </span>
@@ -265,34 +245,35 @@ export const ImageCanvas = React.memo(function ImageCanvas({
                                                     className="h-6 w-auto invert dark:invert-0"
                                                 />
                                             </div>
-                                        </motion.div>
-                                    ) : (
-                                        <motion.div
-                                            key="generating-text"
-                                            initial={{ opacity: 0 }}
-                                            animate={{ opacity: 1 }}
-                                            exit={{ opacity: 0, filter: "blur(4px)" }}
-                                            transition={{ duration: 0.4 }}
-                                            className="text-center flex flex-col items-center gap-6"
-                                        >
-                                            <AnimatedText
-                                                text="GENERATING"
-                                                className="text-lg font-medium tracking-[0.3em] text-primary/50"
-                                            />
-                                            
-                                            {typeof progress === "number" && (
-                                                <motion.div
-                                                    initial={{ opacity: 0, y: 10 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    transition={{ delay: 0.4, duration: 0.4, ease: EXPO_OUT }}
-                                                >
-                                                    <CapillaryProgress progress={progress} />
-                                                </motion.div>
-                                            )}
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </div>
+                                        </div>
+                                    </motion.div>
+                                ) : (
+                                    <motion.div
+                                        key="generating-content"
+                                        initial={{ opacity: 0, scale: 0.95 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 1.05, filter: "blur(4px)" }}
+                                        transition={{ duration: 0.4 }}
+                                        className="flex flex-col items-center justify-center gap-6"
+                                    >
+                                        <AnimatedText
+                                            text="GENERATING"
+                                            className="text-lg font-medium tracking-[0.3em] text-primary/50"
+                                        />
+                                        
+                                        {typeof progress === "number" && (
+                                            <motion.div
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ delay: 0.2, duration: 0.4, ease: EXPO_OUT }}
+                                                className="w-full flex justify-center"
+                                            >
+                                                <CapillaryProgress progress={progress} />
+                                            </motion.div>
+                                        )}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </motion.div>
                     ) : (
                         <motion.div

@@ -61,11 +61,11 @@ export function LowBalanceWarningDialog({
             <AlertDialogContent className="sm:max-w-md">
                 <AlertDialogHeader>
                     <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-full ${cannotAfford ? "bg-destructive/10" : "bg-amber-500/10"}`}>
+                        <div className={`p-2 rounded-full ${cannotAfford ? "bg-yellow-500/10" : "bg-yellow-500/10"}`}>
                             {cannotAfford ? (
-                                <AlertTriangle className="h-5 w-5 text-destructive" />
+                                <AlertTriangle className="h-5 w-5 text-yellow-500" />
                             ) : (
-                                <Wallet className="h-5 w-5 text-amber-500" />
+                                <Wallet className="h-5 w-5 text-yellow-500" />
                             )}
                         </div>
                         <AlertDialogTitle>
@@ -96,34 +96,19 @@ export function LowBalanceWarningDialog({
                                 )}
                             </p>
 
-                            {/* Balance breakdown */}
+                            {/* Simple balance comparison */}
                             <div className="bg-muted/50 rounded-lg p-3 space-y-2">
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-muted-foreground">Current balance</span>
-                                    <span className="font-medium tabular-nums">{currentBalance ?? "—"} pollen</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-muted-foreground">Estimated cost</span>
-                                    <span className="font-medium tabular-nums text-amber-600 dark:text-amber-400">
-                                        {estimatedCost ? `-${estimatedCost}` : "—"} pollen
-                                    </span>
-                                </div>
-                                <div className="border-t border-border pt-2">
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-muted-foreground">After generation</span>
-                                        <span className={`font-semibold tabular-nums ${cannotAfford
-                                                ? "text-destructive"
-                                                : "text-amber-600 dark:text-amber-400"
-                                            }`}>
-                                            {remainingBalance ?? "—"} pollen
-                                        </span>
-                                    </div>
-                                </div>
+                                <p className="text-sm font-semibold">
+                                    You have <span className="font-medium font-semibold tabular-nums text-yellow-600 dark:text-yellow-400">{currentBalance ?? "—"}</span> pollen
+                                </p>
+                                <p className="text-sm font-semibold">
+                                    But this costs <span className={`font-medium font-semibold tabular-nums ${cannotAfford ? "text-destructive" : "text-amber-600 dark:text-amber-400"}`}>{estimatedCost ?? "—"}</span> pollen
+                                </p>
                             </div>
 
                             <p className="text-xs text-muted-foreground">
                                 {cannotAfford ? (
-                                    <>You can top up your pollen at any time via Polar.sh.</>
+                                    <>You can top up your pollen at any time via <a className="text-blue-500 hover:underline" href="https://enter.pollinations.ai" target="_blank" rel="noopener noreferrer">enter.pollinations.ai</a></>
                                 ) : (
                                     <>You can proceed, but consider topping up soon to avoid interruptions.</>
                                 )}

@@ -6,7 +6,6 @@
  */
 
 // Layout Components
-export { StudioHeader, type StudioHeaderProps } from "./layout/studio-header"
 export { StudioLayout, type StudioLayoutProps } from "./layout/studio-layout"
 export { StudioShell, type StudioShellProps } from "./layout/studio-shell"
 

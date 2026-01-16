@@ -145,7 +145,7 @@ describe("useEstimatedCost", () => {
         )
 
         expect(result.current.canAfford).toBe(true) // Assume can afford if can't calculate
-        expect(result.current.willDepletBalance).toBe(false)
+        expect(result.current.willDepleteBalance).toBe(false)
         expect(result.current.estimatedCost).toBeNull()
     })
 
@@ -159,7 +159,7 @@ describe("useEstimatedCost", () => {
         )
 
         expect(result.current.canAfford).toBe(true)
-        expect(result.current.willDepletBalance).toBe(false)
+        expect(result.current.willDepleteBalance).toBe(false)
         expect(result.current.estimatedCost).toBeCloseTo(0.0002)
     })
 
@@ -173,12 +173,12 @@ describe("useEstimatedCost", () => {
         )
 
         expect(result.current.canAfford).toBe(false)
-        expect(result.current.willDepletBalance).toBe(true)
+        expect(result.current.willDepleteBalance).toBe(true)
         expect(result.current.estimatedCost).toBeCloseTo(1.5)
     })
 
     it("correctly identifies when balance will be depleted below threshold", () => {
-        // Balance: 0.6, Cost: 0.15 (5 seconds video), Remaining: 0.45 < 0.5 threshold
+        // Balance: 0.6, Cost: 0.15 (1 second video), Remaining: 0.45 < 0.5 threshold
         const { result } = renderHook(() =>
             useEstimatedCost({
                 modelId: "veo",
@@ -188,7 +188,7 @@ describe("useEstimatedCost", () => {
         )
 
         expect(result.current.canAfford).toBe(true)
-        expect(result.current.willDepletBalance).toBe(true)
+        expect(result.current.willDepleteBalance).toBe(true)
         expect(result.current.remainingAfter).toBeCloseTo(0.45)
     })
 
@@ -202,7 +202,7 @@ describe("useEstimatedCost", () => {
         )
 
         expect(result.current.canAfford).toBe(true)
-        expect(result.current.willDepletBalance).toBe(false)
+        expect(result.current.willDepleteBalance).toBe(false)
         // Remaining: 10 - 0.0002 ≈ 10
         expect(result.current.remainingAfter).toBeCloseTo(10, 1)
     })

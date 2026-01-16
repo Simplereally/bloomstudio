@@ -8,14 +8,14 @@
  *
  * @example
  * ```tsx
- * const { estimatedCost, canAfford, willDepletBalance } = useEstimatedCost({
+ * const { estimatedCost, canAfford, willDepleteBalance } = useEstimatedCost({
  *   modelId: "gptimage-large",
  *   balance: 1.5,
  *   // For video:
  *   durationSeconds: 5,
  * });
  *
- * if (willDepletBalance) {
+ * if (willDepleteBalance) {
  *   // Show warning dialog
  * }
  * ```
@@ -48,7 +48,7 @@ export interface UseEstimatedCostReturn {
     /** Whether user can afford this generation */
     canAfford: boolean;
     /** Whether this generation will leave balance below threshold */
-    willDepletBalance: boolean;
+    willDepleteBalance: boolean;
     /** Remaining balance after generation (null if can't calculate) */
     remainingAfter: number | null;
     /** Human-readable cost string */
@@ -122,7 +122,7 @@ export function useEstimatedCost({
             return {
                 estimatedCost: null,
                 canAfford: true, // Assume they can afford if we can't calculate
-                willDepletBalance: false,
+                willDepleteBalance: false,
                 remainingAfter: null,
                 formattedCost: null,
                 pricing,
@@ -131,7 +131,7 @@ export function useEstimatedCost({
 
         const remainingAfter = balance - estimatedCost;
         const canAfford = remainingAfter >= 0;
-        const willDepletBalance = remainingAfter < LOW_BALANCE_AFTER_GENERATION_THRESHOLD;
+        const willDepleteBalance = remainingAfter < LOW_BALANCE_AFTER_GENERATION_THRESHOLD;
 
         // Format cost for display
         const formattedCost = estimatedCost < 0.001
@@ -143,7 +143,7 @@ export function useEstimatedCost({
         return {
             estimatedCost,
             canAfford,
-            willDepletBalance,
+            willDepleteBalance,
             remainingAfter,
             formattedCost,
             pricing,
