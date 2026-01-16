@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import type { ModelDefinition } from "@/lib/config/models"
+import { IMAGE_MODEL_PRICING, VIDEO_MODEL_PRICING } from "@/lib/schemas/pollinations-pricing.schema"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
@@ -23,6 +24,7 @@ const mockModels: ModelDefinition[] = [
         },
         aspectRatios: [],
         supportsNegativePrompt: false,
+        modelPricing: IMAGE_MODEL_PRICING["zimage"],
     },
     {
         id: "turbo",
@@ -41,6 +43,7 @@ const mockModels: ModelDefinition[] = [
         },
         aspectRatios: [],
         supportsNegativePrompt: false,
+        modelPricing: IMAGE_MODEL_PRICING["turbo"],
     },
     {
         id: "gptimage",
@@ -59,6 +62,7 @@ const mockModels: ModelDefinition[] = [
         },
         aspectRatios: [],
         supportsNegativePrompt: false,
+        modelPricing: IMAGE_MODEL_PRICING["gptimage"],
     },
 ]
 
@@ -256,6 +260,7 @@ describe("ModelSelector", () => {
                 },
                 aspectRatios: [],
                 supportsNegativePrompt: false,
+                modelPricing: IMAGE_MODEL_PRICING["turbo"],
             },
             {
                 id: "seedance",
@@ -274,6 +279,7 @@ describe("ModelSelector", () => {
                 },
                 aspectRatios: [],
                 supportsNegativePrompt: false,
+                modelPricing: VIDEO_MODEL_PRICING["seedance"],
             },
         ]
 

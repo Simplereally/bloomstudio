@@ -5,8 +5,13 @@
  * Each model is defined with its ID, display name, type, constraints, and aspect ratios.
  */
 
-import type { AspectRatio, AspectRatioOption, ModelConstraints } from "@/types/pollinations";
+import type { AspectRatio, AspectRatioOption, ModelConstraints, ModelPricing } from "@/types/pollinations";
 import { STANDARD_RESOLUTIONS } from "./standard-resolutions";
+import {
+  IMAGE_MODEL_PRICING,
+  VIDEO_MODEL_PRICING,
+  type ModelPricingDefinition,
+} from "../schemas/pollinations-pricing.schema";
 
 // ============================================================================
 // Types
@@ -55,6 +60,8 @@ export interface ModelDefinition {
   readonly supportsInterpolation?: boolean
   /** Whether this model supports image-to-image generation (reference image) */
   readonly supportsReferenceImage?: boolean
+  /** The pricing definition for this model */
+  readonly modelPricing: ModelPricingDefinition
 }
 
 // ============================================================================
@@ -370,6 +377,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     aspectRatios: GPTIMAGE_LARGE_ASPECT_RATIOS,
     supportsNegativePrompt: false,
     supportsReferenceImage: true,
+    modelPricing: IMAGE_MODEL_PRICING["gptimage-large"],
   },
 
   "seedream-pro": {
@@ -395,6 +403,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     aspectRatios: SEEDREAM_ASPECT_RATIOS,
     supportsNegativePrompt: false,
     supportsReferenceImage: true,
+    modelPricing: IMAGE_MODEL_PRICING["seedream-pro"],
   },
 
   "nanobanana-pro": {
@@ -419,6 +428,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     aspectRatios: NANOBANANA_PRO_ASPECT_RATIOS,
     supportsNegativePrompt: false,
     supportsReferenceImage: true,
+    modelPricing: IMAGE_MODEL_PRICING["nanobanana-pro"],
   },
 
   kontext: {
@@ -444,6 +454,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     aspectRatios: STANDARD_ASPECT_RATIOS,
     supportsNegativePrompt: false,
     supportsReferenceImage: true,
+    modelPricing: IMAGE_MODEL_PRICING["kontext"],
   },
 
   flux: {
@@ -468,6 +479,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     },
     aspectRatios: FLUX_SCHNELL_ASPECT_RATIOS,
     supportsNegativePrompt: true, // Supports negative prompts
+    modelPricing: IMAGE_MODEL_PRICING["flux"],
   },
 
   "seedance-pro": {
@@ -495,6 +507,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
       max: 10,
       defaultDuration: 5,
     },
+    modelPricing: VIDEO_MODEL_PRICING["seedance-pro"],
   },
 
   veo: {
@@ -525,6 +538,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
       fixedOptions: [4, 6, 8],
       defaultDuration: 4,
     },
+    modelPricing: VIDEO_MODEL_PRICING["veo"],
   },
 
   // ========================================================================
@@ -552,6 +566,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     },
     aspectRatios: ZIMAGE_ASPECT_RATIOS,
     supportsNegativePrompt: false,
+    modelPricing: IMAGE_MODEL_PRICING["zimage"],
   },
 
   turbo: {
@@ -576,6 +591,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     },
     aspectRatios: SDXLTURBO_ASPECT_RATIOS,
     supportsNegativePrompt: false,
+    modelPricing: IMAGE_MODEL_PRICING["turbo"],
   },
 
   gptimage: {
@@ -601,6 +617,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     aspectRatios: GPTIMAGE_ASPECT_RATIOS,
     supportsNegativePrompt: false,
     supportsReferenceImage: true,
+    modelPricing: IMAGE_MODEL_PRICING["gptimage"],
   },
 
   seedream: {
@@ -626,6 +643,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     aspectRatios: SEEDREAM_ASPECT_RATIOS,
     supportsNegativePrompt: false,
     supportsReferenceImage: true,
+    modelPricing: IMAGE_MODEL_PRICING["seedream"],
   },
 
   nanobanana: {
@@ -650,6 +668,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     aspectRatios: NANOBANANA_ASPECT_RATIOS,
     supportsNegativePrompt: false,
     supportsReferenceImage: true,
+    modelPricing: IMAGE_MODEL_PRICING["nanobanana"],
   },
 
   seedance: {
@@ -677,6 +696,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
       max: 10,
       defaultDuration: 5,
     },
+    modelPricing: VIDEO_MODEL_PRICING["seedance"],
   },
 } as const;
 
