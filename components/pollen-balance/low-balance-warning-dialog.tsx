@@ -54,7 +54,8 @@ export function LowBalanceWarningDialog({
     isBatch = false,
     batchCount = 1,
 }: LowBalanceWarningDialogProps) {
-    const generationType = isBatch ? `${batchCount} images` : "generation"
+    const generationType =
+        isBatch ? `${batchCount} ${batchCount === 1 ? "image" : "images"}` : "generation"
 
     return (
         <AlertDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
