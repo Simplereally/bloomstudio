@@ -78,7 +78,7 @@ describe("PromptDetail", () => {
     expect(onCopy).toHaveBeenCalled();
 
     // Expect "Copied!" text to appear (state change)
-    expect(screen.getByText("Copied!")).toBeInTheDocument();
+    expect(await screen.findByText("Copied!")).toBeInTheDocument();
   });
 
   it("calls onInsert when insert button is clicked", async () => {

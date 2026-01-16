@@ -108,7 +108,8 @@ interface ImageDetailsMock {
   _id?: string;
 }
 
-const useImageDetailsMock = vi.fn<(imageId: string | null) => ImageDetailsMock | null | undefined>(() => null);
+// Use vi.hoisted() to ensure the mock is available before the hoisted vi.mock runs
+const useImageDetailsMock = vi.hoisted(() => vi.fn<(imageId: string | null) => ImageDetailsMock | null | undefined>(() => null));
 
 vi.mock("@/hooks/queries/use-image-history", () => ({
   useImageDetails: useImageDetailsMock,

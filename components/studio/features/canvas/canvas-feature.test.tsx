@@ -64,6 +64,7 @@ vi.mock("@/lib/errors", () => ({
 describe("CanvasFeature", () => {
     const mockImage = createMockImage({
         id: "test-image-1",
+        _id: "test-image-1", // Convex ID for favorites (must not start with "img_")
         url: "https://example.com/image.jpg",
         prompt: "A beautiful sunset",
         params: {

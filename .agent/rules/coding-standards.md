@@ -18,7 +18,7 @@ trigger: always_on
 - **Server Components by default.** Add `'use client'` only at the leaves that need interactivity/hooks.
 - **Convex is the source of truth** for server state; local state is for UI-only concerns.
 - **Always leverage typescript**; avoid usage of `any` which defeats the point of using Typescript.
-- **Ensure ** any new or updated code have had their test files created or updated idiomatically using RTL gold standards and vite test usage.
+- **Ensure** any new or updated code have had their test files created or updated idiomatically using RTL gold standards and vite test usage.
 
 ---
 

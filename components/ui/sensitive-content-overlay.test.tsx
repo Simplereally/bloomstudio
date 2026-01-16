@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { render, screen, fireEvent } from "@testing-library/react"
-import { describe, it, expect, vi } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 import { SensitiveContentOverlay } from "./sensitive-content-overlay"
 import { toast } from "sonner"
 
@@ -20,6 +20,10 @@ vi.mock("next/navigation", () => ({
 }))
 
 describe("SensitiveContentOverlay", () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+    })
+
     it("renders sensitive content warning", () => {
         render(<SensitiveContentOverlay />)
         expect(screen.getByText("Sensitive Content")).toBeInTheDocument()
