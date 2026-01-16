@@ -54,6 +54,11 @@ vi.mock("@/lib/config/models", () => ({
                     isAlpha: true,
                     videoPricing: { videoOutputPerMillion: 1.8 },
                 },
+                durationConstraints: {
+                    min: 2,
+                    max: 10,
+                    defaultDuration: 5,
+                },
             },
         }
         return models[modelId]
@@ -103,15 +108,30 @@ describe("estimateCost", () => {
         expect(estimateCost(pricing, { durationSeconds: 10 })).toBeCloseTo(1.5)
     })
 
-    it("calculates token-based video pricing correctly", () => {
+    it("calculates token-based video pricing with default duration", () => {
         const pricing: ModelPricingDefinition = {
             modelId: "seedance",
             type: "video",
             approximatePerPollen: 6,
             videoPricing: { videoOutputPerMillion: 1.8 },
         }
-        // Uses approximatePerPollen: 1 / 6 ≈ 0.167
-        expect(estimateCost(pricing, {})).toBeCloseTo(1 / 6)
+        // Base cost at default duration (5s): 1 / 6 ≈ 0.167
+        // When durationSeconds matches defaultDuration, cost = baseCost
+        expect(estimateCost(pricing, { durationSeconds: 5, defaultDuration: 5 })).toBeCloseTo(1 / 6)
+    })
+
+    it("scales token-based video pricing by duration", () => {
+        const pricing: ModelPricingDefinition = {
+            modelId: "seedance",
+            type: "video",
+            approximatePerPollen: 6,
+            videoPricing: { videoOutputPerMillion: 1.8 },
+        }
+        const baseCost = 1 / 6 // ≈ 0.167
+        // 10s video with 5s default = 2x cost
+        expect(estimateCost(pricing, { durationSeconds: 10, defaultDuration: 5 })).toBeCloseTo(baseCost * 2)
+        // 2s video with 5s default = 0.4x cost
+        expect(estimateCost(pricing, { durationSeconds: 2, defaultDuration: 5 })).toBeCloseTo(baseCost * 0.4)
     })
 })
 

@@ -63,15 +63,15 @@ export interface UseEstimatedCostReturn {
  * Uses the model's pricing definition to calculate:
  * - For image models: perImage price × imageCount
  * - For token-based models: rough estimate based on output tokens
- * - For video models: perSecond × duration OR token-based estimate
+ * - For video models: perSecond × duration OR token-based estimate scaled by duration
  */
 export function estimateCost(
     pricing: ModelPricingDefinition | undefined,
-    options: { imageCount?: number; durationSeconds?: number }
+    options: { imageCount?: number; durationSeconds?: number; defaultDuration?: number }
 ): number | null {
     if (!pricing) return null;
 
-    const { imageCount = 1, durationSeconds = 5 } = options;
+    const { imageCount = 1, durationSeconds = 5, defaultDuration = 5 } = options;
 
     // Image models
     if (pricing.type === "image") {
@@ -91,10 +91,12 @@ export function estimateCost(
         if (pricing.videoPricing?.perSecond) {
             return pricing.videoPricing.perSecond * durationSeconds;
         }
-        // Token-based video models
+        // Token-based video models - scale by duration relative to model's default
+        // This ensures a 10s video shows ~2x the cost of a 5s video
         if (pricing.videoPricing?.videoOutputPerMillion) {
-            // Use approximatePerPollen as rough guide
-            return 1 / pricing.approximatePerPollen;
+            const baseCost = 1 / pricing.approximatePerPollen;
+            const durationScale = durationSeconds / defaultDuration;
+            return baseCost * durationScale;
         }
     }
 
@@ -113,9 +115,11 @@ export function useEstimatedCost({
     return useMemo(() => {
         const model = getModel(modelId);
         const pricing = model?.modelPricing;
+        // Get model's default duration for scaling token-based video costs
+        const defaultDuration = model?.durationConstraints?.defaultDuration;
 
         // Calculate estimated cost
-        const estimatedCost = estimateCost(pricing, { imageCount, durationSeconds });
+        const estimatedCost = estimateCost(pricing, { imageCount, durationSeconds, defaultDuration });
 
         // Can't calculate - balance or pricing not available
         if (estimatedCost === null || balance === null) {
