@@ -181,8 +181,8 @@ function CapillaryProgress({ progress }: { progress: number }) {
             
             {/* Percentage */}
             <div className="flex justify-between items-center">
-                <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-[0.15em]">
-                    Synthesizing
+                <span className="text-[10px] font-mono text-muted-foreground/70 uppercase tracking-[0.15em]">
+                    Progress
                 </span>
                 <span className="text-[10px] font-mono text-primary/90 tabular-nums font-medium">
                     {Math.round(progress)}%
