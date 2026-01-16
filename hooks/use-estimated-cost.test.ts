@@ -12,7 +12,7 @@ import type { ModelPricingDefinition } from "@/lib/schemas/pollinations-pricing.
 // Mock the models config
 vi.mock("@/lib/config/models", () => ({
     getModel: vi.fn((modelId: string) => {
-        const models: Record<string, { modelPricing: ModelPricingDefinition }> = {
+        const models: Record<string, { modelPricing: ModelPricingDefinition; durationConstraints?: { min: number; max: number; defaultDuration: number } }> = {
             flux: {
                 modelPricing: {
                     modelId: "flux",
