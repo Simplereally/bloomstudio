@@ -153,8 +153,15 @@ export function CanvasWave({ isActive, className }: CanvasWaveProps) {
             // Group 1: Idle Dots (Batched for speed - 95% of dots)
             // Group 2: Active Dots (Individual for specific opacity/color - 5% of dots)
             
+            interface ActiveDot {
+                x: number
+                y: number
+                lift: number
+                size: number
+                opacity: number
+            }
 
-            const activeDots: any[] = []
+            const activeDots: ActiveDot[] = []
 
             // Begin batch for idle dots
             ctx.beginPath()

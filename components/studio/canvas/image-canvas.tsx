@@ -26,13 +26,6 @@ import { CanvasWave } from "./canvas-wave"
 // Premium easing: Expo out for satisfying deceleration
 const EXPO_OUT = [0.22, 1, 0.36, 1] as const
 
-const SPRING_REFINED = { 
-    type: "spring", 
-    stiffness: 300, 
-    damping: 30, 
-    mass: 0.8 
-} as const
-
 // Timing choreography (in ms)
 const TIMING = {
     iconMorph: 250,       // Icon transition duration
@@ -50,37 +43,6 @@ const containerVariants: Variants = {
     generating: { 
         opacity: 1,
         transition: { duration: 0.4, ease: EXPO_OUT }
-    },
-}
-
-// Central hub transformation - refined glass morphism
-const hubVariants: Variants = {
-    idle: {
-        scale: 1,
-        borderRadius: "24px",
-        boxShadow: "0 0 0 1px rgba(255,255,255,0.05), 0 4px 20px -4px rgba(0,0,0,0.1)",
-    },
-    generating: {
-        scale: 0.92,
-        borderRadius: "50%",
-        boxShadow: "0 0 0 1px rgba(var(--color-primary), 0.2), 0 8px 40px -8px rgba(var(--color-primary), 0.3)",
-    },
-}
-
-// Icon transitions with blur
-const iconVariants: Variants = {
-    initial: { opacity: 0, scale: 0.8, filter: "blur(8px)" },
-    animate: { 
-        opacity: 1, 
-        scale: 1, 
-        filter: "blur(0px)",
-        transition: { duration: TIMING.iconMorph / 1000, ease: EXPO_OUT }
-    },
-    exit: { 
-        opacity: 0, 
-        scale: 0.9,
-        filter: "blur(6px)",
-        transition: { duration: 0.15 }
     },
 }
 
