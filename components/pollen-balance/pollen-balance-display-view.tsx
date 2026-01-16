@@ -56,8 +56,8 @@ export const PollenBalanceDisplayView = memo(function PollenBalanceDisplayView({
             Error
           </Badge>
         </TooltipTrigger>
-        <TooltipContent 
-          side="bottom" 
+        <TooltipContent
+          side="bottom"
           className="p-3 min-w-[200px] bg-popover border border-border dark:border-white/15 text-popover-foreground shadow-[0_20px_60px_0px_rgba(0,0,0,0.8)] animate-in fade-in-0 zoom-in-95 duration-200"
         >
           <div className="space-y-3">
@@ -98,8 +98,8 @@ export const PollenBalanceDisplayView = memo(function PollenBalanceDisplayView({
           {formattedBalance}
         </Badge>
       </TooltipTrigger>
-      <TooltipContent 
-        side="bottom" 
+      <TooltipContent
+        side="bottom"
         className="p-3 min-w-[200px] bg-popover border border-border dark:border-white/15 text-popover-foreground shadow-[0_20px_60px_0px_rgba(0,0,0,0.8)] animate-in fade-in-0 zoom-in-95 duration-200"
       >
         <div className="space-y-3">
@@ -118,7 +118,7 @@ export const PollenBalanceDisplayView = memo(function PollenBalanceDisplayView({
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
             {isLowBalance
-              ? "Your balance is running low. Consider topping up."
+              ? "Your balance is running low."
               : "Your current Pollinations account balance."}
           </p>
         </div>
