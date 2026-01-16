@@ -19,7 +19,6 @@
 
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Sparkles } from "lucide-react"
 import { BatchActionButton } from "@/components/studio/batch/batch-action-button"
 
 // Studio Components
