@@ -275,7 +275,7 @@ export const ImageCanvas = React.memo(function ImageCanvas({
 
                             {/* --- STATUS LAYER (Offset from Center) --- */}
                             {/* Positioned relative to center but pushed down */}
-                            <div className="absolute top-1/2 left-0 right-0 pt-32 flex flex-col items-center justify-start pointer-events-none">
+                            <div className="absolute top-1/2 left-0 right-0 pt-16 flex flex-col items-center justify-start pointer-events-none">
                                 <AnimatePresence mode="popLayout">
                                     {!isGenerating ? (
                                         <motion.div
@@ -286,16 +286,13 @@ export const ImageCanvas = React.memo(function ImageCanvas({
                                             transition={{ duration: 0.5, ease: EXPO_OUT }}
                                             className="text-center flex flex-col items-center"
                                         >
-                                            <h3 className="text-lg font-medium tracking-tight text-foreground/70">
+                                            <h3 className="text-lg font-medium tracking-tight text-foreground/85">
                                                 Create something amazing
                                             </h3>
-                                            <a
-                                                href="https://pollinations.ai"
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="mt-5 flex items-center gap-2 opacity-35 hover:opacity-60 transition-opacity duration-300 pointer-events-auto"
+                                            <div
+                                                className="mt-5 flex items-center gap-2 opacity-85 transition-opacity duration-300 pointer-events-auto"
                                             >
-                                                <span className="text-xs text-muted-foreground font-light">
+                                                <span className="text-sm text-muted-foreground font-light">
                                                     Powered by
                                                 </span>
                                                 <NextImage
@@ -303,9 +300,9 @@ export const ImageCanvas = React.memo(function ImageCanvas({
                                                     alt="Pollinations"
                                                     width={120}
                                                     height={22}
-                                                    className="h-5 w-auto invert dark:invert-0"
+                                                    className="h-6 w-auto invert dark:invert-0"
                                                 />
-                                            </a>
+                                            </div>
                                         </motion.div>
                                     ) : (
                                         <motion.div

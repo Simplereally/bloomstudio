@@ -321,29 +321,70 @@ export function StudioShell({ defaultLayout, initialGalleryPage }: StudioShellPr
     }, [galleryState, promptManager, generationSettings, generate])
 
     // ========================================
+    // Sidebar Scroll State (for fade overlays)
+    // ========================================
+    const [showTopFade, setShowTopFade] = React.useState(false)
+    const [showBottomFade, setShowBottomFade] = React.useState(true)
+
+    const handleScroll = React.useCallback((e: React.UIEvent<HTMLDivElement>) => {
+        const el = e.currentTarget
+        const { scrollTop, scrollHeight, clientHeight } = el
+        setShowTopFade(scrollTop > 8)
+        setShowBottomFade(scrollTop + clientHeight < scrollHeight - 8)
+    }, [])
+
+    // ========================================
     // Sidebar Content
     // ========================================
     const sidebarContent = (
         <div className="h-full flex flex-col">
-            <ScrollArea className="flex-1 min-h-0 overflow-hidden">
-                <div className="p-0 space-y-0.5 w-full min-w-0 overflow-x-hidden">
-                    {/* Prompt Feature */}
-                    <PromptManagerContext.Provider value={promptManager}>
-                        <PromptFeature
-                            isGenerating={isGenerating}
-                            showNegativePrompt={getModelSupportsNegativePrompt(generationSettings.model)}
-                            showLibrary={!!isSignedIn}
-                        />
-                    </PromptManagerContext.Provider>
+            <div className="relative flex-1 min-h-0 overflow-hidden">
+                {/* Top fade overlay */}
+                <div 
+                    className="absolute top-0 left-0 right-0 h-8 z-10 pointer-events-none transition-opacity duration-200"
+                    style={{
+                        opacity: showTopFade ? 1 : 0,
+                        background: 'linear-gradient(to bottom, hsl(var(--card)) 0%, hsl(var(--card) / 0.8) 40%, transparent 100%)',
+                        backdropFilter: 'blur(2px)',
+                        WebkitBackdropFilter: 'blur(2px)',
+                        maskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)',
+                        WebkitMaskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)',
+                    }}
+                />
+                
+                <ScrollArea className="h-full" onScrollCapture={handleScroll}>
+                    <div className="p-0 space-y-0.5 w-full min-w-0 overflow-x-hidden">
+                        {/* Prompt Feature */}
+                        <PromptManagerContext.Provider value={promptManager}>
+                            <PromptFeature
+                                isGenerating={isGenerating}
+                                showNegativePrompt={getModelSupportsNegativePrompt(generationSettings.model)}
+                                showLibrary={!!isSignedIn}
+                            />
+                        </PromptManagerContext.Provider>
 
-                    {/* Generation Controls Feature */}
-                    <GenerationSettingsContext.Provider value={generationSettings}>
-                        <BatchModeContext.Provider value={batchMode}>
-                            <ControlsFeature isGenerating={isGenerating} />
-                        </BatchModeContext.Provider>
-                    </GenerationSettingsContext.Provider>
-                </div>
-            </ScrollArea>
+                        {/* Generation Controls Feature */}
+                        <GenerationSettingsContext.Provider value={generationSettings}>
+                            <BatchModeContext.Provider value={batchMode}>
+                                <ControlsFeature isGenerating={isGenerating} />
+                            </BatchModeContext.Provider>
+                        </GenerationSettingsContext.Provider>
+                    </div>
+                </ScrollArea>
+                
+                {/* Bottom fade overlay */}
+                <div 
+                    className="absolute bottom-0 left-0 right-0 h-8 z-10 pointer-events-none transition-opacity duration-200"
+                    style={{
+                        opacity: showBottomFade ? 1 : 0,
+                        background: 'linear-gradient(to top, hsl(var(--card)) 0%, hsl(var(--card) / 0.8) 40%, transparent 100%)',
+                        backdropFilter: 'blur(2px)',
+                        WebkitBackdropFilter: 'blur(2px)',
+                        maskImage: 'linear-gradient(to top, black 0%, transparent 100%)',
+                        WebkitMaskImage: 'linear-gradient(to top, black 0%, transparent 100%)',
+                    }}
+                />
+            </div>
 
             {/* Generate / Pause / Resume Batch Button */}
             <div className="p-1.5 border-t border-border/50 bg-card/80">
