@@ -416,12 +416,12 @@ export function ModelValueShowcase() {
                     </p>
 
                     <div className="mt-6 flex flex-wrap justify-center gap-6 text-xs text-muted-foreground">
-                        <a
+                        <Link
                             href="#comparison-table"
                             className="hover:text-foreground transition-colors underline underline-offset-4 decoration-border hover:decoration-foreground"
                         >
                             Compare features
-                        </a>
+                        </Link>
                         <span className="text-border">·</span>
                         <Link
                             href="/#models"

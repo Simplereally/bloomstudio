@@ -73,7 +73,7 @@ describe("SensitiveContentOverlay", () => {
              const overlay = screen.getByText("Sign in to view").closest("div")?.parentElement
              fireEvent.click(overlay!)
 
-             const toastCall = vi.mocked(toast).mock.calls[0]
+             const toastCall = vi.mocked(toast).mock.calls[0] as [string, object | undefined]
              const options = toastCall?.[1]
              if (!options || typeof options !== "object") {
                  throw new Error("Expected toast options object")

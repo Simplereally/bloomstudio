@@ -10,6 +10,12 @@ import { useUser } from "@clerk/nextjs"
 import { usePathname } from "next/navigation"
 import { useTheme } from "next-themes"
 import { useQuery } from "convex/react"
+import { usePollenAuth } from "@/lib/pollen-auth"
+
+// Mock usePollenAuth
+vi.mock("@/lib/pollen-auth", () => ({
+    usePollenAuth: vi.fn(),
+}))
 
 // Mock Clerk
 vi.mock("@clerk/nextjs", () => ({
@@ -46,7 +52,7 @@ vi.mock("@/components/studio/api-key-onboarding-modal", () => ({
 
 // Mock utils
 vi.mock("@/lib/utils", () => ({
-    cn: (...inputs: Array<string | undefined | null | false>) => inputs.filter(Boolean).join(" "),
+    cn: (...inputs: Array<string | undefined | null | false>) => inputs.filter((x): x is string => !!x).join(" "),
     isLocalhost: vi.fn(() => false),
 }))
 
@@ -69,6 +75,12 @@ describe("Header", () => {
             forcedTheme: undefined,
         } as unknown as ReturnType<typeof useTheme>)
         vi.mocked(useQuery).mockReturnValue({ status: "pro" })
+        vi.mocked(usePollenAuth).mockReturnValue({
+            apiKey: "test_api_key",
+            isLoading: false,
+            signIn: vi.fn(),
+            signOut: vi.fn(),
+        } as unknown as ReturnType<typeof usePollenAuth>)
     })
 
     it("renders the brand logo and name", () => {
@@ -109,7 +121,7 @@ describe("Header", () => {
             isSignedIn: false,
             isLoaded: true,
             user: null,
-        })
+        } as unknown as ReturnType<typeof useUser>)
 
         render(<Header />)
         expect(screen.getByText("Sign In")).toBeInTheDocument()
@@ -120,7 +132,7 @@ describe("Header", () => {
             isSignedIn: false,
             isLoaded: true,
             user: null,
-        })
+        } as unknown as ReturnType<typeof useUser>)
 
         render(<Header />)
         expect(screen.queryByRole("button", { name: /settings/i })).not.toBeInTheDocument()
@@ -132,15 +144,11 @@ describe("Header", () => {
     })
 
     it("shows mobile menu when toggle is clicked", () => {
-        // Force mobile view logic by mocking screen size if necessary, 
-        // but here the toggle is just hidden by CSS, so it should be in the DOM.
         render(<Header />)
         const toggle = screen.getByRole("button", { name: /toggle|menu/i })
 
         fireEvent.click(toggle)
 
-        // After clicking, mobile nav items should be visible (or at least rendered)
-        // Note: we can check for multiple instances if they share labels
         const studioLinks = screen.getAllByText("Studio")
         expect(studioLinks.length).toBeGreaterThan(1)
     })
@@ -156,7 +164,7 @@ describe("Header", () => {
                 isSignedIn: false,
                 isLoaded: true,
                 user: null,
-            })
+            } as unknown as ReturnType<typeof useUser>)
 
             render(<Header />)
             expect(screen.queryByTestId("pollen-balance-display")).not.toBeInTheDocument()
@@ -167,11 +175,9 @@ describe("Header", () => {
             const subscriptionBadge = screen.getByTestId("subscription-badge")
             const pollenBalance = screen.getByTestId("pollen-balance-display")
             
-            // Both should be in the document
             expect(subscriptionBadge).toBeInTheDocument()
             expect(pollenBalance).toBeInTheDocument()
             
-            // Both should be siblings in the same container (right side of header)
             expect(subscriptionBadge.parentElement?.parentElement).toBe(
                 pollenBalance.parentElement?.parentElement
             )

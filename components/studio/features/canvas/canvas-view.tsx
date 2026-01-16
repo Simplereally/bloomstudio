@@ -34,10 +34,7 @@ export interface CanvasViewProps {
     onCopyUrl?: () => void
     /** Handle regenerate */
     onRegenerate?: () => void
-    /** Handle open in new tab */
-    onOpenInNewTab?: () => void
-    /** Handle fullscreen toggle */
-    onFullscreen?: () => void
+
     /** Whether image is favorited */
     isFavorited?: boolean
     /** Handle favorite toggle */
@@ -53,8 +50,7 @@ export const CanvasView = React.memo(function CanvasView({
     onDownload,
     onCopyUrl,
     onRegenerate,
-    onOpenInNewTab,
-    onFullscreen,
+
     isFavorited,
     onToggleFavorite,
     progress,
@@ -74,8 +70,7 @@ export const CanvasView = React.memo(function CanvasView({
                         onDownload={onDownload}
                         onCopyUrl={onCopyUrl}
                         onRegenerate={onRegenerate}
-                        onOpenInNewTab={onOpenInNewTab}
-                        onFullscreen={onFullscreen}
+
                         isFavorited={isFavorited}
                         onToggleFavorite={onToggleFavorite}
                     />

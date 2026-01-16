@@ -56,13 +56,18 @@ export const PollenBalanceDisplayView = memo(function PollenBalanceDisplayView({
             Error
           </Badge>
         </TooltipTrigger>
-        <TooltipContent side="bottom" className="max-w-[200px] p-3">
-          <div className="space-y-1">
-            <p className="font-bold flex items-center gap-1.5 text-destructive">
-              <AlertCircle className="w-3.5 h-3.5" />
-              Balance Error
-            </p>
-            <p className="text-xs text-muted-foreground">
+        <TooltipContent 
+          side="bottom" 
+          className="p-3 min-w-[200px] bg-popover border border-border dark:border-white/15 text-popover-foreground shadow-[0_20px_60px_0px_rgba(0,0,0,0.8)] animate-in fade-in-0 zoom-in-95 duration-200"
+        >
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 border-b border-border/50 pb-2">
+              <p className="font-semibold text-sm tracking-tight flex items-center gap-2 text-destructive">
+                <AlertCircle className="w-3.5 h-3.5" />
+                Balance Error
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
               {errorMessage || "Unable to fetch balance. Will retry automatically."}
             </p>
           </div>
@@ -93,20 +98,25 @@ export const PollenBalanceDisplayView = memo(function PollenBalanceDisplayView({
           {formattedBalance}
         </Badge>
       </TooltipTrigger>
-      <TooltipContent side="bottom" className="max-w-[200px] p-3">
-        <div className="space-y-1">
-          <p
-            className={cn(
-              "font-bold flex items-center gap-1.5",
-              isLowBalance
-                ? "text-amber-600 dark:text-amber-500"
-                : "text-emerald-600 dark:text-emerald-500"
-            )}
-          >
-            <Coins className="w-3.5 h-3.5" />
-            Pollen Balance
-          </p>
-          <p className="text-xs text-muted-foreground">
+      <TooltipContent 
+        side="bottom" 
+        className="p-3 min-w-[200px] bg-popover border border-border dark:border-white/15 text-popover-foreground shadow-[0_20px_60px_0px_rgba(0,0,0,0.8)] animate-in fade-in-0 zoom-in-95 duration-200"
+      >
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 border-b border-border/50 pb-2">
+            <p
+              className={cn(
+                "font-semibold text-sm tracking-tight flex items-center gap-2",
+                isLowBalance
+                  ? "text-amber-600 dark:text-amber-500"
+                  : "text-emerald-600 dark:text-emerald-500"
+              )}
+            >
+              <Coins className="w-3.5 h-3.5" />
+              Pollen Balance
+            </p>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
             {isLowBalance
               ? "Your balance is running low. Consider topping up."
               : "Your current Pollinations account balance."}

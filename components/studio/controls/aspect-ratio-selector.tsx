@@ -8,7 +8,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { RichTooltipContent, Tooltip, TooltipTrigger } from "@/components/ui/rich-tooltip";
 import { ResolutionTierSelector } from "./resolution-tier-selector";
 import { useAspectRatioDimensions } from "@/hooks/use-aspect-ratio-dimensions";
 import type { AspectRatio, AspectRatioOption, ModelConstraints, ResolutionTier } from "@/types/pollinations";
@@ -249,10 +249,7 @@ export const AspectRatioSelector = React.memo(function AspectRatioSelector({
                   </div>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent
-                side="bottom"
-                className="p-3 min-w-[180px] bg-popover border border-border dark:border-white/15 text-popover-foreground shadow-[0_20px_60px_0px_rgba(0,0,0,0.8)] animate-in fade-in-0 zoom-in-95 duration-200"
-              >
+              <RichTooltipContent>
                 <div className="space-y-3">
                   {/* Header: Label + Ratio */}
                   <div className="flex items-baseline justify-between gap-4 border-b border-border/50 pb-2">
@@ -285,7 +282,7 @@ export const AspectRatioSelector = React.memo(function AspectRatioSelector({
                     </p>
                   )}
                 </div>
-              </TooltipContent>
+              </RichTooltipContent>
             </Tooltip>
           );
         })}

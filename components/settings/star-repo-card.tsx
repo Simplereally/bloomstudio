@@ -8,7 +8,7 @@ import Image from "next/image"
 export function StarRepoCard() {
     return (
         <Card className="border-border/50 bg-background/50 backdrop-blur-sm shadow-xl overflow-hidden">
-            <CardHeader className="pb-4">
+            <CardHeader>
                 <div className="space-y-1">
                     <CardTitle className="text-2xl font-bold flex items-center gap-2">
                         <Sparkles className="w-5 h-5 text-primary" />
@@ -33,7 +33,7 @@ export function StarRepoCard() {
                     />
                     <div className="hidden sm:block h-10 w-px bg-white/20 relative z-10" />
                     <p className="text-sm font-semibold tracking-wide text-white/80 uppercase relative z-10">
-                        Official Partner
+                        Proud supporter
                     </p>
                 </div>
 

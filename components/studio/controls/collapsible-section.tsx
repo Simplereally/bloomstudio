@@ -81,7 +81,7 @@ export const CollapsibleSection = React.memo(function CollapsibleSection({
                 {/* Header row: using bg-black/20 for darker header */}
                 {/* Fixed: Moved 'group' here so it only triggers when hovering header, not content */}
                 <div className={cn(
-                    "group/header flex items-center gap-1 p-0 transition-colors cursor-pointer bg-black/20",
+                    "h-[50px] group/header flex items-center gap-1 p-0 transition-colors cursor-pointer bg-black/20",
                     isExpanded && "border-b border-border/40"
                 )}>
                     <CollapsibleTrigger
@@ -92,8 +92,8 @@ export const CollapsibleSection = React.memo(function CollapsibleSection({
                         data-testid={testId ? `${testId}-trigger` : undefined}
                         disabled={disabled}
                     >
-                        {icon && <span className="text-muted-foreground group-hover/header:text-foreground transition-colors shrink-0">{icon}</span>}
-                        <span className="text-[13px] uppercase tracking-wider font-semibold text-muted-foreground group-hover/header:text-foreground transition-colors truncate">
+                        {icon && <span className="text-foreground group-hover/header:text-primary transition-colors shrink-0">{icon}</span>}
+                        <span className="text-[13px] uppercase tracking-wider font-semibold text-foreground group-hover/header:text-primary transition-colors truncate">
                             {title}
                         </span>
                     </CollapsibleTrigger>

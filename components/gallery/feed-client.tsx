@@ -67,7 +67,9 @@ export function FeedClient({ feedType, initialPage, initialPreference }: FeedCli
 
     // Load more handler using server action
     const loadMore = React.useCallback(async () => {
-        if (isDone || isLoadingMore || !cursor) return
+        // Allow null cursor only for the first fetch (when items.length === 0)
+        // Short-circuit if: done, already loading, or no cursor after we already have items
+        if (isDone || isLoadingMore || (cursor === null && items.length > 0)) return
 
         setIsLoadingMore(true)
         try {
@@ -82,7 +84,7 @@ export function FeedClient({ feedType, initialPage, initialPreference }: FeedCli
         } finally {
             setIsLoadingMore(false)
         }
-    }, [cursor, isDone, isLoadingMore, isPublicFeed, preference])
+    }, [cursor, isDone, isLoadingMore, isPublicFeed, preference, items.length])
 
     // Determine status for PaginatedImageGrid
     const status = isDone ? "Exhausted" : isLoadingMore ? "LoadingMore" : "CanLoadMore"

@@ -32,16 +32,13 @@ export interface ImageToolbarProps {
     onDownload?: () => void
     /** Callback to copy image URL */
     onCopyUrl?: () => void
-    /** Callback to share image */
-    onShare?: () => void
+
     /** Callback to toggle favorite */
     onToggleFavorite?: () => void
-    /** Callback to open in full screen */
-    onFullscreen?: () => void
+
     /** Callback to regenerate with same settings */
     onRegenerate?: () => void
-    /** Callback to open in new tab */
-    onOpenInNewTab?: () => void
+
     /** Position of toolbar */
     position?: "top" | "bottom"
     /** Additional class names */

@@ -48,7 +48,7 @@ describe("SubscriptionBadge", () => {
         expect(container.querySelector(".animate-pulse")).toBeInTheDocument()
     })
 
-    it("renders PRO badge when status is pro", () => {
+    it("does not render badge when status is pro", () => {
         vi.mocked(useSubscriptionStatus).mockReturnValue({
             status: "pro",
             isLoading: false,
@@ -56,8 +56,8 @@ describe("SubscriptionBadge", () => {
             canGenerate: true,
         })
 
-        renderWithProviders(<SubscriptionBadge />)
-        expect(screen.getByText("PRO")).toBeInTheDocument()
+        const { container } = renderWithProviders(<SubscriptionBadge />)
+        expect(container.firstChild).toBeNull()
     })
 
     it("renders TRIAL badge when status is trial", () => {

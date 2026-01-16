@@ -4,8 +4,7 @@
  * Service layer for generating contextual prompt suggestions using LLM.
  * Provides real-time suggestions based on user input.
  * 
- * Uses unified AI provider with Groq as primary (14,400 RPD free tier)
- * and OpenRouter as fallback.
+ * Uses AI provider Cerebras
  */
 
 import { generateText } from "@/lib/ai-provider"

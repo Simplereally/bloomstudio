@@ -52,7 +52,10 @@ export function FavoritesClient({ initialPage }: FavoritesClientProps) {
 
     return (
         <PaginatedImageGrid
-            images={items.map((r) => r as any)}
+            images={items.map(item => ({
+                ...item,
+                isSensitive: item.isSensitive ?? undefined
+            }))}
             status={status}
             loadMore={loadMore}
             showUser={true}

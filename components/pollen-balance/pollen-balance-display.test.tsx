@@ -3,6 +3,7 @@
  *
  * Tests for PollenBalanceDisplay Container Component
  */
+import type { ReactElement } from "react"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { PollenBalanceDisplay } from "./pollen-balance-display"
@@ -25,7 +26,7 @@ describe("PollenBalanceDisplay", () => {
     vi.clearAllMocks()
   })
 
-  const renderWithProviders = (ui: React.ReactElement) => {
+  const renderWithProviders = (ui: ReactElement) => {
     return render(<TooltipProvider>{ui}</TooltipProvider>)
   }
 

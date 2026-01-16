@@ -118,12 +118,12 @@ describe("HistoryClient", () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        vi.mocked(useUser).mockReturnValue({ user: { id: "user1" } } as any)
-        vi.mocked(useImageSelection).mockReturnValue(mockSelection as any)
+        vi.mocked(useUser).mockReturnValue({ user: { id: "user1" } } as unknown as ReturnType<typeof useUser>)
+        vi.mocked(useImageSelection).mockReturnValue(mockSelection as unknown as ReturnType<typeof useImageSelection>)
         vi.mocked(useLocalStorage).mockReturnValue([
             { selectedVisibility: [], selectedModels: [] },
             vi.fn(),
-        ] as any)
+        ] as unknown as ReturnType<typeof useLocalStorage>)
     })
 
     describe("rendering", () => {
@@ -184,13 +184,13 @@ describe("HistoryClient", () => {
             vi.mocked(useLocalStorage).mockImplementation((_key, initial) => {
                 const [state, setState] = React.useState(initial as FilterState)
                 setFilterState = setState
-                return [state, setState] as any
+                return [state, setState] as unknown as ReturnType<typeof useLocalStorage>
             })
 
             vi.mocked(useImageSelection).mockReturnValue({
                 ...mockSelection,
                 selectionMode: true,
-            } as any)
+            } as unknown as ReturnType<typeof useImageSelection>)
 
             // Mock the server action to resolve immediately
             vi.mocked(loadMyHistoryWithDisplayPage).mockResolvedValue({
@@ -219,7 +219,7 @@ describe("HistoryClient", () => {
             vi.mocked(useLocalStorage).mockImplementation((_key, initial) => {
                 const [state, setState] = React.useState(initial as FilterState)
                 setFilterState = setState
-                return [state, setState] as any
+                return [state, setState] as unknown as ReturnType<typeof useLocalStorage>
             })
 
             vi.mocked(loadMyHistoryWithDisplayPage).mockResolvedValue({
@@ -249,7 +249,7 @@ describe("HistoryClient", () => {
             
             vi.mocked(useImageSelection).mockImplementation((options) => {
                 capturedCallback = options?.onOptimisticDelete
-                return mockSelection as any
+                return mockSelection as unknown as ReturnType<typeof useImageSelection>
             })
 
             render(<HistoryClient initialPage={mockInitialPage} />)

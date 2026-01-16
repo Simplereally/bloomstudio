@@ -80,7 +80,7 @@ describe("PaginatedImageGrid", () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        vi.mocked(useUser).mockReturnValue({ isSignedIn: true } as any)
+        vi.mocked(useUser).mockReturnValue({ isSignedIn: true } as unknown as ReturnType<typeof useUser>)
     })
 
     it("renders image cards for each image", () => {

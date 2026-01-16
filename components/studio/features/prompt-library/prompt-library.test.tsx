@@ -3,9 +3,7 @@ import * as usePromptLibraryHook from '@/hooks/use-prompt-library'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PromptLibrary } from './prompt-library'
-import type { PromptListViewProps } from './prompt-list-view'
 import type { SavePromptFormProps } from './save-prompt-form'
-import type { PromptDetailProps } from './prompt-detail'
 import type { Id } from '@/convex/_generated/dataModel'
 import type { Prompt } from './types'
 import * as React from "react"
@@ -17,13 +15,13 @@ vi.mock('@/hooks/use-prompt-library', () => ({
 
 // Mock child components
 vi.mock('./prompt-list-view', () => ({
-    PromptListView: (_props: PromptListViewProps) => <div data-testid="prompt-list-view">Prompt List View</div>
+    PromptListView: () => <div data-testid="prompt-list-view">Prompt List View</div>
 }))
 vi.mock('./save-prompt-form', () => ({
     SavePromptForm: (props: SavePromptFormProps) => <div data-testid="save-prompt-form" data-initial-content={props.initialContent}>Save Prompt Form</div>
 }))
 vi.mock('./prompt-detail', () => ({
-    PromptDetail: (_props: PromptDetailProps) => <div data-testid="prompt-detail">Prompt Detail View</div>
+    PromptDetail: () => <div data-testid="prompt-detail">Prompt Detail View</div>
 }))
 
 // Mock Dialog components
@@ -45,9 +43,8 @@ vi.mock('@/components/ui/dialog', () => ({
 vi.mock('@radix-ui/react-dialog', () => ({
     Content: ({
         children,
-        asChild: _asChild,
         ...props
-    }: React.PropsWithChildren<{ asChild?: boolean }> & React.HTMLAttributes<HTMLDivElement>) => (
+    }: React.PropsWithChildren<React.HTMLAttributes<HTMLDivElement>>) => (
         <div data-testid="radix-content" {...props}>
             {children}
         </div>
@@ -74,12 +71,12 @@ vi.mock('framer-motion', () => ({
     motion: {
         div: ({
             children,
-            layout: _layout,
-            initial: _initial,
-            animate: _animate,
-            exit: _exit,
-            variants: _variants,
-            transition: _transition,
+            layout,
+            initial,
+            animate,
+            exit,
+            variants,
+            transition,
             ...props
         }: React.PropsWithChildren<
             React.HTMLAttributes<HTMLDivElement> & {
@@ -90,7 +87,16 @@ vi.mock('framer-motion', () => ({
                 variants?: unknown
                 transition?: unknown
             }
-        >) => <div {...props}>{children}</div>
+        >) => {
+            void layout
+            void initial
+            void animate
+            void exit
+            void variants
+            void transition
+
+            return <div {...props}>{children}</div>
+        }
     }
 }))
 

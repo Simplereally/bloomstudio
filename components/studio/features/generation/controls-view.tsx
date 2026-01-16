@@ -178,7 +178,7 @@ export const ControlsView = React.memo(function ControlsView({
   const selectedModelData = React.useMemo(() => models.find((m) => m.id === model), [models, model]);
 
   const badgeClassName =
-    "flex items-center gap-1.5 px-2 h-5 rounded-full text-xs font-bold bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/20";
+    "flex items-center gap-1.5 px-2 h-[21px] rounded-none text-xs font-bold bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/20";
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -318,7 +318,7 @@ export const ControlsView = React.memo(function ControlsView({
               {hasPixelLimit && (
                 <span
                   className={cn(
-                    "flex items-center justify-center px-2 h-5 rounded-full text-xs font-bold tabular-nums border",
+                      "flex items-center justify-center px-2 h-[21px] rounded-none text-xs font-bold tabular-nums border",
                     isOverLimit
                       ? "bg-destructive/15 text-destructive border-destructive/20"
                       : "bg-muted text-muted-foreground border-transparent"

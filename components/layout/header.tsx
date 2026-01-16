@@ -13,33 +13,12 @@ import { UpgradeModal } from "@/components/studio/upgrade-modal"
 import { cn, isLocalhost } from "@/lib/utils"
 import { SubscriptionBadge } from "@/components/subscription/subscription-badge"
 import { PollenBalanceDisplay } from "@/components/pollen-balance"
-import { usePollenAuth } from "@/lib/pollen-auth"
 import { UserButton, useUser } from "@clerk/nextjs"
-import { Coins, Crown, Heart, HelpCircle, History, Key, Menu, Moon, Settings, Sparkles, Sun, User, Users, X, FileText } from "lucide-react"
+import { Crown, Heart, HelpCircle, History, Key, Menu, Moon, Settings, Sparkles, Sun, Users, X } from "lucide-react"
 import { useTheme } from "next-themes"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState, useSyncExternalStore } from "react"
-
-const POLLINATIONS_API_BASE = "https://gen.pollinations.ai"
-
-async function testPollinationsEndpoint(endpoint: string, apiKey: string) {
-    try {
-        const response = await fetch(`${POLLINATIONS_API_BASE}/api${endpoint}`, {
-            method: "GET",
-            headers: {
-                Authorization: `Bearer ${apiKey}`,
-            },
-        })
-        const data = await response.json()
-        console.log(`[Pollinations API] ${endpoint}:`, JSON.stringify(data, null, 2))
-        alert(`${endpoint} response logged to console:\n\n${JSON.stringify(data, null, 2)}`)
-        return data
-    } catch (error) {
-        console.error(`[Pollinations API] ${endpoint} error:`, error)
-        alert(`Error fetching ${endpoint}: ${error}`)
-    }
-}
 
 const navItems = [
     { href: "/studio", label: "Studio", icon: Sparkles },
@@ -55,7 +34,6 @@ const navItems = [
 export function Header() {
     const pathname = usePathname()
     const { isSignedIn, isLoaded } = useUser()
-    const { apiKey } = usePollenAuth()
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const { theme, setTheme } = useTheme()
     const [upgradeModalOpen, setUpgradeModalOpen] = useState(false)
@@ -75,9 +53,9 @@ export function Header() {
 
     return (
         <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/60 backdrop-blur-xl supports-[backdrop-filter]:bg-background/40">
-            <div className="container mx-auto flex h-14 items-center justify-between gap-4 px-6">
-                {/* Left Side: Logo */}
-                <div className="flex-shrink-0">
+            <div className="grid h-14 w-full grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 sm:px-8">
+                {/* Left Side: Logo - Start Aligned */}
+                <div className="justify-self-start">
                     <Link href="/" className="flex items-center gap-2">
                         <span className="text-2xl font-bold text-primary font-brand tracking-tight -skew-x-6 whitespace-nowrap">
                             Bloom Studio
@@ -85,41 +63,43 @@ export function Header() {
                     </Link>
                 </div>
 
-                {/* Center: Desktop Navigation - Pill Style */}
-                {showAuthUI && isSignedIn && (
-                    <nav className="hidden lg:flex items-center p-1 rounded-full bg-muted/30 border border-border/50 shadow-inner backdrop-blur-md">
-                        {navItems.map((item) => {
-                            const isActive = pathname.startsWith(item.href)
-                            const Icon = item.icon
-                            return (
-                                <Link key={item.href} href={item.href}>
-                                    <div
-                                        className={cn(
-                                            "relative px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-300 flex items-center gap-2",
-                                            isActive
-                                                ? "text-primary transition-all duration-300"
-                                                : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                                        )}
-                                    >
-                                        <Icon className={cn("h-4 w-4", isActive ? "text-primary" : "text-muted-foreground")} />
-                                        {item.label}
-                                        {isActive && (
-                                            <span
-                                                className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-[2px] w-[80%]"
-                                                style={{
-                                                    background: "linear-gradient(90deg, transparent 0%, #f97316 30%, #f97316 70%, transparent 100%)"
-                                                }}
-                                            />
-                                        )}
-                                    </div>
-                                </Link>
-                            )
-                        })}
-                    </nav>
-                )}
+                {/* Center: Desktop Navigation - Pill Style - Center Aligned */}
+                <div className="justify-self-center">
+                    {showAuthUI && isSignedIn && (
+                        <nav className="hidden lg:flex items-center p-1 rounded-full bg-muted/30 border border-border/50 shadow-inner backdrop-blur-md">
+                            {navItems.map((item) => {
+                                const isActive = pathname.startsWith(item.href)
+                                const Icon = item.icon
+                                return (
+                                    <Link key={item.href} href={item.href}>
+                                        <div
+                                            className={cn(
+                                                "relative px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-300 flex items-center gap-2",
+                                                isActive
+                                                    ? "text-primary transition-all duration-300"
+                                                    : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                                            )}
+                                        >
+                                            <Icon className={cn("h-4 w-4", isActive ? "text-primary" : "text-muted-foreground")} />
+                                            {item.label}
+                                            {isActive && (
+                                                <span
+                                                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-[2px] w-[80%]"
+                                                    style={{
+                                                        background: "linear-gradient(90deg, transparent 0%, #f97316 30%, #f97316 70%, transparent 100%)"
+                                                    }}
+                                                />
+                                            )}
+                                        </div>
+                                    </Link>
+                                )
+                            })}
+                        </nav>
+                    )}
+                </div>
 
-                {/* Right Side: Settings & Auth */}
-                <div className="flex-shrink-0 flex items-center gap-3">
+                {/* Right Side: Settings & Auth - End Aligned */}
+                <div className="justify-self-end flex items-center gap-3">
                     <div className="flex items-center gap-1.5 p-1 rounded-full bg-muted/30 border border-border/50">
                         {/* Test Modals - Dev Only */}
                         {isLocalDev && (

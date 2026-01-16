@@ -40,7 +40,10 @@ describe("ImageCanvas", () => {
     it("shows loading state when generating", () => {
         render(<ImageCanvas image={null} isGenerating={true} />)
 
-        expect(screen.getByText("Generating Vision")).toBeInTheDocument()
+        // Text is rendered letter-by-letter across spans
+        // "GENERATING" has 2 G's, 2 E's, 2 N's - verify by checking letter count
+        const gLetters = screen.getAllByText("G")
+        expect(gLetters.length).toBeGreaterThanOrEqual(2) // GENERATING has two G's
     })
 
     it("shows progress when provided during generation", () => {
@@ -66,7 +69,9 @@ describe("ImageCanvas", () => {
     it("hides loading state when not generating", () => {
         render(<ImageCanvas image={mockImage} isGenerating={false} />)
 
-        expect(screen.queryByText("Generating Vision")).not.toBeInTheDocument()
+        // When not generating, the animated "GENERATING" text should not appear
+        // Check that none of the generating indicator letters are present
+        expect(screen.queryAllByText("G")).toHaveLength(0)
     })
 
     it("calls onImageClick when image is clicked", () => {

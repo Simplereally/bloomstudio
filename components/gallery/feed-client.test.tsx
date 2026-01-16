@@ -364,10 +364,12 @@ describe("FeedClient", () => {
       expect(mockLoadPublicFeedPage).not.toHaveBeenCalled();
     });
 
-    it("does not call load more when cursor is null", async () => {
+    it("does not call load more when cursor is null and items exist", async () => {
+      // When we have items but no cursor (null), it means we're at the end
+      // This is different from cursor being null with no items (initial state needing first fetch)
       const noCursorPage: PaginatedFeedResult = {
         page: mockInitialPage.page,
-        continueCursor: "",
+        continueCursor: null as unknown as string,
         isDone: false,
       };
 

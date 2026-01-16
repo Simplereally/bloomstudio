@@ -1,3 +1,4 @@
+#!/usr/bin/env bun
 
 async function main() {
   const fs = await import("node:fs")

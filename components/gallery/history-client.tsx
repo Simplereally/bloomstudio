@@ -83,22 +83,30 @@ export function HistoryClient({ initialPage }: HistoryClientProps) {
      * Removes items from local state immediately, providing instant visual feedback.
      * Returns a rollback function that restores the previous state if deletion fails.
      * 
+     * Uses a functional update pattern to capture the exact state at deletion time,
+     * preventing stale rollbacks when multiple operations overlap.
+     * 
      * @param deletedIds - Array of image IDs being deleted
      * @returns Rollback function to restore previous state on failure
      */
     const handleOptimisticDelete = React.useCallback((deletedIds: string[]) => {
-        // Capture current state for potential rollback
-        const previousItems = items
         const deletedIdSet = new Set(deletedIds)
         
-        // Optimistically remove deleted items from UI
-        setItems(prev => prev.filter(item => !deletedIdSet.has(item._id)))
+        // Capture snapshot inside the functional update to get the exact current state
+        let snapshot: typeof items = []
         
-        // Return rollback function
+        setItems(prev => {
+            // Store the current state for rollback
+            snapshot = prev
+            // Return filtered list without deleted items
+            return prev.filter(item => !deletedIdSet.has(item._id))
+        })
+        
+        // Return rollback function that restores the precise snapshot
         return () => {
-            setItems(previousItems)
+            setItems(() => snapshot)
         }
-    }, [items])
+    }, [])
 
     // Selection state and handlers with optimistic delete support
     const {

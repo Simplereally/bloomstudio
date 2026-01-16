@@ -4,8 +4,7 @@
  * Service layer for enhancing image generation prompts using LLM.
  * Provides methods for both main prompts and negative prompts.
  * 
- * Uses unified AI provider with Groq as primary (14,400 RPD free tier)
- * and OpenRouter as fallback.
+ * Uses AI provider Cerebras
  */
 
 import { generateText } from "@/lib/ai-provider"

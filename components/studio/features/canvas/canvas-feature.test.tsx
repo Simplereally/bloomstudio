@@ -23,8 +23,6 @@ vi.mock("./canvas-view", () => ({
         onDownload,
         onCopyUrl,
         onRegenerate,
-        onOpenInNewTab,
-        onFullscreen,
         isFavorited,
         onToggleFavorite,
     }: {
@@ -34,8 +32,6 @@ vi.mock("./canvas-view", () => ({
         onDownload?: () => void
         onCopyUrl?: () => void
         onRegenerate?: () => void
-        onOpenInNewTab?: () => void
-        onFullscreen?: () => void
         isFavorited?: boolean
         onToggleFavorite?: () => void
     }) => (
@@ -48,8 +44,6 @@ vi.mock("./canvas-view", () => ({
             <button data-testid="download" onClick={onDownload}>Download</button>
             <button data-testid="copy-url" onClick={onCopyUrl}>Copy URL</button>
             <button data-testid="regenerate" onClick={onRegenerate}>Regenerate</button>
-            <button data-testid="open-tab" onClick={onOpenInNewTab}>Open Tab</button>
-            <button data-testid="fullscreen" onClick={onFullscreen}>Fullscreen</button>
             <button data-testid="toggle-favorite" onClick={onToggleFavorite}>Toggle Favorite</button>
         </div>
     ),
@@ -159,14 +153,7 @@ describe("CanvasFeature", () => {
         expect(writeTextSpy).toHaveBeenCalledWith(mockImage.url)
     })
 
-    it("handles open in new tab action", async () => {
-        const user = userEvent.setup()
-        render(<CanvasFeature {...defaultProps} currentImage={mockImage} />)
 
-        await user.click(screen.getByTestId("open-tab"))
-
-        expect(window.open).toHaveBeenCalledWith(mockImage.url, "_blank")
-    })
 
     it("calls onOpenLightbox on image click", async () => {
         const user = userEvent.setup()
@@ -184,21 +171,7 @@ describe("CanvasFeature", () => {
         expect(onOpenLightbox).toHaveBeenCalledWith(mockImage)
     })
 
-    it("calls onOpenLightbox on fullscreen click", async () => {
-        const user = userEvent.setup()
-        const onOpenLightbox = vi.fn()
-        render(
-            <CanvasFeature
-                {...defaultProps}
-                currentImage={mockImage}
-                onOpenLightbox={onOpenLightbox}
-            />
-        )
 
-        await user.click(screen.getByTestId("fullscreen"))
-
-        expect(onOpenLightbox).toHaveBeenCalledWith(mockImage)
-    })
 
     it("calls onRegenerate when regenerate clicked", async () => {
         const user = userEvent.setup()

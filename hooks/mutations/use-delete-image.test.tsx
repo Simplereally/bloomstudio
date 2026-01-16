@@ -11,6 +11,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { useBulkDeleteGeneratedImages, useDeleteGeneratedImage, useDeleteReferenceImage } from "./use-delete-image"
 import { toast } from "sonner"
 import type { Id } from "@/convex/_generated/dataModel"
+import { invalidateImageDeletion } from "@/app/_server/actions/invalidation"
 
 // Mock Convex
 vi.mock("convex/react", () => ({
@@ -94,6 +95,7 @@ describe("useDeleteImage", () => {
                 body: JSON.stringify({ r2Key: "test-thumbnail-key" }),
             }))
             expect(toast.success).toHaveBeenCalledWith("Image deleted")
+            expect(invalidateImageDeletion).toHaveBeenCalledTimes(1)
         })
 
         it("handles image without thumbnail", async () => {
@@ -112,6 +114,7 @@ describe("useDeleteImage", () => {
                 body: JSON.stringify({ r2Key: "test-r2-key" }),
             }))
             expect(toast.success).toHaveBeenCalledWith("Image deleted")
+            expect(invalidateImageDeletion).toHaveBeenCalledTimes(1)
         })
 
         it("handles R2 deletion failure gracefully", async () => {
@@ -136,6 +139,7 @@ describe("useDeleteImage", () => {
             // Should attempt to delete both original and thumbnail (even if both fail)
             expect(global.fetch).toHaveBeenCalledTimes(2)
             expect(toast.success).toHaveBeenCalledWith("Image deleted")
+            expect(invalidateImageDeletion).toHaveBeenCalledTimes(1)
         })
 
         it("handles Convex deletion failure", async () => {
@@ -202,6 +206,7 @@ describe("useDeleteImage", () => {
             // Should show single success toast
             expect(toast.success).toHaveBeenCalledTimes(1)
             expect(toast.success).toHaveBeenCalledWith("Deleted 3 images")
+            expect(invalidateImageDeletion).toHaveBeenCalledTimes(1)
         })
 
         it("shows singular 'image' for single deletion", async () => {
@@ -226,6 +231,7 @@ describe("useDeleteImage", () => {
                 body: JSON.stringify({ r2Keys: ["key1", "thumb1"] }),
             }))
             expect(toast.success).toHaveBeenCalledWith("Deleted 1 image")
+            expect(invalidateImageDeletion).toHaveBeenCalledTimes(1)
         })
 
         it("handles images without thumbnails", async () => {
@@ -250,6 +256,7 @@ describe("useDeleteImage", () => {
                 body: JSON.stringify({ r2Keys: ["key1", "key2"] }),
             }))
             expect(toast.success).toHaveBeenCalledWith("Deleted 2 images")
+            expect(invalidateImageDeletion).toHaveBeenCalledTimes(1)
         })
 
         it("handles bulk Convex deletion failure", async () => {
@@ -339,6 +346,7 @@ describe("useDeleteImage", () => {
                 body: JSON.stringify({ r2Keys: ["key1", "key2", "thumb1", "thumb2"] }),
             }))
             expect(toast.success).toHaveBeenCalledWith("Deleted 2 images")
+            expect(invalidateImageDeletion).toHaveBeenCalledTimes(1)
         })
     })
 })

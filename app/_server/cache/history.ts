@@ -28,9 +28,9 @@ export async function getMyImagesPageCached(
     const token = await getConvexClerkToken()
     const isFirstPage = cursor === null
 
-    // Normalize filters for stable cache key
+    // Normalize filters for stable cache key (clone before sorting to avoid mutating caller's array)
     const filterKey = filters
-        ? JSON.stringify({ v: filters.visibility, m: filters.models?.sort() })
+        ? JSON.stringify({ v: filters.visibility, m: filters.models ? [...filters.models].sort() : undefined })
         : "none"
 
     return unstable_cache(
@@ -65,8 +65,9 @@ export async function getMyImagesWithDisplayDataCached(
     const token = await getConvexClerkToken()
     const isFirstPage = cursor === null
 
+    // Normalize filters for stable cache key (clone before sorting to avoid mutating caller's array)
     const filterKey = filters
-        ? JSON.stringify({ v: filters.visibility, m: filters.models?.sort() })
+        ? JSON.stringify({ v: filters.visibility, m: filters.models ? [...filters.models].sort() : undefined })
         : "none"
 
     return unstable_cache(

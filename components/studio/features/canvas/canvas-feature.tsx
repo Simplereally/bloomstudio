@@ -13,7 +13,9 @@
  */
 
 import { useDownloadImage } from "@/hooks/queries"
+import { useIsFavorited, useToggleFavorite } from "@/hooks/queries/use-favorites"
 import { showErrorToast } from "@/lib/errors"
+import type { Id } from "@/convex/_generated/dataModel"
 import type { GeneratedImage } from "@/types/pollinations"
 import { CanvasView } from "./canvas-view"
 import * as React from "react"
@@ -31,8 +33,9 @@ export interface CanvasFeatureProps {
     progress?: number
 }
 
-import { useIsFavorited, useToggleFavorite } from "@/hooks/queries/use-favorites"
-import type { Id } from "@/convex/_generated/dataModel"
+function isGeneratedImagesId(id: string): id is Id<"generatedImages"> {
+    return !id.startsWith("img_")
+}
 
 /**
  * CanvasFeature component - composes hook logic with view
@@ -62,21 +65,22 @@ export function CanvasFeature({
     })
 
     // Favorites functionality
-    const isFavorited = useIsFavorited(currentImage?.id)
+    const convexImageId = currentImage?._id
+    const isFavorited = useIsFavorited(convexImageId ?? currentImage?.id)
     const toggleFavoriteMutation = useToggleFavorite()
 
     const handleToggleFavorite = React.useCallback(async () => {
-        if (!currentImage) return
+        if (!convexImageId || !isGeneratedImagesId(convexImageId)) return
 
         try {
             await toggleFavoriteMutation.mutateAsync({
-                imageId: currentImage.id as Id<"generatedImages">
+                imageId: convexImageId,
             })
         } catch (error) {
             console.error("Failed to toggle favorite:", error)
             showErrorToast(error instanceof Error ? error : new Error("Failed to toggle favorite"))
         }
-    }, [currentImage, toggleFavoriteMutation])
+    }, [convexImageId, toggleFavoriteMutation])
 
     // Handle download action
     const handleDownload = React.useCallback(() => {
@@ -95,20 +99,8 @@ export function CanvasFeature({
         }
     }, [currentImage])
 
-    // Handle open in new tab
-    const handleOpenInNewTab = React.useCallback(() => {
-        if (currentImage) {
-            window.open(currentImage.url, "_blank")
-        }
-    }, [currentImage])
-
     // Handle image click (opens lightbox)
     const handleImageClick = React.useCallback(() => {
-        onOpenLightbox?.(currentImage)
-    }, [currentImage, onOpenLightbox])
-
-    // Handle fullscreen toggle
-    const handleFullscreen = React.useCallback(() => {
         onOpenLightbox?.(currentImage)
     }, [currentImage, onOpenLightbox])
 
@@ -120,8 +112,6 @@ export function CanvasFeature({
             onDownload={handleDownload}
             onCopyUrl={handleCopyUrl}
             onRegenerate={onRegenerate}
-            onOpenInNewTab={handleOpenInNewTab}
-            onFullscreen={handleFullscreen}
             isFavorited={isFavorited}
             onToggleFavorite={handleToggleFavorite}
             progress={progress}

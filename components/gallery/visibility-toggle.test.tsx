@@ -5,15 +5,15 @@
  */
 import { Id } from "@/convex/_generated/dataModel"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
-import userEvent from "@testing-library/user-event"
 import { toast } from "sonner"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { VisibilityToggle } from "./visibility-toggle"
 
 // Mock Convex
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mockSetVisibility = vi.fn() as any
-mockSetVisibility.withOptimisticUpdate = vi.fn().mockReturnValue(mockSetVisibility)
+const mockSetVisibility = Object.assign(vi.fn(), {
+    withOptimisticUpdate: vi.fn(),
+})
+mockSetVisibility.withOptimisticUpdate.mockReturnValue(mockSetVisibility)
 
 vi.mock("convex/react", () => ({
     useMutation: vi.fn(() => mockSetVisibility),
@@ -51,7 +51,7 @@ describe("VisibilityToggle", () => {
 
         render(<VisibilityToggle imageId={imageId} currentVisibility="unlisted" />)
 
-        const user = userEvent.setup()
+
         fireEvent.click(screen.getByRole("button"))
 
         await waitFor(() => {
@@ -68,7 +68,7 @@ describe("VisibilityToggle", () => {
 
         render(<VisibilityToggle imageId={imageId} currentVisibility="public" />)
 
-        const user = userEvent.setup()
+
         fireEvent.click(screen.getByRole("button"))
 
         await waitFor(() => {

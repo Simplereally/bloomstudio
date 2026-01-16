@@ -4,6 +4,16 @@ import { describe, expect, it, vi, beforeEach } from "vitest"
 import { MediaPlayer, isVideoContent } from "./media-player"
 import * as React from "react"
 
+// Mock next/image
+vi.mock("next/image", () => ({
+    default: ({ src, alt, fill: _fill, sizes: _sizes, ...props }: { src: string | { src: string }; alt: string; fill?: boolean; sizes?: string } & React.ImgHTMLAttributes<HTMLImageElement>) => {
+        void _fill
+        void _sizes
+        // eslint-disable-next-line @next/next/no-img-element
+        return <img src={typeof src === "string" ? src : src.src} alt={alt} {...props} />
+    },
+}))
+
 describe("isVideoContent", () => {
     it("returns true for video content types", () => {
         expect(isVideoContent("video/mp4")).toBe(true)

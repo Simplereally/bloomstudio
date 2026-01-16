@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { UpgradeModal } from "./upgrade-modal";
 import { toast } from "sonner";
 
-import { isStripeConfigured, STRIPE_CONFIG } from "@/lib/config/stripe";
+import { isStripeConfigured } from "@/lib/config/stripe";
 
 // Mock dependencies
 const mockCreateCheckout = vi.fn();

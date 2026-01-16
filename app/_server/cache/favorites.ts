@@ -16,11 +16,11 @@ export async function getFavoritesPageCached(
     cursor: Cursor,
     numItems: number = PAGE_SIZES.FAVORITES
 ) {
-    const token = await getConvexClerkToken()
     const isFirstPage = cursor === null
 
     return unstable_cache(
         async () => {
+            const token = await getConvexClerkToken()
             return fetchQuery(
                 api.favorites.list,
                 { paginationOpts: { numItems, cursor } },
