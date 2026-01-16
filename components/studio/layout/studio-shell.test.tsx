@@ -277,7 +277,7 @@ vi.mock("@/hooks/use-estimated-cost", () => ({
     useEstimatedCost: vi.fn(() => ({
         estimatedCost: 0.15,
         canAfford: true,
-        willDepletBalance: false,
+        willDepleteBalance: false,
         remainingAfter: 9.85,
         formattedCost: "0.15",
     })),
