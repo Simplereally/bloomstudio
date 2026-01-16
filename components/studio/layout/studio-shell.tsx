@@ -323,15 +323,30 @@ export function StudioShell({ defaultLayout, initialGalleryPage }: StudioShellPr
     // ========================================
     // Sidebar Scroll State (for fade overlays)
     // ========================================
+    const scrollViewportRef = React.useRef<HTMLDivElement>(null)
     const [showTopFade, setShowTopFade] = React.useState(false)
-    const [showBottomFade, setShowBottomFade] = React.useState(true)
+    const [showBottomFade, setShowBottomFade] = React.useState(false)
+
+    const updateScrollFades = React.useCallback((el: HTMLDivElement | null) => {
+        if (!el) return
+        const { scrollTop, scrollHeight, clientHeight } = el
+        const hasScrollableContent = scrollHeight > clientHeight
+        setShowTopFade(scrollTop > 8)
+        setShowBottomFade(hasScrollableContent && scrollTop + clientHeight < scrollHeight - 8)
+    }, [])
 
     const handleScroll = React.useCallback((e: React.UIEvent<HTMLDivElement>) => {
-        const el = e.currentTarget
-        const { scrollTop, scrollHeight, clientHeight } = el
-        setShowTopFade(scrollTop > 8)
-        setShowBottomFade(scrollTop + clientHeight < scrollHeight - 8)
-    }, [])
+        updateScrollFades(e.currentTarget)
+    }, [updateScrollFades])
+
+    // Check initial scroll state on mount
+    React.useEffect(() => {
+        // Small delay to let content render
+        const timer = setTimeout(() => {
+            updateScrollFades(scrollViewportRef.current)
+        }, 100)
+        return () => clearTimeout(timer)
+    }, [updateScrollFades])
 
     // ========================================
     // Sidebar Content
@@ -352,7 +367,7 @@ export function StudioShell({ defaultLayout, initialGalleryPage }: StudioShellPr
                     }}
                 />
                 
-                <ScrollArea className="h-full" onScrollCapture={handleScroll}>
+                <ScrollArea className="h-full" onScroll={handleScroll} viewportRef={scrollViewportRef}>
                     <div className="p-0 space-y-0.5 w-full min-w-0 overflow-x-hidden">
                         {/* Prompt Feature */}
                         <PromptManagerContext.Provider value={promptManager}>
@@ -387,7 +402,7 @@ export function StudioShell({ defaultLayout, initialGalleryPage }: StudioShellPr
             </div>
 
             {/* Generate / Pause / Resume Batch Button */}
-            <div className="p-1.5 border-t border-border/50 bg-card/80">
+            <div className="p-1.5 border-t bg-background/60">
                 {batchMode.isBatchActive ? (
                     <BatchActionButton
                         isPaused={batchMode.isBatchPaused}
@@ -410,12 +425,10 @@ export function StudioShell({ defaultLayout, initialGalleryPage }: StudioShellPr
                                 "Generating..."
                             ) : batchMode.batchSettings.enabled ? (
                                 <>
-                                    <Sparkles className="mr-2 h-4 w-4" />
                                     Generate Batch ({batchMode.batchSettings.count})
                                 </>
                             ) : (
                                 <>
-                                    <Sparkles className="mr-2 h-4 w-4" />
                                     Generate Image
                                 </>
                             )}
