@@ -8,11 +8,12 @@ import {
     LOW_BALANCE_AFTER_GENERATION_THRESHOLD,
 } from "./use-estimated-cost"
 import type { ModelPricingDefinition } from "@/lib/schemas/pollinations-pricing.schema"
+import type { VideoDurationConstraints } from "@/lib/config/models"
 
 // Mock the models config
 vi.mock("@/lib/config/models", () => ({
     getModel: vi.fn((modelId: string) => {
-        const models: Record<string, { modelPricing: ModelPricingDefinition; durationConstraints?: { min: number; max: number; defaultDuration: number } }> = {
+        const models: Record<string, { modelPricing: ModelPricingDefinition; durationConstraints?: VideoDurationConstraints }> = {
             flux: {
                 modelPricing: {
                     modelId: "flux",
