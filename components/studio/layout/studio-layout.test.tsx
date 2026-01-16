@@ -43,6 +43,9 @@ vi.mock("@/components/ui/sidebar", () => ({
             {children}
         </div>
     ),
+    SidebarRail: () => (
+        <button data-testid="sidebar-rail" aria-label="Toggle Sidebar" />
+    ),
 }))
 
 describe("StudioLayout", () => {

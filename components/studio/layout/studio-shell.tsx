@@ -26,7 +26,6 @@ import { ImageLightbox } from "@/components/images/image-lightbox"
 import {
     ApiKeyOnboardingModal,
     BatchConfigButton,
-    StudioHeader,
     StudioLayout,
     UpgradeModal,
 } from "@/components/studio"
@@ -47,12 +46,14 @@ import {
 // Hooks
 import { useGenerateImage } from "@/hooks/queries"
 import { useBatchMode } from "@/hooks/use-batch-mode"
+import { useEstimatedCost, formatRemainingBalance, LOW_BALANCE_AFTER_GENERATION_THRESHOLD } from "@/hooks/use-estimated-cost"
 import { useGenerationSettings } from "@/hooks/use-generation-settings"
 import { useImageGalleryState } from "@/hooks/use-image-gallery-state"
+import { usePollenBalance } from "@/hooks/use-pollen-balance"
 import { usePromptManager } from "@/hooks/use-prompt-manager"
 import { useStudioUI } from "@/hooks/use-studio-ui"
 import { useSubscriptionStatus } from "@/hooks/use-subscription-status"
-import { getModelSupportsNegativePrompt } from "@/lib/config/models"
+import { getModel, getModelSupportsNegativePrompt } from "@/lib/config/models"
 import { isTrialExpiredError, showAuthRequiredToast, showErrorToast } from "@/lib/errors"
 import type { ImageGenerationParams, VideoGenerationParams, VideoModel } from "@/types/pollinations"
 import type { ThumbnailData } from "@/components/studio/gallery/image-gallery"
@@ -61,6 +62,7 @@ import { useSearchParams } from "next/navigation"
 import * as React from "react"
 import { toast } from "sonner"
 import { invalidateUserHistoryCache } from "@/app/_server/actions/invalidation"
+import { LowBalanceWarningDialog } from "@/components/pollen-balance/low-balance-warning-dialog"
 
 // Type for the paginated result from server cache
 type PaginatedGalleryResult = {
@@ -157,6 +159,37 @@ export function StudioShell({ defaultLayout, initialGalleryPage }: StudioShellPr
     })
 
     // ========================================
+    // Pollen Balance & Cost Estimation
+    // ========================================
+    const { balance, formattedBalance } = usePollenBalance()
+
+    // Get batch count for cost estimation
+    const batchCount = batchMode.batchSettings.enabled ? batchMode.batchSettings.count : 1
+
+    // Estimate cost based on current model and settings
+    const {
+        estimatedCost,
+        canAfford,
+        willDepleteBalance,
+        remainingAfter,
+        formattedCost,
+    } = useEstimatedCost({
+        modelId: generationSettings.model,
+        balance,
+        imageCount: batchCount,
+        durationSeconds: generationSettings.videoSettings.duration,
+    })
+
+    // Low balance warning dialog state
+    const [showLowBalanceWarning, setShowLowBalanceWarning] = React.useState(false)
+    // Store pending generation params to execute after user confirms
+    const pendingGenerationRef = React.useRef<(() => void) | null>(null)
+
+    // Get model display name for dialog
+    const currentModel = getModel(generationSettings.model)
+    const modelDisplayName = currentModel?.displayName ?? generationSettings.model
+
+    // ========================================
     // Image Generation
     // ========================================
     const { generate, isGenerating } = useGenerateImage({
@@ -184,18 +217,12 @@ export function StudioShell({ defaultLayout, initialGalleryPage }: StudioShellPr
     // ========================================
     // Generation Handler
     // ========================================
-    const handleGenerateClick = React.useCallback(() => {
+
+    // Core generation logic (called directly or after warning confirmation)
+    const executeGeneration = React.useCallback(() => {
         const { prompt, negativePrompt } = promptManager.getPromptValues()
 
         if (!prompt) return
-
-        // Prevent generation if we're waiting for upgrade verification
-        if (searchParams.get("upgraded") === "true" && subscriptionStatus !== "pro") {
-            toast.info("Please wait while we confirm your subscription...", {
-                id: "upgrade-pending-block"
-            })
-            return
-        }
 
         // Add to history
         promptManager.addToPromptHistory(prompt)
@@ -266,14 +293,57 @@ export function StudioShell({ defaultLayout, initialGalleryPage }: StudioShellPr
 
         const params: ImageGenerationParams = commonParams
         generate(params)
+    }, [promptManager, generationSettings, batchMode, generate])
+
+    // Main click handler - checks balance before proceeding
+    const handleGenerateClick = React.useCallback(() => {
+        const { prompt } = promptManager.getPromptValues()
+
+        if (!prompt) return
+
+        // Prevent generation if we're waiting for upgrade verification
+        if (searchParams.get("upgraded") === "true" && subscriptionStatus !== "pro") {
+            toast.info("Please wait while we confirm your subscription...", {
+                id: "upgrade-pending-block"
+            })
+            return
+        }
+
+        // Check if we should show low balance warning
+        // Show warning if: can't afford OR will deplete balance below threshold
+        if (!canAfford || willDepleteBalance) {
+            // Store the generation function to call after confirmation
+            pendingGenerationRef.current = executeGeneration
+            setShowLowBalanceWarning(true)
+            return
+        }
+
+        // Balance is fine, proceed with generation
+        executeGeneration()
     }, [
         promptManager,
-        generationSettings,
-        batchMode,
-        generate,
         searchParams,
-        subscriptionStatus
+        subscriptionStatus,
+        canAfford,
+        willDepleteBalance,
+        executeGeneration
     ])
+
+    // Handle warning dialog confirmation
+    const handleLowBalanceConfirm = React.useCallback(() => {
+        setShowLowBalanceWarning(false)
+        // Execute the pending generation
+        if (pendingGenerationRef.current) {
+            pendingGenerationRef.current()
+            pendingGenerationRef.current = null
+        }
+    }, [])
+
+    // Handle warning dialog close/cancel
+    const handleLowBalanceClose = React.useCallback(() => {
+        setShowLowBalanceWarning(false)
+        pendingGenerationRef.current = null
+    }, [])
 
     // ========================================
     // Keyboard Shortcut for Generation
@@ -354,7 +424,7 @@ export function StudioShell({ defaultLayout, initialGalleryPage }: StudioShellPr
         <div className="h-full flex flex-col">
             <div className="relative flex-1 min-h-0 overflow-hidden">
                 {/* Top fade overlay */}
-                <div 
+                <div
                     className="absolute top-0 left-0 right-0 h-8 z-10 pointer-events-none transition-opacity duration-200"
                     style={{
                         opacity: showTopFade ? 1 : 0,
@@ -365,7 +435,7 @@ export function StudioShell({ defaultLayout, initialGalleryPage }: StudioShellPr
                         WebkitMaskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)',
                     }}
                 />
-                
+
                 <ScrollArea className="h-full" onScroll={handleScroll} viewportRef={scrollViewportRef}>
                     <div className="p-0 space-y-0.5 w-full min-w-0 overflow-x-hidden">
                         {/* Prompt Feature */}
@@ -385,9 +455,9 @@ export function StudioShell({ defaultLayout, initialGalleryPage }: StudioShellPr
                         </GenerationSettingsContext.Provider>
                     </div>
                 </ScrollArea>
-                
+
                 {/* Bottom fade overlay */}
-                <div 
+                <div
                     className="absolute bottom-0 left-0 right-0 h-8 z-10 pointer-events-none transition-opacity duration-200"
                     style={{
                         opacity: showBottomFade ? 1 : 0,
@@ -473,14 +543,6 @@ export function StudioShell({ defaultLayout, initialGalleryPage }: StudioShellPr
     // ========================================
     return (
         <div className="h-[calc(100vh-3.5rem)] flex flex-col bg-background overflow-hidden">
-            {/* Panel Toggle Header */}
-            <StudioHeader
-                leftSidebarOpen={studioUI.showLeftSidebar}
-                onToggleLeftSidebar={studioUI.toggleLeftSidebar}
-                rightPanelOpen={studioUI.showGallery}
-                onToggleRightPanel={studioUI.toggleGallery}
-            />
-
             {/* Main Layout */}
             <main className="flex-1 overflow-hidden">
                 <StudioLayout
@@ -516,6 +578,20 @@ export function StudioShell({ defaultLayout, initialGalleryPage }: StudioShellPr
                     promptManager.promptSectionRef.current?.setPrompt(content)
                     promptManager.setHasPromptContent(content.trim().length > 0)
                 }}
+            />
+
+            {/* Low Balance Warning Dialog - shows before generation when balance is low */}
+            <LowBalanceWarningDialog
+                isOpen={showLowBalanceWarning}
+                onClose={handleLowBalanceClose}
+                onConfirm={handleLowBalanceConfirm}
+                currentBalance={formattedBalance}
+                estimatedCost={formattedCost}
+                remainingBalance={formatRemainingBalance(remainingAfter)}
+                cannotAfford={!canAfford}
+                modelName={modelDisplayName}
+                isBatch={batchMode.batchSettings.enabled}
+                batchCount={batchCount}
             />
         </div>
     )

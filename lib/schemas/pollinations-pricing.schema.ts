@@ -10,6 +10,8 @@
  * - Output pollen: Cost for generating output (images, videos)
  * - Prices are per-image, per-second, or per-million tokens depending on model
  *
+ * For UI display names and other configuration, see @/lib/config/models.ts
+ *
  * @see https://enter.pollinations.ai for current pricing
  */
 
@@ -101,17 +103,14 @@ export const ModelPricingDefinitionSchema = z.object({
     /** Model ID (matches API model parameter) */
     modelId: z.string(),
 
-    /** Display name for UI */
-    displayName: z.string(),
-
     /** Model type */
     type: z.enum(["image", "video"]),
 
     /** Approximate images/videos per 1 pollen (efficiency indicator) */
     approximatePerPollen: z.number(),
 
-    /** Whether model supports vision/image input (defaults to false) */
-    supportsVisionInput: z.boolean().optional(),
+    /** Whether model supports reference image/vision input (defaults to false) */
+    supportsReferenceImage: z.boolean().optional(),
 
     /** Token-based pricing (for multimodal models) */
     tokenPricing: TokenPricingSchema.optional(),
@@ -146,10 +145,9 @@ export const IMAGE_MODEL_PRICING: Record<string, ModelPricingDefinition> = {
      */
     flux: {
         modelId: "flux",
-        displayName: "Flux Schnell",
         type: "image",
         approximatePerPollen: 5000,
-        supportsVisionInput: false,
+        supportsReferenceImage: false,
         imagePricing: {
             perImage: 0.0002, // 1 pollen / 5000 images
         },
@@ -161,10 +159,9 @@ export const IMAGE_MODEL_PRICING: Record<string, ModelPricingDefinition> = {
      */
     zimage: {
         modelId: "zimage",
-        displayName: "Z-Image Turbo",
         type: "image",
         approximatePerPollen: 5000,
-        supportsVisionInput: false,
+        supportsReferenceImage: false,
         imagePricing: {
             perImage: 0.0002, // 1 pollen / 5000 images
         },
@@ -176,10 +173,9 @@ export const IMAGE_MODEL_PRICING: Record<string, ModelPricingDefinition> = {
      */
     turbo: {
         modelId: "turbo",
-        displayName: "SDXL Turbo",
         type: "image",
         approximatePerPollen: 3333,
-        supportsVisionInput: false,
+        supportsReferenceImage: false,
         imagePricing: {
             perImage: 0.0003, // 1 pollen / 3333 images
         },
@@ -191,10 +187,9 @@ export const IMAGE_MODEL_PRICING: Record<string, ModelPricingDefinition> = {
      */
     gptimage: {
         modelId: "gptimage",
-        displayName: "GPT Image 1 Mini",
         type: "image",
         approximatePerPollen: 70,
-        supportsVisionInput: true,
+        supportsReferenceImage: true,
         tokenPricing: {
             textInputPerMillion: 2.0,
             imageInputPerMillion: 2.5,
@@ -208,10 +203,9 @@ export const IMAGE_MODEL_PRICING: Record<string, ModelPricingDefinition> = {
      */
     seedream: {
         modelId: "seedream",
-        displayName: "Seedream 4.0",
         type: "image",
         approximatePerPollen: 33.3,
-        supportsVisionInput: true,
+        supportsReferenceImage: true,
         imagePricing: {
             perImage: 0.03, // 1 / ~33.3 images
         },
@@ -223,10 +217,9 @@ export const IMAGE_MODEL_PRICING: Record<string, ModelPricingDefinition> = {
      */
     kontext: {
         modelId: "kontext",
-        displayName: "FLUX.1 Kontext",
         type: "image",
         approximatePerPollen: 25,
-        supportsVisionInput: true,
+        supportsReferenceImage: true,
         imagePricing: {
             perImage: 0.04, // 1 / ~25 images
         },
@@ -238,10 +231,9 @@ export const IMAGE_MODEL_PRICING: Record<string, ModelPricingDefinition> = {
      */
     nanobanana: {
         modelId: "nanobanana",
-        displayName: "NanoBanana",
         type: "image",
         approximatePerPollen: 25,
-        supportsVisionInput: true,
+        supportsReferenceImage: true,
         tokenPricing: {
             textInputPerMillion: 0.3,
             imageInputPerMillion: 0.3,
@@ -255,10 +247,9 @@ export const IMAGE_MODEL_PRICING: Record<string, ModelPricingDefinition> = {
      */
     "seedream-pro": {
         modelId: "seedream-pro",
-        displayName: "Seedream 4.5 Pro",
         type: "image",
         approximatePerPollen: 25,
-        supportsVisionInput: true,
+        supportsReferenceImage: true,
         imagePricing: {
             perImage: 0.04,
         },
@@ -270,10 +261,9 @@ export const IMAGE_MODEL_PRICING: Record<string, ModelPricingDefinition> = {
      */
     "gptimage-large": {
         modelId: "gptimage-large",
-        displayName: "GPT Image 1.5",
         type: "image",
         approximatePerPollen: 15,
-        supportsVisionInput: true,
+        supportsReferenceImage: true,
         tokenPricing: {
             textInputPerMillion: 8.0,
             imageInputPerMillion: 8.0,
@@ -287,10 +277,9 @@ export const IMAGE_MODEL_PRICING: Record<string, ModelPricingDefinition> = {
      */
     "nanobanana-pro": {
         modelId: "nanobanana-pro",
-        displayName: "NanoBanana Pro",
         type: "image",
         approximatePerPollen: 6,
-        supportsVisionInput: true,
+        supportsReferenceImage: true,
         tokenPricing: {
             textInputPerMillion: 1.25,
             imageInputPerMillion: 1.25,
@@ -317,10 +306,9 @@ export const VIDEO_MODEL_PRICING: Record<string, ModelPricingDefinition> = {
      */
     "seedance-pro": {
         modelId: "seedance-pro",
-        displayName: "Seedance Pro-Fast",
         type: "video",
         approximatePerPollen: 10,
-        supportsVisionInput: true,
+        supportsReferenceImage: true,
         isAlpha: true,
         videoPricing: {
             videoOutputPerMillion: 1.0,
@@ -333,10 +321,9 @@ export const VIDEO_MODEL_PRICING: Record<string, ModelPricingDefinition> = {
      */
     seedance: {
         modelId: "seedance",
-        displayName: "Seedance Lite",
         type: "video",
         approximatePerPollen: 6,
-        supportsVisionInput: true,
+        supportsReferenceImage: true,
         isAlpha: true,
         videoPricing: {
             videoOutputPerMillion: 1.8,
@@ -349,10 +336,9 @@ export const VIDEO_MODEL_PRICING: Record<string, ModelPricingDefinition> = {
      */
     veo: {
         modelId: "veo",
-        displayName: "Veo 3.1 Fast",
         type: "video",
         approximatePerPollen: 1, // ~1 video per pollen (highly variable based on duration)
-        supportsVisionInput: true,
+        supportsReferenceImage: true,
         isAlpha: true,
         videoPricing: {
             perSecond: 0.15,
@@ -453,10 +439,10 @@ export function getModelsByEfficiency(
 }
 
 /**
- * Check if a model supports vision/image input
+ * Check if a model supports reference image/vision input
  */
-export function modelSupportsVisionInput(modelId: string): boolean {
-    return getModelPricing(modelId)?.supportsVisionInput ?? false;
+export function modelSupportsReferenceImage(modelId: string): boolean {
+    return getModelPricing(modelId)?.supportsReferenceImage ?? false;
 }
 
 /**

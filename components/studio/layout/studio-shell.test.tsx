@@ -91,24 +91,6 @@ vi.mock("@/components/studio/features/history", () => ({
 vi.mock("@/components/studio", () => ({
     ApiKeyOnboardingModal: () => <div data-testid="api-key-modal" />,
     UpgradeModal: () => <div data-testid="upgrade-modal" />,
-    StudioHeader: ({
-        leftSidebarOpen,
-        onToggleLeftSidebar,
-        rightPanelOpen,
-        onToggleRightPanel,
-    }: {
-        leftSidebarOpen: boolean
-        onToggleLeftSidebar: () => void
-        rightPanelOpen: boolean
-        onToggleRightPanel: () => void
-    }) => (
-        <div data-testid="studio-header">
-            <span data-testid="left-sidebar-open">{String(leftSidebarOpen)}</span>
-            <span data-testid="right-panel-open">{String(rightPanelOpen)}</span>
-            <button data-testid="toggle-left" onClick={onToggleLeftSidebar}>Toggle Left</button>
-            <button data-testid="toggle-right" onClick={onToggleRightPanel}>Toggle Right</button>
-        </div>
-    ),
     StudioLayout: ({
         sidebar,
         canvas,
@@ -141,6 +123,11 @@ vi.mock("@/components/images/image-lightbox", () => ({
         </div>
     ),
 }))
+
+vi.mock("@/components/pollen-balance/low-balance-warning-dialog", () => ({
+    LowBalanceWarningDialog: () => <div data-testid="low-balance-warning-dialog" />,
+}))
+
 
 // Mock hooks
 const mockPromptManager = {
@@ -272,8 +259,35 @@ vi.mock("@/hooks/use-subscription-status", () => ({
     })),
 }))
 
+vi.mock("@/hooks/use-pollen-balance", () => ({
+    usePollenBalance: vi.fn(() => ({
+        balance: 10.00,
+        formattedBalance: "10.00",
+        isLoading: false,
+        isError: false,
+        error: null,
+        isLowBalance: false,
+        refetch: vi.fn(),
+        invalidateBalance: vi.fn(),
+        isRefreshing: false,
+    })),
+}))
+
+vi.mock("@/hooks/use-estimated-cost", () => ({
+    useEstimatedCost: vi.fn(() => ({
+        estimatedCost: 0.15,
+        canAfford: true,
+        willDepleteBalance: false,
+        remainingAfter: 9.85,
+        formattedCost: "0.15",
+    })),
+    formatRemainingBalance: vi.fn((value: number) => value.toFixed(2)),
+    LOW_BALANCE_AFTER_GENERATION_THRESHOLD: 0.5,
+}))
+
 vi.mock("@/lib/config/models", () => ({
     getModelSupportsNegativePrompt: vi.fn(() => true),
+    getModel: vi.fn(() => ({ displayName: "Flux" })),
 }))
 
 vi.mock("@/lib/errors", () => ({
@@ -345,7 +359,6 @@ describe("StudioShell", () => {
     it("renders all main components", () => {
         render(<StudioShell {...defaultProps} />)
 
-        expect(screen.getByTestId("studio-header")).toBeInTheDocument()
         expect(screen.getByTestId("studio-layout")).toBeInTheDocument()
         expect(screen.getByTestId("image-lightbox")).toBeInTheDocument()
         // Note: api-key-modal and upgrade-modal are gated behind isLocalhost which is mocked to return false
@@ -393,33 +406,7 @@ describe("StudioShell", () => {
         expect(screen.getByTestId("show-gallery")).toHaveTextContent("true")
     })
 
-    it("passes sidebar open state to header", () => {
-        render(<StudioShell {...defaultProps} />)
-
-        expect(screen.getByTestId("left-sidebar-open")).toHaveTextContent("true")
-    })
-
-    it("passes right panel open state to header", () => {
-        render(<StudioShell {...defaultProps} />)
-
-        expect(screen.getByTestId("right-panel-open")).toHaveTextContent("true")
-    })
-
-    it("calls toggleLeftSidebar when header toggle clicked", () => {
-        render(<StudioShell {...defaultProps} />)
-
-        fireEvent.click(screen.getByTestId("toggle-left"))
-
-        expect(mockStudioUI.toggleLeftSidebar).toHaveBeenCalledTimes(1)
-    })
-
-    it("calls toggleGallery when header toggle clicked", () => {
-        render(<StudioShell {...defaultProps} />)
-
-        fireEvent.click(screen.getByTestId("toggle-right"))
-
-        expect(mockStudioUI.toggleGallery).toHaveBeenCalledTimes(1)
-    })
+    // Note: Header toggle tests removed - sidebar rails now handle toggles natively via SidebarProvider
 
     it("lightbox is initially closed", () => {
         render(<StudioShell {...defaultProps} />)

@@ -4,6 +4,7 @@ import * as React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ControlsView, type ControlsViewProps } from "./controls-view";
 import type { ModelConstraints } from "@/types/pollinations";
+import { IMAGE_MODEL_PRICING } from "@/lib/schemas/pollinations-pricing.schema";
 
 // Mock studio components
 vi.mock("@/components/studio", () => ({
@@ -124,6 +125,7 @@ describe("ControlsView", () => {
         aspectRatios: [],
         supportsNegativePrompt: true,
         supportsReferenceImage: true,
+        modelPricing: IMAGE_MODEL_PRICING["flux"],
       },
     ],
     isLoadingModels: false,
