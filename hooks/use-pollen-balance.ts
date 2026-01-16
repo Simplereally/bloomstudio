@@ -35,9 +35,9 @@ import { queryKeys, STALE_TIMES, GC_TIMES } from "@/lib/query";
 /**
  * Default threshold for low balance warning (in pollen units)
  * Set to 1 because we can't infer max balance from the API - users can top up
- * via Polar.sh at any time. 1 pollen means they're genuinely running low.
+ * via Polar.sh at any time. 0.5 pollen means they're genuinely running low.
  */
-export const DEFAULT_LOW_BALANCE_THRESHOLD = 1;
+export const DEFAULT_LOW_BALANCE_THRESHOLD = 0.5;
 
 /**
  * Minimum interval between balance refreshes (in milliseconds)
