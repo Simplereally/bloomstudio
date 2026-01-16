@@ -7,7 +7,7 @@
  * Combines auth state with UI visibility logic.
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { usePollenAuth } from "@/lib/pollen-auth";
 
 const DEFAULT_STORAGE_KEY = "pollen_expiry_banner_dismissed";
@@ -73,22 +73,15 @@ export function useExpiryBannerState({
   const { isExpiringSoon, isExpired, daysUntilExpiry, authorize, isLoading } =
     usePollenAuth();
 
-  const [isDismissed, setIsDismissed] = useState(false);
-  const [isRedirecting, setIsRedirecting] = useState(false);
-
-  // Check sessionStorage on mount for dismissed state
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
+  const [isDismissed, setIsDismissed] = useState(() => {
+    if (typeof window === "undefined") return false;
     try {
-      const dismissed = sessionStorage.getItem(storageKey);
-      if (dismissed === "true") {
-        setIsDismissed(true);
-      }
+      return sessionStorage.getItem(storageKey) === "true";
     } catch {
-      // Ignore storage errors
+      return false;
     }
-  }, [storageKey]);
+  });
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const handleDismiss = useCallback(() => {
     if (!dismissible) return;

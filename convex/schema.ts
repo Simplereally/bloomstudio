@@ -39,6 +39,19 @@ export default defineSchema({
         followingCount: v.optional(v.number()),
         /** Count of public images */
         imagesCount: v.optional(v.number()),
+        /**
+         * Content filter preference:
+         * - 'block': Do not show sensitive content at all
+         * - 'blur': Show sensitive content with a blur overlay (default)
+         * - 'allow': Show sensitive content without overlay
+         */
+        contentFilterPreference: v.optional(
+            v.union(
+                v.literal("block"),
+                v.literal("blur"),
+                v.literal("allow")
+            )
+        ),
     })
         .index("by_clerk_id", ["clerkId"])
         .index("by_email", ["email"])
@@ -97,6 +110,42 @@ export default defineSchema({
         /** Full generation parameters for reproducibility */
         generationParams: v.optional(v.any()),
 
+        // --- Sensitive Content Fields ---
+
+        /** Whether the content is flagged as sensitive/NSFW. null = pending/untagged. */
+        isSensitive: v.optional(v.union(v.boolean(), v.null())),
+
+        /** Source of the sensitivity tagging */
+        sensitiveSource: v.optional(v.union(
+            v.literal("prompt_analysis"),
+            v.literal("vision_analysis"),
+            v.literal("manual_review"),
+            v.literal("user_report"),
+            v.literal("prompt_inference")
+        )),
+
+
+
+        /** Confidence score of the automated detection (0-1) */
+        sensitiveConfidence: v.optional(v.number()),
+
+        /** Detailed analysis of the content */
+        contentAnalysis: v.optional(v.object({
+            nudity: v.optional(v.string()), // none, partial, full
+            sexual: v.optional(v.string()), // none, suggestive, explicit
+            violence: v.optional(v.string()), // none, mild, graphic
+            analyzedAt: v.number(),
+        })),
+
+        /** Phase III: Prompt Inference Metadata */
+        promptInference: v.optional(v.object({
+            category: v.string(), // "explicit" | "suggestive" | "safe"
+            confidence: v.number(),
+            reasoning: v.string(),
+            provider: v.string(),
+            analyzedAt: v.number(),
+        })),
+
         /** Timestamp of creation */
         createdAt: v.number(),
     })
@@ -106,7 +155,11 @@ export default defineSchema({
         // NEW: Composite indexes for filtered queries
         .index("by_owner_visibility", ["ownerId", "visibility", "createdAt"])
         .index("by_owner_model", ["ownerId", "model", "createdAt"])
-        .index("by_owner_visibility_model", ["ownerId", "visibility", "model", "createdAt"]),
+        .index("by_owner_visibility_model", ["ownerId", "visibility", "model", "createdAt"])
+        // Index for "Block" preference (Safe only) or finding pending (isSensitive=null)
+        .index("by_visibility_sensitive", ["visibility", "isSensitive", "createdAt"])
+        // Index for scanning by sensitivity (e.g. finding pending)
+        .index("by_sensitivity", ["isSensitive", "createdAt"]),
 
     /**
      * Reference images - user uploads for image-to-image generation
@@ -302,4 +355,25 @@ export default defineSchema({
         windowStart: v.number(),
     }).index("by_key", ["key"])
         .index("by_windowStart", ["windowStart"]),
+
+    /**
+     * Provider health tracking - monitors rate limit status for vision analysis providers
+     * Prevents wasteful API calls when providers are rate-limited
+     */
+    providerHealth: defineTable({
+        /** Provider identifier */
+        provider: v.union(v.literal("groq"), v.literal("openrouter")),
+        /** Whether the provider is currently available for requests */
+        isAvailable: v.boolean(),
+        /** Unix timestamp (ms) when the rate limit resets and provider becomes available */
+        rateLimitedUntil: v.optional(v.number()),
+        /** Last error message received from the provider */
+        lastError: v.optional(v.string()),
+        /** Unix timestamp (ms) of the last health check */
+        lastChecked: v.number(),
+        /** Number of remaining requests in the current window (if known) */
+        remainingRequests: v.optional(v.number()),
+        /** Maximum requests allowed in the window (if known) */
+        requestLimit: v.optional(v.number()),
+    }).index("by_provider", ["provider"]),
 })

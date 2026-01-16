@@ -7,7 +7,7 @@ import { ImageGallery } from "./image-gallery"
 // Optimize: Mock the heavy GalleryThumbnail component
 // This saves ~3s per run by avoiding rendering complex child components (Image, Tooltips, etc.)
 vi.mock("./gallery-thumbnail", () => ({
-    GalleryThumbnail: ({ isActive, onClick }: any) => (
+    GalleryThumbnail: ({ isActive, onClick }: { isActive?: boolean; onClick?: () => void }) => (
         <div data-testid="gallery-thumbnail" onClick={onClick}>
             {isActive && <div data-testid="active-indicator" />}
         </div>

@@ -34,7 +34,6 @@ import {
 } from "@/components/studio";
 import type { BatchModeSettings } from "@/components/studio/batch";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import type { ModelDefinition, VideoDurationConstraints } from "@/lib/config/models";
 import { cn } from "@/lib/utils";
 import type { AspectRatio, AspectRatioOption, ModelConstraints, ResolutionTier } from "@/types/pollinations";
@@ -179,10 +178,10 @@ export const ControlsView = React.memo(function ControlsView({
   const selectedModelData = React.useMemo(() => models.find((m) => m.id === model), [models, model]);
 
   const badgeClassName =
-    "flex items-center gap-1.5 px-2 h-5 rounded-full text-xs font-bold bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/20";
+    "flex items-center gap-1.5 px-2 h-[21px] rounded-none text-xs font-bold bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/20";
 
   return (
-    <>
+    <div className="flex flex-col gap-1.5">
       {/* Model Selection */}
       <CollapsibleSection
         title="Model"
@@ -217,7 +216,6 @@ export const ControlsView = React.memo(function ControlsView({
           disabled={isGenerating || isLoadingModels}
           hideHeader
         />
-        <Separator className="bg-border/50" />
       </CollapsibleSection>
 
       {/* Aspect Ratio */}
@@ -242,7 +240,6 @@ export const ControlsView = React.memo(function ControlsView({
           onTierChange={onResolutionTierChange}
           showTierSelector={!!constraints && !!onResolutionTierChange}
         />
-        <Separator className="bg-border/50" />
       </CollapsibleSection>
 
       {/* Video Frames (video models only) */}
@@ -279,7 +276,6 @@ export const ControlsView = React.memo(function ControlsView({
                   disabled={isGenerating}
                   hideHeader
               />
-              <Separator className="bg-border/50" />
           </CollapsibleSection>
       )}
 
@@ -303,7 +299,6 @@ export const ControlsView = React.memo(function ControlsView({
                   supportsAudio={supportsAudio}
                   disabled={isGenerating}
               />
-              <Separator className="bg-border/50" />
           </CollapsibleSection>
       )}
 
@@ -323,7 +318,7 @@ export const ControlsView = React.memo(function ControlsView({
               {hasPixelLimit && (
                 <span
                   className={cn(
-                    "flex items-center justify-center px-2 h-5 rounded-full text-xs font-bold tabular-nums border",
+                      "flex items-center justify-center px-2 h-[21px] rounded-none text-xs font-bold tabular-nums border",
                     isOverLimit
                       ? "bg-destructive/15 text-destructive border-destructive/20"
                       : "bg-muted text-muted-foreground border-transparent"
@@ -357,33 +352,33 @@ export const ControlsView = React.memo(function ControlsView({
             linked={dimensionsLinked}
             onLinkedChange={onDimensionsLinkedChange}
           />
-          <Separator className="bg-border/50" />
         </CollapsibleSection>
       )}
 
       {/* Reference Image */}
-      <CollapsibleSection
-        title="Reference"
-        icon={<ImageIcon className="h-3.5 w-3.5" />}
-        testId="reference-image-section"
-        collapsedContent={referenceImage ? <span className={badgeClassName}>1 reference</span> : undefined}
-        rightContent={
-          referenceImage && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onReferenceImageChange(undefined)}
-              className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-destructive flex items-center gap-1"
-            >
-              <X className="h-3 w-3" />
-              Clear
-            </Button>
-          )
-        }
-      >
-        <ReferenceImagePicker selectedImage={referenceImage} onSelect={onReferenceImageChange} disabled={isGenerating} hideHeader />
-        <Separator className="bg-border/50" />
-      </CollapsibleSection>
+      {selectedModelData?.supportsReferenceImage && (
+        <CollapsibleSection
+          title="Reference"
+          icon={<ImageIcon className="h-3.5 w-3.5" />}
+          testId="reference-image-section"
+          collapsedContent={referenceImage ? <span className={badgeClassName}>1 reference</span> : undefined}
+          rightContent={
+            referenceImage && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onReferenceImageChange(undefined)}
+                className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-destructive flex items-center gap-1"
+              >
+                <X className="h-3 w-3" />
+                Clear
+              </Button>
+            )
+          }
+        >
+          <ReferenceImagePicker selectedImage={referenceImage} onSelect={onReferenceImageChange} disabled={isGenerating} hideHeader />
+        </CollapsibleSection>
+      )}
 
       {/* Seed */}
       <CollapsibleSection
@@ -400,7 +395,6 @@ export const ControlsView = React.memo(function ControlsView({
           disabled={isGenerating}
           hideHeader
         />
-        <Separator className="bg-border/50" />
       </CollapsibleSection>
 
       {/* Options */}
@@ -420,7 +414,6 @@ export const ControlsView = React.memo(function ControlsView({
         }
       >
         <OptionsPanel options={options} onOptionsChange={onOptionsChange} disabled={isGenerating} />
-        <Separator className="bg-border/50" />
       </CollapsibleSection>
 
       {/* Batch Mode */}
@@ -438,6 +431,6 @@ export const ControlsView = React.memo(function ControlsView({
       >
         <BatchModePanel settings={batchSettings} onSettingsChange={onBatchSettingsChange} disabled={isGenerating || isBatchActive} />
       </CollapsibleSection>
-    </>
+    </div>
   );
 });

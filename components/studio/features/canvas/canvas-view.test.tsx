@@ -20,20 +20,16 @@ vi.mock("@/components/studio", () => ({
             {children}
         </div>
     ),
-    ImageToolbar: ({ image, onDownload, onCopyUrl, onRegenerate, onOpenInNewTab, onFullscreen }: {
+    ImageToolbar: ({ onDownload, onCopyUrl, onRegenerate }: {
         image: GeneratedImage | null;
         onDownload?: () => void;
         onCopyUrl?: () => void;
         onRegenerate?: () => void;
-        onOpenInNewTab?: () => void;
-        onFullscreen?: () => void;
     }) => (
         <div data-testid="image-toolbar">
             <button data-testid="download-btn" onClick={onDownload}>Download</button>
             <button data-testid="copy-btn" onClick={onCopyUrl}>Copy</button>
             <button data-testid="regenerate-btn" onClick={onRegenerate}>Regenerate</button>
-            <button data-testid="open-tab-btn" onClick={onOpenInNewTab}>Open Tab</button>
-            <button data-testid="fullscreen-btn" onClick={onFullscreen}>Fullscreen</button>
         </div>
     ),
     ImageMetadata: ({ image, variant }: { image: GeneratedImage; variant: string }) => (
@@ -54,7 +50,7 @@ describe("CanvasView", () => {
             model: "flux",
             width: 1024,
             height: 1024,
-        } as any
+        },
     })
 
     const defaultProps: CanvasViewProps = {
@@ -147,24 +143,6 @@ describe("CanvasView", () => {
         screen.getByTestId("regenerate-btn").click()
 
         expect(onRegenerate).toHaveBeenCalledTimes(1)
-    })
-
-    it("calls onOpenInNewTab when open tab button clicked", async () => {
-        const onOpenInNewTab = vi.fn()
-        render(<CanvasView {...defaultProps} onOpenInNewTab={onOpenInNewTab} />)
-
-        screen.getByTestId("open-tab-btn").click()
-
-        expect(onOpenInNewTab).toHaveBeenCalledTimes(1)
-    })
-
-    it("calls onFullscreen when fullscreen button clicked", async () => {
-        const onFullscreen = vi.fn()
-        render(<CanvasView {...defaultProps} onFullscreen={onFullscreen} />)
-
-        screen.getByTestId("fullscreen-btn").click()
-
-        expect(onFullscreen).toHaveBeenCalledTimes(1)
     })
 
     it("calls onImageClick when canvas clicked", async () => {

@@ -27,8 +27,8 @@ export default function TermsPage() {
                     <section>
                         <h2 className="text-2xl font-bold mb-4">1. Acceptance of Terms</h2>
                         <p className="mb-4">
-                            Welcome to Bloom Studio ("we," "our," or "us"). By accessing or using our website, application, and AI image and video generation services (collectively, the "Service"), 
-                            you agree to be bound by these Terms of Service ("Terms"). If you disagree with any part of the terms, then you may not access the Service.
+                            Welcome to Bloom Studio (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;). By accessing or using our website, application, and AI image and video generation services (collectively, the &quot;Service&quot;), 
+                            you agree to be bound by these Terms of Service (&quot;Terms&quot;). If you disagree with any part of the terms, then you may not access the Service.
                         </p>
                         <p>
                             These Terms apply to all visitors, users, and others who access or use the Service. You represent that you are over the age of 13.
@@ -61,7 +61,7 @@ export default function TermsPage() {
                         <h2 className="text-2xl font-bold mb-4">4. Subscriptions and Billing</h2>
                         <h3 className="text-xl font-semibold mb-2 mt-6">Subscriptions</h3>
                         <p className="mb-4">
-                            Some parts of the Service are billed on a subscription basis ("Subscription(s)"). You will be billed in advance on a recurring and periodic basis ("Billing Cycle"). 
+                            Some parts of the Service are billed on a subscription basis (&quot;Subscription(s)&quot;). You will be billed in advance on a recurring and periodic basis (&quot;Billing Cycle&quot;). 
                             Billing cycles are typically set on a monthly or annual basis, depending on the type of subscription plan you select.
                         </p>
                         
@@ -87,18 +87,18 @@ export default function TermsPage() {
                         <h2 className="text-2xl font-bold mb-4">5. Content and Ownership</h2>
                         <h3 className="text-xl font-semibold mb-2 mt-6">Your Generative Content</h3>
                         <p className="mb-4">
-                            Subject to your compliance with these Terms, you own the images and videos you generate using the Service ("Generative Content"). 
+                            Subject to your compliance with these Terms, you own the images and videos you generate using the Service (&quot;Generative Content&quot;). 
                             You grant us a worldwide, non-exclusive, royalty-free license to reproduce, display, and distribute your Generative Content solely as necessary for the operation, hosting, and promotion of the Service. 
-                            For Generative Content set to "Private" or "Unlisted," this license is restricted strictly to the internal operation and delivery of the Service to you and does not include any right to sublicense, publicly display, or distribute such content to third parties. 
-                            Any broader sublicensing or distribution rights apply only to Generative Content that you have explicitly set to "Public" visibility.
+                            For Generative Content set to &quot;Private&quot; or &quot;Unlisted,&quot; this license is restricted strictly to the internal operation and delivery of the Service to you and does not include any right to sublicense, publicly display, or distribute such content to third parties. 
+                            Any broader sublicensing or distribution rights apply only to Generative Content that you have explicitly set to &quot;Public&quot; visibility.
                         </p>
                         <p className="mb-4">
-                            You understand that any Generative Content you set to "Public" visibility may be viewable by other users and the general public.
+                            You understand that any Generative Content you set to &quot;Public&quot; visibility may be viewable by other users and the general public.
                         </p>
 
                         <h3 className="text-xl font-semibold mb-2 mt-6">Input Content</h3>
                         <p className="mb-4">
-                            You represent and warrant that you own or have the necessary rights to use any text, images, or other data you upload or input into the Service ("Input Content").
+                            You represent and warrant that you own or have the necessary rights to use any text, images, or other data you upload or input into the Service (&quot;Input Content&quot;).
                             You agree not to upload any content that infringes on third-party rights or violates our Acceptable Use Policy.
                         </p>
                     </section>
@@ -107,7 +107,7 @@ export default function TermsPage() {
                         <h2 className="text-2xl font-bold mb-4">6. Prohibited Conduct</h2>
                         <p className="mb-4">You agree not to use the Service:</p>
                         <ul className="list-disc pl-6 space-y-2">
-                            <li>To generate content that is unlawful, harmful, threatening, abusive, harassing, defamatory, vulgar, obscene, libelous, or invasive of another's privacy.</li>
+                            <li>To generate content that is unlawful, harmful, threatening, abusive, harassing, defamatory, vulgar, obscene, libelous, or invasive of another&apos;s privacy.</li>
                             <li>To generate non-consensual sexual content (NCSC) or child sexual abuse material (CSAM). We strictly prohibit such content and may report it and provide associated user details to relevant authorities if we become aware of it or as required by applicable law.</li>
                             <li>To impersonate any person or entity or falsely state or otherwise misrepresent your affiliation with a person or entity.</li>
                             <li>To infringe upon the intellectual property rights of others.</li>
@@ -120,7 +120,7 @@ export default function TermsPage() {
                     <section>
                         <h2 className="text-2xl font-bold mb-4">7. Intellectual Property Rights</h2>
                         <p className="mb-4">
-                            The Service under the "Bloom Studio" name, and its original content (excluding Content provided by users), features, and functionality are and will remain the exclusive property of Bloom Studio and its licensors. 
+                            The Service under the &quot;Bloom Studio&quot; name, and its original content (excluding Content provided by users), features, and functionality are and will remain the exclusive property of Bloom Studio and its licensors. 
                             The Service is protected by copyright, trademark, and other laws of both the United States and foreign countries.
                         </p>
                     </section>
@@ -146,7 +146,7 @@ export default function TermsPage() {
                     <section>
                         <h2 className="text-2xl font-bold mb-4">10. Disclaimer and AI Nature</h2>
                         <p className="mb-4">
-                            Your use of the Service is at your sole risk. The Service is provided on an "AS IS" and "AS AVAILABLE" basis. The Service is provided without warranties of any kind, whether express or implied.
+                            Your use of the Service is at your sole risk. The Service is provided on an &quot;AS IS&quot; and &quot;AS AVAILABLE&quot; basis. The Service is provided without warranties of any kind, whether express or implied.
                         </p>
                         <p className="mb-4">
                             <strong>AI Disclaimer:</strong> Artificial intelligence is a rapidly evolving field. We do not guarantee that the generated content will be accurate, consistent, unique, or suitable for your specific needs. 
@@ -164,7 +164,7 @@ export default function TermsPage() {
                     <section>
                         <h2 className="text-2xl font-bold mb-4">12. Changes to Terms</h2>
                         <p className="mb-4">
-                            We reserve the right, at our sole discretion, to modify or replace these Terms at any time. If a revision is material we will try to provide at least 30 days' notice prior to any new terms taking effect. 
+                            We reserve the right, at our sole discretion, to modify or replace these Terms at any time. If a revision is material we will try to provide at least 30 days&apos; notice prior to any new terms taking effect. 
                             What constitutes a material change will be determined at our sole discretion.
                         </p>
                     </section>

@@ -2,7 +2,10 @@
 
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
-import { useMutation, usePaginatedQuery, useQuery } from "convex/react"
+import { useMutation as useConvexMutation, usePaginatedQuery, useQuery } from "convex/react"
+import { useMutation } from "@tanstack/react-query"
+import { invalidateUserFavoritesCache } from "@/app/_server/actions/invalidation"
+import { toast } from "sonner"
 
 /**
  * Hook to fetch the current user's favorited images with pagination.
@@ -31,16 +34,36 @@ export function useIsFavorited(imageId?: string) {
     const shouldFetch = isConvexId(imageId)
 
     return useQuery(
-        api.favorites.isFavorited, 
+        api.favorites.isFavorited,
         shouldFetch ? { imageId } : "skip"
     )
 }
 
 /**
  * Hook to toggle favorite status for an image.
+ * Uses TanStack Query for mutation state and side effects (invalidation).
  */
 export function useToggleFavorite() {
-    return useMutation(api.favorites.toggle)
+    const toggleFavorite = useConvexMutation(api.favorites.toggle)
+
+    return useMutation({
+        mutationFn: async ({ imageId }: { imageId: Id<"generatedImages"> }) => {
+            return await toggleFavorite({ imageId })
+        },
+        onSuccess: async () => {
+            // Invalidate server-side cache
+            await invalidateUserFavoritesCache()
+
+            // Note: We don't strictly need to invalidate client-side queries here
+            // because Convex subscriptions (useQuery) are real-time and self-updating.
+            // But if we had TanStack query based fetches, we would invalidate them here.
+        },
+        onError: (error) => {
+            toast.error("Failed to update favorite", {
+                description: error instanceof Error ? error.message : "Unknown error",
+            })
+        },
+    })
 }
 
 /**

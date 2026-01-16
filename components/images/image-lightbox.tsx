@@ -10,9 +10,11 @@ import { useImageDetails } from "@/hooks/queries/use-image-history"
 import { useImageLightbox, type LightboxImage } from "@/hooks/use-image-lightbox"
 import { getModelDisplayName } from "@/lib/config/models"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@clerk/nextjs"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 import { AnimatePresence, motion } from "framer-motion"
-import { BookmarkPlus, Check, Copy, Loader2, ZoomIn } from "lucide-react"
+import { BookmarkPlus, Check, Copy, Loader2, LogIn, ZoomIn } from "lucide-react"
+import Link from "next/link"
 import NextImage from "next/image"
 import * as React from "react"
 
@@ -70,21 +72,33 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
     handleMouseMove,
     handleMouseUp,
     handleMouseLeave,
-    hasDragged,
+    hasDragged: hasDraggedRef,
     isHovering,
     setIsHovering
   } = useImageLightbox({ image: displayImage, isOpen })
+
+  // Auth state for gating features
+  const { isSignedIn } = useAuth()
 
   // Prompt library state for saving prompts
   const [libraryOpen, setLibraryOpen] = React.useState(false)
   const [saveContent, setSaveContent] = React.useState<string | undefined>(undefined)
 
-  const [isImageLoaded, setIsImageLoaded] = React.useState(false)
+  // Track loading states for thumbnail-to-full-res crossfade
+  const [isThumbnailLoaded, setIsThumbnailLoaded] = React.useState(false)
+  const [isFullResLoaded, setIsFullResLoaded] = React.useState(false)
 
-  // Reset image loaded state when URL changes
+  // Determine URLs for progressive loading
+  // If originalUrl exists and differs from url, we have a thumbnail/full-res pair
+  const thumbnailUrl = displayImage?.url
+  const fullResUrl = displayImage?.originalUrl || displayImage?.url
+  const hasSeparateThumbnail = displayImage?.originalUrl && displayImage.originalUrl !== displayImage.url
+
+  // Reset loading states when image changes
   React.useEffect(() => {
-    setIsImageLoaded(false)
-  }, [displayImage?.url])
+    setIsThumbnailLoaded(false)
+    setIsFullResLoaded(false)
+  }, [displayImage?.url, displayImage?.originalUrl])
 
   return (
     <>
@@ -113,7 +127,7 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
                   "w-full h-full",
                   isZoomed
                     ? cn(
-                      "overflow-auto flex items-center justify-center",
+                      "overflow-auto flex",
                       isDragging ? "cursor-grabbing" : "cursor-grab"
                     )
                     : "flex items-center justify-center overflow-hidden"
@@ -122,9 +136,9 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseLeave}
-                onClick={(e) => {
-                  if (hasDragged.current) {
-                    hasDragged.current = false
+              onClick={(e) => {
+                  if (hasDraggedRef.current) {
+                    hasDraggedRef.current = false
                     return
                   }
                   if (e.target === e.currentTarget) {
@@ -159,7 +173,7 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
                         </div>
                       </div>
                     ) : (
-                      /* Image: opacity transition for smooth loading */
+                      /* Image: Progressive loading with thumbnail blur-up crossfade */
                       <div
                         className="relative"
                         style={isZoomed ? {
@@ -180,30 +194,55 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
                           onMouseEnter={() => setIsHovering(true)}
                           onMouseLeave={() => setIsHovering(false)}
                         >
+                          {/* Thumbnail layer - shows immediately with blur when we have separate thumbnail */}
+                          {hasSeparateThumbnail && thumbnailUrl && (
+                            <NextImage
+                              src={thumbnailUrl}
+                              alt={displayImage.prompt || "Generated image"}
+                              onLoad={() => setIsThumbnailLoaded(true)}
+                              draggable={false}
+                              width={displayImage.width || displayImage.params?.width || 1000}
+                              height={displayImage.height || displayImage.params?.height || 1000}
+                              priority
+                              unoptimized={thumbnailUrl.startsWith('http')}
+                              className={cn(
+                                "w-auto h-auto object-contain select-none transition-all duration-500",
+                                isZoomed ? "" : "max-w-[100vw] max-h-[100vh]",
+                                // Show thumbnail immediately, blur it, fade out when full-res is ready
+                                !isThumbnailLoaded ? "opacity-0" : "opacity-100",
+                                isFullResLoaded ? "opacity-0 pointer-events-none absolute inset-0" : "blur-[2px]"
+                              )}
+                            />
+                          )}
+
+                          {/* Full resolution layer - loads in background, crossfades in when ready */}
                           <NextImage
-                            src={displayImage.url}
+                            src={fullResUrl || displayImage.url}
                             alt={displayImage.prompt || "Generated image"}
                             onLoad={(e) => {
                               handleImageLoad(e as unknown as React.SyntheticEvent<HTMLImageElement>)
-                              setIsImageLoaded(true)
+                              setIsFullResLoaded(true)
                             }}
                             draggable={false}
+                            decoding="sync"
                             width={displayImage.width || displayImage.params?.width || 1000}
                             height={displayImage.height || displayImage.params?.height || 1000}
-                            priority
-                            unoptimized={displayImage.url.startsWith('http')} // Don't re-optimize if it's already a full URL (likely from storage)
+                            priority={true}
+                            unoptimized={(fullResUrl || displayImage.url).startsWith('http')}
                             className={cn(
-                              "w-auto h-auto object-contain select-none transition-opacity duration-300",
-                              isZoomed
-                                ? ""
-                                : "max-w-[100vw] max-h-[100vh]",
-                              !isImageLoaded ? "opacity-0" : "opacity-100"
+                              "w-auto h-auto object-contain select-none transition-opacity duration-500",
+                              isZoomed ? "" : "max-w-[100vw] max-h-[100vh]",
+                              // When no separate thumbnail, behave like before (fade in)
+                              // When separate thumbnail exists, position behind and fade in
+                              hasSeparateThumbnail
+                                ? (isFullResLoaded ? "opacity-100" : "opacity-0")
+                                : (!isFullResLoaded ? "opacity-0" : "opacity-100")
                             )}
                           />
                         </div>
 
                         {/* Zoom indicator - only show if zoomable and not zoomed */}
-                        {canZoom && !isZoomed && isImageLoaded && (
+                        {canZoom && !isZoomed && (isThumbnailLoaded || isFullResLoaded) && (
                           <div
                             className="absolute top-4 right-4 z-10 opacity-0 group-hover/image:opacity-100 transition-opacity pointer-events-none"
                           >
@@ -217,7 +256,8 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
                   </React.Fragment>
                 )}
 
-                {(isLoadingDetails || (!isVideo && !isImageLoaded)) && (
+                {/* Loading spinner - show when no thumbnail loaded yet */}
+                {(isLoadingDetails || (!isVideo && !isThumbnailLoaded && !isFullResLoaded)) && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
                     <Loader2 className="w-10 h-10 animate-spin text-white/50" />
                   </div>
@@ -295,51 +335,95 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
 
                       {/* Action buttons */}
                       <div className="flex items-center gap-2">
-                        {/* Save to Library Button */}
-                        <Tooltip delayDuration={200}>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-10 w-10 mb-1 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-md transition-all shrink-0 hover:scale-105 active:scale-95 shadow-lg"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                if (displayImage.prompt) {
-                                  setSaveContent(displayImage.prompt)
-                                  setLibraryOpen(true)
-                                }
-                              }}
-                              disabled={isLoadingDetails || !displayImage.prompt}
-                            >
-                              <BookmarkPlus className="h-5 w-5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="z-[100]">
-                            <p className="font-medium">Save to Library</p>
-                          </TooltipContent>
-                        </Tooltip>
+                        {/* Save to Library Button - auth-gated with sign-in prompt */}
+                        {isSignedIn ? (
+                          <Tooltip delayDuration={200}>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-10 w-10 mb-1 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-md transition-all shrink-0 hover:scale-105 active:scale-95 shadow-lg"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  if (displayImage.prompt) {
+                                    setSaveContent(displayImage.prompt)
+                                    setLibraryOpen(true)
+                                  }
+                                }}
+                                disabled={isLoadingDetails || !displayImage.prompt}
+                              >
+                                <BookmarkPlus className="h-5 w-5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="z-[100]">
+                              <p className="font-medium">Save to Library</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <Tooltip delayDuration={200}>
+                            <TooltipTrigger asChild>
+                              <Link href="/sign-in" onClick={(e) => e.stopPropagation()}>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-10 w-10 mb-1 rounded-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white border border-white/10 backdrop-blur-md transition-all shrink-0 hover:scale-105 active:scale-95 shadow-lg"
+                                >
+                                  <BookmarkPlus className="h-5 w-5" />
+                                </Button>
+                              </Link>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="z-[100]">
+                              <div className="flex items-center gap-2">
+                                <LogIn className="h-3.5 w-3.5" />
+                                <p className="font-medium">Sign in to save prompts</p>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
 
-                        {/* Copy Prompt Button */}
-                        <Tooltip delayDuration={200}>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-10 w-10 mb-1 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-md transition-all shrink-0 hover:scale-105 active:scale-95 shadow-lg"
-                              onClick={handleCopyPrompt}
-                              disabled={isLoadingDetails || !displayImage.prompt}
-                            >
-                              {copied ? (
-                                <Check className="h-5 w-5 text-green-400" />
-                              ) : (
-                                <Copy className="h-5 w-5" />
-                              )}
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="z-[100]">
-                            <p className="font-medium">{copied ? "Copied!" : "Copy prompt"}</p>
-                          </TooltipContent>
-                        </Tooltip>
+                        {/* Copy Prompt Button - auth-gated with sign-in prompt */}
+                        {isSignedIn ? (
+                          <Tooltip delayDuration={200}>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-10 w-10 mb-1 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-md transition-all shrink-0 hover:scale-105 active:scale-95 shadow-lg"
+                                onClick={handleCopyPrompt}
+                                disabled={isLoadingDetails || !displayImage.prompt}
+                              >
+                                {copied ? (
+                                  <Check className="h-5 w-5 text-green-400" />
+                                ) : (
+                                  <Copy className="h-5 w-5" />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="z-[100]">
+                              <p className="font-medium">{copied ? "Copied!" : "Copy prompt"}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <Tooltip delayDuration={200}>
+                            <TooltipTrigger asChild>
+                              <Link href="/sign-in" onClick={(e) => e.stopPropagation()}>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-10 w-10 mb-1 rounded-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white border border-white/10 backdrop-blur-md transition-all shrink-0 hover:scale-105 active:scale-95 shadow-lg"
+                                >
+                                  <Copy className="h-5 w-5" />
+                                </Button>
+                              </Link>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="z-[100]">
+                              <div className="flex items-center gap-2">
+                                <LogIn className="h-3.5 w-3.5" />
+                                <p className="font-medium">Sign in to copy prompts</p>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                       </div>
                     </div>
                   </motion.div>

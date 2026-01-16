@@ -75,6 +75,7 @@ export const PromptView = React.memo(function PromptView({
             title="Prompt"
             icon={<Wand2 className="h-3.5 w-3.5" />}
             testId="prompt-section"
+            forceMount
             rightContent={
                 <PromptHeaderControls
                     maxLength={2000}

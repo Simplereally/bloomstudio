@@ -13,11 +13,11 @@
  * Layout: Horizontal (left-to-right) with square upload areas for compactness.
  */
 
-import { DeleteImageDialog } from "@/components/studio/delete-image-dialog"
+
 import { UploadProgress } from "@/components/studio/upload-progress"
 import { ReferenceImagesBrowserModal } from "@/components/studio/controls/reference-images-browser-modal"
 import { Button } from "@/components/ui/button"
-import { useDeleteReferenceImage } from "@/hooks/mutations/use-delete-image"
+
 import { useUploadReference } from "@/hooks/mutations/use-upload-reference"
 import { useReferenceImages } from "@/hooks/queries/use-reference-images"
 import { cn } from "@/lib/utils"
@@ -64,7 +64,7 @@ export function VideoReferenceImagePicker({
 }: VideoReferenceImagePickerProps) {
     const recentImages = useReferenceImages()
     const isLoadingRecent = recentImages === undefined
-    const deleteMutation = useDeleteReferenceImage()
+
 
     const [uploadProgress, setUploadProgress] = useState<number | null>(null)
     const [uploadFilename, setUploadFilename] = useState<string>("")

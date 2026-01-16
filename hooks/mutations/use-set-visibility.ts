@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
 import { toast } from "sonner"
+import { invalidateVisibilityChange } from "@/app/_server/actions/invalidation"
 
 export type ImageVisibility = "public" | "unlisted"
 
@@ -16,20 +17,25 @@ export function useSetImageVisibility() {
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: async ({ 
-            imageId, 
-            visibility 
-        }: { 
+        mutationFn: async ({
+            imageId,
+            visibility
+        }: {
             imageId: Id<"generatedImages">
-            visibility: ImageVisibility 
+            visibility: ImageVisibility
         }) => {
             return await setVisibility({ imageId, visibility })
         },
-        onSuccess: (_result, { visibility }) => {
+        onSuccess: async (_result, { visibility }) => {
             const label = visibility === "public" ? "public" : "private"
             toast.success(`Image marked as ${label}`)
+
+            // Invalidate client-side TanStack Query caches
             queryClient.invalidateQueries({ queryKey: ["image-history"] })
             queryClient.invalidateQueries({ queryKey: ["public-feed"] })
+
+            // Invalidate server-side Next.js cache
+            await invalidateVisibilityChange()
         },
         onError: (error) => {
             toast.error("Failed to update visibility", {
@@ -47,16 +53,16 @@ export function useSetBulkVisibility() {
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: async ({ 
-            imageIds, 
-            visibility 
-        }: { 
+        mutationFn: async ({
+            imageIds,
+            visibility
+        }: {
             imageIds: Id<"generatedImages">[]
-            visibility: ImageVisibility 
+            visibility: ImageVisibility
         }) => {
             return await setBulkVisibility({ imageIds, visibility })
         },
-        onSuccess: (result, { visibility }) => {
+        onSuccess: async (result, { visibility }) => {
             const label = visibility === "public" ? "public" : "private"
             if (result.successCount > 0) {
                 toast.success(`${result.successCount} image${result.successCount > 1 ? "s" : ""} marked as ${label}`)
@@ -64,8 +70,13 @@ export function useSetBulkVisibility() {
             if (result.errors && result.errors.length > 0) {
                 toast.error(`Failed to update ${result.errors.length} images`)
             }
+
+            // Invalidate client-side TanStack Query caches
             queryClient.invalidateQueries({ queryKey: ["image-history"] })
             queryClient.invalidateQueries({ queryKey: ["public-feed"] })
+
+            // Invalidate server-side Next.js cache
+            await invalidateVisibilityChange()
         },
         onError: (error) => {
             toast.error("Failed to update visibility", {

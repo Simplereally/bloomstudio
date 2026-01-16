@@ -72,3 +72,18 @@ export {
   buildAuthorizationUrl,
   getCallbackUrl,
 } from "./constants";
+
+// Balance Service
+export {
+  fetchPollenBalance,
+  isBalanceError,
+  buildAuthHeader,
+  buildBalanceUrl,
+  parseBalanceResponse,
+  POLLINATIONS_API_BASE,
+} from "./balance-service";
+export type {
+  PollenBalanceResponse,
+  BalanceError,
+  BalanceErrorCode,
+} from "./balance-service";

@@ -1,103 +1,85 @@
 "use client"
 
 /**
- * ImageCanvas - Main image display area with premium "Creation Nexus" animations
+ * ImageCanvas - Main image display area with premium "Luminous Tide" animations
+ * 
+ * Design Philosophy: The idle → generating transition represents a liminal moment —
+ * potential energy becoming kinetic. The canvas dots represent dormant coordinates
+ * that awaken with luminous waves as generation begins.
+ * 
+ * Key Animation: The LuminousTideEffect creates sweeping conic gradients that
+ * wash across the dot grid, causing it to appear as if the canvas itself is
+ * coming alive with anticipation.
  */
 
-import { Card } from "@/components/ui/card"
 import { isVideoContent, MediaPlayer } from "@/components/ui/media-player"
 import { cn } from "@/lib/utils"
 import type { GeneratedImage } from "@/types/pollinations"
 import { AnimatePresence, motion, type Variants } from "framer-motion"
-import { ImagePlus, Loader2, Sparkles } from "lucide-react"
+import { ImagePlus, Loader2 } from "lucide-react"
+import NextImage from "next/image"
 import * as React from "react"
+import { CanvasWave } from "./canvas-wave"
 
-// --- Animation Constants ---
+// --- Animation Configuration ---
 
-const SPRING_CONFIG = { type: "spring", stiffness: 300, damping: 30, mass: 1 } as const
+// Premium easing: Expo out for satisfying deceleration
+const EXPO_OUT = [0.22, 1, 0.36, 1] as const
 
-const nexusContainerVariants: Variants = {
-    initial: {
-        opacity: 0,
-        scale: 1,
-    },
-    empty: {
+// Timing choreography (in ms)
+const TIMING = {
+    iconMorph: 250,       // Icon transition duration
+    textStagger: 30,      // Per-letter delay for text reveal
+} as const
+
+// --- Animation Variants ---
+
+const containerVariants: Variants = {
+    initial: { opacity: 0 },
+    idle: { 
         opacity: 1,
-        scale: 1,
-        transition: SPRING_CONFIG,
+        transition: { duration: 0.5, ease: EXPO_OUT }
     },
-    generating: {
+    generating: { 
         opacity: 1,
-        scale: 0.95,
-        transition: SPRING_CONFIG,
+        transition: { duration: 0.4, ease: EXPO_OUT }
     },
 }
 
-// Holographic expansion rings
-const echoVariants: Variants = {
-    animate: (i: number) => ({
-        scale: [1, 2],
-        opacity: [0.3, 0],
+// Text entrance with stagger
+const textContainerVariants: Variants = {
+    initial: {},
+    animate: {
         transition: {
-            duration: 2,
-            repeat: Infinity,
-            delay: i * 0.6,
-            ease: "easeOut",
-        },
-    }),
-}
-
-// Drifting atmospheric nebula
-const nebulaVariants: Variants = {
-    animate: (i: number) => ({
-        x: [0, i % 2 === 0 ? 40 : -40, 0],
-        y: [0, i % 2 === 0 ? -30 : 30, 0],
-        opacity: [0.1, 0.3, 0.1],
-        transition: {
-            duration: 8,
-            repeat: Infinity,
-            ease: "easeInOut",
-        },
-    }),
-}
-
-const hubVariants: Variants = {
-    empty: {
-        scale: 1,
-        borderRadius: "20px",
-        backgroundColor: "rgba(var(--primary-rgb), 0.03)",
-        borderColor: "rgba(var(--primary-rgb), 0.4)",
+            staggerChildren: TIMING.textStagger / 1000,
+            delayChildren: 0.15,
+        }
     },
-    generating: {
-        scale: 0.8,
-        borderRadius: "999px",
-        backgroundColor: "rgba(var(--primary-rgb), 0.1)",
-        borderColor: "rgba(var(--primary-rgb), 0.4)",
-    },
-}
-
-// Symmetrical light ray variants
-const lightRayVariants: Variants = {
-    initial: { opacity: 0, scale: 0 },
-    animate: (i: number) => ({
-        opacity: [0, 0.8, 0],
-        scale: [0.5, 1.2, 0.5],
-        rotate: [0, 180, 360],
+    exit: {
         transition: {
-            duration: 3,
-            repeat: Infinity,
-            delay: i * 0.4,
-            ease: "easeInOut",
-        },
-    }),
+            staggerChildren: 0.012,
+            staggerDirection: -1,
+        }
+    }
 }
 
-// Text entrance
-const textVariants: Variants = {
+const letterVariants: Variants = {
     initial: { opacity: 0, y: 12, filter: "blur(4px)" },
-    animate: { opacity: 1, y: 0, filter: "blur(0px)" },
-    exit: { opacity: 0, y: -12, filter: "blur(4px)" },
+    animate: { 
+        opacity: 1, 
+        y: 0, 
+        filter: "blur(0px)",
+        transition: { duration: 0.35, ease: EXPO_OUT }
+    },
+    exit: { 
+        opacity: 0, 
+        y: -6,
+        filter: "blur(2px)",
+        transition: { duration: 0.1 }
+    },
 }
+
+// --- Component ---
 
 export interface ImageCanvasProps {
     image: GeneratedImage | null
@@ -107,6 +89,72 @@ export interface ImageCanvasProps {
     children?: React.ReactNode
     className?: string
 }
+
+// Helper to split text into animated letters
+function AnimatedText({ 
+    text, 
+    className 
+}: { 
+    text: string
+    className?: string 
+}) {
+    return (
+        <motion.span
+            className={cn("inline-flex", className)}
+            variants={textContainerVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+        >
+            {text.split("").map((char, i) => (
+                <motion.span
+                    key={i}
+                    variants={letterVariants}
+                    className={char === " " ? "w-[0.25em]" : undefined}
+                >
+                    {char === " " ? "\u00A0" : char}
+                </motion.span>
+            ))}
+        </motion.span>
+    )
+}
+
+// Refined capillary progress bar - liquid-like precision
+function CapillaryProgress({ progress }: { progress: number }) {
+    return (
+        <div className="w-56 space-y-3">
+            {/* Progress track */}
+            <div className="relative h-0.5 w-full bg-foreground/5 rounded-full overflow-hidden">
+                {/* Fill */}
+                <motion.div
+                    className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary/80 to-primary rounded-full"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${progress}%` }}
+                    transition={{ duration: 0.5, ease: EXPO_OUT }}
+                />
+                {/* Meniscus highlight at leading edge */}
+                <motion.div
+                    className="absolute inset-y-0 w-6 bg-gradient-to-r from-transparent via-white/40 to-transparent rounded-full"
+                    style={{ left: `calc(${Math.max(0, progress - 3)}%)` }}
+                    animate={{ opacity: [0.2, 0.5, 0.2] }}
+                    transition={{ duration: 1.2, repeat: Infinity }}
+                />
+            </div>
+            
+            {/* Percentage */}
+            <div className="flex justify-between items-center">
+                <span className="text-[10px] font-mono text-muted-foreground/70 uppercase tracking-[0.15em]">
+                    Progress
+                </span>
+                <span className="text-[10px] font-mono text-primary/90 tabular-nums font-medium">
+                    {Math.round(progress)}%
+                </span>
+            </div>
+        </div>
+    )
+}
+
+
 
 export const ImageCanvas = React.memo(function ImageCanvas({
     image,
@@ -119,11 +167,9 @@ export const ImageCanvas = React.memo(function ImageCanvas({
     const [imageLoaded, setImageLoaded] = React.useState(false)
     const [imageError, setImageError] = React.useState(false)
 
-
     React.useEffect(() => {
         setImageLoaded(false)
         setImageError(false)
-
     }, [image?.url])
 
     const handleImageLoad = React.useCallback(() => {
@@ -133,187 +179,115 @@ export const ImageCanvas = React.memo(function ImageCanvas({
     const showPlaceholder = !image || isGenerating
 
     return (
-        <Card
+        <div
             className={cn(
-                "relative overflow-hidden flex flex-col h-full max-h-full transition-colors duration-700 !p-0",
-                "border-border/40",
+                "relative overflow-hidden flex flex-col h-full max-h-full rounded-xl border border-white/5 transition-colors duration-700",
                 className
             )}
             style={{
                 backgroundColor: "var(--canvas-bg)",
-                backgroundImage: "radial-gradient(circle at center, var(--canvas-dot) 0.75px, transparent 0.75px)",
-                backgroundSize: "14px 14px",
+                // background-image handled by CanvasWave now
             }}
             data-testid="image-canvas"
         >
+            {/* === CANVASPUNK WAVE ENGINE === */}
+            {/* High-fidelity 3D dot simulation */}
+            <div className="absolute inset-0 z-0">
+                 <CanvasWave isActive={isGenerating} className="w-full h-full" />
+            </div>
+
             <div
-                className="relative w-full flex-1 min-h-0 overflow-hidden"
+                className="relative w-full flex-1 min-h-0 overflow-hidden z-10"
                 data-testid="canvas-container"
             >
-                {/* Atmospheric Nebulas (Only active during generation) */}
-                <AnimatePresence>
-                    {isGenerating && (
-                        <>
-                            {[0, 1].map((i) => (
-                                <motion.div
-                                    key={`nebula-${i}`}
-                                    custom={i}
-                                    variants={nebulaVariants}
-                                    animate="animate"
-                                    className={cn(
-                                        "absolute w-[300px] h-[300px] rounded-full blur-[100px] pointer-events-none",
-                                        i === 0 ? "bg-primary/20 -top-20 -left-20" : "bg-accent/20 -bottom-20 -right-20"
-                                    )}
-                                />
-                            ))}
-                        </>
-                    )}
-                </AnimatePresence>
-
                 <AnimatePresence mode="popLayout">
                     {showPlaceholder ? (
                         <motion.div
                             key="placeholder"
-                            variants={nexusContainerVariants}
+                            variants={containerVariants}
                             initial="initial"
-                            animate={isGenerating ? "generating" : "empty"}
-                            exit={{ opacity: 0, scale: 0.96 }}
-                            className="absolute inset-0 flex flex-col items-center justify-center gap-12 z-10 p-6 md:p-12"
+                            animate={isGenerating ? "generating" : "idle"}
+                            exit={{ opacity: 0, scale: 0.98 }}
+                            className="absolute inset-0" // Removed flex-col centering
                             transition={{ duration: 0.4 }}
                         >
-                            {/* The Creation Nexus - fixed size wrapper prevents layout shift */}
-                            <div className="relative group w-[100px] h-[100px] flex items-center justify-center">
-                                {/* Holographic Echo Rings */}
-                                <AnimatePresence>
-                                    {isGenerating && (
-                                        <>
-                                            {[0, 1].map((i) => (
-                                                <motion.div
-                                                    key={`echo-${i}`}
-                                                    custom={i}
-                                                    variants={echoVariants}
-                                                    animate="animate"
-                                                    className="absolute inset-0 rounded-full border border-primary/30"
-                                                />
-                                            ))}
-                                            {/* Corner Brackets */}
-                                            <div className="absolute -inset-8 pointer-events-none opacity-40">
-                                                <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-primary/50 rounded-tl-sm animate-pulse" />
-                                                <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-primary/50 rounded-tr-sm animate-pulse" />
-                                                <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-primary/50 rounded-bl-sm animate-pulse" />
-                                                <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-primary/50 rounded-br-sm animate-pulse" />
+                            {/* --- ABSOLUTE CENTER LAYER --- */}
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                {/* Only show Idle icon. During generation, center is handled by canvas */}
+                                <AnimatePresence mode="wait">
+                                    {!isGenerating && (
+                                        <motion.div
+                                            key="core-idle"
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            className="relative flex items-center justify-center"
+                                        >
+                                            <div className={cn(
+                                                "w-20 h-20 flex items-center justify-center rounded-3xl",
+                                                "bg-foreground/[0.02] backdrop-blur-sm border border-white/5",
+                                                "shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)]"
+                                            )}>
+                                                <ImagePlus className="h-8 w-8 text-foreground/20" strokeWidth={1.5} />
                                             </div>
-                                        </>
+                                        </motion.div>
                                     )}
                                 </AnimatePresence>
-
-                                {/* The Central Hub */}
-                                <motion.div
-                                    layoutId="central-hub"
-                                    className="relative w-[100px] h-[100px] flex items-center justify-center overflow-hidden shadow-lg border border-foreground/10"
-                                    variants={hubVariants}
-                                    initial={false}
-                                    animate={isGenerating ? "generating" : "empty"}
-                                    transition={SPRING_CONFIG}
-                                >
-                                    <AnimatePresence mode="wait">
-                                        {!isGenerating ? (
-                                            <motion.div
-                                                key="icon-plus"
-                                                initial={{ opacity: 0, scale: 0.8 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                exit={{ opacity: 0, scale: 1.2 }}
-                                                transition={{ duration: 0.2 }}
-                                            >
-                                                <ImagePlus className="h-10 w-10 text-primary transition-colors " />
-                                            </motion.div>
-                                        ) : (
-                                            <motion.div
-                                                key="icon-sparkles"
-                                                initial={{ opacity: 0, scale: 0.8, rotate: -45 }}
-                                                animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                                                exit={{ opacity: 0, scale: 0.8 }}
-                                                transition={{ duration: 0.3 }}
-                                            >
-                                                <Sparkles className="h-8 w-8 text-primary drop-shadow-[0_0_12px_rgba(var(--primary-rgb),0.6)]" />
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-
-                                    {/* Scanning Beam */}
-                                    {isGenerating && (
-                                        <motion.div
-                                            className="absolute inset-0 bg-gradient-to-t from-transparent via-primary/10 to-transparent h-1/2 w-full"
-                                            animate={{ top: ["-100%", "200%"] }}
-                                            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                                        />
-                                    )}
-                                </motion.div>
                             </div>
 
-                            {/* Status Area - fixed height prevents layout shift */}
-                            <div className="relative flex flex-col items-center justify-center w-72 h-24">
+                            {/* --- STATUS LAYER (Offset from Center) --- */}
+                            {/* Positioned relative to center but pushed down */}
+                            <div className="absolute top-1/2 left-0 right-0 pt-16 flex flex-col items-center justify-start pointer-events-none">
                                 <AnimatePresence mode="popLayout">
                                     {!isGenerating ? (
                                         <motion.div
-                                            key="empty-text"
-                                            variants={textVariants}
-                                            initial="initial"
-                                            animate="animate"
-                                            exit="exit"
-                                            className="text-center absolute inset-0 flex flex-col items-center justify-center"
+                                            key="idle-text"
+                                            initial={{ opacity: 0, y: 16 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: -10, filter: "blur(4px)" }}
+                                            transition={{ duration: 0.5, ease: EXPO_OUT }}
+                                            className="text-center flex flex-col items-center"
                                         >
-                                            <h3 className="text-xl font-medium tracking-tight bg-gradient-to-b from-foreground to-foreground/50 bg-clip-text text-transparent">
+                                            <h3 className="text-lg font-medium tracking-tight text-foreground/85">
                                                 Create something amazing
                                             </h3>
-                                            {/* Powered by Pollinations attribution */}
-                                            <a
-                                                href="https://pollinations.ai"
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="mt-3 flex items-center gap-2 opacity-50 hover:opacity-80 transition-opacity"
+                                            <div
+                                                className="mt-5 flex items-center gap-2 opacity-85 transition-opacity duration-300 pointer-events-auto"
                                             >
-                                                <span className="text-sm text-muted-foreground font-light">Powered by</span>
-                                                <img
+                                                <span className="text-sm text-muted-foreground font-light">
+                                                    Powered by
+                                                </span>
+                                                <NextImage
                                                     src="/branding/pollinations/logo-white.svg"
                                                     alt="Pollinations"
-                                                    className="h-5 invert dark:invert-0"
+                                                    width={120}
+                                                    height={22}
+                                                    className="h-6 w-auto invert dark:invert-0"
                                                 />
-                                            </a>
+                                            </div>
                                         </motion.div>
                                     ) : (
                                         <motion.div
-                                            key="gen-text"
-                                            variants={textVariants}
-                                            initial="initial"
-                                            animate="animate"
-                                            exit="exit"
-                                            className="text-center absolute inset-0 flex flex-col items-center justify-center w-full"
+                                            key="generating-text"
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0, filter: "blur(4px)" }}
+                                            transition={{ duration: 0.4 }}
+                                            className="text-center flex flex-col items-center gap-6"
                                         >
-                                            <h3 className="text-xs font-bold tracking-[0.2em] uppercase text-primary/80 mb-4 animate-pulse">
-                                                Generating Vision
-                                            </h3>
+                                            <AnimatedText
+                                                text="GENERATING"
+                                                className="text-lg font-medium tracking-[0.3em] text-primary/50"
+                                            />
+                                            
                                             {typeof progress === "number" && (
-                                                <div className="space-y-3 w-full">
-                                                    <div className="relative h-1 w-full bg-primary/5 rounded-full overflow-hidden">
-                                                        <motion.div
-                                                            className="absolute inset-y-0 left-0 bg-primary"
-                                                            initial={{ width: 0 }}
-                                                            animate={{ width: `${progress}%` }}
-                                                            transition={{ duration: 0.5 }}
-                                                        />
-                                                        {/* Scanning glare over progress bar */}
-                                                        <motion.div
-                                                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent"
-                                                            animate={{ x: ["-100%", "200%"] }}
-                                                            transition={{ duration: 1, repeat: Infinity }}
-                                                        />
-                                                    </div>
-                                                    <div className="flex justify-between items-center px-1">
-                                                        <span className="text-[10px] font-mono text-muted-foreground uppercase opacity-50">Frame Sync</span>
-                                                        <span className="text-[10px] font-mono text-primary font-bold">{Math.round(progress)}%</span>
-                                                    </div>
-                                                </div>
+                                                <motion.div
+                                                    initial={{ opacity: 0, y: 10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    transition={{ delay: 0.4, duration: 0.4, ease: EXPO_OUT }}
+                                                >
+                                                    <CapillaryProgress progress={progress} />
+                                                </motion.div>
                                             )}
                                         </motion.div>
                                     )}
@@ -326,7 +300,7 @@ export const ImageCanvas = React.memo(function ImageCanvas({
                             className="absolute inset-0 group"
                             initial={{ opacity: 0, scale: 1.02 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            transition={{ duration: 0.5, ease: [0.19, 1, 0.22, 1] }}
+                            transition={{ duration: 0.6, ease: EXPO_OUT }}
                         >
                             <div
                                 className={cn(
@@ -379,7 +353,6 @@ export const ImageCanvas = React.memo(function ImageCanvas({
                     )}
                 </AnimatePresence>
             </div>
-        </Card>
+        </div>
     )
 })
-

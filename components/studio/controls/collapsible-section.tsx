@@ -10,6 +10,7 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import { cn } from "@/lib/utils"
 import { ChevronRight } from "lucide-react"
 import * as React from "react"
 
@@ -36,6 +37,8 @@ export interface CollapsibleSectionProps {
     open?: boolean
     /** Callback when expanded state changes */
     onOpenChange?: (open: boolean) => void
+    /** Keep children mounted when collapsed to preserve internal state */
+    forceMount?: boolean
 }
 
 export const CollapsibleSection = React.memo(function CollapsibleSection({
@@ -50,6 +53,7 @@ export const CollapsibleSection = React.memo(function CollapsibleSection({
     disabled = false,
     open: controlledOpen,
     onOpenChange,
+    forceMount = false,
 }: CollapsibleSectionProps) {
     const [internalOpen, setInternalOpen] = React.useState(defaultExpanded)
 
@@ -65,45 +69,101 @@ export const CollapsibleSection = React.memo(function CollapsibleSection({
 
     return (
         <div
-            className={`space-y-2 w-full min-w-0 overflow-x-hidden ${disabled ? "opacity-50 pointer-events-none" : ""} ${className || ""}`}
+            className={cn(
+                "w-full min-w-0 overflow-x-hidden border border-border/40 transition-all duration-200",
+                disabled ? "opacity-50 pointer-events-none" : "",
+                className
+            )}
             data-testid={testId ? `${testId}-container` : undefined}
             aria-disabled={disabled}
         >
             <Collapsible open={isExpanded} onOpenChange={disabled ? undefined : handleOpenChange}>
-                {/* Header row: trigger + rightContent side by side */}
-                <div className="flex items-center gap-2 w-full">
+                {/* Header row: using bg-black/20 for darker header */}
+                {/* Fixed: Moved 'group' here so it only triggers when hovering header, not content */}
+                <div className={cn(
+                    "h-[50px] group/header flex items-center gap-1 p-0 transition-colors cursor-pointer bg-black/20",
+                    isExpanded && "border-b border-border/40"
+                )}>
                     <CollapsibleTrigger
-                        className={`flex items-center gap-2 flex-1 min-w-0 py-2 px-1 rounded-sm hover:bg-muted transition-colors text-left ${disabled ? "cursor-not-allowed" : ""}`}
+                        className={cn(
+                            "flex items-center gap-3 flex-1 min-w-0 py-2 px-3 rounded-none transition-colors text-left outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring select-none !cursor-pointer",
+                            disabled ? "cursor-not-allowed" : ""
+                        )}
                         data-testid={testId ? `${testId}-trigger` : undefined}
                         disabled={disabled}
                     >
-                        {icon && <span className="text-primary shrink-0">{icon}</span>}
-                        <span className="text-sm font-medium truncate">{title}</span>
-                        {/* When collapsed: show non-interactive summary badge */}
-                        {!isExpanded && (collapsedContent || rightContent) && (
-                            <div className="shrink-0 ml-auto">
-                                {collapsedContent ?? rightContent}
-                            </div>
-                        )}
-                        <ChevronRight
-                            className={`h-4 w-4 text-muted-foreground transition-transform shrink-0 ${isExpanded ? "rotate-90" : ""} ${!isExpanded && (collapsedContent || rightContent) ? "" : "ml-auto"}`}
-                        />
+                        {icon && <span className="text-foreground group-hover/header:text-primary transition-colors shrink-0">{icon}</span>}
+                        <span className="text-[13px] uppercase tracking-wider font-semibold text-foreground group-hover/header:text-primary transition-colors truncate">
+                            {title}
+                        </span>
                     </CollapsibleTrigger>
-                    {/* Interactive rightContent OUTSIDE the trigger button to avoid nested buttons */}
+
+                    {/* Collapsed state: collapsedContent then chevron, both on the right */}
+                    {!isExpanded && (
+                        <>
+                            {(collapsedContent || rightContent) && (
+                                <div className="shrink-0 opacity-90 leading-none flex items-center">
+                                    {collapsedContent ?? rightContent}
+                                </div>
+                            )}
+                            <CollapsibleTrigger
+                                className={cn(
+                                    "flex items-center justify-center p-2 rounded-none transition-colors outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring select-none !cursor-pointer",
+                                    disabled ? "cursor-not-allowed" : ""
+                                )}
+                                disabled={disabled}
+                            >
+                                <ChevronRight
+                                    data-testid={testId ? `${testId}-chevron` : undefined}
+                                    className="h-4 w-4 text-muted-foreground/50 transition-transform shrink-0"
+                                />
+                            </CollapsibleTrigger>
+                        </>
+                    )}
+
+                    {/* Interactive rightContent OUTSIDE the main trigger */}
                     {isExpanded && rightContent && (
-                        <div className="shrink-0">
+                        <div className="shrink-0 pr-1 animate-in fade-in slide-in-from-left-1 duration-200 ml-auto leading-none flex items-center">
                             {rightContent}
                         </div>
+                    )}
+
+                    {isExpanded && (
+                        <CollapsibleTrigger
+                            className={cn(
+                                "flex items-center justify-center p-2 rounded-none transition-colors outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring select-none !cursor-pointer",
+                                disabled ? "cursor-not-allowed" : ""
+                            )}
+                            disabled={disabled}
+                        >
+                            <ChevronRight
+                                data-testid={testId ? `${testId}-chevron` : undefined}
+                                className={cn(
+                                    "h-4 w-4 text-muted-foreground/50 transition-transform shrink-0",
+                                    isExpanded ? "rotate-90" : ""
+                                )}
+                            />
+                        </CollapsibleTrigger>
                     )}
                 </div>
 
                 <CollapsibleContent
-                    className="pt-1 w-full min-w-0"
+                    className={cn(
+                        "w-full min-w-0 overflow-hidden",
+                        "data-[state=open]:animate-collapsible-down",
+                        "data-[state=closed]:animate-collapsible-up",
+                        // When forceMount is used, we still want animations to play.
+                        // The collapsible-up animation ends at height:0 opacity:0, which visually hides the content
+                        // without needing 'hidden' class that would bypass the animation.
+                        forceMount && "data-[state=closed]:pointer-events-none"
+                    )}
                     data-testid={testId ? `${testId}-content` : undefined}
-                    forceMount
-                    style={{ display: isExpanded ? undefined : 'none' }}
+                    forceMount={forceMount || undefined}
                 >
-                    {children}
+                    {/* Content area: using lighter background */}
+                    <div className="px-1.5 pb-1.5 pt-1.5 bg-card/10">
+                        {children}
+                    </div>
                 </CollapsibleContent>
             </Collapsible>
         </div>

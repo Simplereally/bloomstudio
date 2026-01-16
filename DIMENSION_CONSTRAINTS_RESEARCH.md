@@ -21,7 +21,7 @@
 
 ## Executive Summary
 
-AI image generation models have wildly varying dimension constraints, ranging from fixed-size outputs (DALL-E 3) to highly flexible megapixel budgets (Seedream 4.5). When working through an aggregator like Pollinations.ai, these constraints become even more opaque because:
+AI image generation models have wildly varying dimension constraints, ranging from fixed-size outputs (GPT Image 1 and 1.5) to highly flexible megapixel budgets (Seedream 4.5). When working through an aggregator like Pollinations.ai, these constraints become even more opaque because:
 
 1. **No unified API contract** for dimension constraints across models
 2. **Silent auto-scaling** — Pollinations may resize images without notification
@@ -43,7 +43,7 @@ This report presents research findings and a strategic approach to creating an i
 | Challenge | Description |
 |-----------|-------------|
 | **Varying Pixel Budgets** | Models range from ~590K pixels (SDXL Turbo) to 16MP+ (Seedream 4.5) |
-| **Fixed vs Flexible** | Some models only accept specific dimension pairs (DALL-E 3, GPT Image), others allow arbitrary dimensions within constraints |
+| **Fixed vs Flexible** | Some models only accept specific dimension pairs (GPT Image 1 and 1.5), others allow arbitrary dimensions within constraints |
 | **Dimension Minimums/Maximums** | Min dimensions range from 64px to 1024px; max dimensions range from 768px to 16384px |
 | **Aspect Ratio Limits** | Seedream enforces 16:1 max aspect ratio; others may have implicit limits |
 | **Silent Upscaling** | Some providers upscale outputs beyond requested dimensions |
@@ -72,8 +72,8 @@ Pollinations acts as an intermediary, and their documentation states:
 │ Flux (via Pollin.)  │ ~1-2MP        │ 256            │ 1440-2048     │ 32            │ 1024×1024 def  │
 │ Flux Kontext        │ ~1MP          │ 64             │ 2048          │ 32            │ 3:7 to 7:3 AR  │
 │ Z-Image Turbo       │ ~4MP          │ 64             │ 4096          │ 32            │ 1024-1536 train│
-│ GPT Image (DALL-E)  │ Fixed         │ 1024           │ 1792          │ N/A           │ 3 presets only │
-│ GPT Image Large     │ Fixed         │ 1024           │ 1792          │ N/A           │ 3 presets only │
+│ GPT Image 1         │ Fixed         │ 1024           │ 1792          │ N/A           │ 3 presets only │
+│ GPT Image 1.5       │ Fixed         │ 1024           │ 1792          │ N/A           │ 3 presets only │
 │ NanoBanana          │ ~1MP          │ 64             │ 2048          │ 32            │ Standard       │
 │ NanoBanana Pro      │ ~10MP         │ 1024           │ 4096          │ 16            │ 4K support     │
 │ Seedream 4.0        │ 16MP          │ 512            │ 16384         │ 1             │ 16:1 max AR    │
@@ -84,7 +84,7 @@ Pollinations acts as an intermediary, and their documentation states:
 
 ### Detailed Model Breakdowns
 
-#### DALL-E 3 (GPT Image)
+#### GPT Image 1 & 1.5
 - **Type**: Fixed presets only — no custom dimensions
 - **Presets**:
   - Square: 1024×1024
@@ -262,7 +262,7 @@ For uncertain models, show subtle messaging:
 
 | Model Type | Message |
 |------------|---------|
-| Fixed (DALL-E) | "Dimensions are fixed for this model" |
+| Fixed (GPT Image 1 & 1.5) | "Dimensions are fixed for this model" |
 | Flexible (Seedream) | "Supports up to 16MP / 4096×4096" |
 | Uncertain (via Pollinations) | "Output dimensions may vary from request" |
 
@@ -483,7 +483,7 @@ By implementing the three-tier selection architecture (Aspect Ratio → Resoluti
 - Pollinations.ai API Documentation: https://github.com/pollinations/pollinations
 - Flux Model Documentation: https://bfl.ml/
 - Seedream via BytePlus: https://byteplus.com
-- DALL-E 3 Sizing Guide: https://openai.com
+- GPT Image 1 & 1.5 Sizing Guide: https://openai.com/
 - SDXL Turbo: https://huggingface.co/stabilityai/sdxl-turbo
 - Midjourney Documentation: https://docs.midjourney.com
 - Leonardo.ai Help: https://intercom.help/leonardo-ai

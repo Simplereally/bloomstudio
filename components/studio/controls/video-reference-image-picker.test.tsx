@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, fireEvent, within } from "@testing-library/react"
+import { render, screen, fireEvent } from "@testing-library/react"
 import { VideoReferenceImagePicker, type VideoReferenceImages } from "./video-reference-image-picker"
 
 // Mock hooks
@@ -31,6 +31,7 @@ vi.mock("@/hooks/mutations/use-delete-image", () => ({
 // Mock next/image
 vi.mock("next/image", () => ({
     default: ({ src, alt }: { src: string; alt: string }) => (
+        // eslint-disable-next-line @next/next/no-img-element
         <img src={src} alt={alt} data-testid="mock-image" />
     ),
 }))

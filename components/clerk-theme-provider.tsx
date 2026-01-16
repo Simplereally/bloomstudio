@@ -14,6 +14,7 @@ export function ClerkThemeProvider({ children }: { children: React.ReactNode }) 
 
   return (
     <ClerkProvider
+      afterSignOutUrl="/"
       appearance={{
         baseTheme: resolvedTheme === "dark" ? dark : undefined,
         variables: {

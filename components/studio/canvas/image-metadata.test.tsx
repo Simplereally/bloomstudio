@@ -35,15 +35,15 @@ vi.mock("@/components/ui/tooltip", () => ({
 
 vi.mock("@/components/ui/collapsible", async () => {
     const React = await import("react")
-    const CollapsibleContext = React.createContext({ open: false, onOpenChange: (_open: boolean) => {} })
+    const CollapsibleContext = React.createContext<{ open: boolean; onOpenChange: (open: boolean) => void }>({ open: false, onOpenChange: () => {} })
 
     return {
-        Collapsible: ({ children, open, onOpenChange }: any) => (
+        Collapsible: ({ children, open, onOpenChange }: { children: React.ReactNode; open: boolean; onOpenChange: (open: boolean) => void }) => (
             <CollapsibleContext.Provider value={{ open, onOpenChange }}>
                 {children}
             </CollapsibleContext.Provider>
         ),
-        CollapsibleTrigger: ({ children, onClick, ...props }: any) => {
+        CollapsibleTrigger: ({ children, onClick, ...props }: { children: React.ReactNode; onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void } & React.ButtonHTMLAttributes<HTMLButtonElement>) => {
             const ctx = React.useContext(CollapsibleContext)
             return (
                 <button
@@ -57,7 +57,7 @@ vi.mock("@/components/ui/collapsible", async () => {
                 </button>
             )
         },
-        CollapsibleContent: ({ children }: any) => {
+        CollapsibleContent: ({ children }: { children: React.ReactNode }) => {
             const ctx = React.useContext(CollapsibleContext)
             return ctx.open ? <div>{children}</div> : null
         },

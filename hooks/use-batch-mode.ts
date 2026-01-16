@@ -29,6 +29,7 @@ import {
     useBatchGeneration,
     useBatchJob
 } from "@/hooks/queries"
+import { usePollenBalance } from "@/hooks/use-pollen-balance"
 import { ClientErrorCodeConst, showErrorToast } from "@/lib/errors"
 import { usePollenApiKey, usePollenAuthActions } from "@/lib/pollen-auth"
 import type { GeneratedImage } from "@/types/pollinations"
@@ -174,6 +175,31 @@ export function useBatchMode({
     // ========================================
     const apiKey = usePollenApiKey()
     const { authorize } = usePollenAuthActions()
+    
+    // ========================================
+    // Balance Invalidation
+    // ========================================
+    // Get balance invalidation function for post-generation refresh
+    const { invalidateBalance } = usePollenBalance()
+    
+    // Track previous completedCount to detect new completions
+    const prevCompletedCountRef = React.useRef<number>(0)
+    
+    // Invalidate balance when batch items complete
+    // Requirements 3.2, 3.3, 3.4
+    React.useEffect(() => {
+        const currentCompletedCount = batchJob?.completedCount ?? 0
+        const prevCompletedCount = prevCompletedCountRef.current
+        
+        // Only invalidate if completedCount increased (new items completed)
+        if (currentCompletedCount > prevCompletedCount) {
+            // Invalidate balance (debounced internally by usePollenBalance)
+            invalidateBalance()
+        }
+        
+        // Update ref for next comparison
+        prevCompletedCountRef.current = currentCompletedCount
+    }, [batchJob?.completedCount, invalidateBalance])
 
     // ========================================
     // Batch Start Handler
@@ -251,6 +277,8 @@ export function useBatchMode({
     // Kept for backward compatibility but no longer used
     const handleBatchGenerateItem = React.useCallback(
         async (_params: BatchGenerationParams, _itemIndex: number): Promise<{ success: boolean; imageId?: Id<"generatedImages"> }> => {
+            void _params
+            void _itemIndex
             console.warn(
                 "[useBatchMode] handleBatchGenerateItem is deprecated. " +
                 "Batch processing now happens entirely on the server."

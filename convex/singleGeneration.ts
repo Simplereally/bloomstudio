@@ -15,6 +15,7 @@
 import { ConvexError, v } from "convex/values"
 import { internal } from "./_generated/api"
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server"
+import { analyzePromptForNSFW } from "./lib/nsfwDetection"
 import { canUserGenerate } from "./lib/subscription"
 
 // ============================================================
@@ -224,6 +225,10 @@ export const storeGeneratedImage = internalMutation({
     handler: async (ctx, args) => {
         const now = Date.now()
 
+        // Analyze prompt for NSFW content
+        const promptAnalysis = analyzePromptForNSFW(args.prompt)
+        console.log(`[Prompt Analysis] Score: ${promptAnalysis.confidence}, Sensitive: ${promptAnalysis.isSensitive}, Terms: ${promptAnalysis.matchedTerms.join(", ")}`)
+
         const imageId = await ctx.db.insert("generatedImages", {
             ownerId: args.ownerId,
             r2Key: args.r2Key,
@@ -243,7 +248,23 @@ export const storeGeneratedImage = internalMutation({
             generationParams: args.generationParams,
             visibility: args.visibility,
             createdAt: now,
+
+            // Initial sensitive content tagging based on prompt
+            // If explicit (>= 0.9), mark Sensitive.
+            // If any less, mark Pending (null) to run Phase 3 Prompt Inference.
+            isSensitive: promptAnalysis.confidence >= 0.9 ? true : null,
+            sensitiveSource: promptAnalysis.confidence >= 0.9 ? "prompt_analysis" : undefined,
+            sensitiveConfidence: promptAnalysis.confidence,
         })
+
+        // Schedule async Prompt Inference (Phase 3) if prompt was not explicitly flagged
+        // This ensures "Gate 2" runs on everything that isn't already caught by Gate 1.
+        if (promptAnalysis.confidence < 0.9) {
+            await ctx.scheduler.runAfter(0, internal.promptInference.analyzePromptImage, {
+                imageId,
+                prompt: args.prompt,
+            })
+        }
 
         return imageId
     },

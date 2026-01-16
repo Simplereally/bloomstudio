@@ -7,7 +7,7 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
-import { Crown, Sparkles, Clock, ArrowUpCircle } from "lucide-react"
+import { Clock, ArrowUpCircle } from "lucide-react"
 import { UpgradeModal } from "@/components/studio/upgrade-modal"
 import { memo } from "react"
 import { SubscriptionStatus } from "@/hooks/use-subscription-status"
@@ -40,36 +40,9 @@ export const SubscriptionBadgeView = memo(function SubscriptionBadgeView({
 
     if (!status) return null
 
+    // Pro users don't need a badge - they're subscribed and have full access
     if (status === "pro") {
-        return (
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <Badge
-                        variant="outline"
-                        className={cn(
-                            "cursor-default border-primary/50 bg-primary/10 text-primary font-bold px-2 py-0.5",
-                            "hover:bg-primary/20 transition-all duration-300",
-                            "shadow-[0_0_15px_-3px_rgba(var(--primary),0.25)]",
-                            "animate-in fade-in zoom-in duration-500"
-                        )}
-                    >
-                        <Crown className="w-3 h-3 mr-1 fill-current" />
-                        PRO
-                    </Badge>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-[200px] p-3">
-                    <div className="space-y-1">
-                        <p className="font-bold flex items-center gap-1.5 text-primary">
-                            <Sparkles className="w-3.5 h-3.5" />
-                            Pro Subscription
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                            You have full access to all models and features. Thank you for supporting Bloom Studio!
-                        </p>
-                    </div>
-                </TooltipContent>
-            </Tooltip>
-        )
+        return null
     }
 
     if (status === "trial") {

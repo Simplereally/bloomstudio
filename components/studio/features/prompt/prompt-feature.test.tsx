@@ -144,19 +144,24 @@ describe("usePromptManagerContext", () => {
     })
 
     it("returns context value when used within provider", () => {
-        let contextValue: ReturnType<typeof usePromptManagerContext> | null = null
+        const onValue = vi.fn<(value: ReturnType<typeof usePromptManagerContext>) => void>()
 
-        const ConsumerComponent = () => {
-            contextValue = usePromptManagerContext()
+        const ConsumerComponent = ({ onValue }: { onValue: (value: ReturnType<typeof usePromptManagerContext>) => void }) => {
+            const value = usePromptManagerContext()
+
+            React.useEffect(() => {
+                onValue(value)
+            }, [onValue, value])
+
             return <div>consumed</div>
         }
 
         render(
             <PromptManagerContext.Provider value={mockPromptManager}>
-                <ConsumerComponent />
+                <ConsumerComponent onValue={onValue} />
             </PromptManagerContext.Provider>
         )
 
-        expect(contextValue).toBe(mockPromptManager)
+        expect(onValue).toHaveBeenCalledWith(mockPromptManager)
     })
 })

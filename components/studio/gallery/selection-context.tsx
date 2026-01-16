@@ -55,10 +55,6 @@ export function SelectionProvider({
     const [selectionMode, setSelectionMode] = React.useState(false)
     const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set())
     
-    // Ref for stable callback access
-    const selectedIdsRef = React.useRef(selectedIds)
-    selectedIdsRef.current = selectedIds
-    
     // Stable callbacks
     const toggleSelectionMode = React.useCallback(() => {
         setSelectionMode(prev => {
@@ -91,8 +87,8 @@ export function SelectionProvider({
     }, [])
     
     const isSelected = React.useCallback((id: string) => {
-        return selectedIdsRef.current.has(id)
-    }, [])
+        return selectedIds.has(id)
+    }, [selectedIds])
     
     // Memoize context value to prevent unnecessary re-renders
     const value = React.useMemo<SelectionContextValue>(() => ({

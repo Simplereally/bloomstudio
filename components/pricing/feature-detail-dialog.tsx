@@ -3,13 +3,10 @@
 import {
     Dialog,
     DialogContent,
-    DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
-import { Zap, Clock, ShieldCheck, Sparkles, AlertCircle } from "lucide-react"
 
 interface FeatureDetailDialogProps {
     title: string

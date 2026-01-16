@@ -1,7 +1,9 @@
 
 import Link from "next/link"
-import { Sparkles } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 import { RESOURCES, SOLUTIONS } from "@/lib/seo-config"
+import { Button } from "../ui/button"
+import { cn } from "@/lib/utils"
 
 export function Footer() {
     return (
@@ -55,15 +57,22 @@ export function Footer() {
                     </div>
 
                     <div>
-                        <h3 className="font-bold text-lg mb-6 text-foreground">Start Creating</h3>
+                        <h3 className="font-bold text-lg mb-6 text-foreground">Start Generating Free</h3>
                         <p className="text-muted-foreground text-sm mb-6">
-                            Join thousands of creators making stunning content with Bloom Studio.
+                            Create realistic photos, anime, and 4K videos from text. Join thousands using the best free AI image and video generator.
                         </p>
                         <Link href="/sign-up">
-                            <button className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-xl font-medium transition-all flex items-center gap-2 group w-full justify-center">
-                                Get Started
-                                <Sparkles className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                            </button>
+                            <Button variant="default" className={cn(
+                                "group w-full justify-center",
+                                // Typography - Editorial Style
+                                "text-xs font-bold uppercase tracking-[0.2em]",
+                            )}>
+                                <span className="relative opacity-90 group-hover:opacity-100 transition-opacity">
+                                    Get Started
+                                    <span className="absolute -bottom-1 left-0 w-0 h-px bg-primary-foreground/50 group-hover:w-full transition-all duration-300 ease-out" />
+                                </span>
+                                <ArrowRight className="h-4 w-4 ml-2 opacity-70 group-hover:opacity-100 transition-all group-hover:translate-x-1" />
+                            </Button>
                         </Link>
                     </div>
                 </div>

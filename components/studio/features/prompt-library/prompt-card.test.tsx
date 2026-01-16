@@ -1,22 +1,27 @@
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PromptCard } from './prompt-card'
+import type { Id } from '@/convex/_generated/dataModel'
+import type { Prompt } from './types'
 
 // Mock Tooltip/AlertDialog to avoid Radix complexity in unit tests if desired,
 // OR use fireEvent to bypass pointer event checks which cause timeouts with nested Radix triggers.
 // Radix usually works with userEvent, but nested triggers can be buggy in jsdom.
 
 describe('PromptCard', () => {
-    const mockPrompt = {
-        _id: '1',
+    function createPromptId(value: string): Id<"prompts"> {
+        return value as unknown as Id<"prompts">
+    }
+
+    const mockPrompt: Prompt = {
+        _id: createPromptId('1'),
         title: 'Test Prompt',
         content: 'Prompt Content',
-        type: 'positive' as const,
+        type: 'positive',
         tags: ['tag1'],
         category: 'Art',
-        userId: 'u1',
-        createdAt: 123
-    } as any
+        createdAt: 123,
+    }
 
     const defaultProps = {
         prompt: mockPrompt,

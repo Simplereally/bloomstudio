@@ -9,6 +9,35 @@ import { useQuery } from "convex/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { ImageCard, type ImageCardData } from "./image-card"
 
+// Mock SensitiveContentOverlay to avoid complex interactions and test prop passing
+vi.mock("@/components/ui/sensitive-content-overlay", () => ({
+    SensitiveContentOverlay: vi.fn(({ isAllowedToReveal }: { isAllowedToReveal?: boolean }) => (
+        <div data-testid="sensitive-overlay" data-allowed={isAllowedToReveal?.toString()}>
+            Sensitive Content Overlay
+        </div>
+    ))
+}))
+
+// Mock server actions to avoid server-only import error
+vi.mock("server-only", () => { return {} })
+vi.mock("@/app/_server/actions/invalidation", () => ({
+    invalidateUserFavoritesCache: vi.fn(),
+    invalidateUserHistoryCache: vi.fn(),
+    invalidatePublicFeedCache: vi.fn(),
+    invalidateVisibilityChange: vi.fn(),
+    invalidateImageDeletion: vi.fn(),
+    invalidateFollowChange: vi.fn(),
+    invalidateUserFollowingFeedCache: vi.fn(),
+}))
+
+// Mock use-favorites hook to avoid TanStack Query dependency
+vi.mock("@/hooks/queries/use-favorites", () => ({
+    useToggleFavorite: vi.fn(() => ({
+        mutateAsync: vi.fn(),
+        isPending: false,
+    })),
+}))
+
 // Mock Clerk
 vi.mock("@clerk/nextjs", () => ({
     useUser: vi.fn(),
@@ -50,7 +79,11 @@ describe("ImageCard", () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        vi.mocked(useUser).mockReturnValue({ isSignedIn: true, user: { id: "user1" } } as any)
+        vi.mocked(useUser).mockReturnValue({
+            isLoaded: true,
+            isSignedIn: true,
+            user: { id: "user1" },
+        } as unknown as ReturnType<typeof useUser>)
         vi.mocked(useQuery).mockReturnValue(false) // Not favorited
     })
 
@@ -113,15 +146,76 @@ describe("ImageCard", () => {
             contentType: "video/mp4",
         }
 
-        it("renders a video element for video content", () => {
+        it("renders a video element with autoPlay for video content", () => {
             const { container } = render(<ImageCard {...defaultProps} image={videoImage} />)
 
-            const video = container.querySelector("video")
+            const video = container.querySelector("video") as HTMLVideoElement
             expect(video).toBeInTheDocument()
             expect(video).toHaveAttribute("src", videoImage.url)
-            // Check for play icon
-            const playIcon = container.querySelector("svg.lucide-play")
-            expect(playIcon).toBeInTheDocument()
+            // Videos should auto-play and loop
+            expect(video).toHaveAttribute("autoplay")
+            expect(video).toHaveAttribute("loop")
+            // muted is a boolean property, not an attribute in the DOM
+            expect(video.muted).toBe(true)
+        })
+    })
+
+    describe("Unauthenticated User", () => {
+        beforeEach(() => {
+            vi.mocked(useUser).mockReturnValue({ isLoaded: true, isSignedIn: false, user: null })
+        })
+
+        it("renders sign-in link for copy button", () => {
+            render(<ImageCard {...defaultProps} />)
+            // There are two links to sign-in: one for favorite, one for copy.
+            // We can find them by href.
+            const links = screen.getAllByRole("link", { hidden: true })
+            const signInLinks = links.filter(link => link.getAttribute("href") === "/sign-in")
+
+            // Should be at least 2 (Copy and Favorite)
+            expect(signInLinks.length).toBeGreaterThanOrEqual(2)
+        })
+
+        it("renders sign-in link for favorite button", () => {
+            render(<ImageCard {...defaultProps} />)
+            const links = screen.getAllByRole("link", { hidden: true })
+            const signInLinks = links.filter(link => link.getAttribute("href") === "/sign-in")
+
+            // Should be at least 2 (Copy and Favorite)
+            expect(signInLinks.length).toBeGreaterThanOrEqual(2)
+        })
+    })
+
+    describe("Sensitive Content", () => {
+        const sensitiveImage: ImageCardData = {
+            ...mockImage,
+            isSensitive: true,
+        }
+
+        it("shows overlay when image is sensitive and userShowsSensitive is false", () => {
+            render(<ImageCard {...defaultProps} image={sensitiveImage} userShowsSensitive={false} />)
+            expect(screen.getByTestId("sensitive-overlay")).toBeInTheDocument()
+        })
+
+        it("does NOT show overlay when userShowsSensitive is true", () => {
+            render(<ImageCard {...defaultProps} image={sensitiveImage} userShowsSensitive={true} />)
+            expect(screen.queryByTestId("sensitive-overlay")).not.toBeInTheDocument()
+        })
+
+        it("does NOT show overlay when image is not sensitive", () => {
+            render(<ImageCard {...defaultProps} image={mockImage} userShowsSensitive={false} />)
+            expect(screen.queryByTestId("sensitive-overlay")).not.toBeInTheDocument()
+        })
+
+        it("passes isAllowedToReveal=true to overlay when authenticated", () => {
+            render(<ImageCard {...defaultProps} image={sensitiveImage} />)
+            expect(screen.getByTestId("sensitive-overlay")).toHaveAttribute("data-allowed", "true")
+        })
+
+        it("passes isAllowedToReveal=false to overlay when unauthenticated", () => {
+            vi.mocked(useUser).mockReturnValue({ isLoaded: true, isSignedIn: false, user: null })
+            render(<ImageCard {...defaultProps} image={sensitiveImage} />)
+            expect(screen.getByTestId("sensitive-overlay")).toHaveAttribute("data-allowed", "false")
         })
     })
 })

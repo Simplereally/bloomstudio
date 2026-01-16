@@ -17,5 +17,12 @@ crons.daily(
     internal.orphanCleanup.scheduledCleanup,
 );
 
-export default crons;
+// Ongoing analysis of unanalyzed images (catch-up mechanism)
+// Runs hourly to restart processing if recursive chain stops
+crons.interval(
+    "analyze unanalyzed images",
+    { hours: 1 },
+    internal.contentAnalysis.analyzeRecentImages,
+);
 
+export default crons;

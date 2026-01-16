@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { PromptLibrary, PromptLibraryButton, SavePromptButton } from "@/components/studio/features/prompt-library";
+import { usePromptInput } from "@/hooks/use-prompt-input";
 import { ChevronDown, History, Lightbulb, Wand2, X } from "lucide-react";
 import * as React from "react";
 
@@ -102,111 +103,142 @@ export function PromptSection({
   hideHeader = false,
   showLibrary = false,
 }: PromptSectionProps) {
+  // Use hook for prompt input refs and value management
+  const {
+    promptRef,
+    negativePromptRef,
+    getPrompt,
+    setPrompt,
+    getNegativePrompt,
+    setNegativePrompt,
+    subscribeToPrompt,
+    subscribeToNegativePrompt,
+  } = usePromptInput();
+
   // UI-only state (doesn't affect parent)
   const [showNegative, setShowNegative] = React.useState(false);
   const [showHistory, setShowHistory] = React.useState(false);
+
+  // Display state - updated via RAF batching to prevent lag
   const [characterCount, setCharacterCount] = React.useState(0);
+  const [hasContent, setHasContent] = React.useState(false);
+  const isNearLimit = characterCount > maxLength * 0.9;
 
   // Prompt library modal state
   const [libraryOpen, setLibraryOpen] = React.useState(false);
   const [libraryPromptType, setLibraryPromptType] = React.useState<"positive" | "negative">("positive");
   const [saveContent, setSaveContent] = React.useState<string | undefined>(undefined);
-  const [hasContent, setHasContent] = React.useState(false);
 
-  // Refs for uncontrolled inputs
-  const promptRef = React.useRef<HTMLTextAreaElement>(null);
-  const negativePromptRef = React.useRef<HTMLTextAreaElement>(null);
-
-  // Debounce timer ref for parent notification
+  // Refs for RAF batching and debouncing
+  const rafIdRef = React.useRef<number | null>(null);
   const debounceTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastHasContentRef = React.useRef(false);
+  const onContentChangeRef = React.useRef(onContentChange);
 
-  // Debounced parent notification (300ms) - reduces re-renders of generate button
-  const notifyParentDebounced = React.useCallback(
-    (newHasContent: boolean) => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-      debounceTimerRef.current = setTimeout(() => {
-        onContentChange?.(newHasContent);
-      }, 300);
-    },
-    [onContentChange]
-  );
+  // Keep callback ref updated
+  React.useEffect(() => {
+    onContentChangeRef.current = onContentChange;
+  }, [onContentChange]);
 
-  // Cleanup debounce timer on unmount
+  // Cleanup on unmount
   React.useEffect(() => {
     return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
+      if (rafIdRef.current !== null) cancelAnimationFrame(rafIdRef.current);
+      if (debounceTimerRef.current !== null) clearTimeout(debounceTimerRef.current);
     };
   }, []);
 
-  // Notify initial content status on mount
+  // Subscribe to prompt changes for character count updates
   React.useEffect(() => {
-    const initialValue = promptRef.current?.value ?? "";
-    onContentChange?.(initialValue.length > 0);
-  }, [onContentChange]); // Run once on mount or when onContentChange changes
+    const updateDisplay = (value: string) => {
+      const length = value.length;
+      const newHasContent = length > 0;
 
-  // Immediate update for local UI, debounced for parent
-  const updateContentState = React.useCallback(
-    (newHasContent: boolean, length: number) => {
-      setCharacterCount(length);
-      setHasContent(newHasContent);
-      notifyParentDebounced(newHasContent);
-    },
-    [notifyParentDebounced]
-  );
+      // RAF-batch display state updates
+      if (rafIdRef.current !== null) cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = requestAnimationFrame(() => {
+        setCharacterCount(length);
+        setHasContent(newHasContent);
+        rafIdRef.current = null;
+      });
 
-  // Immediate parent notification (for non-typing actions like history select, clear)
-  const updateContentStateImmediate = React.useCallback(
-    (newHasContent: boolean, length: number) => {
-      setCharacterCount(length);
-      setHasContent(newHasContent);
-      // Clear any pending debounce and notify immediately
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
+      // Debounce parent notification if hasContent changed
+      if (newHasContent !== lastHasContentRef.current) {
+        lastHasContentRef.current = newHasContent;
+        if (debounceTimerRef.current !== null) clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = setTimeout(() => {
+          onContentChangeRef.current?.(newHasContent);
+          debounceTimerRef.current = null;
+        }, 300);
       }
-      onContentChange?.(newHasContent);
+    };
+
+    const unsubscribe = subscribeToPrompt(updateDisplay);
+
+    // Initialize with current value
+    const initialValue = getPrompt();
+    if (initialValue) {
+      setCharacterCount(initialValue.length);
+      setHasContent(initialValue.length > 0);
+      lastHasContentRef.current = initialValue.length > 0;
+      onContentChangeRef.current?.(initialValue.length > 0);
+    }
+
+    return unsubscribe;
+  }, [subscribeToPrompt, getPrompt]);
+
+  // Subscribe to negative prompt changes (no display state needed, just RAF-batch any UI updates if added later)
+  React.useEffect(() => {
+    // Currently no UI display for negative prompt character count, 
+    // but subscription ensures setNegativePrompt flows through hook properly
+    const unsubscribe = subscribeToNegativePrompt(() => {
+      // Could add negative prompt character count here if needed
+    });
+    return unsubscribe;
+  }, [subscribeToNegativePrompt]);
+
+  // Handle input changes - call setPrompt which notifies subscribers
+  const handlePromptInput = React.useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setPrompt(e.target.value);
     },
-    [onContentChange]
+    [setPrompt]
   );
+
+  // Handle negative prompt input changes - call setNegativePrompt which notifies subscribers
+  const handleNegativePromptInput = React.useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setNegativePrompt(e.target.value);
+    },
+    [setNegativePrompt]
+  );
+
+  // Clear prompt
+  const clearPrompt = React.useCallback(() => {
+    setPrompt("");
+    promptRef.current?.focus();
+  }, [setPrompt, promptRef]);
+
+  // Focus prompt
+  const focusPrompt = React.useCallback(() => {
+    promptRef.current?.focus();
+  }, [promptRef]);
 
   // API exposed to parent via ref
   React.useImperativeHandle(
     apiRef,
     () => ({
-      getPrompt: () => promptRef.current?.value ?? "",
-      getNegativePrompt: () => negativePromptRef.current?.value ?? "",
-      setPrompt: (value: string) => {
-        if (promptRef.current) {
-          promptRef.current.value = value;
-          updateContentStateImmediate(value.length > 0, value.length);
-        }
-      },
-      setNegativePrompt: (value: string) => {
-        if (negativePromptRef.current) {
-          negativePromptRef.current.value = value;
-        }
-      },
-      focusPrompt: () => promptRef.current?.focus(),
+      getPrompt,
+      getNegativePrompt,
+      setPrompt,
+      setNegativePrompt,
+      focusPrompt,
       getCharacterCount: () => characterCount,
       getMaxLength: () => maxLength,
       isHistoryOpen: () => showHistory,
       toggleHistory: () => setShowHistory((prev) => !prev),
     }),
-    [updateContentStateImmediate, characterCount, maxLength, showHistory]
-  );
-
-  const isNearLimit = characterCount > maxLength * 0.9;
-
-  // Handle input changes - update local UI state immediately, notify parent debounced
-  const handlePromptInput = React.useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      const value = e.target.value;
-      updateContentState(value.length > 0, value.length);
-    },
-    [updateContentState]
+    [getPrompt, getNegativePrompt, setPrompt, setNegativePrompt, focusPrompt, characterCount, maxLength, showHistory]
   );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -217,37 +249,23 @@ export function PromptSection({
     }
   };
 
-  const clearPrompt = () => {
-    if (promptRef.current) {
-      promptRef.current.value = "";
-      updateContentStateImmediate(false, 0);
-      promptRef.current.focus();
-    }
-  };
-
   const handleHistorySelect = (historyPrompt: string) => {
-    if (promptRef.current) {
-      promptRef.current.value = historyPrompt;
-      updateContentStateImmediate(historyPrompt.length > 0, historyPrompt.length);
-    }
+    setPrompt(historyPrompt);
     onSelectHistory?.(historyPrompt);
     setShowHistory(false);
   };
 
   const handleSuggestionClick = (suggestion: string) => {
-    if (promptRef.current) {
-      const current = promptRef.current.value;
-      const newValue = `${current} ${suggestion}`.trim();
-      promptRef.current.value = newValue;
-      updateContentStateImmediate(newValue.length > 0, newValue.length);
-    }
+    const current = getPrompt();
+    const newValue = `${current} ${suggestion}`.trim();
+    setPrompt(newValue);
     onAddSuggestion?.(suggestion);
   };
 
   return (
-    <div className={`space-y-3 w-full min-w-0 ${className || ""}`} data-testid="prompt-section">
+    <div className={`space-y-1.5 w-full min-w-0 ${className || ""}`} data-testid="prompt-section">
       {/* Main Prompt */}
-      <div className="space-y-2 w-full min-w-0">
+      <div className="space-y-1 w-full min-w-0">
         {!hideHeader && (
           <div className="flex items-center justify-between">
             <Label htmlFor="prompt" className="text-sm font-medium flex items-center gap-2">
@@ -292,7 +310,7 @@ export function PromptSection({
             onKeyDown={handleKeyDown}
             disabled={isGenerating || isEnhancingPrompt}
             maxLength={maxLength}
-            className="min-h-24 max-h-[360px] overflow-y-auto resize-none pr-8 pb-10 bg-background/50 border-border/50 focus-visible:ring-0 focus-visible:border-primary transition-all duration-200 break-words [overflow-wrap:anywhere] block w-0 min-w-full"
+            className="min-h-24 max-h-48 overflow-y-auto resize-none px-2 pr-8 pb-10 bg-background/50 border-border/50 focus-visible:ring-0 focus-visible:border-primary transition-all duration-200 break-words [overflow-wrap:anywhere] block w-0 min-w-full"
             data-testid="prompt-input"
           />
           {hasContent && !isGenerating && !isEnhancingPrompt && (
@@ -368,9 +386,8 @@ export function PromptSection({
         {suggestions.length > 0 && (
           <div className="flex flex-wrap gap-1.5" data-testid="suggestions">
             <Lightbulb
-              className={`h-3.5 w-3.5 mt-1 transition-all duration-300 ${
-                isLoadingSuggestions ? "text-yellow-400 animate-lightbulb-glow" : "text-muted-foreground"
-              }`}
+              className={`h-3.5 w-3.5 mt-1 transition-all duration-300 ${isLoadingSuggestions ? "text-yellow-400 animate-lightbulb-glow" : "text-muted-foreground"
+                }`}
             />
             {suggestions.map((suggestion, index) => (
               <Badge
@@ -394,21 +411,22 @@ export function PromptSection({
               type="button"
               variant="ghost"
               size="sm"
-              className="w-full justify-between text-muted-foreground hover:text-foreground"
+              className="w-full justify-between text-muted-foreground hover:text-foreground cursor-pointer"
               data-testid="negative-prompt-toggle"
             >
               <span className="text-xs">Negative Prompt</span>
               <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showNegative ? "rotate-180" : ""}`} />
             </Button>
           </CollapsibleTrigger>
-          <CollapsibleContent className="pt-2">
+          <CollapsibleContent className="pt-2 data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
             <div className="relative w-full min-w-0">
               <Textarea
                 ref={negativePromptRef}
                 placeholder="What to avoid in the image..."
                 defaultValue=""
+                onChange={handleNegativePromptInput}
                 disabled={isGenerating || isEnhancingNegativePrompt}
-                className="min-h-16 resize-none pb-10 bg-background/50 border-border/50 text-sm focus-visible:ring-0 focus-visible:border-primary break-words [overflow-wrap:anywhere] block w-0 min-w-full"
+                className="min-h-16 max-h-48 overflow-y-auto resize-none pb-10 bg-background/50 border-border/50 text-sm focus-visible:ring-0 focus-visible:border-primary break-words [overflow-wrap:anywhere] block w-0 min-w-full"
                 data-testid="negative-prompt-input"
               />
               {/* Bottom action buttons row for negative prompt */}
@@ -466,14 +484,9 @@ export function PromptSection({
           promptType={libraryPromptType}
           onInsert={(content) => {
             if (libraryPromptType === "positive") {
-              if (promptRef.current) {
-                promptRef.current.value = content;
-                updateContentStateImmediate(content.length > 0, content.length);
-              }
+              setPrompt(content);
             } else {
-              if (negativePromptRef.current) {
-                negativePromptRef.current.value = content;
-              }
+              setNegativePrompt(content);
             }
           }}
           initialSaveContent={saveContent}

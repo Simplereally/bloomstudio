@@ -11,7 +11,7 @@ import { useIsFavorited } from "@/hooks/queries/use-favorites" // Import for typ
 const mockMutateAsync = vi.fn()
 vi.mock("@/hooks/queries/use-favorites", () => ({
     useIsFavorited: vi.fn(),
-    useToggleFavorite: () => mockMutateAsync,
+    useToggleFavorite: () => ({ mutateAsync: mockMutateAsync }),
 }))
 
 // Mock CanvasView
@@ -23,8 +23,6 @@ vi.mock("./canvas-view", () => ({
         onDownload,
         onCopyUrl,
         onRegenerate,
-        onOpenInNewTab,
-        onFullscreen,
         isFavorited,
         onToggleFavorite,
     }: {
@@ -34,8 +32,6 @@ vi.mock("./canvas-view", () => ({
         onDownload?: () => void
         onCopyUrl?: () => void
         onRegenerate?: () => void
-        onOpenInNewTab?: () => void
-        onFullscreen?: () => void
         isFavorited?: boolean
         onToggleFavorite?: () => void
     }) => (
@@ -48,8 +44,6 @@ vi.mock("./canvas-view", () => ({
             <button data-testid="download" onClick={onDownload}>Download</button>
             <button data-testid="copy-url" onClick={onCopyUrl}>Copy URL</button>
             <button data-testid="regenerate" onClick={onRegenerate}>Regenerate</button>
-            <button data-testid="open-tab" onClick={onOpenInNewTab}>Open Tab</button>
-            <button data-testid="fullscreen" onClick={onFullscreen}>Fullscreen</button>
             <button data-testid="toggle-favorite" onClick={onToggleFavorite}>Toggle Favorite</button>
         </div>
     ),
@@ -70,6 +64,7 @@ vi.mock("@/lib/errors", () => ({
 describe("CanvasFeature", () => {
     const mockImage = createMockImage({
         id: "test-image-1",
+        _id: "test-image-1", // Convex ID for favorites (must not start with "img_")
         url: "https://example.com/image.jpg",
         prompt: "A beautiful sunset",
         params: {
@@ -96,7 +91,7 @@ describe("CanvasFeature", () => {
         })
         // Mock window.open
         window.open = vi.fn()
-        
+
         // Default mock implementation for useIsFavorited
         // @ts-expect-error - vitest mock types
         useIsFavorited.mockReturnValue(false)
@@ -159,14 +154,7 @@ describe("CanvasFeature", () => {
         expect(writeTextSpy).toHaveBeenCalledWith(mockImage.url)
     })
 
-    it("handles open in new tab action", async () => {
-        const user = userEvent.setup()
-        render(<CanvasFeature {...defaultProps} currentImage={mockImage} />)
 
-        await user.click(screen.getByTestId("open-tab"))
-
-        expect(window.open).toHaveBeenCalledWith(mockImage.url, "_blank")
-    })
 
     it("calls onOpenLightbox on image click", async () => {
         const user = userEvent.setup()
@@ -184,21 +172,7 @@ describe("CanvasFeature", () => {
         expect(onOpenLightbox).toHaveBeenCalledWith(mockImage)
     })
 
-    it("calls onOpenLightbox on fullscreen click", async () => {
-        const user = userEvent.setup()
-        const onOpenLightbox = vi.fn()
-        render(
-            <CanvasFeature
-                {...defaultProps}
-                currentImage={mockImage}
-                onOpenLightbox={onOpenLightbox}
-            />
-        )
 
-        await user.click(screen.getByTestId("fullscreen"))
-
-        expect(onOpenLightbox).toHaveBeenCalledWith(mockImage)
-    })
 
     it("calls onRegenerate when regenerate clicked", async () => {
         const user = userEvent.setup()
@@ -235,16 +209,16 @@ describe("CanvasFeature", () => {
 
     it("handles favorite toggle error gracefully", async () => {
         const user = userEvent.setup()
-        const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+        const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => { })
         mockMutateAsync.mockRejectedValue(new Error("Favorite failed"))
-        
+
         render(<CanvasFeature {...defaultProps} currentImage={mockImage} />)
 
         await user.click(screen.getByTestId("toggle-favorite"))
 
         // Should not throw, should log error (and show toast, handled by mock)
         expect(mockMutateAsync).toHaveBeenCalled()
-        
+
         // Cleanup
         consoleSpy.mockRestore()
     })

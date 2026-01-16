@@ -1,4 +1,5 @@
 import type { GeneratedImage } from "@/types/pollinations";
+import { GeneratedImageSchema } from "@/lib/schemas/pollinations.schema";
 
 /**
  * DeepPartial type helper for nested partial objects
@@ -12,8 +13,8 @@ export type DeepPartial<T> = {
  * Includes all required parameters with sensible defaults.
  */
 export function createMockImage(overrides: DeepPartial<GeneratedImage> = {}): GeneratedImage {
-    const prompt = overrides.prompt || "A beautiful sunset";
-    const id = overrides.id || "test-image-1";
+    const prompt = overrides.prompt ?? "A beautiful sunset";
+    const id = overrides.id ?? "test-image-1";
 
     const defaultParams = {
         prompt,
@@ -32,15 +33,15 @@ export function createMockImage(overrides: DeepPartial<GeneratedImage> = {}): Ge
     // Merge default params with any overrides provided in params
     const mergedParams = {
         ...defaultParams,
-        ...(overrides.params || {}),
+        ...(overrides.params ?? {}),
     };
 
-    return {
+    return GeneratedImageSchema.parse({
+        ...overrides,
         id,
-        url: overrides.url || "https://example.com/image.jpg",
+        url: overrides.url ?? "https://example.com/image.jpg",
         prompt,
-        timestamp: overrides.timestamp || Date.now(),
-        params: mergedParams as any,
-        ...(overrides as any),
-    };
+        timestamp: overrides.timestamp ?? Date.now(),
+        params: mergedParams,
+    });
 }

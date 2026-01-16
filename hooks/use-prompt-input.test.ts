@@ -92,4 +92,63 @@ describe("usePromptInput", () => {
 
         expect(callback).not.toHaveBeenCalledWith("Another update")
     })
+
+    it("should handle subscribers for negative prompt changes", () => {
+        const { result } = renderHook(() => usePromptInput())
+        const callback = vi.fn()
+
+        act(() => {
+            result.current.subscribeToNegativePrompt(callback)
+        })
+
+        act(() => {
+            result.current.setNegativePrompt("blurry, distorted")
+        })
+
+        expect(callback).toHaveBeenCalledWith("blurry, distorted")
+    })
+
+    it("should allow unsubscribing from negative prompt changes", () => {
+        const { result } = renderHook(() => usePromptInput())
+        const callback = vi.fn()
+
+        let unsubscribe: () => void
+        act(() => {
+            unsubscribe = result.current.subscribeToNegativePrompt(callback)
+        })
+
+        act(() => {
+            unsubscribe()
+        })
+
+        act(() => {
+            result.current.setNegativePrompt("low quality")
+        })
+
+        expect(callback).not.toHaveBeenCalledWith("low quality")
+    })
+
+    it("should update negative prompt DOM element value when negativePromptRef is attached", () => {
+        const { result } = renderHook(() => usePromptInput())
+
+        const textarea = document.createElement("textarea")
+        result.current.negativePromptRef.current = textarea
+
+        act(() => {
+            result.current.setNegativePrompt("ugly, blurry")
+        })
+
+        expect(textarea.value).toBe("ugly, blurry")
+        expect(result.current.getNegativePrompt()).toBe("ugly, blurry")
+    })
+
+    it("should prefer negative prompt DOM value over internal ref if available", () => {
+        const { result } = renderHook(() => usePromptInput())
+
+        const textarea = document.createElement("textarea")
+        result.current.negativePromptRef.current = textarea
+        textarea.value = "Direct negative DOM change"
+
+        expect(result.current.getNegativePrompt()).toBe("Direct negative DOM change")
+    })
 })

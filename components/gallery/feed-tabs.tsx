@@ -2,6 +2,7 @@
 
 import { FEED_TYPE_LABELS, FEED_TYPES, type FeedType } from "@/lib/feed-types"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@clerk/nextjs"
 import Link from "next/link"
 
 interface FeedTabsProps {
@@ -11,12 +12,25 @@ interface FeedTabsProps {
 /**
  * Tab navigation for feed types.
  * Renders as links for proper routing instead of local state.
+ * The "Following" tab is only shown to authenticated users.
  */
 export function FeedTabs({ activeType }: FeedTabsProps) {
+    const { isSignedIn } = useAuth()
+
+    // Filter tabs: show all for authenticated, only "public" for guests
+    const visibleTabs = isSignedIn
+        ? FEED_TYPES
+        : FEED_TYPES.filter((type) => type === "public")
+
+    // Don't render tabs container if only one tab (cleaner UX for guests)
+    if (visibleTabs.length <= 1) {
+        return null
+    }
+
     return (
         <div className="flex justify-center mb-8">
             <div className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground w-[400px]">
-                {FEED_TYPES.map((type) => (
+                {visibleTabs.map((type) => (
                     <Link
                         key={type}
                         href={`/feed/${type}`}

@@ -35,6 +35,12 @@ import { auth } from "@clerk/nextjs/server"
 import { fetchMutation } from "convex/nextjs"
 import { generateSuggestions } from "@/lib/prompt-enhancement"
 
+type AuthReturn = Awaited<ReturnType<typeof auth>>
+
+function mockAuth(userId: string | null) {
+    vi.mocked(auth).mockResolvedValue({ userId } as unknown as AuthReturn)
+}
+
 function createMockRequest(body: Record<string, unknown>): NextRequest {
     const request = new NextRequest("http://localhost:3000/api/suggestions", {
         method: "POST",
@@ -55,7 +61,7 @@ describe("/api/suggestions", () => {
 
     describe("Authentication", () => {
         it("should return 401 when user is not authenticated", async () => {
-            ; vi.mocked(auth).mockResolvedValue({ userId: null } as any)
+            ; mockAuth(null)
 
             const request = createMockRequest({ prompt: "test" })
             const response = await POST(request)
@@ -72,7 +78,7 @@ describe("/api/suggestions", () => {
         })
 
         it("should proceed when user is authenticated", async () => {
-            ; vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any)
+            ; mockAuth("user_123")
                 ; (fetchMutation as Mock).mockResolvedValue({
                     allowed: true,
                     remaining: 19,
@@ -90,7 +96,7 @@ describe("/api/suggestions", () => {
     describe("Rate Limiting", () => {
         it("should return 429 when rate limit is exceeded", async () => {
             const resetAt = Date.now() + 30000
-                ; vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any)
+                ; mockAuth("user_123")
                 ; (fetchMutation as Mock).mockResolvedValue({
                     allowed: false,
                     remaining: 0,
@@ -115,7 +121,7 @@ describe("/api/suggestions", () => {
 
         it("should include rate limit headers on successful response", async () => {
             const resetAt = Date.now() + 60000
-                ; vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any)
+                ; mockAuth("user_123")
                 ; (fetchMutation as Mock).mockResolvedValue({
                     allowed: true,
                     remaining: 19,
@@ -131,7 +137,7 @@ describe("/api/suggestions", () => {
         })
 
         it("should use suggestions endpoint for rate limiting", async () => {
-            ; vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any)
+            ; mockAuth("user_123")
                 ; (fetchMutation as Mock).mockResolvedValue({
                     allowed: true,
                     remaining: 19,
@@ -151,7 +157,7 @@ describe("/api/suggestions", () => {
 
     describe("Suggestion Generation", () => {
         beforeEach(() => {
-            ; vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any)
+            ; mockAuth("user_123")
                 ; (fetchMutation as Mock).mockResolvedValue({
                     allowed: true,
                     remaining: 19,
@@ -201,7 +207,7 @@ describe("/api/suggestions", () => {
 
     describe("Error Handling", () => {
         beforeEach(() => {
-            ; vi.mocked(auth).mockResolvedValue({ userId: "user_123" } as any)
+            ; mockAuth("user_123")
                 ; (fetchMutation as Mock).mockResolvedValue({
                     allowed: true,
                     remaining: 19,

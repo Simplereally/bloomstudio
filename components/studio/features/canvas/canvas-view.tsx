@@ -34,14 +34,13 @@ export interface CanvasViewProps {
     onCopyUrl?: () => void
     /** Handle regenerate */
     onRegenerate?: () => void
-    /** Handle open in new tab */
-    onOpenInNewTab?: () => void
-    /** Handle fullscreen toggle */
-    onFullscreen?: () => void
+
     /** Whether image is favorited */
     isFavorited?: boolean
     /** Handle favorite toggle */
     onToggleFavorite?: () => void
+    /** Generation progress percentage (0-100) */
+    progress?: number
 }
 
 export const CanvasView = React.memo(function CanvasView({
@@ -51,10 +50,10 @@ export const CanvasView = React.memo(function CanvasView({
     onDownload,
     onCopyUrl,
     onRegenerate,
-    onOpenInNewTab,
-    onFullscreen,
+
     isFavorited,
     onToggleFavorite,
+    progress,
 }: CanvasViewProps) {
     return (
         <div className="h-full flex flex-col overflow-hidden">
@@ -62,6 +61,7 @@ export const CanvasView = React.memo(function CanvasView({
                 <ImageCanvas
                     image={image}
                     isGenerating={isGenerating}
+                    progress={progress}
                     onImageClick={onImageClick}
                     className="h-full"
                 >
@@ -70,8 +70,7 @@ export const CanvasView = React.memo(function CanvasView({
                         onDownload={onDownload}
                         onCopyUrl={onCopyUrl}
                         onRegenerate={onRegenerate}
-                        onOpenInNewTab={onOpenInNewTab}
-                        onFullscreen={onFullscreen}
+
                         isFavorited={isFavorited}
                         onToggleFavorite={onToggleFavorite}
                     />

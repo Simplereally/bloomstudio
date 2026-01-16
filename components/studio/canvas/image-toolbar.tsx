@@ -32,35 +32,30 @@ export interface ImageToolbarProps {
     onDownload?: () => void
     /** Callback to copy image URL */
     onCopyUrl?: () => void
-    /** Callback to share image */
-    onShare?: () => void
+
     /** Callback to toggle favorite */
     onToggleFavorite?: () => void
-    /** Callback to open in full screen */
-    onFullscreen?: () => void
+
     /** Callback to regenerate with same settings */
     onRegenerate?: () => void
-    /** Callback to open in new tab */
-    onOpenInNewTab?: () => void
+
     /** Position of toolbar */
     position?: "top" | "bottom"
     /** Additional class names */
     className?: string
 }
 
-export function ImageToolbar({
-    image,
-    isFavorited = false,
-    onDownload,
-    onCopyUrl,
-    onShare,
-    onToggleFavorite,
-    onFullscreen,
-    onRegenerate,
-    onOpenInNewTab,
-    position = "top",
-    className,
-}: ImageToolbarProps) {
+export function ImageToolbar(props: ImageToolbarProps) {
+    const {
+        image,
+        isFavorited = false,
+        onDownload,
+        onCopyUrl,
+        onToggleFavorite,
+        onRegenerate,
+        position = "top",
+        className,
+    } = props
     const [copied, setCopied] = React.useState(false)
 
     if (!image) return null

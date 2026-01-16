@@ -4,6 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { UpgradeModal } from "./upgrade-modal";
 import { toast } from "sonner";
 
+import { isStripeConfigured } from "@/lib/config/stripe";
+
 // Mock dependencies
 const mockCreateCheckout = vi.fn();
 
@@ -41,6 +43,7 @@ const originalLocation = window.location;
 describe("UpgradeModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(isStripeConfigured).mockReturnValue(true);
     
     // Reset window.location mock
     Object.defineProperty(window, "location", {
@@ -64,7 +67,7 @@ describe("UpgradeModal", () => {
   it("displays pro features", () => {
     render(<UpgradeModal isOpen={true} onClose={vi.fn()} />);
     expect(screen.getByText("180")).toBeInTheDocument();
-    expect(screen.getByText("NanoBanana images/month")).toBeInTheDocument();
+    expect(screen.getByText("Nano Banana Pro images/month")).toBeInTheDocument();
     expect(screen.getByText("10+")).toBeInTheDocument();
     expect(screen.getByText("AI models included")).toBeInTheDocument();
     expect(screen.getByText("Daily")).toBeInTheDocument();
@@ -107,14 +110,14 @@ describe("UpgradeModal", () => {
 
   it("handles checkout loading state", async () => {
     const user = userEvent.setup();
-    mockCreateCheckout.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 100)));
+    mockCreateCheckout.mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve({ url: "https://stripe.com" }), 100)));
     
     render(<UpgradeModal isOpen={true} onClose={vi.fn()} />);
 
     const button = screen.getByRole("button", { name: /upgrade to pro/i });
     await user.click(button);
 
-    expect(screen.getByText(/redirecting/i)).toBeInTheDocument();
+    expect(await screen.findByText(/redirecting/i)).toBeInTheDocument();
     expect(button).toBeDisabled();
   });
 
@@ -134,7 +137,6 @@ describe("UpgradeModal", () => {
   });
 
   it("checks stripe configuration before checkout", async () => {
-    const { isStripeConfigured } = await import("@/lib/config/stripe");
     vi.mocked(isStripeConfigured).mockReturnValue(false);
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 

@@ -2,10 +2,25 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { StudioShell, type StudioShellProps } from "./studio-shell"
-import { useQuery } from "convex/react"
 import type { GeneratedImage } from "@/types/pollinations"
 import { toast } from "sonner"
 import { useSubscriptionStatus } from "@/hooks/use-subscription-status"
+
+// Mock server actions to avoid server-only import error
+vi.mock("@/app/_server/actions/invalidation", () => ({
+    invalidateUserFavoritesCache: vi.fn(),
+    invalidateUserHistoryCache: vi.fn(),
+    invalidatePublicFeedCache: vi.fn(),
+    invalidateVisibilityChange: vi.fn(),
+    invalidateImageDeletion: vi.fn(),
+    invalidateFollowChange: vi.fn(),
+    invalidateUserFollowingFeedCache: vi.fn(),
+}))
+
+vi.mock("@/app/_server/actions/history", () => ({
+    loadMyHistoryPage: vi.fn(),
+    loadMyHistoryWithDisplayPage: vi.fn(),
+}))
 
 // Mock sonner
 vi.mock("sonner", () => ({
@@ -115,6 +130,7 @@ vi.mock("@/components/studio", () => ({
             <div data-testid="gallery-content">{gallery}</div>
         </div>
     ),
+    BatchConfigButton: () => <div data-testid="batch-config-button" />,
 }))
 
 vi.mock("@/components/images/image-lightbox", () => ({
@@ -452,10 +468,10 @@ describe("StudioShell", () => {
         it("shows success toast when upgraded=true and status is pro", () => {
             mockSearchParams.set("upgraded", "true")
             vi.mocked(useSubscriptionStatus).mockReturnValueOnce({
-                status: "pro",
-                isLoading: false,
-                canGenerate: true,
-            })
+                    status: "pro",
+                    isLoading: false,
+                    canGenerate: true,
+                })
 
             render(<StudioShell {...defaultProps} />)
 
@@ -466,10 +482,10 @@ describe("StudioShell", () => {
         it("shows loading toast when upgraded=true but status is still syncing", () => {
             mockSearchParams.set("upgraded", "true")
             vi.mocked(useSubscriptionStatus).mockReturnValueOnce({
-                status: "expired",
-                isLoading: false,
-                canGenerate: false,
-            })
+                    status: "expired",
+                    isLoading: false,
+                    canGenerate: false,
+                })
 
             render(<StudioShell {...defaultProps} />)
 
@@ -479,10 +495,10 @@ describe("StudioShell", () => {
         it("blocks generation and shows info toast when status is syncing", () => {
             mockSearchParams.set("upgraded", "true")
             vi.mocked(useSubscriptionStatus).mockReturnValueOnce({
-                status: "expired",
-                isLoading: false,
-                canGenerate: false,
-            })
+                    status: "expired",
+                    isLoading: false,
+                    canGenerate: false,
+                })
 
             render(<StudioShell {...defaultProps} />)
 
@@ -499,10 +515,10 @@ describe("StudioShell", () => {
         it("allows generation when status becomes pro", async () => {
             mockSearchParams.set("upgraded", "true")
             vi.mocked(useSubscriptionStatus).mockReturnValueOnce({
-                status: "pro",
-                isLoading: false,
-                canGenerate: true,
-            })
+                    status: "pro",
+                    isLoading: false,
+                    canGenerate: true,
+                })
 
             render(<StudioShell {...defaultProps} />)
 

@@ -1,24 +1,30 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { isVideoContent } from "@/components/ui/media-player"
+import { SensitiveContentOverlay } from "@/components/ui/sensitive-content-overlay"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
+import { trackPromptCopy } from "@/lib/analytics"
 import { getModelDisplayName } from "@/lib/config/models"
 import { getClampedAspectRatio } from "@/lib/image-models"
 import { cn } from "@/lib/utils"
 import { useUser } from "@clerk/nextjs"
-import { useMutation, useQuery } from "convex/react"
-import { Check, Copy, Heart, Play } from "lucide-react"
+import { useQuery } from "convex/react"
+import { Check, Copy, Heart } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import * as React from "react"
+import { useToggleFavorite } from "@/hooks/queries/use-favorites"
 
 export interface ImageCardData {
     _id: string
     url: string
+    /** Original full-size URL (for lightbox/download) - if not provided, uses url */
+    originalUrl?: string
     prompt: string
     model: string
     width?: number
@@ -37,12 +43,16 @@ export interface ImageCardData {
     ownerPictureUrl?: string | null
     /** MIME type of the content (e.g., "video/mp4", "image/jpeg") */
     contentType?: string
+    /** Whether content is sensitive */
+    isSensitive?: boolean
 }
 
 interface ImageCardProps {
     image: ImageCardData
     /** Show user avatar and name overlay (for community feed) */
     showUser?: boolean
+    /** Whether user chooses to see sensitive content without overlay. If false, sensitive content gets blurred. */
+    userShowsSensitive?: boolean
     /** Called when the card is clicked with the image data */
     onSelect?: (image: ImageCardData) => void
     /** Whether selection mode is active (shows checkbox) */
@@ -52,34 +62,43 @@ interface ImageCardProps {
     /** Called when selection state changes */
     onSelectionChange?: (id: string, selected: boolean) => void
     className?: string
+    /** If true, image loads with high priority and eager loading (for above-the-fold) */
+    priority?: boolean
 }
 
 /**
  * A card component for displaying images in a masonry grid.
  * Shows a hover overlay with metadata similar to the lightbox component.
  * Optionally displays user avatar/name in the top-left corner for community feeds.
+ * Videos auto-play and loop continuously for a dynamic browsing experience.
  */
 export const ImageCard = React.memo(function ImageCard({
     image,
     showUser = false,
+    userShowsSensitive = false,
     onSelect,
     selectionMode = false,
     isSelected = false,
     onSelectionChange,
     className,
+    priority = false,
 }: ImageCardProps) {
     const [copied, setCopied] = React.useState(false)
     const [isHovered, setIsHovered] = React.useState(false)
     const [optimisticFavorited, setOptimisticFavorited] = React.useState<boolean | null>(null)
+    const [isLoaded, setIsLoaded] = React.useState(false)
 
     const { isSignedIn } = useUser()
+
+    // Detect if content is video
+    const isVideo = isVideoContent(image.contentType, image.url)
 
     // Favorite state
     const isFavorited = useQuery(
         api.favorites.isFavorited,
         isSignedIn ? { imageId: image._id as Id<"generatedImages"> } : "skip"
     )
-    const toggleFavorite = useMutation(api.favorites.toggle)
+    const toggleFavorite = useToggleFavorite()
 
     // Use optimistic state if set, otherwise use server state
     const displayFavorited = optimisticFavorited ?? isFavorited ?? false
@@ -89,8 +108,9 @@ export const ImageCard = React.memo(function ImageCard({
         if (!image.prompt) return
         await navigator.clipboard.writeText(image.prompt)
         setCopied(true)
+        trackPromptCopy("feed", !!isSignedIn)
         setTimeout(() => setCopied(false), 2000)
-    }, [image.prompt])
+    }, [image.prompt, isSignedIn])
 
     const handleSelect = React.useCallback(() => {
         // In selection mode, clicking the card toggles selection
@@ -119,7 +139,7 @@ export const ImageCard = React.memo(function ImageCard({
         setOptimisticFavorited(!displayFavorited)
 
         try {
-            await toggleFavorite({ imageId: image._id as Id<"generatedImages"> })
+            await toggleFavorite.mutateAsync({ imageId: image._id as Id<"generatedImages"> })
         } catch {
             // Revert on error
             setOptimisticFavorited(null)
@@ -127,6 +147,18 @@ export const ImageCard = React.memo(function ImageCard({
         // Clear optimistic state after server confirms
         setOptimisticFavorited(null)
     }, [isSignedIn, displayFavorited, toggleFavorite, image._id])
+
+    const handleMouseEnter = React.useCallback(() => {
+        setIsHovered(true)
+    }, [])
+
+    const handleMouseLeave = React.useCallback(() => {
+        setIsHovered(false)
+    }, [])
+
+    const handleLoad = React.useCallback(() => {
+        setIsLoaded(true)
+    }, [])
 
     const modelName = getModelDisplayName(image.generationParams?.model || image.model) || image.generationParams?.model || image.model
     const width = image.generationParams?.width || image.width || 1024
@@ -136,6 +168,13 @@ export const ImageCard = React.memo(function ImageCard({
     // Calculate clamped aspect ratio to prevent weird image sizes
     const clampedAspectRatio = getClampedAspectRatio(width, height)
 
+    // Check if sensitive overlay is needed
+    // Show overlay if: image is sensitive AND user preference is NOT 'allow' (implied by userShowsSensitive passed from parent)
+    // Note: If user preference was "block", we wouldn't receive this image at all from the query.
+    // So if we see it and it's sensitive, it means user is "blur" (or "allow" but we check that prop).
+    const showSensitiveOverlay = image.isSensitive && !userShowsSensitive
+    const [isRevealed, setIsRevealed] = React.useState(false) // Local reveal state for this session
+
     return (
         <div
             className={cn(
@@ -144,12 +183,20 @@ export const ImageCard = React.memo(function ImageCard({
                 className
             )}
             onClick={handleSelect}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
         >
+            {/* Sensitive Overlay */}
+            {showSensitiveOverlay && !isRevealed && (
+                <SensitiveContentOverlay 
+                    onReveal={() => setIsRevealed(true)} 
+                    isAllowedToReveal={!!isSignedIn}
+                />
+            )}
+
             {/* Selection checkbox - top right */}
             {selectionMode && (
-                // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+                 
                 <div
                     className="absolute top-2 right-2 z-20"
                     onClick={handleCheckboxClick}
@@ -163,32 +210,41 @@ export const ImageCard = React.memo(function ImageCard({
             )}
 
             {/* Image or Video Thumbnail */}
-            {isVideoContent(image.contentType, image.url) ? (
-                <>
-                    <video
-                        src={image.url}
-                        muted
-                        playsInline
-                        preload="metadata"
-                        className="w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-                        style={{ aspectRatio: clampedAspectRatio }}
-                    />
-                    {/* Video play indicator */}
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="bg-black/60 rounded-full p-3 backdrop-blur-sm">
-                            <Play className="h-6 w-6 text-white fill-white" />
-                        </div>
-                    </div>
-                </>
+            {!isLoaded && (
+                <Skeleton
+                    className="absolute inset-0 z-10 bg-muted"
+                    style={{ aspectRatio: clampedAspectRatio }}
+                />
+            )}
+
+            {isVideo ? (
+                <video
+                    src={image.url}
+                    muted
+                    loop
+                    playsInline
+                    autoPlay
+                    onCanPlay={handleLoad}
+                    className={cn(
+                        "w-full object-cover transition-all duration-700",
+                        isLoaded ? "opacity-100" : "opacity-0"
+                    )}
+                    style={{ aspectRatio: clampedAspectRatio }}
+                />
             ) : (
                 <Image
                     src={image.url}
                     alt={image.prompt || "Generated image"}
                     width={width}
                     height={height}
-                    className="w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                    className={cn(
+                        "w-full object-cover transition-all duration-700",
+                        isLoaded ? "opacity-100" : "opacity-0"
+                    )}
                     style={{ aspectRatio: clampedAspectRatio }}
-                    loading="lazy"
+                    loading={priority ? "eager" : "lazy"}
+                    priority={priority}
+                    onLoad={handleLoad}
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1536px) 33vw, 25vw"
                 />
             )}
@@ -258,28 +314,48 @@ export const ImageCard = React.memo(function ImageCard({
                     </div>
 
                     {/* Copy button */}
-                    <Tooltip delayDuration={200}>
-                        <TooltipTrigger asChild>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-md transition-colors shrink-0"
-                                onClick={handleCopyPrompt}
-                            >
-                                {copied ? (
-                                    <Check className="h-3.5 w-3.5 text-green-400" />
-                                ) : (
+                    {isSignedIn ? (
+                        <Tooltip delayDuration={200}>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-md transition-colors shrink-0"
+                                    onClick={handleCopyPrompt}
+                                >
+                                    {copied ? (
+                                        <Check className="h-3.5 w-3.5 text-green-400" />
+                                    ) : (
+                                        <Copy className="h-3.5 w-3.5" />
+                                    )}
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="z-[200]">
+                                <p className="font-medium">{copied ? "Copied!" : "Copy prompt"}</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    ) : (
+                        <Tooltip delayDuration={200}>
+                            <TooltipTrigger asChild>
+                                <Link
+                                    href="/sign-in"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className={cn(
+                                        buttonVariants({ variant: "ghost", size: "icon" }),
+                                        "h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white backdrop-blur-md transition-colors shrink-0 border border-white/10"
+                                    )}
+                                >
                                     <Copy className="h-3.5 w-3.5" />
-                                )}
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="z-[200]">
-                            <p className="font-medium">{copied ? "Copied!" : "Copy prompt"}</p>
-                        </TooltipContent>
-                    </Tooltip>
+                                </Link>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="z-[200]">
+                                <p className="font-medium">Sign in to copy prompt</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    )}
 
-                    {/* Favorite button */}
-                    {isSignedIn && (
+                    {/* Favorite button - shows sign-in prompt for unauthenticated users */}
+                    {isSignedIn ? (
                         <Tooltip delayDuration={200}>
                             <TooltipTrigger asChild>
                                 <Button
@@ -305,6 +381,24 @@ export const ImageCard = React.memo(function ImageCard({
                                 <p className="font-medium">
                                     {displayFavorited ? "Remove from favorites" : "Add to favorites"}
                                 </p>
+                            </TooltipContent>
+                        </Tooltip>
+                    ) : (
+                        <Tooltip delayDuration={200}>
+                            <TooltipTrigger asChild>
+                                <Link
+                                    href="/sign-in"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className={cn(
+                                        buttonVariants({ variant: "ghost", size: "icon" }),
+                                        "h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white backdrop-blur-md transition-colors shrink-0 border border-white/10"
+                                    )}
+                                >
+                                    <Heart className="h-3.5 w-3.5" />
+                                </Link>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="z-[200]">
+                                <p className="font-medium">Sign in to save favorites</p>
                             </TooltipContent>
                         </Tooltip>
                     )}

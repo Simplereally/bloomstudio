@@ -23,6 +23,7 @@ import {
     mutation,
     query
 } from "./_generated/server"
+import { analyzePromptForNSFW } from "./lib/nsfwDetection"
 import { canUserGenerate } from "./lib/subscription"
 
 /** Maximum batch size */
@@ -155,6 +156,10 @@ export const storeGeneratedImage = internalMutation({
     handler: async (ctx, args) => {
         const now = Date.now()
 
+        // Analyze prompt for NSFW content
+        const promptAnalysis = analyzePromptForNSFW(args.prompt)
+        console.log(`[Batch Prompt Analysis] Score: ${promptAnalysis.confidence}, Sensitive: ${promptAnalysis.isSensitive}, Terms: ${promptAnalysis.matchedTerms.join(", ")}`)
+
         const imageId = await ctx.db.insert("generatedImages", {
             ownerId: args.ownerId,
             r2Key: args.r2Key,
@@ -173,7 +178,23 @@ export const storeGeneratedImage = internalMutation({
             generationParams: args.generationParams,
             visibility: args.visibility,
             createdAt: now,
+
+            // Initial sensitive content tagging based on prompt
+            // If explicit (>= 0.9), mark Sensitive.
+            // If any less, mark Pending (null) to run Phase 3 Prompt Inference.
+            isSensitive: promptAnalysis.confidence >= 0.9 ? true : null,
+            sensitiveSource: promptAnalysis.confidence >= 0.9 ? "prompt_analysis" : undefined,
+            sensitiveConfidence: promptAnalysis.confidence,
         })
+
+        // Schedule async Prompt Inference (Phase 3) if prompt was not explicitly flagged
+        // This ensures "Gate 2" runs on everything that isn't already caught by Gate 1.
+        if (promptAnalysis.confidence < 0.9) {
+            await ctx.scheduler.runAfter(0, internal.promptInference.analyzePromptImage, {
+                imageId,
+                prompt: args.prompt,
+            })
+        }
 
         return imageId
     },
@@ -368,6 +389,7 @@ export const getBatchJob = query({
         }
 
         // Filter out apiKey to prevent exposing sensitive data to clients
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { apiKey: _, ...safeBatchJob } = batchJob
         return safeBatchJob
     },
@@ -395,6 +417,7 @@ export const getUserActiveBatches = query({
         // Filter out apiKey to prevent exposing sensitive data to clients
         return jobs
             .filter((job) => job.status === "pending" || job.status === "processing" || job.status === "paused")
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             .map(({ apiKey: _, ...safeJob }) => safeJob)
     },
 })
@@ -421,6 +444,7 @@ export const getUserBatchJobs = query({
             .take(limit)
 
         // Filter out apiKey to prevent exposing sensitive data to clients
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         return jobs.map(({ apiKey: _, ...safeJob }) => safeJob)
     },
 })

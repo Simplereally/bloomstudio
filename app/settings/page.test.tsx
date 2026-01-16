@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, fireEvent, waitFor } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import SettingsPage from "./page"
 import React from "react"
 
@@ -38,6 +39,8 @@ vi.mock("@/convex/_generated/api", () => ({
       getPollinationsApiKey: "users:getPollinationsApiKey",
       setPollinationsApiKey: "users:setPollinationsApiKey",
       removePollinationsApiKey: "users:removePollinationsApiKey",
+      getSensitiveContentPreference: "users:getSensitiveContentPreference",
+      updateSensitiveContentPreference: "users:updateSensitiveContentPreference",
     },
     stripe: {
       createPortalSession: "stripe:createPortalSession",
@@ -49,6 +52,17 @@ vi.mock("@/convex/_generated/api", () => ({
 const mockEncryptKey = vi.fn()
 vi.mock("@/app/settings/actions", () => ({
   encryptKey: (key: string) => mockEncryptKey(key),
+}))
+
+// Mock API Card Hook
+vi.mock("@/hooks/use-api-card-state", () => ({
+    useApiCardState: () => ({
+        legacyState: { hasLegacyKey: false },
+        byopState: { isConnected: false, isExpiringSoon: false, isExpired: false, daysUntilExpiry: null, isLoading: false },
+        connectionStatus: "not-connected",
+        actionState: { isRedirecting: false, isRemoving: false, showLegacySection: false, setShowLegacySection: vi.fn() },
+        handlers: { handleReconnect: vi.fn(), handleDisconnect: vi.fn(), handleRemoveLegacyKey: vi.fn() }
+    })
 }))
 
 // Mock Subscription Hook
@@ -113,6 +127,9 @@ describe("SettingsPage", () => {
           pictureUrl: "https://example.com/pic.jpg",
         }
       }
+      if (query === "users:getSensitiveContentPreference") {
+        return "blur"
+      }
       return null
     })
     mockUseMutation.mockImplementation(() => {
@@ -122,29 +139,40 @@ describe("SettingsPage", () => {
     mockEncryptKey.mockResolvedValue("encrypted-string")
   })
 
-  it("renders sidebar with navigation items", () => {
+  it("renders tabs with correct labels", () => {
     render(<SettingsPage />)
-    const sidebar = screen.getByRole("navigation")
-    expect(sidebar).toHaveTextContent("Profile")
-    expect(sidebar).toHaveTextContent("Appearance")
-    expect(sidebar).toHaveTextContent("Subscription")
-    expect(sidebar).toHaveTextContent("Pollinations API Key")
+    const tabsList = screen.getByRole("tablist")
+    expect(tabsList).toHaveTextContent("Profile")
+    expect(tabsList).toHaveTextContent("Appearance")
+    expect(tabsList).toHaveTextContent("Privacy & Safety")
+    expect(tabsList).toHaveTextContent("Subscription")
+    expect(tabsList).toHaveTextContent("Pollinations API Key")
   })
 
-  it("defaults to Profile View", () => {
+  it("defaults to Profile View", async () => {
     render(<SettingsPage />)
-    // Profile features
-    expect(screen.getByLabelText("Username")).toBeInTheDocument()
-    // Other tabs should not be visible yet
-    expect(screen.queryByText("Theme")).not.toBeInTheDocument()
+    await waitFor(() => {
+        expect(screen.getByText("Profile Settings")).toBeInTheDocument()
+        expect(screen.getByLabelText(/Username/i)).toBeInTheDocument()
+    })
+  })
+
+  it("switches to Privacy view via tab", async () => {
+    const user = userEvent.setup()
+    render(<SettingsPage />)
+    const privacyBtn = screen.getByRole("tab", { name: /Privacy & Safety/i })
+    await user.click(privacyBtn)
+    await waitFor(() => {
+        expect(screen.getByText("Content Visibility")).toBeInTheDocument()
+    })
   })
 
   it("switches to Appearance view", async () => {
+    const user = userEvent.setup()
     render(<SettingsPage />)
 
-    // Click Appearance
-    const appearanceBtn = screen.getByRole("button", { name: /Appearance/i })
-    fireEvent.click(appearanceBtn)
+    const appearanceTab = screen.getByRole("tab", { name: /Appearance/i })
+    await user.click(appearanceTab)
 
     await waitFor(() => {
       expect(screen.getByText("Customize the look and feel of your experience.")).toBeInTheDocument()
@@ -153,22 +181,24 @@ describe("SettingsPage", () => {
   })
 
   it("switches to Subscription view", async () => {
+    const user = userEvent.setup()
     render(<SettingsPage />)
 
-    // Click Subscription
-    const subBtn = screen.getByRole("button", { name: /Subscription/i })
-    fireEvent.click(subBtn)
+    const subTab = screen.getByRole("tab", { name: /Subscription/i })
+    await user.click(subTab)
 
     await waitFor(() => {
-      expect(screen.getByText("Manage your plan and billing preferences.")).toBeInTheDocument()
+      expect(screen.getByText("Subscription Plan")).toBeInTheDocument()
+      expect(screen.getByText("Plan Benefits")).toBeInTheDocument()
     })
   })
 
   it("switches to API view and shows Star Repo", async () => {
+    const user = userEvent.setup()
     render(<SettingsPage />)
 
-    const apiBtn = screen.getByRole("button", { name: /Pollinations API Key/i })
-    fireEvent.click(apiBtn)
+    const apiBtn = screen.getByRole("tab", { name: /Pollinations API Key/i })
+    await user.click(apiBtn)
 
     await waitFor(() => {
       expect(screen.getByText("Pollinations Connection")).toBeInTheDocument()

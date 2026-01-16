@@ -9,6 +9,7 @@ export const isProtectedRoute = createRouteMatcher([
   '/settings(.*)',
   '/history(.*)',
   '/favorites(.*)',
+  '/feed/following',
   '/api/upload(.*)',
   '/api/images/delete(.*)',
 ])

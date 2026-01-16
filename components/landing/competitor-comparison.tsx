@@ -19,7 +19,7 @@ const competitors: CompetitorData[] = [
     generations: 180,
     concurrent: "10 generations a second (600 a minute!)",
     queueLimit: "1,000 generations",
-    waitTimes: "No wait times",
+    waitTimes: "No artificial wait times",
     isUs: true,
   },
   {
@@ -82,10 +82,10 @@ export function CompetitorComparison() {
 
   return (
     <ScrollReveal>
-      <div className="w-full overflow-hidden rounded-2xl glass-effect-home">
+      <div className="w-full overflow-hidden rounded-2xl bg-gradient-to-br from-white/5 via-card/80 to-purple-500/5 border border-white/10">
         {/* Header */}
         <div className="px-6 py-8 text-center border-b border-white/5">
-          <h3 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">Pay less, generate more</h3>
+          <h3 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">Pay less, iterate rapidly</h3>
           <p className="text-sm text-muted-foreground max-w-lg mx-auto">
             Other apps have expensive plans and confusing credit systems. All comparisons below are based on <b>monthly subscription plans</b>
             .

@@ -1,9 +1,12 @@
-
 import type { UsePromptLibraryReturn } from '@/hooks/use-prompt-library'
 import * as usePromptLibraryHook from '@/hooks/use-prompt-library'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PromptLibrary } from './prompt-library'
+import type { SavePromptFormProps } from './save-prompt-form'
+import type { Id } from '@/convex/_generated/dataModel'
+import type { Prompt } from './types'
+import * as React from "react"
 
 // Mock the hook
 vi.mock('@/hooks/use-prompt-library', () => ({
@@ -12,56 +15,88 @@ vi.mock('@/hooks/use-prompt-library', () => ({
 
 // Mock child components
 vi.mock('./prompt-list-view', () => ({
-    PromptListView: (props: any) => <div data-testid="prompt-list-view">Prompt List View</div>
+    PromptListView: () => <div data-testid="prompt-list-view">Prompt List View</div>
 }))
 vi.mock('./save-prompt-form', () => ({
-    SavePromptForm: (props: any) => <div data-testid="save-prompt-form" data-initial-content={props.initialContent}>Save Prompt Form</div>
+    SavePromptForm: (props: SavePromptFormProps) => <div data-testid="save-prompt-form" data-initial-content={props.initialContent}>Save Prompt Form</div>
 }))
 vi.mock('./prompt-detail', () => ({
-    PromptDetail: (props: any) => <div data-testid="prompt-detail">Prompt Detail View</div>
+    PromptDetail: () => <div data-testid="prompt-detail">Prompt Detail View</div>
 }))
 
 // Mock Dialog components
 vi.mock('@/components/ui/dialog', () => ({
-    Dialog: ({ children, open, onOpenChange }: any) => (
+    Dialog: ({ children, open }: { children: React.ReactNode; open: boolean; onOpenChange?: (open: boolean) => void }) => (
         <div data-testid="dialog" data-state={open ? 'open' : 'closed'}>
             {open ? children : null}
         </div>
     ),
     DialogOverlay: () => <div data-testid="dialog-overlay" />,
-    DialogPortal: ({ children }: any) => <div data-testid="dialog-portal">{children}</div>,
-    DialogContent: ({ children }: any) => <div data-testid="dialog-content">{children}</div>,
-    DialogHeader: ({ children }: any) => <div data-testid="dialog-header">{children}</div>,
-    DialogTitle: ({ children }: any) => <div data-testid="dialog-title">{children}</div>,
-    DialogDescription: ({ children }: any) => <div data-testid="dialog-description">{children}</div>,
+    DialogPortal: ({ children }: { children: React.ReactNode }) => <div data-testid="dialog-portal">{children}</div>,
+    DialogContent: ({ children }: { children: React.ReactNode }) => <div data-testid="dialog-content">{children}</div>,
+    DialogHeader: ({ children }: { children: React.ReactNode }) => <div data-testid="dialog-header">{children}</div>,
+    DialogTitle: ({ children }: { children: React.ReactNode }) => <div data-testid="dialog-title">{children}</div>,
+    DialogDescription: ({ children }: { children: React.ReactNode }) => <div data-testid="dialog-description">{children}</div>,
 }))
 
 // Mock Radix Dialog Primitives
 vi.mock('@radix-ui/react-dialog', () => ({
-    Content: ({ children, asChild, ...props }: any) => (
+    Content: ({
+        children,
+        ...props
+    }: React.PropsWithChildren<React.HTMLAttributes<HTMLDivElement>>) => (
         <div data-testid="radix-content" {...props}>
             {children}
         </div>
     ),
-    Close: ({ children, ...props }: any) => (
+    Close: ({
+        children,
+        ...props
+    }: React.PropsWithChildren<React.ButtonHTMLAttributes<HTMLButtonElement>>) => (
         <button data-testid="radix-close" {...props}>
             {children}
         </button>
     ),
     // Add other primitives if the component uses them as * as DialogPrimitive
-    Root: ({ children }: any) => <div data-testid="radix-root">{children}</div>,
-    Portal: ({ children }: any) => <div data-testid="radix-portal">{children}</div>,
+    Root: ({ children }: { children: React.ReactNode }) => <div data-testid="radix-root">{children}</div>,
+    Portal: ({ children }: { children: React.ReactNode }) => <div data-testid="radix-portal">{children}</div>,
     Overlay: () => <div data-testid="radix-overlay" />,
-    Trigger: ({ children }: any) => <button>{children}</button>,
+    Trigger: ({ children }: { children: React.ReactNode }) => <button>{children}</button>,
 }))
 
 // Mock framer-motion
 vi.mock('framer-motion', () => ({
-    AnimatePresence: ({ children }: any) => <>{children}</>,
-    LayoutGroup: ({ children }: any) => <>{children}</>,
+    AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    LayoutGroup: ({ children }: { children: React.ReactNode }) => <>{children}</>,
     motion: {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        div: ({ children, layout, initial, animate, exit, variants, transition, ...props }: any) => <div {...props}>{children}</div>
+        div: ({
+            children,
+            layout,
+            initial,
+            animate,
+            exit,
+            variants,
+            transition,
+            ...props
+        }: React.PropsWithChildren<
+            React.HTMLAttributes<HTMLDivElement> & {
+                layout?: unknown
+                initial?: unknown
+                animate?: unknown
+                exit?: unknown
+                variants?: unknown
+                transition?: unknown
+            }
+        >) => {
+            void layout
+            void initial
+            void animate
+            void exit
+            void variants
+            void transition
+
+            return <div {...props}>{children}</div>
+        }
     }
 }))
 
@@ -72,10 +107,14 @@ vi.mock('lucide-react', () => ({
 }))
 
 describe('PromptLibrary Component', () => {
+    function createPromptId(value: string): Id<"prompts"> {
+        return value as unknown as Id<"prompts">
+    }
+
     const defaultMockReturn: UsePromptLibraryReturn = {
         searchQuery: '',
         setSearchQuery: vi.fn(),
-        searchInputRef: { current: null },
+        searchInputRef: React.createRef<HTMLInputElement>(),
         viewState: 'list',
         setViewState: vi.fn(),
         selectedPrompt: null,
@@ -125,15 +164,13 @@ describe('PromptLibrary Component', () => {
     })
 
     it('renders the detail view when viewState is "detail" and a prompt is selected', () => {
-        const selectedPrompt = {
-            _id: '123' as any,
+        const selectedPrompt: Prompt = {
+            _id: createPromptId('123'),
             title: 'Test Prompt',
             content: 'Test Content',
-            description: 'Test Description',
-        type: 'positive' as const,
+            type: 'positive',
             tags: [],
             category: 'Test',
-            userId: 'user1',
             createdAt: Date.now(),
         }
         const mockReturn = {

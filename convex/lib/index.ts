@@ -44,3 +44,21 @@ export {
     type RetryResult,
     type ShouldRetryFn,
 } from "./retry"
+
+// Vision analysis utilities (Groq primary, OpenRouter fallback)
+export {
+    analyzeImageContent,
+    calculateSensitivityScore,
+    hasAnyVisionProvider,
+    VisionAnalysisError,
+    type ContentAnalysisResult,
+} from "./visionAnalysis"
+
+// Groq vision utilities
+export {
+    analyzeImageWithGroq,
+    hasGroqApiKey,
+    GroqApiError,
+    GroqTimeoutError,
+    GROQ_VISION_MODEL,
+} from "./groq"

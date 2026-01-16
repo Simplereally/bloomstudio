@@ -6,7 +6,9 @@
 import { paginationOptsValidator } from "convex/server"
 import { v } from "convex/values"
 import type { Doc } from "./_generated/dataModel"
-import { mutation, query, type QueryCtx } from "./_generated/server"
+import { mutation, query, type QueryCtx, internalMutation, internalQuery } from "./_generated/server"
+import { internal } from "./_generated/api"
+import { analyzePromptForNSFW } from "./lib/nsfwDetection"
 
 /**
  * Maximum number of items allowed in bulk operations to avoid hitting Convex limits.
@@ -56,14 +58,66 @@ async function enrichImages(
     })
 }
 
-/**
- * Filter images with extreme aspect ratios (> 4:1 or 1:4).
+/** 
+ * Optimized public feed image data for unauthenticated display.
+ * Includes only fields needed for feed cards - excludes heavy generationParams.
+ * Uses full-size images for quality - thumbnails are too small for feed card dimensions.
  */
-function filterExtremeAspectRatios(
-    images: Doc<"generatedImages">[]
-): Doc<"generatedImages">[] {
-    return images.filter((img) => !img.aspectRatio || img.aspectRatio <= 4)
+type PublicFeedImage = {
+    _id: Doc<"generatedImages">["_id"]
+    _creationTime: number
+    /** Full-size URL for proper display quality at feed card dimensions */
+    url: string
+    /** Original full-size URL (for lightbox/download) */
+    originalUrl: string
+    visibility: "public" | "unlisted"
+    createdAt: number
+    model: string
+    /** Prompt for display (users can copy) */
+    prompt: string
+    /** Dimensions for aspect ratio calculation */
+    width: number | undefined
+    height: number | undefined
+    /** Seed for display badges */
+    seed: number | undefined
+    /** MIME type for video detection */
+    contentType: string
+    /** Owner display name */
+    ownerName: string
+    /** Owner avatar URL */
+    ownerPictureUrl: string | null
+    /** Whether content is sensitive */
+    isSensitive: boolean
 }
+
+/**
+ * Helper to map enriched images to optimized public feed format.
+ * Reduces bandwidth by using thumbnails and excluding unused fields.
+ */
+function toPublicFeedImages(images: EnrichedImage[]): PublicFeedImage[] {
+    return images.map(img => ({
+        _id: img._id,
+        _creationTime: img._creationTime,
+        // Use full-size image for proper display quality at feed card dimensions
+        // Note: thumbnailUrl is too small (~150px) for feed cards (360px+ width)
+        url: img.url,
+        // Same as url - kept for API consistency
+        originalUrl: img.url,
+        visibility: img.visibility,
+        createdAt: img.createdAt,
+        model: img.model,
+        prompt: img.prompt,
+        width: img.width,
+        height: img.height,
+        seed: img.seed,
+        contentType: img.contentType,
+        ownerName: img.ownerName,
+        ownerPictureUrl: img.ownerPictureUrl,
+        isSensitive: !!img.isSensitive, // Convert null/undefined to false for client boolean (default safe)
+    }))
+}
+
+
 
 /**
  * Create a new generated image record.
@@ -91,6 +145,10 @@ export const create = mutation({
             throw new Error("Not authenticated")
         }
 
+        // Analyze prompt for NSFW content
+        const promptAnalysis = analyzePromptForNSFW(args.prompt)
+        console.log(`[Prompt Analysis] Score: ${promptAnalysis.confidence}, Sensitive: ${promptAnalysis.isSensitive}, Terms: ${promptAnalysis.matchedTerms.join(", ")}`)
+
         const imageId = await ctx.db.insert("generatedImages", {
             ownerId: identity.subject,
             visibility: args.visibility ?? "public",
@@ -110,7 +168,26 @@ export const create = mutation({
             seed: args.seed,
             generationParams: args.generationParams,
             createdAt: Date.now(),
+
+            // Initial sensitive content tagging based on prompt
+            // Tri-state logic: true=NSFW, false=Safe, null=Pending/Unknown
+
+            // If explicit (>= 0.9), mark Sensitive.
+            // If any less, mark Pending (null) to run Phase 3 Prompt Inference.
+            isSensitive: promptAnalysis.confidence >= 0.9 ? true : null,
+
+            sensitiveSource: promptAnalysis.confidence >= 0.9 ? "prompt_analysis" : undefined,
+            sensitiveConfidence: promptAnalysis.confidence,
         })
+
+        // Schedule async Prompt Inference (Phase 3) if prompt was not explicitly flagged
+        // This ensures "Gate 2" runs on everything that isn't already caught by Gate 1.
+        if (promptAnalysis.confidence < 0.9) {
+            await ctx.scheduler.runAfter(0, internal.promptInference.analyzePromptImage, {
+                imageId,
+                prompt: args.prompt,
+            })
+        }
 
         return imageId
     },
@@ -428,44 +505,82 @@ export const getMyImagesWithDisplayData = query({
 
 /**
  * Get public images for the feed (paginated).
- * Includes owner information for display in community feed.
+ * Returns OPTIMIZED data for public feed display:
+ * - Uses thumbnailUrl for bandwidth optimization
+ * - Includes only essential fields (no generationParams)
+ * - Includes owner info for community feed display
  */
 export const getPublicFeed = query({
     args: {
         paginationOpts: paginationOptsValidator,
+        /** User's content filter preference */
+        filterPreference: v.optional(v.union(v.literal("block"), v.literal("blur"), v.literal("allow"))),
     },
     handler: async (ctx, args) => {
-        const paginatedResult = await ctx.db
-            .query("generatedImages")
-            .withIndex("by_visibility", (q) => q.eq("visibility", "public"))
-            .filter((q) =>
-                // Filter extreme aspect ratios: missing or <= 4
-                // In Convex filter, if a field is missing, comparisons return false/undefined.
-                // We use q.not(q.gt(...)) to include missing fields + values <= 4.
-                q.not(q.gt(q.field("aspectRatio"), 4))
-            )
-            .order("desc")
-            .paginate(args.paginationOpts)
+        const { filterPreference = "blur" } = args;
 
-        // All filtering is now server-side. Simply enrich the remaining images.
+        let paginatedResult;
+
+        // CASE 1: BLOCK - Show ONLY safe content (isSensitive=false)
+        if (filterPreference === "block") {
+            paginatedResult = await ctx.db
+                .query("generatedImages")
+                .withIndex("by_visibility_sensitive", (q) =>
+                    q.eq("visibility", "public").eq("isSensitive", false)
+                )
+                .filter((q) =>
+                    // Filter extreme aspect ratios
+                    q.not(q.gt(q.field("aspectRatio"), 4))
+                )
+                .order("desc")
+                .paginate(args.paginationOpts);
+
+        }
+        // CASE 2 & 3: BLUR / ALLOW - Show ALL tagged content (safe OR sensitive)
+        // We filter out 'null' (pending)
+        else {
+            paginatedResult = await ctx.db
+                .query("generatedImages")
+                // Use the main index and filter
+                .withIndex("by_visibility", (q) =>
+                    q.eq("visibility", "public")
+                )
+                .filter((q) =>
+                    q.and(
+                        // Not extreme aspect ratio
+                        q.not(q.gt(q.field("aspectRatio"), 4)),
+                        // Has been analyzed (not null)
+                        q.neq(q.field("isSensitive"), null)
+                    )
+                )
+                .order("desc")
+                .paginate(args.paginationOpts);
+        }
+
+        // Enrich with owner info, then convert to optimized public feed format
         const enrichedPage = await enrichImages(ctx, paginatedResult.page)
 
         return {
             ...paginatedResult,
-            page: enrichedPage,
+            page: toPublicFeedImages(enrichedPage),
         }
     },
 })
 
 /**
  * Get public images for a specific user (by username).
+ * Respects the viewer's content filter preference for sensitive content.
  */
 export const getImagesByUsername = query({
     args: {
         username: v.string(),
         paginationOpts: paginationOptsValidator,
+        /** Viewer's content filter preference */
+        filterPreference: v.optional(v.union(v.literal("block"), v.literal("blur"), v.literal("allow"))),
     },
     handler: async (ctx, args) => {
+        const { filterPreference = "blur" } = args;
+
         // First find the user
         const user = await ctx.db
             .query("users")
@@ -480,25 +595,53 @@ export const getImagesByUsername = query({
             }
         }
 
-        const paginatedResult = await ctx.db
-            .query("generatedImages")
-            .withIndex("by_owner_visibility", (q) =>
-                q.eq("ownerId", user.clerkId).eq("visibility", "public")
-            )
-            .filter((q) => q.not(q.gt(q.field("aspectRatio"), 4)))
-            .order("desc")
-            .paginate(args.paginationOpts)
+        let paginatedResult;
 
-        // Enrich with user info (we already have the user)
+        // CASE 1: BLOCK - Show ONLY safe content (isSensitive=false)
+        if (filterPreference === "block") {
+            paginatedResult = await ctx.db
+                .query("generatedImages")
+                .withIndex("by_owner_visibility", (q) =>
+                    q.eq("ownerId", user.clerkId).eq("visibility", "public")
+                )
+                .filter((q) =>
+                    q.and(
+                        q.not(q.gt(q.field("aspectRatio"), 4)),
+                        q.eq(q.field("isSensitive"), false)
+                    )
+                )
+                .order("desc")
+                .paginate(args.paginationOpts)
+        }
+        // CASE 2 & 3: BLUR / ALLOW - Show ALL tagged content (safe OR sensitive)
+        // Filter out 'null' (pending) to avoid showing unanalyzed content
+        else {
+            paginatedResult = await ctx.db
+                .query("generatedImages")
+                .withIndex("by_owner_visibility", (q) =>
+                    q.eq("ownerId", user.clerkId).eq("visibility", "public")
+                )
+                .filter((q) =>
+                    q.and(
+                        q.not(q.gt(q.field("aspectRatio"), 4)),
+                        // Has been analyzed (not null) - prevents showing pending content
+                        q.neq(q.field("isSensitive"), null)
+                    )
+                )
+                .order("desc")
+                .paginate(args.paginationOpts)
+        }
+
+        // Enrich with user info (we already have the user), cast to EnrichedImage for helper
         const enrichedPage = paginatedResult.page.map((image) => ({
             ...image,
             ownerName: user.username ?? "Anonymous",
             ownerPictureUrl: user.pictureUrl ?? null,
-        }))
+        })) as EnrichedImage[]
 
         return {
             ...paginatedResult,
-            page: enrichedPage,
+            page: toPublicFeedImages(enrichedPage),
         }
     },
 })
@@ -553,7 +696,7 @@ export const getFollowingFeed = query({
 
         return {
             ...paginatedResult,
-            page: enrichedPage,
+            page: toPublicFeedImages(enrichedPage),
         }
     },
 })
@@ -696,6 +839,114 @@ export const remove = mutation({
 })
 
 /**
+ * Internal query to get image data for analysis.
+ * Bypasses visibility checks.
+ */
+export const getByIdInternal = internalQuery({
+    args: { imageId: v.id("generatedImages") },
+    handler: async (ctx, args) => {
+        return await ctx.db.get(args.imageId);
+    },
+});
+
+/**
+ * Internal mutation to update the image with analysis results.
+ */
+export const updateImageSensitivity = internalMutation({
+    args: {
+        imageId: v.id("generatedImages"),
+        isSensitive: v.boolean(),
+        confidence: v.number(),
+        contentAnalysis: v.object({
+            nudity: v.optional(v.string()),
+            sexual: v.optional(v.string()),
+            violence: v.optional(v.string()),
+            analyzedAt: v.number(),
+        }),
+    },
+    handler: async (ctx, args) => {
+        await ctx.db.patch(args.imageId, {
+            isSensitive: args.isSensitive,
+            // If vision found it sensitive, update source
+            sensitiveSource: "vision_analysis",
+            sensitiveConfidence: args.confidence,
+            contentAnalysis: args.contentAnalysis,
+        });
+    },
+});
+
+/**
+ * Internal mutation to update image with prompt inference results.
+ */
+export const updateImagePromptInference = internalMutation({
+    args: {
+        imageId: v.id("generatedImages"),
+        promptInference: v.object({
+            category: v.string(),
+            confidence: v.number(),
+            reasoning: v.string(),
+            provider: v.string(),
+            analyzedAt: v.number(),
+        }),
+        isSensitive: v.optional(v.boolean()), // If decided
+        confidence: v.optional(v.number()), // If decided
+    },
+    handler: async (ctx, args) => {
+        // Use a partial of the inferred document type + any extra fields we are patching
+        // But since we are patching raw fields, 'any' is sometimes practically needed if types aren't perfectly aligned
+        // However, we can use Record<string, unknown> which is safer
+        const updates: Record<string, unknown> = {
+            promptInference: args.promptInference,
+        };
+
+        if (args.isSensitive !== undefined) {
+            updates.isSensitive = args.isSensitive;
+            updates.sensitiveSource = "prompt_inference";
+        }
+        
+        if (args.confidence !== undefined) {
+            updates.sensitiveConfidence = args.confidence;
+        }
+
+        await ctx.db.patch(args.imageId, updates);
+    },
+});
+
+/**
+ * Find images that haven't been tagged yet for the cron job.
+ * Using 'isSensitive' == null (or undefined for legacy)
+ */
+export const getUnanalyzedImages = internalQuery({
+    args: { limit: v.number() },
+    handler: async (ctx, args) => {
+        // We want images where isSensitive is NULL (pending) or UNDEFINED (legacy).
+        // Index `by_sensitivity` contains keys for `isSensitive` values.
+        // However, standard indexing of `null` allows efficient lookup.
+
+        // Priority 1: Check explicit nulls (new schema)
+        let pending = await ctx.db
+            .query("generatedImages")
+            .withIndex("by_sensitivity", q => q.eq("isSensitive", null))
+            .take(args.limit);
+
+        // Priority 2: Legacy undefined (backlog) - Only if we need more items
+        if (pending.length < args.limit) {
+            const legacyPending = await ctx.db
+                .query("generatedImages")
+                // Scan recent first to clear new stuff, or old first? 
+                // Default order is sufficient.
+                .filter(q => q.eq(q.field("isSensitive"), undefined))
+                .take(args.limit - pending.length);
+
+            pending = [...pending, ...legacyPending];
+        }
+
+        return pending;
+    },
+});
+
+
+/**
  * Bulk delete multiple generated image records.
  * Only the owner can delete their images.
  * Returns all r2Keys and thumbnailR2Keys so the caller can delete them from R2.
@@ -808,3 +1059,4 @@ export const getByR2Key = query({
         return null
     },
 })
+

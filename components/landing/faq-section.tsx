@@ -21,7 +21,7 @@ export const faqs = [
     {
         question: "What AI models are included?",
         answer:
-            "We offer 10+ cutting-edge models including Flux, GPT-4 Image, Seedream, and more. Both trial and Pro users get access to all models.",
+            "We offer 10+ cutting-edge and popular models including Flux, GPT-4 Image, Seedream, and more. Both trial and Pro users get access to all models.",
     },
     {
         question: "Why is this so much cheaper than competitors?",

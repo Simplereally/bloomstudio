@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     template: "%s | Bloom Studio",
   },
   description:
-    "Bloom Studio, a cheap and powerful AI image generator and video generator studio. Featuring NanoBanana, Veo, GPT 1.5, Seedream 4.5 and more. Try for free.",
+    "Bloom Studio, a cheap and powerful AI image generator and video generator studio. Featuring Nano Banana Pro, Veo, GPT 1.5, Seedream 4.5 and more. Try for free.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://bloomstudio.fun"),
   applicationName: "Bloom Studio",
   authors: [{ name: "Bloom Studio Team" }],
@@ -86,7 +86,7 @@ export const metadata: Metadata = {
     url: "/",
     title: "Bloom Studio - Cheap and Powerful AI Image & Video Generator",
     description:
-      "Bloom Studio, a cheap and powerful AI image generator and video generator studio. Featuring NanoBanana, Veo, GPT 1.5, Seedream 4.5 and more. Try for free.",
+      "Bloom Studio, a cheap and powerful AI image generator and video generator studio. Featuring Nano Banana Pro, Veo, GPT 1.5, Seedream 4.5 and more. Try for free.",
     siteName: "Bloom Studio",
     images: [
       {
@@ -101,7 +101,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Bloom Studio - Cheap and Powerful AI Image & Video Generator",
     description:
-      "Bloom Studio, a cheap and powerful AI image generator and video generator studio. Featuring NanoBanana, Veo, GPT 1.5, Seedream 4.5 and more. Try for free.",
+      "Bloom Studio, a cheap and powerful AI image generator and video generator studio. Featuring Nano Banana Pro, Veo, GPT 1.5, Seedream 4.5 and more. Try for free.",
     images: ["/branding/bloom-studio_logo.png"],
     creator: "@bloomstudio",
   },

@@ -1,25 +1,44 @@
 import { describe, it, expect, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { StudioLayout } from "./studio-layout"
+import type { CSSProperties, ReactNode } from "react"
 
 // Mock the Sidebar components
 vi.mock("@/components/ui/sidebar", () => ({
-    SidebarProvider: ({ children, open, "data-testid": testId, style }: any) => (
+    SidebarProvider: ({
+        children,
+        open,
+        "data-testid": testId,
+        style,
+    }: {
+        children: ReactNode
+        open?: boolean
+        "data-testid"?: string
+        style?: CSSProperties
+    }) => (
         <div data-testid={testId || "sidebar-provider"} data-open={String(open)} style={style}>
             {children}
         </div>
     ),
-    Sidebar: ({ children, side, "data-testid": testId }: any) => (
+    Sidebar: ({
+        children,
+        side,
+        "data-testid": testId,
+    }: {
+        children: ReactNode
+        side?: string
+        "data-testid"?: string
+    }) => (
         <div data-testid={testId || "sidebar"} data-side={side}>
             {children}
         </div>
     ),
-    SidebarContent: ({ children }: any) => (
+    SidebarContent: ({ children }: { children: ReactNode }) => (
         <div data-testid="sidebar-content-wrapper">
             {children}
         </div>
     ),
-    SidebarInset: ({ children }: any) => (
+    SidebarInset: ({ children }: { children: ReactNode }) => (
         <div data-testid="sidebar-inset">
             {children}
         </div>

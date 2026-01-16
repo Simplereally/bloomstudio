@@ -238,20 +238,29 @@ describe("useGenerationSettingsContext", () => {
     })
 
     it("returns context value when used within provider", () => {
-        let contextValue: ReturnType<typeof useGenerationSettingsContext> | null = null
+        const onValue = vi.fn<(value: ReturnType<typeof useGenerationSettingsContext>) => void>()
 
-        const ConsumerComponent = () => {
-            contextValue = useGenerationSettingsContext()
+        const ConsumerComponent = ({
+            onValue,
+        }: {
+            onValue: (value: ReturnType<typeof useGenerationSettingsContext>) => void
+        }) => {
+            const value = useGenerationSettingsContext()
+
+            React.useEffect(() => {
+                onValue(value)
+            }, [onValue, value])
+
             return <div>consumed</div>
         }
 
         render(
             <GenerationSettingsContext.Provider value={mockGenerationSettings}>
-                <ConsumerComponent />
+                <ConsumerComponent onValue={onValue} />
             </GenerationSettingsContext.Provider>
         )
 
-        expect(contextValue).toBe(mockGenerationSettings)
+        expect(onValue).toHaveBeenCalledWith(mockGenerationSettings)
     })
 })
 
@@ -272,19 +281,28 @@ describe("useBatchModeContext", () => {
     })
 
     it("returns context value when used within provider", () => {
-        let contextValue: ReturnType<typeof useBatchModeContext> | null = null
+        const onValue = vi.fn<(value: ReturnType<typeof useBatchModeContext>) => void>()
 
-        const ConsumerComponent = () => {
-            contextValue = useBatchModeContext()
+        const ConsumerComponent = ({
+            onValue,
+        }: {
+            onValue: (value: ReturnType<typeof useBatchModeContext>) => void
+        }) => {
+            const value = useBatchModeContext()
+
+            React.useEffect(() => {
+                onValue(value)
+            }, [onValue, value])
+
             return <div>consumed</div>
         }
 
         render(
             <BatchModeContext.Provider value={mockBatchMode}>
-                <ConsumerComponent />
+                <ConsumerComponent onValue={onValue} />
             </BatchModeContext.Provider>
         )
 
-        expect(contextValue).toBe(mockBatchMode)
+        expect(onValue).toHaveBeenCalledWith(mockBatchMode)
     })
 })

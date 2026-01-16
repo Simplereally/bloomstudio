@@ -6,11 +6,16 @@
  * Automatically detects content type and renders the appropriate element:
  * - <video> with native controls for video content
  * - <img> for image content
+ * 
+ * Video playback is managed by the useMediaPlayer hook which properly
+ * handles the asynchronous nature of play() to prevent race conditions.
  */
 
 import { cn } from "@/lib/utils"
 import { Loader2 } from "lucide-react"
+import Image from "next/image"
 import * as React from "react"
+import { useMediaPlayer } from "@/hooks/use-media-player"
 
 // Video file extensions to detect
 const VIDEO_EXTENSIONS = /\.(mp4|webm|mov|avi|mkv|m4v)(\?.*)?$/i
@@ -68,48 +73,23 @@ export const MediaPlayer = React.memo(function MediaPlayer({
     onError,
     draggable = false,
 }: MediaPlayerProps) {
-    const [isLoading, setIsLoading] = React.useState(true)
-    const [hasError, setHasError] = React.useState(false)
-    const videoRef = React.useRef<HTMLVideoElement>(null)
-
     const isVideo = isVideoContent(contentType, url)
 
-    // Reset loading state when URL changes
-    React.useEffect(() => {
-        setIsLoading(true)
-        setHasError(false)
-    }, [url])
-
-    const handleLoad = React.useCallback((e: React.SyntheticEvent<HTMLImageElement | HTMLVideoElement>) => {
-        setIsLoading(false)
-        onLoad?.(e)
-    }, [onLoad])
-
-    const handleError = React.useCallback(() => {
-        setIsLoading(false)
-        setHasError(true)
-        onError?.()
-    }, [onError])
-
-    // Handle video-specific load event
-    const handleVideoLoadedData = React.useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
-        handleLoad(e)
-    }, [handleLoad])
-
-    // Toggle play/pause on click for videos
-    // Always handle explicitly to bypass browser's native delay (which waits to distinguish click vs double-click)
-    // preventDefault stops the native video controls from also handling the click (which would cause double-toggle)
-    const handleVideoClick = React.useCallback((e: React.MouseEvent) => {
-        e.preventDefault()
-        if (videoRef.current) {
-            if (videoRef.current.paused) {
-                videoRef.current.play()
-            } else {
-                videoRef.current.pause()
-            }
-        }
-        onClick?.(e)
-    }, [onClick])
+    const {
+        isLoading,
+        hasError,
+        videoRef,
+        handleLoad,
+        handleError,
+        handleVideoLoadedData,
+        handleVideoClick,
+    } = useMediaPlayer({
+        url,
+        isVideo,
+        onLoad,
+        onError,
+        onClick,
+    })
 
     if (hasError) {
         return (
@@ -162,11 +142,13 @@ export const MediaPlayer = React.memo(function MediaPlayer({
     // Image rendering
     return (
         <div className={cn("relative", className)}>
-            <img
+            <Image
                 src={url}
                 alt={alt}
+                fill
+                sizes="100vw"
                 className={cn(
-                    "w-full h-full object-contain",
+                    "object-contain",
                     isLoading && "opacity-0"
                 )}
                 onClick={onClick}

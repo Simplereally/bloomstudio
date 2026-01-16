@@ -1,5 +1,21 @@
 "use client"
 
+/**
+ * @fileoverview Client component for the user's image history page.
+ * 
+ * Architecture:
+ * - Server-side caching for initial page load (fast, reduced Convex bandwidth)
+ * - Server actions for pagination (also cached per-user)
+ * - Optimistic UI updates for delete operations (immediate visual feedback)
+ * - Local state management for pagination (not reactive to Convex changes)
+ * 
+ * Data Flow:
+ * 1. Server fetches initial page from cache → passed as initialPage prop
+ * 2. User scrolls → loadMore() calls server action → appends to local state
+ * 3. User deletes → optimistic removal from local state → server mutation
+ * 4. On delete failure → rollback restores previous state
+ */
+
 import {
     ActiveFilterBadges,
     HistoryFiltersDropdown,
@@ -8,7 +24,7 @@ import {
 import { PaginatedImageGrid } from "@/components/gallery/paginated-image-grid"
 import { SelectionToolbar } from "@/components/gallery/selection-toolbar"
 import { Button } from "@/components/ui/button"
-import { useImageHistoryWithDisplayData, type HistoryFilters } from "@/hooks/queries/use-image-history"
+import { loadMyHistoryWithDisplayPage } from "@/app/_server/actions/history"
 import { useImageSelection } from "@/hooks/use-image-selection"
 import { useLocalStorage } from "@/hooks/use-local-storage"
 import { useUser } from "@clerk/nextjs"
@@ -16,27 +32,83 @@ import { ImageOffIcon } from "lucide-react"
 import Link from "next/link"
 import * as React from "react"
 
+/** Type for the paginated result from the cached query/server action */
+type PaginatedHistoryResult = Awaited<ReturnType<typeof loadMyHistoryWithDisplayPage>>
+
+/** Default filter state - no filters applied */
 const INITIAL_FILTER_STATE: HistoryFilterState = {
     selectedVisibility: [],
     selectedModels: [],
 }
 
+interface HistoryClientProps {
+    /** Server-provided initial page (from cache) */
+    initialPage: PaginatedHistoryResult
+}
+
 /**
  * Client component for the dedicated history page.
- * Displays the current user's generated images with pagination and filtering.
+ * 
+ * Displays the current user's generated images with:
+ * - Infinite scroll pagination
+ * - Visibility and model filtering
+ * - Multi-select with bulk delete/visibility actions
+ * - Optimistic UI updates for delete operations
+ * 
+ * @param props.initialPage - Server-cached initial page of images
  */
-export function HistoryClient() {
+export function HistoryClient({ initialPage }: HistoryClientProps) {
     const { user } = useUser()
 
     // Determine storage key based on user ID for account-specific preferences
-    const storageKey = React.useMemo(() => 
+    const storageKey = React.useMemo(() =>
         user?.id ? `bloom:history-filters:${user.id}` : "bloom:history-filters:anon",
-    [user?.id])
+        [user?.id])
 
     // Filter state persisted to localStorage
     const [filterState, setFilterState] = useLocalStorage<HistoryFilterState>(storageKey, INITIAL_FILTER_STATE)
 
-    // Selection state and handlers
+    // Pagination state managed locally (server action pattern)
+    // Must be defined before handleOptimisticDelete
+    const [items, setItems] = React.useState(() => initialPage.page)
+    const [cursor, setCursor] = React.useState(() => initialPage.continueCursor)
+    const [isDone, setIsDone] = React.useState(() => initialPage.isDone)
+    const [isLoadingMore, setIsLoadingMore] = React.useState(false)
+    const [isLoadingFilters, setIsLoadingFilters] = React.useState(false)
+
+    /**
+     * Optimistic delete handler for immediate UI feedback.
+     * 
+     * Called by useImageSelection before the delete mutation is sent.
+     * Removes items from local state immediately, providing instant visual feedback.
+     * Returns a rollback function that restores the previous state if deletion fails.
+     * 
+     * Uses a functional update pattern to capture the exact state at deletion time,
+     * preventing stale rollbacks when multiple operations overlap.
+     * 
+     * @param deletedIds - Array of image IDs being deleted
+     * @returns Rollback function to restore previous state on failure
+     */
+    const handleOptimisticDelete = React.useCallback((deletedIds: string[]) => {
+        const deletedIdSet = new Set(deletedIds)
+        
+        // Capture snapshot inside the functional update to get the exact current state
+        let snapshot: typeof items = []
+        
+        setItems(prev => {
+            // Store the current state for rollback
+            snapshot = prev
+            // Return filtered list without deleted items
+            return prev.filter(item => !deletedIdSet.has(item._id))
+        })
+        
+        // Return rollback function that restores the precise snapshot
+        return () => {
+            setItems(() => snapshot)
+        }
+    }, [])
+
+    // Selection state and handlers with optimistic delete support
     const {
         selectionMode,
         setSelectionMode,
@@ -48,47 +120,111 @@ export function HistoryClient() {
         handleSetSelectedVisibility,
         isDeleting,
         isUpdatingVisibility,
-    } = useImageSelection()
+    } = useImageSelection({
+        onOptimisticDelete: handleOptimisticDelete,
+    })
+
+    // Pagination state managed locally (moved up)
+
+    // Track the current filter key to detect changes
+    const currentFilterKey = React.useMemo(() => {
+        const v = filterState.selectedVisibility.length === 1
+            ? filterState.selectedVisibility[0]
+            : undefined
+        const m = filterState.selectedModels.length > 0 ? filterState.selectedModels : undefined
+        return JSON.stringify({ v, m })
+    }, [filterState])
+
+    const prevFilterKeyRef = React.useRef(currentFilterKey)
 
     // Convert filter state to query parameters
-    const queryFilters: HistoryFilters = React.useMemo(() => ({
-        // Only pass visibility if exactly one is selected (filtering for one type)
-        // If both or none are selected, show all (no filter)
-        visibility: filterState.selectedVisibility.length === 1 
-            ? filterState.selectedVisibility[0] 
+    const queryFilters = React.useMemo(() => ({
+        visibility: filterState.selectedVisibility.length === 1
+            ? filterState.selectedVisibility[0]
             : undefined,
         models: filterState.selectedModels.length > 0 ? filterState.selectedModels : undefined,
     }), [filterState])
 
-    const { results, status, loadMore } = useImageHistoryWithDisplayData(queryFilters)
+    // Load more handler using server action
+    const loadMore = React.useCallback(async () => {
+        if (isDone || isLoadingMore || !cursor) return
+
+        setIsLoadingMore(true)
+        try {
+            const result = await loadMyHistoryWithDisplayPage({
+                cursor,
+                filters: queryFilters,
+            })
+            setItems(prev => [...prev, ...result.page])
+            setCursor(result.continueCursor)
+            setIsDone(result.isDone)
+        } catch (error) {
+            console.error("Failed to load more:", error)
+        } finally {
+            setIsLoadingMore(false)
+        }
+    }, [cursor, isDone, isLoadingMore, queryFilters])
+
+    // When filters change, reset pagination and fetch new data
+    React.useEffect(() => {
+        // Skip the initial mount
+        if (prevFilterKeyRef.current === currentFilterKey) return
+        prevFilterKeyRef.current = currentFilterKey
+
+        // Check if filters are now empty (reset to initial state)
+        const hasFilters = filterState.selectedVisibility.length > 0 || filterState.selectedModels.length > 0
+
+        async function fetchFiltered() {
+            setIsLoadingFilters(true)
+            try {
+                const result = await loadMyHistoryWithDisplayPage({
+                    cursor: null, // Start from the beginning
+                    filters: hasFilters ? queryFilters : undefined,
+                })
+                setItems(result.page)
+                setCursor(result.continueCursor)
+                setIsDone(result.isDone)
+            } catch (error) {
+                console.error("Failed to fetch filtered history:", error)
+            } finally {
+                setIsLoadingFilters(false)
+            }
+        }
+
+        void fetchFiltered()
+
+        // Exit selection mode and clear selection when filters change
+        if (selectionMode) {
+            setSelectionMode(false)
+            deselectAll()
+        }
+    }, [currentFilterKey, filterState, queryFilters, selectionMode, setSelectionMode, deselectAll])
 
     const hasActiveFilters = filterState.selectedVisibility.length > 0 || filterState.selectedModels.length > 0
 
+    // Compute status compatible with PaginatedImageGrid
+    const status = isLoadingFilters
+        ? "LoadingFirstPage"
+        : (isDone ? "Exhausted" : isLoadingMore ? "LoadingMore" : "CanLoadMore")
+
     // Determine empty state based on filter status
     const isExhausted = status === "Exhausted"
-    
-    // Only show "no matching" when done loading and actually empty
-    const showFilteredEmpty = hasActiveFilters && isExhausted && results.length === 0
-    const showAbsoluteEmpty = !hasActiveFilters && isExhausted && results.length === 0
 
-    // Handle selection change from ImageCard
+    // Only show "no matching" when done loading and actually empty
+    const showFilteredEmpty = hasActiveFilters && isExhausted && items.length === 0
+    const showAbsoluteEmpty = !hasActiveFilters && isExhausted && items.length === 0
+
+    /** Handle selection change from ImageCard */
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleSelectionChange = React.useCallback((id: string, _selected: boolean) => {
+        // Note: _selected parameter is provided by ImageCard but we use toggle behavior
         toggleSelection(id)
     }, [toggleSelection])
 
     // Handle select all with current results
     const handleSelectAll = React.useCallback(() => {
-        selectAll(results.map((r) => ({ _id: r._id } as { _id: string })))
-    }, [selectAll, results])
-
-    // Exit selection mode and clear selection when filters change
-    React.useEffect(() => {
-        if (selectionMode) {
-            setSelectionMode(false)
-            deselectAll()
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [filterState])
+        selectAll(items.map((r) => ({ _id: r._id } as { _id: string })))
+    }, [selectAll, items])
 
     return (
         <div className="space-y-4">
@@ -106,13 +242,13 @@ export function HistoryClient() {
                             </span>
                         )}
                     </div>
-                    
+
                     {/* Selection Toolbar */}
                     <SelectionToolbar
                         selectionMode={selectionMode}
                         onToggleSelectionMode={() => setSelectionMode((prev) => !prev)}
                         selectedCount={selectedIds.size}
-                        totalCount={results.length}
+                        totalCount={items.length}
                         onSelectAll={handleSelectAll}
                         onDeselectAll={deselectAll}
                         onDeleteSelected={handleDeleteSelected}
@@ -129,7 +265,7 @@ export function HistoryClient() {
 
             {/* Image Grid */}
             <PaginatedImageGrid
-                images={results}
+                images={items}
                 status={status}
                 loadMore={loadMore}
                 showUser={false}
@@ -138,11 +274,11 @@ export function HistoryClient() {
                 onSelectionChange={handleSelectionChange}
                 emptyState={
                     showFilteredEmpty ? (
-                        <FilteredEmptyState 
-                            onClearFilters={() => setFilterState({ 
-                                selectedVisibility: [], 
-                                selectedModels: [] 
-                            })} 
+                        <FilteredEmptyState
+                            onClearFilters={() => setFilterState({
+                                selectedVisibility: [],
+                                selectedModels: []
+                            })}
                         />
                     ) : showAbsoluteEmpty ? (
                         <HistoryEmptyState />

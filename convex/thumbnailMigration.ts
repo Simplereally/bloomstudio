@@ -6,7 +6,7 @@
  */
 
 import { v } from "convex/values"
-import { internalMutation, internalQuery, mutation, query } from "./_generated/server"
+import { mutation, query } from "./_generated/server"
 
 /** Batch size for migration (balance between throughput and memory) */
 export const MIGRATION_BATCH_SIZE = 10

@@ -25,6 +25,10 @@ export interface StudioLayoutProps {
     showSidebar?: boolean
     /** Whether the gallery panel is visible */
     showGallery?: boolean
+    /** Callback when sidebar open state changes (e.g., closed via mobile overlay) */
+    onSidebarOpenChange?: (open: boolean) => void
+    /** Callback when gallery open state changes (e.g., closed via mobile overlay) */
+    onGalleryOpenChange?: (open: boolean) => void
     /** Additional class names */
     className?: string
     
@@ -42,6 +46,8 @@ export function StudioLayout({
     gallery,
     showSidebar = true,
     showGallery = true,
+    onSidebarOpenChange,
+    onGalleryOpenChange,
     className,
 }: StudioLayoutProps) {
     return (
@@ -50,6 +56,7 @@ export function StudioLayout({
             <SidebarProvider
                 open={showSidebar}
                 defaultOpen={showSidebar}
+                onOpenChange={onSidebarOpenChange}
                 cookieName="studio-sidebar-state"
                 className="!h-full !min-h-0 w-full relative"
                 style={
@@ -62,7 +69,7 @@ export function StudioLayout({
                 <Sidebar
                     side="left"
                     collapsible="offcanvas"
-                    className="!absolute !h-full border-r border-border/50 bg-card/50"
+                    className="!absolute !h-full border-r border-border/50 bg-transparent"
                     data-testid="studio-sidebar-panel"
                 >
                     <SidebarContent className="h-full min-h-0 overflow-hidden">
@@ -75,6 +82,7 @@ export function StudioLayout({
                     <SidebarProvider
                         open={showGallery && !!gallery}
                         defaultOpen={showGallery && !!gallery}
+                        onOpenChange={onGalleryOpenChange}
                         cookieName="studio-gallery-state"
                         className="!h-full !min-h-0 w-full relative"
                         style={

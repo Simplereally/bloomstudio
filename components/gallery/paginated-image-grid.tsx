@@ -14,11 +14,12 @@ interface PaginatedImageGridProps {
     loadMore: (n: number) => void
     emptyState?: React.ReactNode
     showUser?: boolean
-    /** Whether selection mode is active */
+    /** Whether user chooses to see sensitive content without overlay. If false, sensitive content gets blurred. */
+    userShowsSensitive?: boolean
+    
+    // Selection mode props
     selectionMode?: boolean
-    /** Set of selected image IDs */
     selectedIds?: Set<string>
-    /** Called when an image's selection state changes */
     onSelectionChange?: (id: string, selected: boolean) => void
 }
 
@@ -70,10 +71,10 @@ export function PaginatedImageGrid({
     selectionMode = false,
     selectedIds = EMPTY_SET,
     onSelectionChange,
+    userShowsSensitive = false,
 }: PaginatedImageGridProps) {
     const [selectedImage, setSelectedImage] = useState<ImageCardData | null>(null)
-    
-    // Ref for the infinite scroll sentinel element
+
     const sentinelRef = useRef<HTMLDivElement>(null)
 
     const handleSelectImage = useCallback((image: ImageCardData) => {
@@ -173,6 +174,7 @@ export function PaginatedImageGrid({
                         selectionMode={selectionMode}
                         isSelected={selectedIds.has(image._id)}
                         onSelectionChange={onSelectionChange}
+                        userShowsSensitive={userShowsSensitive}
                     />
                 ))}
             </MasonryGrid>
@@ -233,7 +235,7 @@ export function PaginatedImageGrid({
                                 </motion.div>
                                 {/* Trail effect or secondary arrow could go here if we wanted extra flair, but keeping it clean for now */}
                             </div>
-                            
+
                             {/* Subtle shine effect on hover */}
                             <div className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
                                 <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-in-out" />

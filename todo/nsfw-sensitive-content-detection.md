@@ -22,7 +22,7 @@ Implement an automated system to detect and tag sensitive (NSFW) content in user
 
 ### Relevant Schema (from `convex/schema.ts`)
 
-The `generatedImages` table currently lacks any sensitive content fields:
+The `generatedImages` table now includes sensitive content fields:
 
 ```typescript
 generatedImages: defineTable({
@@ -32,7 +32,8 @@ generatedImages: defineTable({
     prompt: v.string(),
     negativePrompt: v.optional(v.string()),
     model: v.string(),
-    // No sensitive content fields exist
+    // Sensitive content: null = pending, false = safe, true = sensitive
+    isSensitive: v.optional(v.union(v.boolean(), v.null())),
 })
 ```
 
@@ -275,19 +276,17 @@ contentReports: defineTable({
 **1.1 Update `generatedImages` schema:**
 
 ```typescript
-generatedImages: defineTable({
-    // ... existing fields
+    // --- Sensitive Content Fields ---
     
-    /** Whether this content is marked as sensitive/NSFW */
-    isSensitive: v.optional(v.boolean()),
+    /** Whether this content is marked as sensitive/NSFW. null = pending/untagged. */
+    isSensitive: v.optional(v.union(v.boolean(), v.null())),
     
     /** How the sensitive flag was determined */
     sensitiveSource: v.optional(v.union(
         v.literal("prompt_analysis"),
         v.literal("vision_analysis"),
-        v.literal("community_report"),
-        v.literal("owner_marked"),
-        v.literal("admin_override")
+        v.literal("manual_review"),
+        v.literal("user_report")
     )),
     
     /** Confidence score from automated detection (0-1) */
@@ -301,8 +300,10 @@ generatedImages: defineTable({
         analyzedAt: v.number(),
     })),
 })
-    // Add index for filtering sensitive content
+    // Index for "Block" preference (Safe only) or finding pending
     .index("by_visibility_sensitive", ["visibility", "isSensitive", "createdAt"])
+    // Index for scanning/filtering (Finding pending = null)
+    .index("by_sensitivity", ["isSensitive", "createdAt"])
 ```
 
 **1.2 Update `users` schema for preferences:**
@@ -311,8 +312,19 @@ generatedImages: defineTable({
 users: defineTable({
     // ... existing fields
     
-    /** Whether to show sensitive content without blur (default: false) */
-    showSensitiveContent: v.optional(v.boolean()),
+    /** 
+     * Content filter preference:
+     * - 'block': Do not show sensitive content at all
+     * - 'blur': Show sensitive content with a blur overlay (default)
+     * - 'allow': Show sensitive content without overlay
+     */
+    contentFilterPreference: v.optional(
+        v.union(
+            v.literal("block"),
+            v.literal("blur"),
+            v.literal("allow")
+        )
+    ),
 })
 ```
 
@@ -378,7 +390,7 @@ export function analyzePromptForNSFW(prompt: string): PromptAnalysisResult {
     const hasBodyPart = words.some(w => BODY_PARTS.has(w));
     const hasModifier = words.some(w => CONTEXT_MODIFIERS.has(w));
     if (hasBodyPart && hasModifier) {
-        score += 0.5;
+        score += 0.7;
     }
     
     // Normalize score to 0-1 range
@@ -625,40 +637,44 @@ crons.interval(
 ```typescript
 // convex/generatedImages.ts
 
-export const getPublicFeed = query({
     args: {
         paginationOpts: paginationOptsValidator,
-        /** Whether to include sensitive content (requires user preference) */
-        includeSensitive: v.optional(v.boolean()),
+        /** User's content filter preference */
+        filterPreference: v.optional(v.union(v.literal("block"), v.literal("blur"), v.literal("allow"))),
     },
     handler: async (ctx, args) => {
-        const { includeSensitive = false } = args;
+        const { filterPreference = "blur" } = args; // Default to blur/hide
         
-        // Build query with optional sensitive filter
-        let results;
-        if (includeSensitive) {
-            results = await ctx.db
-                .query("generatedImages")
-                .withIndex("by_visibility", (q) => q.eq("visibility", "public"))
-                .order("desc")
-                .paginate(args.paginationOpts);
-        } else {
-            results = await ctx.db
+        // CASE 1: BLOCK - Show ONLY safe content
+        if (filterPreference === "block") {
+            const results = await ctx.db
                 .query("generatedImages")
                 .withIndex("by_visibility_sensitive", (q) => 
                     q.eq("visibility", "public").eq("isSensitive", false)
                 )
                 .order("desc")
                 .paginate(args.paginationOpts);
+                
+            return { ...results, page: await enrichImages(ctx, results.page) };
         }
         
-        // Enrich with owner info
-        const enrichedPage = await enrichImages(ctx, results.page);
+        // CASE 2 & 3: BLUR / ALLOW - Show ALL tagged content (safe OR sensitive)
+        // We filter out 'null' (pending)
+        const results = await ctx.db
+            .query("generatedImages")
+            .withIndex("by_visibility", (q) => 
+                q.eq("visibility", "public")
+            )
+            .filter((q) =>
+                q.and(
+                    q.not(q.gt(q.field("aspectRatio"), 4)),
+                    q.neq(q.field("isSensitive"), null)
+                )
+            )
+            .order("desc")
+            .paginate(args.paginationOpts);
         
-        return {
-            ...results,
-            page: enrichedPage,
-        };
+        return { ...results, page: await enrichImages(ctx, results.page) };
     },
 });
 ```

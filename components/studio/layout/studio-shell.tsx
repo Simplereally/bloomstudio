@@ -19,15 +19,13 @@
 
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Sparkles } from "lucide-react"
 import { BatchActionButton } from "@/components/studio/batch/batch-action-button"
-import { useQuery } from "convex/react"
-import { api } from "@/convex/_generated/api"
 
 // Studio Components
 import { ImageLightbox } from "@/components/images/image-lightbox"
 import {
     ApiKeyOnboardingModal,
+    BatchConfigButton,
     StudioHeader,
     StudioLayout,
     UpgradeModal,
@@ -56,16 +54,32 @@ import { useStudioUI } from "@/hooks/use-studio-ui"
 import { useSubscriptionStatus } from "@/hooks/use-subscription-status"
 import { getModelSupportsNegativePrompt } from "@/lib/config/models"
 import { isTrialExpiredError, showAuthRequiredToast, showErrorToast } from "@/lib/errors"
-import { isLocalhost } from "@/lib/utils"
-import type { ImageGenerationParams, VideoGenerationParams } from "@/types/pollinations"
+import type { ImageGenerationParams, VideoGenerationParams, VideoModel } from "@/types/pollinations"
 import type { ThumbnailData } from "@/components/studio/gallery/image-gallery"
 import { useConvexAuth } from "convex/react"
 import { useSearchParams } from "next/navigation"
 import * as React from "react"
 import { toast } from "sonner"
+import { invalidateUserHistoryCache } from "@/app/_server/actions/invalidation"
+
+// Type for the paginated result from server cache
+type PaginatedGalleryResult = {
+    page: Array<{
+        _id: string
+        _creationTime: number
+        url: string
+        visibility?: "public" | "unlisted"
+        model?: string
+        contentType?: string
+    }>
+    isDone: boolean
+    continueCursor: string
+}
 
 export interface StudioShellProps {
     defaultLayout?: Record<string, number>
+    /** Server-cached initial gallery page (reduces Convex bandwidth on initial load) */
+    initialGalleryPage?: PaginatedGalleryResult
 }
 
 /**
@@ -82,7 +96,7 @@ export interface StudioShellProps {
  * <StudioShell defaultLayout={{ sidebar: 22, gallery: 18 }} />
  * ```
  */
-export function StudioShell({ defaultLayout }: StudioShellProps) {
+export function StudioShell({ defaultLayout, initialGalleryPage }: StudioShellProps) {
     // ========================================
     // Initialize Feature Hooks
     // ========================================
@@ -99,12 +113,6 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
 
     // Upgrade modal state (shown when trial expires)
     const [showUpgradeModal, setShowUpgradeModal] = React.useState(false)
-
-    // Check if running on localhost (for dev-only features)
-    const [isLocalDev, setIsLocalDev] = React.useState(false)
-    React.useEffect(() => {
-        setIsLocalDev(isLocalhost())
-    }, [])
 
     // Prevent any scroll at the root level for fixed viewport pages like Studio
     React.useEffect(() => {
@@ -152,15 +160,20 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
     // Image Generation
     // ========================================
     const { generate, isGenerating } = useGenerateImage({
-        onSuccess: (image) => {
+        onSuccess: async (image) => {
             galleryState.addImage(image)
             generationSettings.refreshSeedIfNeeded()
+
+            if (isSignedIn) {
+                // Invalidate history cache so new image appears on history page
+                await invalidateUserHistoryCache().catch(console.error)
+            }
         },
         onError: (error) => {
             if (error.code === "UNAUTHORIZED") {
                 showAuthRequiredToast()
             } else if (isTrialExpiredError(error)) {
-                // Show upgrade modal instead of toast for trial expiration
+                // Show upgrade modal instead of trial expired error
                 setShowUpgradeModal(true)
             } else {
                 showErrorToast(error)
@@ -217,7 +230,11 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
             ? generationSettings.generateSeed()
             : generationSettings.seed
 
-        const params: any = {
+        function isVideoModel(model: string): model is VideoModel {
+            return model === "veo" || model === "seedance" || model === "seedance-pro"
+        }
+
+        const commonParams = {
             prompt,
             negativePrompt: negativePrompt || undefined,
             model: generationSettings.model,
@@ -228,13 +245,26 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
             private: generationSettings.options.private,
             safe: generationSettings.options.safe,
             image: generationSettings.referenceImage,
-            // Video-specific parameters
-            duration: generationSettings.videoSettings.duration,
-            audio: generationSettings.videoSettings.audio,
-            aspectRatio: generationSettings.aspectRatio, // Use current aspect ratio string
-            lastFrameImage: generationSettings.videoReferenceImages.lastFrame,
         }
 
+        if (isVideoModel(generationSettings.model)) {
+            const videoAspectRatio = generationSettings.aspectRatio === "16:9" || generationSettings.aspectRatio === "9:16"
+                ? generationSettings.aspectRatio
+                : undefined
+
+            const params: VideoGenerationParams = {
+                ...commonParams,
+                model: generationSettings.model,
+                duration: generationSettings.videoSettings.duration,
+                audio: generationSettings.videoSettings.audio,
+                aspectRatio: videoAspectRatio,
+                lastFrameImage: generationSettings.videoReferenceImages.lastFrame,
+            }
+            generate(params)
+            return
+        }
+
+        const params: ImageGenerationParams = commonParams
         generate(params)
     }, [
         promptManager,
@@ -290,32 +320,88 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
     }, [galleryState, promptManager, generationSettings, generate])
 
     // ========================================
+    // Sidebar Scroll State (for fade overlays)
+    // ========================================
+    const scrollViewportRef = React.useRef<HTMLDivElement>(null)
+    const [showTopFade, setShowTopFade] = React.useState(false)
+    const [showBottomFade, setShowBottomFade] = React.useState(false)
+
+    const updateScrollFades = React.useCallback((el: HTMLDivElement | null) => {
+        if (!el) return
+        const { scrollTop, scrollHeight, clientHeight } = el
+        const hasScrollableContent = scrollHeight > clientHeight
+        setShowTopFade(scrollTop > 8)
+        setShowBottomFade(hasScrollableContent && scrollTop + clientHeight < scrollHeight - 8)
+    }, [])
+
+    const handleScroll = React.useCallback((e: React.UIEvent<HTMLDivElement>) => {
+        updateScrollFades(e.currentTarget)
+    }, [updateScrollFades])
+
+    // Check initial scroll state on mount
+    React.useEffect(() => {
+        // Small delay to let content render
+        const timer = setTimeout(() => {
+            updateScrollFades(scrollViewportRef.current)
+        }, 100)
+        return () => clearTimeout(timer)
+    }, [updateScrollFades])
+
+    // ========================================
     // Sidebar Content
     // ========================================
     const sidebarContent = (
-        <div className="h-full flex flex-col bg-card/50 backdrop-blur-sm border-r border-border/50 mr-1">
-            <ScrollArea className="flex-1 min-h-0 overflow-hidden">
-                <div className="p-2 space-y-1 w-full min-w-0 overflow-x-hidden">
-                    {/* Prompt Feature */}
-                    <PromptManagerContext.Provider value={promptManager}>
-                        <PromptFeature
-                            isGenerating={isGenerating}
-                            showNegativePrompt={getModelSupportsNegativePrompt(generationSettings.model)}
-                            showLibrary={!!isSignedIn}
-                        />
-                    </PromptManagerContext.Provider>
+        <div className="h-full flex flex-col">
+            <div className="relative flex-1 min-h-0 overflow-hidden">
+                {/* Top fade overlay */}
+                <div 
+                    className="absolute top-0 left-0 right-0 h-8 z-10 pointer-events-none transition-opacity duration-200"
+                    style={{
+                        opacity: showTopFade ? 1 : 0,
+                        background: 'linear-gradient(to bottom, hsl(var(--card)) 0%, hsl(var(--card) / 0.8) 40%, transparent 100%)',
+                        backdropFilter: 'blur(2px)',
+                        WebkitBackdropFilter: 'blur(2px)',
+                        maskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)',
+                        WebkitMaskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)',
+                    }}
+                />
+                
+                <ScrollArea className="h-full" onScroll={handleScroll} viewportRef={scrollViewportRef}>
+                    <div className="p-0 space-y-0.5 w-full min-w-0 overflow-x-hidden">
+                        {/* Prompt Feature */}
+                        <PromptManagerContext.Provider value={promptManager}>
+                            <PromptFeature
+                                isGenerating={isGenerating}
+                                showNegativePrompt={getModelSupportsNegativePrompt(generationSettings.model)}
+                                showLibrary={!!isSignedIn}
+                            />
+                        </PromptManagerContext.Provider>
 
-                    {/* Generation Controls Feature */}
-                    <GenerationSettingsContext.Provider value={generationSettings}>
-                        <BatchModeContext.Provider value={batchMode}>
-                            <ControlsFeature isGenerating={isGenerating} />
-                        </BatchModeContext.Provider>
-                    </GenerationSettingsContext.Provider>
-                </div>
-            </ScrollArea>
+                        {/* Generation Controls Feature */}
+                        <GenerationSettingsContext.Provider value={generationSettings}>
+                            <BatchModeContext.Provider value={batchMode}>
+                                <ControlsFeature isGenerating={isGenerating} />
+                            </BatchModeContext.Provider>
+                        </GenerationSettingsContext.Provider>
+                    </div>
+                </ScrollArea>
+                
+                {/* Bottom fade overlay */}
+                <div 
+                    className="absolute bottom-0 left-0 right-0 h-8 z-10 pointer-events-none transition-opacity duration-200"
+                    style={{
+                        opacity: showBottomFade ? 1 : 0,
+                        background: 'linear-gradient(to top, hsl(var(--card)) 0%, hsl(var(--card) / 0.8) 40%, transparent 100%)',
+                        backdropFilter: 'blur(2px)',
+                        WebkitBackdropFilter: 'blur(2px)',
+                        maskImage: 'linear-gradient(to top, black 0%, transparent 100%)',
+                        WebkitMaskImage: 'linear-gradient(to top, black 0%, transparent 100%)',
+                    }}
+                />
+            </div>
 
             {/* Generate / Pause / Resume Batch Button */}
-            <div className="p-2 border-t border-border/50 bg-card/80">
+            <div className="p-1.5 border-t bg-background/60">
                 {batchMode.isBatchActive ? (
                     <BatchActionButton
                         isPaused={batchMode.isBatchPaused}
@@ -327,26 +413,31 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
                         onCancel={batchMode.cancelBatchGeneration}
                     />
                 ) : (
-                    <Button
-                        onClick={handleGenerateClick}
-                        disabled={isGenerating || !promptManager.hasPromptContent}
-                        className="w-full h-11 text-base font-semibold"
-                        size="lg"
-                    >
-                        {isGenerating ? (
-                            "Generating..."
-                        ) : batchMode.batchSettings.enabled ? (
-                            <>
-                                <Sparkles className="mr-2 h-4 w-4" />
-                                Generate Batch ({batchMode.batchSettings.count})
-                            </>
-                        ) : (
-                            <>
-                                <Sparkles className="mr-2 h-4 w-4" />
-                                Generate Image
-                            </>
-                        )}
-                    </Button>
+                    <div className="flex gap-1.5 w-full">
+                        <Button
+                            onClick={handleGenerateClick}
+                            disabled={isGenerating || !promptManager.hasPromptContent}
+                            className="flex-1 h-11 text-base font-semibold"
+                            size="lg"
+                        >
+                            {isGenerating ? (
+                                "Generating..."
+                            ) : batchMode.batchSettings.enabled ? (
+                                <>
+                                    Generate Batch ({batchMode.batchSettings.count})
+                                </>
+                            ) : (
+                                <>
+                                    Generate Image
+                                </>
+                            )}
+                        </Button>
+                        <BatchConfigButton
+                            settings={batchMode.batchSettings}
+                            onSettingsChange={batchMode.setBatchSettings}
+                            disabled={isGenerating || batchMode.isBatchActive}
+                        />
+                    </div>
                 )}
             </div>
         </div>
@@ -358,7 +449,8 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
     const canvasContent = (
         <CanvasFeature
             currentImage={galleryState.currentImage}
-            isGenerating={isGenerating}
+            isGenerating={isGenerating || batchMode.isBatchActive}
+            progress={batchMode.isBatchActive ? (batchMode.batchProgress.totalCount > 0 ? (batchMode.batchProgress.completedCount / batchMode.batchProgress.totalCount) * 100 : 0) : undefined}
             onOpenLightbox={studioUI.openLightbox}
             onRegenerate={handleRegenerate}
         />
@@ -372,6 +464,7 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
             activeImageId={galleryState.currentImage?.id}
             onSelectImage={handleSelectGalleryImage}
             thumbnailSize="md"
+            initialPage={initialGalleryPage}
         />
     )
 
@@ -396,6 +489,8 @@ export function StudioShell({ defaultLayout }: StudioShellProps) {
                     gallery={galleryContent}
                     showSidebar={studioUI.showLeftSidebar}
                     showGallery={studioUI.showGallery}
+                    onSidebarOpenChange={studioUI.setShowLeftSidebar}
+                    onGalleryOpenChange={studioUI.setShowGallery}
                     defaultSidebarSize="22%"
                     defaultGallerySize="18%"
                     defaultLayout={defaultLayout}

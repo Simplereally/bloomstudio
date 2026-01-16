@@ -118,7 +118,7 @@ export const SOLUTIONS: Solution[] = [
     shortTitle: "Images",
     slug: "ai-image-generator",
     description:
-      "Generate stunning high-resolution images from any prompt. Powered by a diverse library of world-class AI models like Flux, DALL-E, and Stable Diffusion.",
+      "Generate stunning high-resolution images from any prompt. Powered by a diverse library of world-class AI models like Nano Banana Pro, GPT Image 1.5, and Seedream 4.5.",
     heroSuffix: "images",
     heroImages: [
       "/solutions/ai-image-generator/hero-1.jpg",
@@ -164,7 +164,7 @@ export const SOLUTIONS: Solution[] = [
       {
         question: "Which model should I use?",
         answer:
-          "Each model has strengths. For example, Flux is great for detail, while DALL-E 3 is excellent for prompt adherence. You can try multiple models for the same prompt.",
+          "Each model has strengths. For example, Nano Banana Pro is great for detail, while GPT Image 1.5 is excellent for prompt adherence. You can try multiple models for the same prompt.",
       },
       {
         question: "Do I have rights to the images?",
@@ -719,7 +719,7 @@ export const SOLUTIONS: Solution[] = [
       {
         question: "How realistic are the results?",
         answer:
-          "Our pro-tier models like Flux Pro and DALL-E 3 are designed to produce imagery that is often indistinguishable from real photography.",
+          "Our pro-tier models like Nano Banana Pro, GPT Image 1.5 and Seedream 4.5 are designed to produce imagery that is often indistinguishable from real photography.",
       },
       {
         question: "Can I use these for my website?",

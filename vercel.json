@@ -7,5 +7,34 @@
       "release": true
     }
   },
-  "ignoreCommand": "bash scripts/vercel-ignore-build.sh"
+  "ignoreCommand": "bash scripts/vercel-ignore-build.sh",
+  "headers": [
+    {
+      "source": "/api/proxy-image/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/_next/static/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/branding/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, stale-while-revalidate=31536000"
+        }
+      ]
+    }
+  ]
 }

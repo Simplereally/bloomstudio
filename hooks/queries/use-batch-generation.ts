@@ -126,10 +126,17 @@ export function useBatchGeneration(): UseBatchGenerationReturn {
     const activeBatchesQuery = useQuery(api.batchGeneration.getUserActiveBatches)
     const recentBatchesQuery = useQuery(api.batchGeneration.getUserBatchJobs, { limit: 10 })
 
-    const activeBatches = (activeBatchesQuery ?? []) as BatchJob[]
-    const recentBatches = (recentBatchesQuery ?? []) as BatchJob[]
+    const activeBatches = React.useMemo(
+        () => (activeBatchesQuery ?? []) as BatchJob[],
+        [activeBatchesQuery]
+    )
+    const recentBatches = React.useMemo(
+        () => (recentBatchesQuery ?? []) as BatchJob[],
+        [recentBatchesQuery]
+    )
     const hasActiveBatch = activeBatches.length > 0
     const isLoading = activeBatchesQuery === undefined
+    const isRecentBatchesLoading = recentBatchesQuery === undefined
 
     const startBatch = React.useCallback(
         async (params: BatchGenerationParams, count: number, apiKey: string): Promise<Id<"batchJobs">> => {
@@ -167,10 +174,10 @@ export function useBatchGeneration(): UseBatchGenerationReturn {
     // Helper to get a specific batch job from the recent list
     const getBatchJob = React.useCallback(
         (batchJobId: Id<"batchJobs">): BatchJob | null | undefined => {
-            if (recentBatches === undefined) return undefined
+            if (isRecentBatchesLoading) return undefined
             return recentBatches.find((batch) => batch._id === batchJobId) ?? null
         },
-        [recentBatches]
+        [recentBatches, isRecentBatchesLoading]
     )
 
     return {

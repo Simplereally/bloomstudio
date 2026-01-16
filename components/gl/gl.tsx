@@ -4,7 +4,7 @@ import { useControls } from "leva"
 import { Particles } from "./particles"
 import { VignetteShader } from "./shaders/vignette-shader"
 
-export const GL = ({ hovering }: { hovering: boolean }) => {
+export const GL = () => {
   const {
     speed,
     focus,
@@ -28,7 +28,7 @@ export const GL = ({ hovering }: { hovering: boolean }) => {
     focus: { value: 3.8, min: 0.1, max: 20, step: 0.1 },
     aperture: { value: 1.79, min: 0, max: 2, step: 0.01 },
     pointSize: { value: 10.0, min: 0.1, max: 10, step: 0.1 },
-    opacity: { value: 0.12, min: 0, max: 1, step: 0.01 },
+    opacity: { value: 0.33, min: 0, max: 1, step: 0.01 },
     planeScale: { value: 10.0, min: 0.1, max: 10, step: 0.1 },
     size: {
       value: 512,

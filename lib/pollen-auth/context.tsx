@@ -206,7 +206,13 @@ export function PollenAuthProvider({ children }: PollenAuthProviderProps) {
 
   // Initialize auth state on mount
   useEffect(() => {
-    loadAuthState();
+    const timeoutId = window.setTimeout(() => {
+      loadAuthState();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, [loadAuthState]);
 
   // Listen for storage changes from other tabs (native storage event)

@@ -7,11 +7,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipTrigger,
-} from "@/components/ui/tooltip"
+import { RichTooltipContent, Tooltip, TooltipTrigger } from "@/components/ui/rich-tooltip"
 import type { ModelDefinition } from "@/lib/config/models"
 import { cn } from "@/lib/utils"
 import {
@@ -145,7 +141,7 @@ export const ModelSelector = React.memo(function ModelSelector({
                         onClick={() => onModelChange(model.id)}
                         disabled={disabled}
                         className={cn(
-                            "h-12 px-3 gap-2.5 justify-start transition-all",
+                            "h-10 px-2 gap-2 justify-start transition-all border border-border/40 rounded-md",
                             isSelected && activeClasses
                         )}
                         data-testid={`model-button-${model.id}`}
@@ -174,12 +170,14 @@ export const ModelSelector = React.memo(function ModelSelector({
                         )}>{model.displayName}</span>
                     </Button>
                 </TooltipTrigger>
-                <TooltipContent side="bottom" className="flex flex-col items-center text-center max-w-[200px]">
-                    <p className="font-medium">{model.displayName}</p>
-                    <p className="text-xs opacity-70">
+                <RichTooltipContent
+                  className="max-w-[240px]"
+                >
+                    <p className="font-semibold text-sm tracking-tight">{model.displayName}</p>
+                    <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
                         {model.description}
                     </p>
-                </TooltipContent>
+                </RichTooltipContent>
             </Tooltip>
         )
     }
@@ -231,7 +229,7 @@ export const ModelSelector = React.memo(function ModelSelector({
                 </Label>
             )}
             <div
-                className="grid grid-cols-1 sm:grid-cols-2 gap-2"
+                className="grid grid-cols-2 gap-1.5"
                 data-testid="model-buttons"
             >
                 {hasMultipleTypes && imageModels.length > 0 && (

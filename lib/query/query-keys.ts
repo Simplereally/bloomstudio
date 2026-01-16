@@ -100,6 +100,24 @@ export const queryKeys = {
         /** Feature flags */
         features: () => [...queryKeys.config.all, "features"] as const,
     },
+
+    /**
+     * Pollen account queries
+     */
+    pollen: {
+        /** Base key for all pollen queries */
+        all: ["pollen"] as const,
+
+        /** Balance query */
+        balance: () => [...queryKeys.pollen.all, "balance"] as const,
+
+        /** Profile query (future) */
+        profile: () => [...queryKeys.pollen.all, "profile"] as const,
+
+        /** Usage query (future) */
+        usage: (params?: { limit?: number; before?: string }) =>
+            [...queryKeys.pollen.all, "usage", params] as const,
+    },
 } as const
 
 /**
@@ -122,4 +140,7 @@ export const invalidationPatterns = {
 
     /** Invalidate all generation-related queries */
     allGeneration: { queryKey: queryKeys.generation.all },
+
+    /** Invalidate all pollen-related queries */
+    allPollen: { queryKey: queryKeys.pollen.all },
 } as const

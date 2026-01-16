@@ -71,9 +71,11 @@ export function useImageDetails(imageId: Id<"generatedImages"> | null | undefine
  * @param type - "public" for global feed, "following" for followed users only
  */
 export function useFeed(type: FeedType) {
+    const filterPreference = useQuery(api.users.getSensitiveContentPreference)
+
     const publicFeed = usePaginatedQuery(
         api.generatedImages.getPublicFeed,
-        type === "public" ? {} : "skip",
+        type === "public" ? { filterPreference } : "skip",
         { initialNumItems: 20 }
     )
     const followingFeed = usePaginatedQuery(
@@ -89,9 +91,10 @@ export function useFeed(type: FeedType) {
  * Hook to fetch the public community feed of generated images.
  */
 export function usePublicFeed() {
+    const filterPreference = useQuery(api.users.getSensitiveContentPreference)
     return usePaginatedQuery(
         api.generatedImages.getPublicFeed,
-        {},
+        { filterPreference },
         { initialNumItems: 20 }
     )
 }
@@ -109,11 +112,13 @@ export function useFollowingFeed() {
 
 /**
  * Hook to fetch public images for a specific profile by username.
+ * Respects the viewer's content filter preference for sensitive content.
  */
 export function useProfileImages(username: string) {
+    const filterPreference = useQuery(api.users.getSensitiveContentPreference)
     return usePaginatedQuery(
         api.generatedImages.getImagesByUsername,
-        { username },
+        { username, filterPreference },
         { initialNumItems: 20 }
     )
 }

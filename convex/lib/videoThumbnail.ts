@@ -61,13 +61,13 @@ let ffmpegPromise: Promise<typeof Ffmpeg> | null = null
 function getFfmpeg(): Promise<typeof Ffmpeg> {
     if (!ffmpegPromise) {
         ffmpegPromise = (async () => {
-            const importStart = performance.now() // PERF_LOG
+
             const ffmpegStatic = (await import("ffmpeg-static")).default
-            console.log(`[VideoThumbnail] [PERF] import ffmpeg-static took ${(performance.now() - importStart).toFixed(1)}ms`) // PERF_LOG
+
             
-            const moduleStart = performance.now() // PERF_LOG
+
             const ffmpegModule = await import("fluent-ffmpeg")
-            console.log(`[VideoThumbnail] [PERF] import fluent-ffmpeg took ${(performance.now() - moduleStart).toFixed(1)}ms`) // PERF_LOG
+
 
             if (!ffmpegStatic) {
                 throw new Error("ffmpeg-static binary not found")
@@ -101,29 +101,25 @@ export async function extractVideoThumbnail(
     videoBuffer: Buffer
 ): Promise<Buffer | null> {
     const logger = "[VideoThumbnail]"
-    const startTime = performance.now() // PERF_LOG
+
 
     // Create temp directory and input file
-    const mkdirStart = performance.now() // PERF_LOG
     const tempDir = join(tmpdir(), "pixelstream-thumbnails")
     await mkdir(tempDir, { recursive: true })
-    console.log(`${logger} [PERF] mkdir took ${(performance.now() - mkdirStart).toFixed(1)}ms`) // PERF_LOG
+
     
     const inputPath = join(tempDir, `input-${randomUUID()}.mp4`)
 
     try {
-        const ffmpegInitStart = performance.now() // PERF_LOG
         const ffmpeg = await getFfmpeg()
-        console.log(`${logger} [PERF] getFfmpeg() took ${(performance.now() - ffmpegInitStart).toFixed(1)}ms`) // PERF_LOG
+
 
         // Write video to temp file - required because MP4 moov atom needs seeking
-        const writeStart = performance.now() // PERF_LOG
         await writeFile(inputPath, videoBuffer)
-        const writeTime = performance.now() - writeStart // PERF_LOG
-        console.log(`${logger} [PERF] writeFile took ${writeTime.toFixed(1)}ms for ${videoBuffer.length} bytes (${(videoBuffer.length / 1024 / 1024 / (writeTime / 1000)).toFixed(1)} MB/s)`) // PERF_LOG
+
 
         // Process video: temp file input, pipe output to memory
-        const ffmpegStart = performance.now() // PERF_LOG
+
         const thumbnailBuffer = await new Promise<Buffer>((resolve, reject) => {
             const chunks: Buffer[] = []
             let settled = false
@@ -156,10 +152,9 @@ export async function extractVideoThumbnail(
             command.pipe()
                 .on("data", (chunk: Buffer) => chunks.push(chunk))
         })
-        console.log(`${logger} [PERF] ffmpeg processing took ${(performance.now() - ffmpegStart).toFixed(1)}ms`) // PERF_LOG
 
-        const totalTime = performance.now() - startTime // PERF_LOG
-        console.log(`${logger} [PERF] TOTAL extractVideoThumbnail took ${totalTime.toFixed(1)}ms`) // PERF_LOG
+
+
         console.log(`${logger} Thumbnail extracted successfully (${thumbnailBuffer.length} bytes)`)
         return thumbnailBuffer
 
@@ -168,8 +163,7 @@ export async function extractVideoThumbnail(
         return null
     } finally {
         // Cleanup temp file
-        const cleanupStart = performance.now() // PERF_LOG
         await unlink(inputPath).catch(() => { /* ignore cleanup errors */ })
-        console.log(`${logger} [PERF] cleanup took ${(performance.now() - cleanupStart).toFixed(1)}ms`) // PERF_LOG
+
     }
 }

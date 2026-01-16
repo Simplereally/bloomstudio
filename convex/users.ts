@@ -65,6 +65,7 @@ export const getOrCreateUser = mutation({
             pictureUrl: identity.pictureUrl,
             createdAt: Date.now(),
             updatedAt: Date.now(),
+            contentFilterPreference: "blur", // Default for new users
         })
 
         return userId
@@ -292,3 +293,50 @@ export const getUserProfile = query({
         }
     },
 })
+
+/**
+ * Update the user's sensitive content preference.
+ */
+export const updateSensitiveContentPreference = mutation({
+    args: {
+        showSensitiveContent: v.union(
+            v.literal("block"),
+            v.literal("blur"),
+            v.literal("allow")
+        ),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity()
+        if (!identity) throw new Error("Not authenticated");
+        
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+            .unique();
+        
+        if (!user) throw new Error("User not found");
+        
+        await ctx.db.patch(user._id, {
+            contentFilterPreference: args.showSensitiveContent,
+            updatedAt: Date.now(),
+        });
+    },
+});
+
+/**
+ * Get the user's sensitive content preference.
+ */
+export const getSensitiveContentPreference = query({
+    args: {},
+    handler: async (ctx) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) return "blur"; // Default for unauthenticated
+        
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+            .unique();
+        
+        return user?.contentFilterPreference ?? "blur";
+    },
+});

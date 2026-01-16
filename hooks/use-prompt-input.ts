@@ -29,6 +29,8 @@ export interface UsePromptInputReturn {
     negativePromptRef: React.RefObject<HTMLTextAreaElement | null>
     /** Subscribe to prompt changes (for character count, etc.) */
     subscribeToPrompt: (callback: (value: string) => void) => () => void
+    /** Subscribe to negative prompt changes */
+    subscribeToNegativePrompt: (callback: (value: string) => void) => () => void
 }
 
 /**
@@ -40,13 +42,14 @@ export interface UsePromptInputReturn {
 export function usePromptInput(): UsePromptInputReturn {
     const promptRef = React.useRef<HTMLTextAreaElement>(null)
     const negativePromptRef = React.useRef<HTMLTextAreaElement>(null)
-    
+
     // Store values in refs to avoid re-renders
     const promptValueRef = React.useRef("")
     const negativePromptValueRef = React.useRef("")
-    
+
     // Subscribers for components that need to react to changes
     const promptSubscribers = React.useRef<Set<(value: string) => void>>(new Set())
+    const negativePromptSubscribers = React.useRef<Set<(value: string) => void>>(new Set())
 
     const getPrompt = React.useCallback(() => {
         // Prefer DOM value if available, fall back to ref
@@ -71,12 +74,21 @@ export function usePromptInput(): UsePromptInputReturn {
         if (negativePromptRef.current) {
             negativePromptRef.current.value = value
         }
+        // Notify subscribers
+        negativePromptSubscribers.current.forEach(cb => cb(value))
     }, [])
 
     const subscribeToPrompt = React.useCallback((callback: (value: string) => void) => {
         promptSubscribers.current.add(callback)
         return () => {
             promptSubscribers.current.delete(callback)
+        }
+    }, [])
+
+    const subscribeToNegativePrompt = React.useCallback((callback: (value: string) => void) => {
+        negativePromptSubscribers.current.add(callback)
+        return () => {
+            negativePromptSubscribers.current.delete(callback)
         }
     }, [])
 
@@ -88,5 +100,6 @@ export function usePromptInput(): UsePromptInputReturn {
         promptRef,
         negativePromptRef,
         subscribeToPrompt,
+        subscribeToNegativePrompt,
     }
 }

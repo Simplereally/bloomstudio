@@ -102,7 +102,7 @@ export const OptionsPanel = React.memo(function OptionsPanel({
 
     return (
         <div 
-            className={`rounded-sm border border-border/50 bg-background/50 divide-y divide-border/50 ${className || ""}`}
+            className={`divide-y divide-border/50 ${className || ""}`}
             data-testid="options-panel"
         >
             <OptionItem

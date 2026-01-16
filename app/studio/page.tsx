@@ -1,5 +1,7 @@
 import { cookies } from "next/headers"
 import { StudioShell } from "@/components/studio"
+import { getMyImagesPageCached } from "@/app/_server/cache/history"
+import { getCurrentUserId } from "@/app/_server/convex/client"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
@@ -14,6 +16,9 @@ export const metadata: Metadata = {
  * StudioPage - Main studio page
  * Now a Server Component to handle layout persistence via cookies,
  * eliminating the hydration flash.
+ * 
+ * Also fetches initial gallery data from server cache to reduce
+ * Convex bandwidth on initial page load.
  */
 export default async function StudioPage() {
   const cookieStore = await cookies()
@@ -29,5 +34,16 @@ export default async function StudioPage() {
     }
   }
 
-  return <StudioShell defaultLayout={defaultLayout} />
+  // Fetch initial gallery page from server cache (if authenticated)
+  const userId = await getCurrentUserId()
+  const initialGalleryPage = userId 
+    ? await getMyImagesPageCached(userId, null).catch(() => undefined)
+    : undefined
+
+  return (
+    <StudioShell 
+      defaultLayout={defaultLayout} 
+      initialGalleryPage={initialGalleryPage}
+    />
+  )
 }

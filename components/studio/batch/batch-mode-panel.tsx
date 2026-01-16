@@ -51,7 +51,7 @@ export const BatchModePanel = React.memo(function BatchModePanel({
 
     return (
         <div 
-            className={`rounded-sm border border-border/50 bg-background/50 p-3 space-y-4 ${className || ""}`} 
+            className={`space-y-4 ${className || ""}`} 
             data-testid="batch-mode-panel"
         >
             {/* Enable Toggle */}
