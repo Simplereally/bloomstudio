@@ -1,7 +1,9 @@
 import { FeedClient } from "@/components/gallery/feed-client"
 import { FeedCta } from "@/components/gallery/feed-cta"
 import { getPublicFeedPageCached, getFollowingFeedPageCached } from "@/app/_server/cache/feed"
-import { getCurrentUserId } from "@/app/_server/convex/client"
+import { getCurrentUserId, getConvexClerkToken } from "@/app/_server/convex/client"
+import { api } from "@/convex/_generated/api"
+import { fetchQuery } from "convex/nextjs"
 import { FEED_TYPES, isValidFeedType, type FeedType } from "@/lib/feed-types"
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
@@ -63,12 +65,19 @@ export default async function FeedTypePage({ params }: FeedPageProps) {
     const feedType: FeedType = type
     const isPublicFeed = feedType === "public"
 
+    // Fetch user preference to determine initial load filtering and client behavior
+    const token = await getConvexClerkToken()
+    const preference = token 
+        ? (await fetchQuery(api.users.getSensitiveContentPreference, {}, { token })) 
+        : "blur"
+
     // Fetch initial page on server (cached)
-    // Public feed: shared cache across all users
-    // Following feed: per-user cache, requires auth
+    // Public feed: shared cache across all users but segmented by preference
+    console.log(`Loading feed type: ${feedType}, preference: ${preference}`)
+
     let initialPage
     if (isPublicFeed) {
-        initialPage = await getPublicFeedPageCached(null)
+        initialPage = await getPublicFeedPageCached(null, undefined, preference)
     } else {
         // Following feed requires authentication
         const userId = await getCurrentUserId()
@@ -82,7 +91,11 @@ export default async function FeedTypePage({ params }: FeedPageProps) {
             <main className="py-8">
 
                 {/* Grid Section - Full width */}
-                <FeedClient feedType={feedType} initialPage={initialPage} />
+                <FeedClient 
+                    feedType={feedType} 
+                    initialPage={initialPage} 
+                    initialPreference={preference} 
+                />
             </main>
 
             {/* Footer */}

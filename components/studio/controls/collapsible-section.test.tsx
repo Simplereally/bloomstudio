@@ -264,25 +264,26 @@ describe("CollapsibleSection", () => {
             // Click to collapse
             await userEvent.click(screen.getByTestId("test-section-trigger"))
 
-            // Content container should have hidden class
+            // Content container should have closed state and pointer-events-none for forceMount
             const contentWrapper = screen.getByTestId("test-section-content")
-            expect(contentWrapper).toHaveClass("hidden")
+            expect(contentWrapper).toHaveAttribute("data-state", "closed")
+            expect(contentWrapper).toHaveClass("data-[state=closed]:pointer-events-none")
         })
 
         it("shows content visually when expanded with forceMount", async () => {
             render(<CollapsibleSection {...defaultProps} forceMount defaultExpanded={false} />)
 
-            // Initially collapsed but in DOM (with hidden class)
+            // Initially collapsed but in DOM (with closed data-state)
             expect(screen.getByTestId("test-content")).toBeInTheDocument()
             const contentWrapper = screen.getByTestId("test-section-content")
-            expect(contentWrapper).toHaveClass("hidden")
+            expect(contentWrapper).toHaveAttribute("data-state", "closed")
 
             // Click to expand
             await userEvent.click(screen.getByTestId("test-section-trigger"))
 
-            // Should be visible now
-            expect(screen.getByTestId("test-content")).toBeVisible()
-            expect(contentWrapper).not.toHaveClass("hidden")
+            // Should have open data-state now
+            expect(screen.getByTestId("test-content")).toBeInTheDocument()
+            expect(contentWrapper).toHaveAttribute("data-state", "open")
         })
 
         it("preserves child state across collapse/expand with forceMount", async () => {

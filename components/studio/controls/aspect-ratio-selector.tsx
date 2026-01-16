@@ -7,12 +7,10 @@
  */
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ResolutionTierSelector } from "./resolution-tier-selector";
 import { useAspectRatioDimensions } from "@/hooks/use-aspect-ratio-dimensions";
-import { RESOLUTION_TIERS } from "@/lib/config/resolution-tiers";
 import type { AspectRatio, AspectRatioOption, ModelConstraints, ResolutionTier } from "@/types/pollinations";
 import { cn } from "@/lib/utils";
 import {
@@ -24,7 +22,6 @@ import {
   Linkedin,
   Monitor,
   Smartphone,
-  Globe,
   Laptop,
   UserCircle,
   Music,

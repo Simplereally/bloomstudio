@@ -6,8 +6,6 @@ import { MasonryGrid } from "@/components/ui/masonry-grid"
 import { Skeleton } from "@/components/ui/skeleton"
 import { motion, type Variants } from "framer-motion"
 import { ArrowUp, Loader2, Sparkles } from "lucide-react"
-import { api } from "@/convex/_generated/api"
-import { useQuery } from "convex/react"
 import React, { useCallback, useEffect, useRef, useState } from "react"
 
 interface PaginatedImageGridProps {
@@ -16,11 +14,12 @@ interface PaginatedImageGridProps {
     loadMore: (n: number) => void
     emptyState?: React.ReactNode
     showUser?: boolean
-    /** Whether selection mode is active */
+    /** Whether user chooses to see sensitive content without overlay. If false, sensitive content gets blurred. */
+    userShowsSensitive?: boolean
+    
+    // Selection mode props
     selectionMode?: boolean
-    /** Set of selected image IDs */
     selectedIds?: Set<string>
-    /** Called when an image's selection state changes */
     onSelectionChange?: (id: string, selected: boolean) => void
 }
 
@@ -72,14 +71,11 @@ export function PaginatedImageGrid({
     selectionMode = false,
     selectedIds = EMPTY_SET,
     onSelectionChange,
+    userShowsSensitive = false,
 }: PaginatedImageGridProps) {
     const [selectedImage, setSelectedImage] = useState<ImageCardData | null>(null)
 
     const sentinelRef = useRef<HTMLDivElement>(null)
-    
-    // Get user's sensitive content preference
-    const filterPreference = useQuery(api.users.getSensitiveContentPreference)
-    const userShowsSensitive = filterPreference === "allow"
 
     const handleSelectImage = useCallback((image: ImageCardData) => {
         setSelectedImage(image)

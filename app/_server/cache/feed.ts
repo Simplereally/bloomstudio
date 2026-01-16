@@ -15,20 +15,22 @@ type Cursor = string | null
  * - First page (cursor = null): Short TTL for freshness
  * - Later pages: Long TTL since older content rarely changes
  */
-export function getPublicFeedPageCached(cursor: Cursor, numItems: number = PAGE_SIZES.FEED) {
+export function getPublicFeedPageCached(
+    cursor: Cursor, 
+    numItems: number = PAGE_SIZES.FEED,
+    filterPreference: "block" | "blur" | "allow" = "blur"
+) {
     const isFirstPage = cursor === null
 
     return unstable_cache(
         async () => {
-            // Note: filterPreference is omitted for caching simplicity
-            // If you need user-specific filtering, this becomes per-user
             return fetchQuery(api.generatedImages.getPublicFeed, {
                 paginationOpts: { numItems, cursor },
-                filterPreference: undefined, // Use default (no filter for cached)
+                filterPreference: filterPreference,
             })
         },
-        // Cache key parts: distinguish first page from later pages
-        ["feed:public", isFirstPage ? "first" : "later", String(numItems), cursor ?? "start"],
+        // Cache key parts: distinguish first page from later pages AND preference
+        ["feed:public", isFirstPage ? "first" : "later", String(numItems), cursor ?? "start", filterPreference],
         {
             revalidate: isFirstPage ? CACHE_TTL.FEED_PUBLIC_FIRST_PAGE : CACHE_TTL.FEED_PUBLIC_LATER_PAGES,
             tags: [CACHE_TAGS.FEED_PUBLIC],

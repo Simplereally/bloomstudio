@@ -1,4 +1,4 @@
-import { renderHook, act, waitFor } from "@testing-library/react"
+import { renderHook, act } from "@testing-library/react"
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import { useMediaPlayer } from "./use-media-player"
 

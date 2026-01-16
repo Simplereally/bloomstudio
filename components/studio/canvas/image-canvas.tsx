@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils"
 import type { GeneratedImage } from "@/types/pollinations"
 import { AnimatePresence, motion, type Variants } from "framer-motion"
 import { ImagePlus, Loader2, Sparkles } from "lucide-react"
+import NextImage from "next/image"
 import * as React from "react"
 
 // --- Animation Constants ---
@@ -74,22 +75,6 @@ const hubVariants: Variants = {
         backgroundColor: "rgba(var(--primary-rgb), 0.1)",
         borderColor: "rgba(var(--primary-rgb), 0.4)",
     },
-}
-
-// Symmetrical light ray variants
-const lightRayVariants: Variants = {
-    initial: { opacity: 0, scale: 0 },
-    animate: (i: number) => ({
-        opacity: [0, 0.8, 0],
-        scale: [0.5, 1.2, 0.5],
-        rotate: [0, 180, 360],
-        transition: {
-            duration: 3,
-            repeat: Infinity,
-            delay: i * 0.4,
-            ease: "easeInOut",
-        },
-    }),
 }
 
 // Text entrance
@@ -274,10 +259,12 @@ export const ImageCanvas = React.memo(function ImageCanvas({
                                                 className="mt-3 flex items-center gap-2 opacity-50 hover:opacity-80 transition-opacity"
                                             >
                                                 <span className="text-sm text-muted-foreground font-light">Powered by</span>
-                                                <img
+                                                <NextImage
                                                     src="/branding/pollinations/logo-white.svg"
                                                     alt="Pollinations"
-                                                    className="h-5 invert dark:invert-0"
+                                                    width={20}
+                                                    height={20}
+                                                    className="h-5 w-5 invert dark:invert-0"
                                                 />
                                             </a>
                                         </motion.div>

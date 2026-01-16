@@ -118,6 +118,10 @@ export function useMediaPlayer({
      */
     const handleVideoClick = React.useCallback(async (e: React.MouseEvent) => {
         e.preventDefault()
+        if (!isVideo) {
+            onClick?.(e)
+            return
+        }
         const video = videoRef.current
         if (!video) {
             onClick?.(e)
@@ -159,7 +163,7 @@ export function useMediaPlayer({
         }
         
         onClick?.(e)
-    }, [onClick])
+    }, [isVideo, onClick])
 
     return {
         isLoading,

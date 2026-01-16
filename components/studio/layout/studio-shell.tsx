@@ -21,8 +21,6 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Sparkles } from "lucide-react"
 import { BatchActionButton } from "@/components/studio/batch/batch-action-button"
-import { useQuery } from "convex/react"
-import { api } from "@/convex/_generated/api"
 
 // Studio Components
 import { ImageLightbox } from "@/components/images/image-lightbox"
@@ -57,8 +55,7 @@ import { useStudioUI } from "@/hooks/use-studio-ui"
 import { useSubscriptionStatus } from "@/hooks/use-subscription-status"
 import { getModelSupportsNegativePrompt } from "@/lib/config/models"
 import { isTrialExpiredError, showAuthRequiredToast, showErrorToast } from "@/lib/errors"
-import { isLocalhost } from "@/lib/utils"
-import type { ImageGenerationParams, VideoGenerationParams } from "@/types/pollinations"
+import type { ImageGenerationParams, VideoGenerationParams, VideoModel } from "@/types/pollinations"
 import type { ThumbnailData } from "@/components/studio/gallery/image-gallery"
 import { useConvexAuth } from "convex/react"
 import { useSearchParams } from "next/navigation"
@@ -117,12 +114,6 @@ export function StudioShell({ defaultLayout, initialGalleryPage }: StudioShellPr
 
     // Upgrade modal state (shown when trial expires)
     const [showUpgradeModal, setShowUpgradeModal] = React.useState(false)
-
-    // Check if running on localhost (for dev-only features)
-    const [isLocalDev, setIsLocalDev] = React.useState(false)
-    React.useEffect(() => {
-        setIsLocalDev(isLocalhost())
-    }, [])
 
     // Prevent any scroll at the root level for fixed viewport pages like Studio
     React.useEffect(() => {
@@ -240,7 +231,11 @@ export function StudioShell({ defaultLayout, initialGalleryPage }: StudioShellPr
             ? generationSettings.generateSeed()
             : generationSettings.seed
 
-        const params: any = {
+        function isVideoModel(model: string): model is VideoModel {
+            return model === "veo" || model === "seedance" || model === "seedance-pro"
+        }
+
+        const commonParams = {
             prompt,
             negativePrompt: negativePrompt || undefined,
             model: generationSettings.model,
@@ -251,13 +246,26 @@ export function StudioShell({ defaultLayout, initialGalleryPage }: StudioShellPr
             private: generationSettings.options.private,
             safe: generationSettings.options.safe,
             image: generationSettings.referenceImage,
-            // Video-specific parameters
-            duration: generationSettings.videoSettings.duration,
-            audio: generationSettings.videoSettings.audio,
-            aspectRatio: generationSettings.aspectRatio, // Use current aspect ratio string
-            lastFrameImage: generationSettings.videoReferenceImages.lastFrame,
         }
 
+        if (isVideoModel(generationSettings.model)) {
+            const videoAspectRatio = generationSettings.aspectRatio === "16:9" || generationSettings.aspectRatio === "9:16"
+                ? generationSettings.aspectRatio
+                : undefined
+
+            const params: VideoGenerationParams = {
+                ...commonParams,
+                model: generationSettings.model,
+                duration: generationSettings.videoSettings.duration,
+                audio: generationSettings.videoSettings.audio,
+                aspectRatio: videoAspectRatio,
+                lastFrameImage: generationSettings.videoReferenceImages.lastFrame,
+            }
+            generate(params)
+            return
+        }
+
+        const params: ImageGenerationParams = commonParams
         generate(params)
     }, [
         promptManager,

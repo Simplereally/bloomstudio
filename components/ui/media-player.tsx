@@ -13,6 +13,7 @@
 
 import { cn } from "@/lib/utils"
 import { Loader2 } from "lucide-react"
+import Image from "next/image"
 import * as React from "react"
 import { useMediaPlayer } from "@/hooks/use-media-player"
 
@@ -141,11 +142,13 @@ export const MediaPlayer = React.memo(function MediaPlayer({
     // Image rendering
     return (
         <div className={cn("relative", className)}>
-            <img
+            <Image
                 src={url}
                 alt={alt}
+                fill
+                sizes="100vw"
                 className={cn(
-                    "w-full h-full object-contain",
+                    "object-contain",
                     isLoading && "opacity-0"
                 )}
                 onClick={onClick}

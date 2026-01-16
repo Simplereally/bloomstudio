@@ -1,8 +1,11 @@
 import * as usePromptLibraryFormHook from '@/hooks/use-prompt-library-form'
+import type { UsePromptLibraryFormReturn } from '@/hooks/use-prompt-library-form'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, Mock, vi } from 'vitest'
 import { SavePromptForm } from './save-prompt-form'
+import type { CategoryOption, PromptType } from './types'
+import * as React from "react"
 
 // Mock the hook
 vi.mock('@/hooks/use-prompt-library-form', () => ({
@@ -11,7 +14,13 @@ vi.mock('@/hooks/use-prompt-library-form', () => ({
 
 // Mock react-select/creatable
 vi.mock('react-select/creatable', () => ({
-    default: ({ options, value, onChange, placeholder, inputId }: any) => (
+    default: ({ options, value, onChange, placeholder, inputId }: {
+        options?: CategoryOption[]
+        value?: CategoryOption | null
+        onChange: (nextValue: CategoryOption | null) => void
+        placeholder?: string
+        inputId?: string
+    }) => (
         <div data-testid="mock-creatable">
             <label htmlFor={inputId}>{placeholder}</label>
             <select
@@ -20,7 +29,7 @@ vi.mock('react-select/creatable', () => ({
                 onChange={(e) => onChange({ value: e.target.value, label: e.target.value })}
             >
                 <option value="">Select...</option>
-                {options?.map((opt: any) => (
+                {options?.map((opt) => (
                     <option key={opt.value} value={opt.value}>
                         {opt.label}
                     </option>
@@ -35,13 +44,13 @@ vi.mock('./prompt-library-header', () => ({
 }))
 
 describe('SavePromptForm', () => {
-    const defaultMockReturn = {
-        titleRef: { current: null },
-        contentRef: { current: null },
-        tagsRef: { current: null },
-        type: 'positive' as const,
+    const defaultMockReturn: UsePromptLibraryFormReturn = {
+        titleRef: React.createRef<HTMLInputElement>(),
+        contentRef: React.createRef<HTMLTextAreaElement>(),
+        tagsRef: React.createRef<HTMLInputElement>(),
+        type: 'positive',
         setType: vi.fn(),
-        category: null as string | null,
+        category: null,
         setCategory: vi.fn(),
         categories: ['Category1', 'Category2'],
         handleSave: vi.fn(),
@@ -49,46 +58,27 @@ describe('SavePromptForm', () => {
         reset: vi.fn(),
     }
 
-    const defaultProps = {
-        promptType: 'text' as any, // The prop type in component is PromptType ('positive' | 'negative' usually, looking at file it seems saving logic handles it)
-        // Wait, SavePromptFormProps has promptType: PromptType. PromptType is 'positive' | 'negative' from types.ts relative import, 
-        // but in save-prompt-form.tsx lines 114/124 it sets 'positive'/'negative'.
-        // Let's assume 'positive' as default for test.
+    const defaultProps: { promptType: PromptType; onSaved: () => void; onCancel: () => void } = {
+        promptType: 'positive',
         onSaved: vi.fn(),
         onCancel: vi.fn(),
-    } as const
+    }
 
     beforeEach(() => {
         vi.clearAllMocks()
     })
 
-    function renderWithHookReturn(mockReturn: Partial<typeof defaultMockReturn> = {}) {
-        const finalMock = { ...defaultMockReturn, ...mockReturn }
-        // We need to handle refs being assigned by React
-        // Since we are mocking the hook, the component will use the refs returned by the hook.
-        // But the component *passes* these refs to elements.
-        // We can make the mock return real refs so we can inspect them or interactions work?
-        // Actually, for userEvent to work on inputs, the inputs need to be in DOM. 
-        // The component uses the refs from the hook. If we return { current: null } constantly, 
-        // the component might not be able to interact with them if it relies on them for internal logic? 
-        // Wait, the hook uses refs to *read* values on save. The component passes the ref object to <Input ref={titleRef} />.
-        // React will update titleRef.current. So passing a real createRef() or logic is safer.
-
-        // Let's update the mock to use real refs (created inside the test render isn't enough, needs to be stable object).
-        // Best approach: The mock factory returns a stable object, or we modify the mock implementation per test.
-
-        // Actually, if we mock the hook to return specific refs, React will populate them when rendering.
-        // We can just create them in the test.
-
-        const titleRef = { current: null }
-        const contentRef = { current: null }
-        const tagsRef = { current: null }
+    function renderWithHookReturn(mockReturn: Partial<UsePromptLibraryFormReturn> = {}) {
+        const titleRef = React.createRef<HTMLInputElement>()
+        const contentRef = React.createRef<HTMLTextAreaElement>()
+        const tagsRef = React.createRef<HTMLInputElement>()
 
         ;(usePromptLibraryFormHook.usePromptLibraryForm as Mock).mockReturnValue({
-            ...finalMock,
-            titleRef: titleRef as any,
-            contentRef: contentRef as any,
-            tagsRef: tagsRef as any
+            ...defaultMockReturn,
+            ...mockReturn,
+            titleRef,
+            contentRef,
+            tagsRef,
         })
 
         return {
@@ -118,7 +108,7 @@ describe('SavePromptForm', () => {
         // Looking at SavePromptForm code Line 103: defaultValue={initialContent ?? ""}
         // So it should be in the DOM.
 
-        ;(usePromptLibraryFormHook.usePromptLibraryForm as Mock).mockReturnValue(defaultMockReturn as any)
+        ;(usePromptLibraryFormHook.usePromptLibraryForm as Mock).mockReturnValue(defaultMockReturn)
         render(<SavePromptForm {...defaultProps} promptType="positive" initialContent={initialContent} />)
 
         expect(screen.getByRole('textbox', { name: /Prompt Content/i })).toHaveValue(initialContent)

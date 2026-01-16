@@ -1,111 +1,223 @@
 "use node"
 
-import { internalAction } from "./_generated/server";
+import { internalAction, ActionCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { analyzeImageContent, calculateSensitivityScore } from "./lib/visionAnalysis";
+import { Id } from "./_generated/dataModel";
+import { analyzeImageContent, calculateSensitivityScore, VisionAnalysisError } from "./lib/visionAnalysis";
+import { analyzePromptWithCerebras, decideSensitivity } from "./lib/promptInference";
+
+/** Delay between requests in ms (targets ~28 RPM for Groq) */
+const DELAY_BETWEEN_REQUESTS_MS = 2100;
+
+/** Max images per batch (95% of Groq's 30 RPM limit) */
+const MAX_BATCH_SIZE = 28;
 
 /**
- * Action to analyze an image using an external vision model.
- * This is run asynchronously via the scheduler.
- * 
- * Uses Groq as primary provider (1,000 RPD free tier) with
- * OpenRouter as fallback (multiple free vision models).
+ * Analyze a single image. Called internally by analyzeRecentImages.
+ * Returns true if analysis succeeded, false if rate-limited (should stop batch).
+ */
+async function analyzeOneImage(
+    ctx: ActionCtx,
+    imageId: Id<"generatedImages">,
+    imageUrl: string,
+    onRateLimited: (provider: "groq" | "openrouter", errorBody: string) => Promise<void>
+): Promise<{ success: boolean; rateLimited: boolean }> {
+    try {
+        const analysis = await analyzeImageContent(imageUrl, { onRateLimited });
+        const sensitivityScore = calculateSensitivityScore(analysis);
+        const isSensitive = sensitivityScore >= 0.5;
+
+        await ctx.runMutation(internal.generatedImages.updateImageSensitivity, {
+            imageId,
+            isSensitive,
+            confidence: isSensitive ? sensitivityScore * (analysis.confidence || 1) : 0,
+            contentAnalysis: {
+                nudity: analysis.nudity,
+                sexual: analysis.sexual_content,
+                violence: analysis.violence,
+                analyzedAt: Date.now(),
+            },
+        });
+
+        return { success: true, rateLimited: false };
+    } catch (error) {
+        if (error instanceof VisionAnalysisError && error.rateLimitedProviders.length > 0) {
+            return { success: false, rateLimited: true };
+        }
+        console.error(`[Vision] Failed: ${imageId}`);
+        return { success: false, rateLimited: false };
+    }
+}
+
+/**
+ * Sleep for specified milliseconds
+ */
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * Format time until reset for logging
+ */
+function formatResetTime(resetAt: number | undefined, now: number): string {
+    if (!resetAt || resetAt <= now) return "available";
+    const mins = Math.ceil((resetAt - now) / 60000);
+    if (mins >= 60) return `${Math.floor(mins / 60)}h${mins % 60}m`;
+    return `${mins}m`;
+}
+
+/**
+ * Standalone action for analyzing a single image (for manual/testing use).
  */
 export const analyzeImage = internalAction({
-    args: {
-        imageId: v.id("generatedImages"),
-    },
+    args: { imageId: v.id("generatedImages") },
     handler: async (ctx, args) => {
-        // Use internal query from generatedImages to get image data safely
+        const providersAvailable = await ctx.runQuery(
+            internal.lib.providerHealthFunctions.checkProvidersAvailable, {}
+        );
+        if (!providersAvailable) return;
+
         const image = await ctx.runQuery(internal.generatedImages.getByIdInternal, {
             imageId: args.imageId,
         });
+        if (!image?.url) return;
 
-        if (!image || !image.url) {
-            console.log(`Image ${args.imageId} not found or no URL`);
-            return;
-        }
-
-        try {
-            // Analyze with vision model (Groq primary, OpenRouter fallback)
-            const analysis = await analyzeImageContent(image.url);
-            const sensitivityScore = calculateSensitivityScore(analysis);
-
-            // Determine if sensitive based on score (>= 0.5)
-            const isSensitive = sensitivityScore >= 0.5;
-
-            console.log(`[Content Analysis] Image ${args.imageId}: sensitive=${isSensitive}, score=${sensitivityScore}, provider=${analysis.provider}`);
-
-            // Update image with analysis results via internal mutation
-            await ctx.runMutation(internal.generatedImages.updateImageSensitivity, {
-                imageId: args.imageId,
-                isSensitive,
-                confidence: isSensitive ? sensitivityScore * (analysis.confidence || 1) : 0,
-                contentAnalysis: {
-                    nudity: analysis.nudity,
-                    sexual: analysis.sexual_content,
-                    violence: analysis.violence,
-                    analyzedAt: Date.now(),
-                },
-            });
-        } catch (error) {
-            console.error(`Failed to analyze image ${args.imageId}:`, error);
-        }
+        await analyzeOneImage(
+            ctx,
+            args.imageId,
+            image.url,
+            async (provider, errorBody) => {
+                await ctx.runMutation(
+                    internal.lib.providerHealthFunctions.recordRateLimit,
+                    { provider, errorBody }
+                );
+            }
+        );
     },
 });
 
+/**
+ * Cron job: Analyze unanalyzed images sequentially.
+ * Stops immediately when rate limits are hit.
+ */
 export const analyzeRecentImages = internalAction({
     args: {},
     handler: async (ctx) => {
-        // Groq Free Tier Rate Limits (Llama-4-Scout):
-        // 1. Requests Per Minute (RPM): 30
-        // 2. Tokens Per Minute (TPM):  30,000 (approx)
-        // 3. Requests Per Day (RPD):   1,000
-        //
-        // Strategy: Maximize throughput for backlog clearing (95% of RPM limit).
-        //
-        // Math:
-        // - Target RPM = 30 * 0.95 = 28.5 -> Floor to 28 requests/min
-        // - Token Safety = 28 req * ~1k tokens/req = 28k TPM (within 30k limit)
-        // - Daily Limit = At 28 RPM, strict daily limit (1k) is reached in ~35 mins.
-        //                 We rely on the OpenRouter fallback when Groq quota is exhausted.
-        const GROQ_RPM = 30;
-        const UTILIZATION_TARGET = 0.95;
-        const MAX_BATCH_SIZE = Math.floor(GROQ_RPM * UTILIZATION_TARGET); // 28
+        // Check provider availability
+        const providersAvailable = await ctx.runQuery(
+            internal.lib.providerHealthFunctions.checkProvidersAvailable, {}
+        );
 
-        let unanalyzedImages;
-        try {
-            unanalyzedImages = await ctx.runQuery(
-                internal.generatedImages.getUnanalyzedImages,
-                { limit: MAX_BATCH_SIZE }
-            );
-        } catch (error) {
-            console.error("Failed to fetch unanalyzed images:", error);
+        if (!providersAvailable) {
+            const now = Date.now();
+            const [groq, openrouter] = await Promise.all([
+                ctx.runQuery(internal.lib.providerHealthFunctions.getHealth, { provider: "groq" }),
+                ctx.runQuery(internal.lib.providerHealthFunctions.getHealth, { provider: "openrouter" }),
+            ]);
+            console.log(`[Vision] Rate-limited (Groq: ${formatResetTime(groq?.rateLimitedUntil, now)}, OpenRouter: ${formatResetTime(openrouter?.rateLimitedUntil, now)})`);
             return;
         }
 
-        if (unanalyzedImages.length === 0) return;
+        // Refresh expired limits
+        await ctx.runMutation(internal.lib.providerHealthFunctions.refreshExpiredLimits, {});
 
-        // Distribute requests evenly over the minute to avoid bursting and maximize RPM compliance.
-        // We use a 59s window to ensure all requests execute within the minute interval
-        // without overlapping into the next cron job's window.
-        const TOTAL_WINDOW_MS = 59 * 1000;
-        const delayPerImage = Math.floor(TOTAL_WINDOW_MS / unanalyzedImages.length);
+        // Fetch unanalyzed images
+        const images = await ctx.runQuery(
+            internal.generatedImages.getUnanalyzedImages,
+            { limit: MAX_BATCH_SIZE }
+        );
 
-        console.log(`[Content Analysis] Scheduling ${unanalyzedImages.length} images (Target: ${MAX_BATCH_SIZE}/min) with ${delayPerImage}ms delay`);
+        if (images.length === 0) return;
 
-        for (let i = 0; i < unanalyzedImages.length; i++) {
-            const image = unanalyzedImages[i];
-            const delay = i * delayPerImage;
+        console.log(`[Vision] Processing ${images.length} images`);
 
-            try {
-                await ctx.scheduler.runAfter(delay, internal.contentAnalysis.analyzeImage, {
-                    imageId: image._id,
-                });
-            } catch (error) {
-                console.error(`Failed to schedule analysis for image ${image._id}:`, error);
+        // Rate limit callback - records immediately and signals to stop
+        let allProvidersRateLimited = false;
+        const recordRateLimit = async (provider: "groq" | "openrouter", errorBody: string) => {
+            await ctx.runMutation(
+                internal.lib.providerHealthFunctions.recordRateLimit,
+                { provider, errorBody }
+            );
+        };
+
+        // Process images sequentially with delay
+        let processed = 0;
+
+
+        for (const image of images) {
+            if (!image.url) continue;
+
+            // Phase III: Attempt Prompt Inference first (if not already done)
+            if (!image.promptInference && image.prompt) {
+                try {
+                    const inference = await analyzePromptWithCerebras(image.prompt);
+                    const decision = decideSensitivity(inference);
+
+                    const promptInferenceData = {
+                        category: inference.category,
+                        confidence: inference.confidence,
+                        reasoning: inference.reasoning,
+                        provider: "cerebras/llama3.1-8b",
+                        analyzedAt: Date.now(),
+                    };
+
+                    const isFinal = decision.action !== "escalate_to_vision";
+                    const isSensitive = decision.action === "tag_sensitive";
+
+                    await ctx.runMutation(internal.generatedImages.updateImagePromptInference, {
+                        imageId: image._id,
+                        promptInference: promptInferenceData,
+                        isSensitive: isFinal ? isSensitive : undefined,
+                        // If tagging safe, confidence is 0. 
+                        // If tagging sensitive OR escalating, use LLM confidence.
+                        confidence: isFinal && !isSensitive ? 0 : inference.confidence,
+                    });
+
+                    if (isFinal) {
+                        console.log(`[Vision] Skipped vision for ${image._id} (Resolved by Prompt Inference: ${decision.action})`);
+                        processed++;
+                        continue;
+                    } 
+                    
+                    console.log(`[Vision] Prompt Inference ambiguous for ${image._id}, proceeding to vision...`);
+
+                } catch (error) {
+                    console.error(`[Vision] Prompt Inference failed for ${image._id}, falling back to vision:`, error);
+                }
             }
+
+            const result = await analyzeOneImage(ctx, image._id, image.url, recordRateLimit);
+
+            if (result.rateLimited) {
+                // Check if BOTH providers are now rate-limited
+                const stillAvailable = await ctx.runQuery(
+                    internal.lib.providerHealthFunctions.checkProvidersAvailable, {}
+                );
+                if (!stillAvailable) {
+                    allProvidersRateLimited = true;
+                    console.log(`[Vision] Rate limit hit after ${processed} images, stopping batch`);
+                    break;
+                }
+            }
+
+            if (result.success) {
+                processed++;
+            }
+
+            // Delay before next request (except for last image)
+            if (images.indexOf(image) < images.length - 1 && !allProvidersRateLimited) {
+                await sleep(DELAY_BETWEEN_REQUESTS_MS);
+            }
+        }
+
+        if (processed > 0) {
+            console.log(`[Vision] Completed: ${processed}/${images.length} analyzed`);
+        }
+
+        // Recursive Scheduling: If we processed a full batch and didn't hit rate limits,
+        // schedule the next batch immediately to drain the backlog.
+        if (!allProvidersRateLimited && images.length === MAX_BATCH_SIZE) {
+            console.log("[Vision] More images pending, scheduling next batch immediately...");
+            await ctx.scheduler.runAfter(0, internal.contentAnalysis.analyzeRecentImages, {});
         }
     },
 });

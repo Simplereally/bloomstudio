@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import * as React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ControlsView, type ControlsViewProps } from "./controls-view";
+import type { ModelConstraints } from "@/types/pollinations";
 
 // Mock studio components
 vi.mock("@/components/studio", () => ({
@@ -96,6 +97,17 @@ vi.mock("@/components/ui/separator", () => ({
 }));
 
 describe("ControlsView", () => {
+  const defaultConstraints: ModelConstraints = {
+    maxPixels: 1_000_000,
+    minPixels: 0,
+    minDimension: 64,
+    maxDimension: 2048,
+    step: 8,
+    defaultDimensions: { width: 1024, height: 1024 },
+    dimensionsEnabled: true,
+    supportedTiers: ["sd"],
+  }
+
   const defaultProps: ControlsViewProps = {
     // Model
     model: "flux",
@@ -108,7 +120,7 @@ describe("ControlsView", () => {
         icon: "sparkles",
         logo: "/models/flux.svg",
         description: "Pro quality",
-        constraints: {} as any,
+        constraints: defaultConstraints,
         aspectRatios: [],
         supportsNegativePrompt: true,
         supportsReferenceImage: true,

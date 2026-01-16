@@ -136,7 +136,7 @@ export function CommunitySection() {
               </Button>
             </Link>
             <p className="text-sm text-muted-foreground">
-              A public feed of our users' creations
+              A public feed of our users&apos; creations
             </p>
           </div>
         </ScrollReveal>

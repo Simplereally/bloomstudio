@@ -7,6 +7,7 @@ import { renderHook } from "@testing-library/react"
 import { usePaginatedQuery, useQuery } from "convex/react"
 import { describe, expect, it, vi } from "vitest"
 import { useBatchIsFavorited, useFavorites, useIsFavorited } from "./use-favorites"
+import type { Id } from "@/convex/_generated/dataModel"
 
 // Mock server actions to avoid server-only import error
 vi.mock("@/app/_server/actions/invalidation", () => ({
@@ -28,8 +29,7 @@ vi.mock("convex/react", () => ({
 describe("favorites hooks", () => {
     it("useFavorites calls favorites.list with pagination", () => {
         const mockResult = { results: [], status: "LoadingFirstPage", loadMore: vi.fn() }
-        const mockusePaginatedQuery = usePaginatedQuery as unknown as ReturnType<typeof vi.fn>
-        mockusePaginatedQuery.mockReturnValue(mockResult as any)
+        vi.mocked(usePaginatedQuery).mockReturnValue(mockResult as never)
 
         const { result } = renderHook(() => useFavorites())
 
@@ -42,10 +42,9 @@ describe("favorites hooks", () => {
     })
 
     it("useIsFavorited calls favorites.isFavorited with imageId", () => {
-        const mockUseQuery = useQuery as unknown as ReturnType<typeof vi.fn>
-        mockUseQuery.mockReturnValue(true)
+        vi.mocked(useQuery).mockReturnValue(true as never)
 
-        const mockImageId = "test-image-id" as any
+        const mockImageId = "test-image-id"
         const { result } = renderHook(() => useIsFavorited(mockImageId))
 
         expect(useQuery).toHaveBeenCalledWith(
@@ -56,8 +55,7 @@ describe("favorites hooks", () => {
     })
 
     it("useIsFavorited skips query for invalid/temp imageId", () => {
-        const mockUseQuery = useQuery as unknown as ReturnType<typeof vi.fn>
-        mockUseQuery.mockReturnValue(undefined)
+        vi.mocked(useQuery).mockReturnValue(undefined as never)
 
         const invalidId = "img_123456"
         renderHook(() => useIsFavorited(invalidId))
@@ -70,10 +68,9 @@ describe("favorites hooks", () => {
 
     it("useBatchIsFavorited calls favorites.batchIsFavorited with imageIds", () => {
         const mockResult = { "id1": true, "id2": false }
-        const mockUseQuery = useQuery as unknown as ReturnType<typeof vi.fn>
-        mockUseQuery.mockReturnValue(mockResult)
+        vi.mocked(useQuery).mockReturnValue(mockResult as never)
 
-        const mockImageIds = ["id1", "id2"] as any[]
+        const mockImageIds = ["id1", "id2"] as unknown as Id<"generatedImages">[]
         const { result } = renderHook(() => useBatchIsFavorited(mockImageIds))
 
         expect(useQuery).toHaveBeenCalledWith(
@@ -84,8 +81,7 @@ describe("favorites hooks", () => {
     })
 
     it("useBatchIsFavorited skips query when imageIds is empty", () => {
-        const mockUseQuery = useQuery as unknown as ReturnType<typeof vi.fn>
-        mockUseQuery.mockReturnValue(undefined)
+        vi.mocked(useQuery).mockReturnValue(undefined as never)
 
         renderHook(() => useBatchIsFavorited([]))
 

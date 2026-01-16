@@ -12,7 +12,7 @@ import {
     AccordionItem,
     AccordionTrigger,
 } from "@/components/ui/accordion"
-import { ArrowRight, Check, HelpCircle, Info, X } from "lucide-react"
+import { ArrowRight, Check, HelpCircle, X } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { Suspense } from "react"

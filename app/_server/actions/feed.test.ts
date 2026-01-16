@@ -44,20 +44,20 @@ describe("feed server actions", () => {
         it("calls getPublicFeedPageCached with cursor", async () => {
             const result = await loadPublicFeedPage({ cursor: "abc123" })
 
-            expect(mockGetPublicFeedPageCached).toHaveBeenCalledWith("abc123", undefined)
+            expect(mockGetPublicFeedPageCached).toHaveBeenCalledWith("abc123", undefined, "blur")
             expect(result).toEqual(mockPaginatedResult)
         })
 
         it("calls getPublicFeedPageCached with null cursor for first page", async () => {
             await loadPublicFeedPage({ cursor: null })
 
-            expect(mockGetPublicFeedPageCached).toHaveBeenCalledWith(null, undefined)
+            expect(mockGetPublicFeedPageCached).toHaveBeenCalledWith(null, undefined, "blur")
         })
 
         it("passes numItems when provided", async () => {
             await loadPublicFeedPage({ cursor: null, numItems: 50 })
 
-            expect(mockGetPublicFeedPageCached).toHaveBeenCalledWith(null, 50)
+            expect(mockGetPublicFeedPageCached).toHaveBeenCalledWith(null, 50, "blur")
         })
     })
 

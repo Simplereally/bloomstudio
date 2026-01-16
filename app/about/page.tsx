@@ -46,14 +46,14 @@ export default function AboutPage() {
                     <div className="container mx-auto px-6">
                         <div className="max-w-4xl mx-auto text-center">
                             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-primary mb-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-                                <Star className="w-3.h-3 fill-current" />
+                                <Star className="w-3 h-3 fill-current" />
                                 <span>MEET BLOOM STUDIO</span>
                             </div>
                             <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-8 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/50 leading-[1.1]">
                                 Where Human Creativity <br className="hidden md:block" /> Meets Machine Intelligence.
                             </h1>
                             <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-                                We're on a mission to put world-class generative tools into the hands of every creator, without the friction or the high price tag.
+                                We&apos;re on a mission to put world-class generative tools into the hands of every creator, without the friction or the high price tag.
                             </p>
                         </div>
                     </div>
@@ -90,7 +90,7 @@ export default function AboutPage() {
                             <div className="space-y-8">
                                 <h2 className="text-3xl md:text-4xl font-bold">Our Philosophy</h2>
                                 <p className="text-lg text-muted-foreground leading-relaxed">
-                                    We believe that professional-grade AI tools should be accessible to everyone. Creativity shouldn't be gated by expensive enterprise subscriptions or daunting technical hurdles.
+                                    We believe that professional-grade AI tools should be accessible to everyone. Creativity shouldn&apos;t be gated by expensive enterprise subscriptions or daunting technical hurdles.
                                 </p>
                                 <div className="space-y-6">
                                     {[
@@ -150,13 +150,13 @@ export default function AboutPage() {
                             <div className="order-1 md:order-2 space-y-8">
                                 <h2 className="text-3xl md:text-4xl font-bold">Contributor & Supporter</h2>
                                 <p className="text-lg text-muted-foreground leading-relaxed">
-                                    We don't just use AI; we actively contribute to its growth and accessibility. 
+                                    We don&apos;t just use AI; we actively contribute to its growth and accessibility. 
                                 </p>
                                 <p className="text-lg text-muted-foreground leading-relaxed italic border-l-2 border-primary pl-6">
-                                    "Bloom Studio is a dedicated contributor and supporter of the Pollinations community, working together to bring open-source AI models to a wider audience."
+                                    &ldquo;Bloom Studio is a dedicated contributor and supporter of the Pollinations community, working together to bring open-source AI models to a wider audience.&rdquo;
                                 </p>
                                 <p className="text-lg text-muted-foreground leading-relaxed">
-                                    By building on top of and contributing to open-source initiatives and leading model providers like Pollinations.AI, we've created a platform that brings state-of-the-art generation capabilities to your browser.
+                                    By building on top of and contributing to open-source initiatives and leading model providers like Pollinations.AI, we&apos;ve created a platform that brings state-of-the-art generation capabilities to your browser.
                                 </p>
                             </div>
                         </div>
@@ -175,7 +175,7 @@ export default function AboutPage() {
                                     </div>
                                     <h3 className="text-xl font-semibold mb-4 relative z-10">Small but Mighty</h3>
                                     <p className="text-muted-foreground leading-relaxed relative z-10">
-                                        We are a small, independent team based across the globe. We aren't backed by VC giants, which means we answer only to our users. Our focus is on shipping fast and maintaining the best possible user experience.
+                                        We are a small, independent team based across the globe. We aren&apos;t backed by VC giants, which means we answer only to our users. Our focus is on shipping fast and maintaining the best possible user experience.
                                     </p>
                                 </div>
                                 <div className="p-10 rounded-3xl bg-gradient-to-br from-white/5 to-transparent border border-white/10 hover:border-primary/20 transition-colors relative overflow-hidden group">
@@ -184,7 +184,7 @@ export default function AboutPage() {
                                     </div>
                                     <h3 className="text-xl font-semibold mb-4 relative z-10">Our Open Promise</h3>
                                     <p className="text-muted-foreground leading-relaxed relative z-10">
-                                        No hidden fees. No data selling. Just powerful tools to help you create. We believe in transparency, which is why we're open about our stack and our collaborations.
+                                        No hidden fees. No data selling. Just powerful tools to help you create. We believe in transparency, which is why we&apos;re open about our stack and our collaborations.
                                     </p>
                                 </div>
                             </div>

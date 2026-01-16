@@ -30,9 +30,9 @@ export default function PrivacyPage() {
                     <section>
                         <h2 className="text-2xl font-bold mb-4 text-foreground">1. Introduction</h2>
                         <p className="mb-4 text-muted-foreground">
-                            Welcome to Bloom Studio ("we," "our," or "us"). We respect your privacy and are committed to protecting your personal data. 
+                            Welcome to Bloom Studio (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;). We respect your privacy and are committed to protecting your personal data. 
                             This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website 
-                            and use our AI image and video generation services (collectively, the "Service").
+                            and use our AI image and video generation services (collectively, the &quot;Service&quot;).
                         </p>
                         <p className="text-muted-foreground">
                             By accessing or using our Service, you agree to the terms of this Privacy Policy. If you do not agree with the terms of this Privacy Policy, 
@@ -64,7 +64,7 @@ export default function PrivacyPage() {
                             <li>Text prompts and parameters used for generation.</li>
                             <li>Reference images you upload for image-to-image or video generation tasks.</li>
                             <li>The resulting generated images and videos.</li>
-                            <li>Interaction data, such as users you follow, and content you "like" or "favorite."</li>
+                            <li>Interaction data, such as users you follow, and content you &quot;like&quot; or &quot;favorite.&quot;</li>
                         </ul>
                         <p className="text-muted-foreground mt-4">
                             Please note that depending on your visibility settings, some of this content (specifically generated images) may be visible to other users of the Service.

@@ -1,4 +1,3 @@
-import { Download } from "lucide-react";
 import { ScrollReveal } from "./scroll-reveal";
 import { CompetitorComparison } from "./competitor-comparison";
 

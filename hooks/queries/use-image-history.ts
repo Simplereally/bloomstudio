@@ -112,11 +112,13 @@ export function useFollowingFeed() {
 
 /**
  * Hook to fetch public images for a specific profile by username.
+ * Respects the viewer's content filter preference for sensitive content.
  */
 export function useProfileImages(username: string) {
+    const filterPreference = useQuery(api.users.getSensitiveContentPreference)
     return usePaginatedQuery(
         api.generatedImages.getImagesByUsername,
-        { username },
+        { username, filterPreference },
         { initialNumItems: 20 }
     )
 }

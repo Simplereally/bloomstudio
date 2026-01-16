@@ -1,5 +1,21 @@
 "use client"
 
+/**
+ * @fileoverview Client component for the user's image history page.
+ * 
+ * Architecture:
+ * - Server-side caching for initial page load (fast, reduced Convex bandwidth)
+ * - Server actions for pagination (also cached per-user)
+ * - Optimistic UI updates for delete operations (immediate visual feedback)
+ * - Local state management for pagination (not reactive to Convex changes)
+ * 
+ * Data Flow:
+ * 1. Server fetches initial page from cache → passed as initialPage prop
+ * 2. User scrolls → loadMore() calls server action → appends to local state
+ * 3. User deletes → optimistic removal from local state → server mutation
+ * 4. On delete failure → rollback restores previous state
+ */
+
 import {
     ActiveFilterBadges,
     HistoryFiltersDropdown,
@@ -16,9 +32,10 @@ import { ImageOffIcon } from "lucide-react"
 import Link from "next/link"
 import * as React from "react"
 
-// Type for the paginated result from the cached query/server action
+/** Type for the paginated result from the cached query/server action */
 type PaginatedHistoryResult = Awaited<ReturnType<typeof loadMyHistoryWithDisplayPage>>
 
+/** Default filter state - no filters applied */
 const INITIAL_FILTER_STATE: HistoryFilterState = {
     selectedVisibility: [],
     selectedModels: [],
@@ -31,12 +48,14 @@ interface HistoryClientProps {
 
 /**
  * Client component for the dedicated history page.
- * Displays the current user's generated images with pagination and filtering.
- *
- * Uses server-side caching:
- * - Initial page is provided by the server (cached)
- * - "Load more" fetches via server action (also cached)
- * - Filter changes reset pagination and fetch new filtered data
+ * 
+ * Displays the current user's generated images with:
+ * - Infinite scroll pagination
+ * - Visibility and model filtering
+ * - Multi-select with bulk delete/visibility actions
+ * - Optimistic UI updates for delete operations
+ * 
+ * @param props.initialPage - Server-cached initial page of images
  */
 export function HistoryClient({ initialPage }: HistoryClientProps) {
     const { user } = useUser()
@@ -49,7 +68,39 @@ export function HistoryClient({ initialPage }: HistoryClientProps) {
     // Filter state persisted to localStorage
     const [filterState, setFilterState] = useLocalStorage<HistoryFilterState>(storageKey, INITIAL_FILTER_STATE)
 
-    // Selection state and handlers
+    // Pagination state managed locally (server action pattern)
+    // Must be defined before handleOptimisticDelete
+    const [items, setItems] = React.useState(() => initialPage.page)
+    const [cursor, setCursor] = React.useState(() => initialPage.continueCursor)
+    const [isDone, setIsDone] = React.useState(() => initialPage.isDone)
+    const [isLoadingMore, setIsLoadingMore] = React.useState(false)
+    const [isLoadingFilters, setIsLoadingFilters] = React.useState(false)
+
+    /**
+     * Optimistic delete handler for immediate UI feedback.
+     * 
+     * Called by useImageSelection before the delete mutation is sent.
+     * Removes items from local state immediately, providing instant visual feedback.
+     * Returns a rollback function that restores the previous state if deletion fails.
+     * 
+     * @param deletedIds - Array of image IDs being deleted
+     * @returns Rollback function to restore previous state on failure
+     */
+    const handleOptimisticDelete = React.useCallback((deletedIds: string[]) => {
+        // Capture current state for potential rollback
+        const previousItems = items
+        const deletedIdSet = new Set(deletedIds)
+        
+        // Optimistically remove deleted items from UI
+        setItems(prev => prev.filter(item => !deletedIdSet.has(item._id)))
+        
+        // Return rollback function
+        return () => {
+            setItems(previousItems)
+        }
+    }, [items])
+
+    // Selection state and handlers with optimistic delete support
     const {
         selectionMode,
         setSelectionMode,
@@ -61,14 +112,11 @@ export function HistoryClient({ initialPage }: HistoryClientProps) {
         handleSetSelectedVisibility,
         isDeleting,
         isUpdatingVisibility,
-    } = useImageSelection()
+    } = useImageSelection({
+        onOptimisticDelete: handleOptimisticDelete,
+    })
 
-    // Pagination state managed locally (server action pattern)
-    const [items, setItems] = React.useState(() => initialPage.page)
-    const [cursor, setCursor] = React.useState(() => initialPage.continueCursor)
-    const [isDone, setIsDone] = React.useState(() => initialPage.isDone)
-    const [isLoadingMore, setIsLoadingMore] = React.useState(false)
-    const [isLoadingFilters, setIsLoadingFilters] = React.useState(false)
+    // Pagination state managed locally (moved up)
 
     // Track the current filter key to detect changes
     const currentFilterKey = React.useMemo(() => {
@@ -158,8 +206,10 @@ export function HistoryClient({ initialPage }: HistoryClientProps) {
     const showFilteredEmpty = hasActiveFilters && isExhausted && items.length === 0
     const showAbsoluteEmpty = !hasActiveFilters && isExhausted && items.length === 0
 
-    // Handle selection change from ImageCard
+    /** Handle selection change from ImageCard */
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleSelectionChange = React.useCallback((id: string, _selected: boolean) => {
+        // Note: _selected parameter is provided by ImageCard but we use toggle behavior
         toggleSelection(id)
     }, [toggleSelection])
 

@@ -9,6 +9,15 @@ import { useQuery } from "convex/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { ImageCard, type ImageCardData } from "./image-card"
 
+// Mock SensitiveContentOverlay to avoid complex interactions and test prop passing
+vi.mock("@/components/ui/sensitive-content-overlay", () => ({
+    SensitiveContentOverlay: vi.fn(({ isAllowedToReveal }: { isAllowedToReveal?: boolean }) => (
+        <div data-testid="sensitive-overlay" data-allowed={isAllowedToReveal?.toString()}>
+            Sensitive Content Overlay
+        </div>
+    ))
+}))
+
 // Mock server actions to avoid server-only import error
 vi.mock("server-only", () => { return {} })
 vi.mock("@/app/_server/actions/invalidation", () => ({
@@ -70,7 +79,11 @@ describe("ImageCard", () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        vi.mocked(useUser).mockReturnValue({ isSignedIn: true, user: { id: "user1" } } as any)
+        vi.mocked(useUser).mockReturnValue({
+            isLoaded: true,
+            isSignedIn: true,
+            user: { id: "user1" },
+        } as unknown as ReturnType<typeof useUser>)
         vi.mocked(useQuery).mockReturnValue(false) // Not favorited
     })
 
@@ -149,7 +162,7 @@ describe("ImageCard", () => {
 
     describe("Unauthenticated User", () => {
         beforeEach(() => {
-            vi.mocked(useUser).mockReturnValue({ isSignedIn: false, user: null } as any)
+            vi.mocked(useUser).mockReturnValue({ isLoaded: true, isSignedIn: false, user: null })
         })
 
         it("renders sign-in link for copy button", () => {
@@ -170,6 +183,39 @@ describe("ImageCard", () => {
 
             // Should be at least 2 (Copy and Favorite)
             expect(signInLinks.length).toBeGreaterThanOrEqual(2)
+        })
+    })
+
+    describe("Sensitive Content", () => {
+        const sensitiveImage: ImageCardData = {
+            ...mockImage,
+            isSensitive: true,
+        }
+
+        it("shows overlay when image is sensitive and userShowsSensitive is false", () => {
+            render(<ImageCard {...defaultProps} image={sensitiveImage} userShowsSensitive={false} />)
+            expect(screen.getByTestId("sensitive-overlay")).toBeInTheDocument()
+        })
+
+        it("does NOT show overlay when userShowsSensitive is true", () => {
+            render(<ImageCard {...defaultProps} image={sensitiveImage} userShowsSensitive={true} />)
+            expect(screen.queryByTestId("sensitive-overlay")).not.toBeInTheDocument()
+        })
+
+        it("does NOT show overlay when image is not sensitive", () => {
+            render(<ImageCard {...defaultProps} image={mockImage} userShowsSensitive={false} />)
+            expect(screen.queryByTestId("sensitive-overlay")).not.toBeInTheDocument()
+        })
+
+        it("passes isAllowedToReveal=true to overlay when authenticated", () => {
+            render(<ImageCard {...defaultProps} image={sensitiveImage} />)
+            expect(screen.getByTestId("sensitive-overlay")).toHaveAttribute("data-allowed", "true")
+        })
+
+        it("passes isAllowedToReveal=false to overlay when unauthenticated", () => {
+            vi.mocked(useUser).mockReturnValue({ isLoaded: true, isSignedIn: false, user: null })
+            render(<ImageCard {...defaultProps} image={sensitiveImage} />)
+            expect(screen.getByTestId("sensitive-overlay")).toHaveAttribute("data-allowed", "false")
         })
     })
 })

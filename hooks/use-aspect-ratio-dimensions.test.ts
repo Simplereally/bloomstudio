@@ -439,7 +439,6 @@ describe("useAspectRatioDimensions", () => {
         }
 
         const aspectRatios = ["1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3", "4:5", "5:4", "21:9"] as const
-        const tiers = ["hd", "2k", "4k"] as const
 
         describe("HD (1K) tier dimensions", () => {
             aspectRatios.forEach(ratio => {

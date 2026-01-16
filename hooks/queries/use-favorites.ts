@@ -3,7 +3,7 @@
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
 import { useMutation as useConvexMutation, usePaginatedQuery, useQuery } from "convex/react"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation } from "@tanstack/react-query"
 import { invalidateUserFavoritesCache } from "@/app/_server/actions/invalidation"
 import { toast } from "sonner"
 
@@ -45,7 +45,6 @@ export function useIsFavorited(imageId?: string) {
  */
 export function useToggleFavorite() {
     const toggleFavorite = useConvexMutation(api.favorites.toggle)
-    const queryClient = useQueryClient()
 
     return useMutation({
         mutationFn: async ({ imageId }: { imageId: Id<"generatedImages"> }) => {

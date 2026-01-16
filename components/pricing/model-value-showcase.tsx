@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils"
 import { motion, useInView } from "framer-motion"
 import Image from "next/image"
+import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import { Video, Image as ImageIcon } from "lucide-react"
 
@@ -324,7 +325,7 @@ export function ModelValueShowcase() {
                     <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
                         Your usage is shared across every model.
                         <br />
-                        Here's what you could generate if you focused on just one.
+                        Here&apos;s what you could generate if you focused on just one.
                     </p>
                 </motion.div>
 
@@ -422,12 +423,12 @@ export function ModelValueShowcase() {
                             Compare features
                         </a>
                         <span className="text-border">·</span>
-                        <a
+                        <Link
                             href="/#models"
                             className="hover:text-foreground transition-colors underline underline-offset-4 decoration-border hover:decoration-foreground"
                         >
                             Explore all models
-                        </a>
+                        </Link>
                     </div>
                 </motion.div>
             </div>

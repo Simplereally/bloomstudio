@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "../ui/button";
 import { ArrowRight } from "lucide-react";
 
@@ -51,6 +51,21 @@ interface LivingStripProps {
     className?: string;
 }
 
+function usePrefersReducedMotion() {
+    const query = "(prefers-reduced-motion: reduce)";
+    return useSyncExternalStore(
+        (onStoreChange) => {
+            if (typeof window === "undefined") return () => {};
+            const mediaQuery = window.matchMedia(query);
+            const handler = () => onStoreChange();
+            mediaQuery.addEventListener("change", handler);
+            return () => mediaQuery.removeEventListener("change", handler);
+        },
+        () => (typeof window !== "undefined" ? window.matchMedia(query).matches : false),
+        () => false
+    );
+}
+
 /**
  * LivingStrip - Infinite scrolling marquee of community images
  *
@@ -66,18 +81,8 @@ interface LivingStripProps {
  */
 export function LivingStrip({ className }: LivingStripProps) {
     const [isPaused, setIsPaused] = useState(false);
-    const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+    const prefersReducedMotion = usePrefersReducedMotion();
     const containerRef = useRef<HTMLDivElement>(null);
-
-    // Check for reduced motion preference
-    useEffect(() => {
-        const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-        setPrefersReducedMotion(mediaQuery.matches);
-
-        const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
-        mediaQuery.addEventListener("change", handler);
-        return () => mediaQuery.removeEventListener("change", handler);
-    }, []);
 
     // Duplicate images for seamless loop
     const duplicatedImages = [...STRIP_IMAGES, ...STRIP_IMAGES];

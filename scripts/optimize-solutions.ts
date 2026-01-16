@@ -4,7 +4,7 @@ import sharp from 'sharp';
 
 const SOLUTIONS_DIR = path.join(process.cwd(), 'public', 'solutions');
 
-const toKebabCase = (str: String) => {
+const toKebabCase = (str: string) => {
     return str
         .toLowerCase()
         .replace(/\s+/g, '-')

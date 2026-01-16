@@ -15,6 +15,16 @@ interface FloatingImageProps {
   priority?: boolean
 }
 
+function hashStringToUnitInterval(input: string) {
+  let hash = 2166136261
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+
+  return (hash >>> 0) / 2 ** 32
+}
+
 function FloatingImage({ 
   src, 
   alt = "Gallery image", 
@@ -25,8 +35,8 @@ function FloatingImage({
   scale = 1,
   priority = false
 }: FloatingImageProps) {
-  // Add some smooth floating animation
-  const randomDuration = 5 + Math.random() * 5
+  const durationSeed = hashStringToUnitInterval(`${src}|${initialX}|${initialY}|${rotate}|${scale}`)
+  const randomDuration = 5 + durationSeed * 5
   
   return (
     <motion.div

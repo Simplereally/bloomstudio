@@ -2,7 +2,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { renderHook, act } from "@testing-library/react"
 import { useStudioUI } from "./use-studio-ui"
-import type { GeneratedImage } from "@/types/pollinations"
 import { createMockImage } from "@/lib/test-utils"
 
 // Mock useKeyboardShortcuts

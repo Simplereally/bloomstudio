@@ -4,7 +4,7 @@ import { useControls } from "leva"
 import { Particles } from "./particles"
 import { VignetteShader } from "./shaders/vignette-shader"
 
-export const GL = ({ hovering }: { hovering: boolean }) => {
+export const GL = () => {
   const {
     speed,
     focus,

@@ -12,9 +12,9 @@ interface SolutionStepsProps {
 export function SolutionSteps({ steps, shortTitle }: SolutionStepsProps) {
     const [visibleStepIndex, setVisibleStepIndex] = useState(-1)
     const containerRef = useRef<HTMLDivElement>(null)
-    const timersRef = useRef<NodeJS.Timeout[]>([])
 
     useEffect(() => {
+        const timers: Array<ReturnType<typeof setTimeout>> = []
         const observer = new IntersectionObserver(
             ([entry]) => {
                 if (entry.isIntersecting) {
@@ -23,7 +23,7 @@ export function SolutionSteps({ steps, shortTitle }: SolutionStepsProps) {
                         const timer = setTimeout(() => {
                             setVisibleStepIndex(current => Math.max(current, index))
                         }, index * 1000)
-                        timersRef.current.push(timer)
+                        timers.push(timer)
                     })
                     
                     // Only trigger once
@@ -39,7 +39,7 @@ export function SolutionSteps({ steps, shortTitle }: SolutionStepsProps) {
 
         return () => {
             observer.disconnect()
-            timersRef.current.forEach(clearTimeout)
+            timers.forEach(clearTimeout)
         }
     }, [steps])
 

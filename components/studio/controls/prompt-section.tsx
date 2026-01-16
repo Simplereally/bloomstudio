@@ -418,7 +418,7 @@ export function PromptSection({
               <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showNegative ? "rotate-180" : ""}`} />
             </Button>
           </CollapsibleTrigger>
-          <CollapsibleContent className="pt-2">
+          <CollapsibleContent className="pt-2 data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
             <div className="relative w-full min-w-0">
               <Textarea
                 ref={negativePromptRef}

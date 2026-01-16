@@ -3,9 +3,9 @@ import { describe, it, expect, vi } from "vitest";
 
 // Mock internal definitions to avoid needing the full Convex server environment in unit test
 vi.mock("./_generated/server", () => ({
-    internalAction: (config: any) => config,
-    internalMutation: (config: any) => config,
-    query: (config: any) => config,
+    internalAction: (config: object) => config,
+    internalMutation: (config: object) => config,
+    query: (config: object) => config,
 }));
 
 vi.mock("./_generated/api", () => ({
@@ -17,6 +17,13 @@ vi.mock("./_generated/api", () => ({
         },
         contentAnalysis: {
             analyzeImage: "analyzeImage"
+        },
+        lib: {
+            providerHealthFunctions: {
+                checkProvidersAvailable: "checkProvidersAvailable",
+                refreshExpiredLimits: "refreshExpiredLimits",
+                recordRateLimit: "recordRateLimit"
+            }
         }
     }
 }));
@@ -32,13 +39,13 @@ describe("contentAnalysis structure", () => {
         const { analyzeImage } = await import("./contentAnalysis");
         expect(analyzeImage).toBeDefined();
         // Since we mocked internalAction to return config, we can check it has handler
-        expect((analyzeImage as any).handler).toBeInstanceOf(Function);
+        expect((analyzeImage as unknown as { handler: unknown }).handler).toBeInstanceOf(Function);
     });
 
     it("should export analyzeRecentImages action", async () => {
         const { analyzeRecentImages } = await import("./contentAnalysis");
         expect(analyzeRecentImages).toBeDefined();
-        expect((analyzeRecentImages as any).handler).toBeInstanceOf(Function);
+        expect((analyzeRecentImages as unknown as { handler: unknown }).handler).toBeInstanceOf(Function);
     });
 
     it("should NOT export query or mutation functions directly", async () => {

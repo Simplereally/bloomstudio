@@ -10,8 +10,9 @@ import { getCurrentUserId } from "../convex/client"
 export async function loadPublicFeedPage(input: {
     cursor: string | null
     numItems?: number
+    filterPreference?: "block" | "blur" | "allow"
 }) {
-    return getPublicFeedPageCached(input.cursor, input.numItems)
+    return getPublicFeedPageCached(input.cursor, input.numItems, input.filterPreference ?? "blur")
 }
 
 /**

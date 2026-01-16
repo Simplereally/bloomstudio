@@ -44,6 +44,27 @@ const mockAuthorize = vi.fn()
 vi.mock("@/lib/pollen-auth", () => ({
     usePollenApiKey: () => mockApiKey,
     usePollenAuthActions: () => ({ authorize: mockAuthorize }),
+    usePollenAuth: () => ({
+        apiKey: mockApiKey,
+        isAuthorized: true,
+        isLoading: false,
+    }),
+}))
+
+// Mock usePollenBalance hook
+const mockInvalidateBalance = vi.fn()
+vi.mock("@/hooks/use-pollen-balance", () => ({
+    usePollenBalance: () => ({
+        balance: 100,
+        formattedBalance: "100.00",
+        isLoading: false,
+        isError: false,
+        error: null,
+        isLowBalance: false,
+        refetch: vi.fn(),
+        invalidateBalance: mockInvalidateBalance,
+        isRefreshing: false,
+    }),
 }))
 
 describe("useBatchMode", () => {

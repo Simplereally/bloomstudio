@@ -2,23 +2,27 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PromptDetail } from './prompt-detail'
+import type { Id } from '@/convex/_generated/dataModel'
+import type { Prompt } from './types'
 
 vi.mock('./prompt-library-header', () => ({
     PromptLibraryHeader: () => <div data-testid="prompt-library-header">Header</div>
 }))
 
 describe('PromptDetail', () => {
-    const mockPrompt = {
-        _id: '1',
+    function createPromptId(value: string): Id<"prompts"> {
+        return value as unknown as Id<"prompts">
+    }
+
+    const mockPrompt: Prompt = {
+        _id: createPromptId('1'),
         title: 'Test Prompt Title',
         content: 'This is the test prompt content.',
-        description: 'Description',
-        type: 'positive' as const,
+        type: 'positive',
         tags: ['tag1', 'tag2'],
         category: 'TestCategory',
-        userId: 'user1',
         createdAt: Date.now(),
-    } as any
+    }
 
     const defaultProps = {
         prompt: mockPrompt,
@@ -38,7 +42,11 @@ describe('PromptDetail', () => {
         expect(screen.getByText(mockPrompt.title)).toBeInTheDocument()
         expect(screen.getByText(mockPrompt.content)).toBeInTheDocument()
         expect(screen.getByText('Positive')).toBeInTheDocument() // Badge
-        expect(screen.getByText(mockPrompt.category)).toBeInTheDocument()
+        const category = mockPrompt.category
+        if (!category) {
+            throw new Error('Expected mockPrompt.category to be defined')
+        }
+        expect(screen.getByText(category)).toBeInTheDocument()
         expect(screen.getByText('tag1')).toBeInTheDocument()
         expect(screen.getByText('tag2')).toBeInTheDocument()
     })

@@ -43,7 +43,7 @@ export function GLBackground() {
             </div>
           }
         >
-          <GL hovering={true} />
+          <GL />
         </Suspense>
       </div>
     </>

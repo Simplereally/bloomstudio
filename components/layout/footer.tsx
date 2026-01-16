@@ -1,6 +1,6 @@
 
 import Link from "next/link"
-import { ArrowRight, Sparkles } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 import { RESOURCES, SOLUTIONS } from "@/lib/seo-config"
 import { Button } from "../ui/button"
 import { cn } from "@/lib/utils"

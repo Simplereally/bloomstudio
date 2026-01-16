@@ -117,14 +117,7 @@ function toPublicFeedImages(images: EnrichedImage[]): PublicFeedImage[] {
     }))
 }
 
-/**
- * Filter images with extreme aspect ratios (> 4:1 or 1:4).
- */
-function filterExtremeAspectRatios(
-    images: Doc<"generatedImages">[]
-): Doc<"generatedImages">[] {
-    return images.filter((img) => !img.aspectRatio || img.aspectRatio <= 4)
-}
+
 
 /**
  * Create a new generated image record.
@@ -154,6 +147,7 @@ export const create = mutation({
 
         // Analyze prompt for NSFW content
         const promptAnalysis = analyzePromptForNSFW(args.prompt)
+        console.log(`[Prompt Analysis] Score: ${promptAnalysis.confidence}, Sensitive: ${promptAnalysis.isSensitive}, Terms: ${promptAnalysis.matchedTerms.join(", ")}`)
 
         const imageId = await ctx.db.insert("generatedImages", {
             ownerId: identity.subject,
@@ -178,21 +172,20 @@ export const create = mutation({
             // Initial sensitive content tagging based on prompt
             // Tri-state logic: true=NSFW, false=Safe, null=Pending/Unknown
 
-            // If prompt is clear (<0.3 or >=0.9), we create it as 'tagged' (bool).
-            // If borderline, we create it as 'pending' (null).
-            isSensitive: (promptAnalysis.confidence < 0.3 || promptAnalysis.confidence >= 0.9)
-                ? promptAnalysis.isSensitive
-                : null,
+            // If explicit (>= 0.9), mark Sensitive.
+            // If any less, mark Pending (null) to run Phase 3 Prompt Inference.
+            isSensitive: promptAnalysis.confidence >= 0.9 ? true : null,
 
-            sensitiveSource: promptAnalysis.isSensitive ? "prompt_analysis" : undefined,
+            sensitiveSource: promptAnalysis.confidence >= 0.9 ? "prompt_analysis" : undefined,
             sensitiveConfidence: promptAnalysis.confidence,
         })
 
-        // Schedule async vision analysis if prompt was borderline or we want extra safety
-        // Now defined as: isSensitive is NULL.
-        if (promptAnalysis.confidence >= 0.3 && promptAnalysis.confidence < 0.9) {
-            await ctx.scheduler.runAfter(0, internal.contentAnalysis.analyzeImage, {
+        // Schedule async Prompt Inference (Phase 3) if prompt was not explicitly flagged
+        // This ensures "Gate 2" runs on everything that isn't already caught by Gate 1.
+        if (promptAnalysis.confidence < 0.9) {
+            await ctx.scheduler.runAfter(0, internal.promptInference.analyzePromptImage, {
                 imageId,
+                prompt: args.prompt,
             })
         }
 
@@ -576,13 +569,18 @@ export const getPublicFeed = query({
 
 /**
  * Get public images for a specific user (by username).
+ * Respects the viewer's content filter preference for sensitive content.
  */
 export const getImagesByUsername = query({
     args: {
         username: v.string(),
         paginationOpts: paginationOptsValidator,
+        /** Viewer's content filter preference */
+        filterPreference: v.optional(v.union(v.literal("block"), v.literal("blur"), v.literal("allow"))),
     },
     handler: async (ctx, args) => {
+        const { filterPreference = "blur" } = args;
+
         // First find the user
         const user = await ctx.db
             .query("users")
@@ -597,14 +595,42 @@ export const getImagesByUsername = query({
             }
         }
 
-        const paginatedResult = await ctx.db
-            .query("generatedImages")
-            .withIndex("by_owner_visibility", (q) =>
-                q.eq("ownerId", user.clerkId).eq("visibility", "public")
-            )
-            .filter((q) => q.not(q.gt(q.field("aspectRatio"), 4)))
-            .order("desc")
-            .paginate(args.paginationOpts)
+        let paginatedResult;
+
+        // CASE 1: BLOCK - Show ONLY safe content (isSensitive=false)
+        if (filterPreference === "block") {
+            paginatedResult = await ctx.db
+                .query("generatedImages")
+                .withIndex("by_owner_visibility", (q) =>
+                    q.eq("ownerId", user.clerkId).eq("visibility", "public")
+                )
+                .filter((q) =>
+                    q.and(
+                        q.not(q.gt(q.field("aspectRatio"), 4)),
+                        q.eq(q.field("isSensitive"), false)
+                    )
+                )
+                .order("desc")
+                .paginate(args.paginationOpts)
+        }
+        // CASE 2 & 3: BLUR / ALLOW - Show ALL tagged content (safe OR sensitive)
+        // Filter out 'null' (pending) to avoid showing unanalyzed content
+        else {
+            paginatedResult = await ctx.db
+                .query("generatedImages")
+                .withIndex("by_owner_visibility", (q) =>
+                    q.eq("ownerId", user.clerkId).eq("visibility", "public")
+                )
+                .filter((q) =>
+                    q.and(
+                        q.not(q.gt(q.field("aspectRatio"), 4)),
+                        // Has been analyzed (not null) - prevents showing pending content
+                        q.neq(q.field("isSensitive"), null)
+                    )
+                )
+                .order("desc")
+                .paginate(args.paginationOpts)
+        }
 
         // Enrich with user info (we already have the user), cast to EnrichedImage for helper
         const enrichedPage = paginatedResult.page.map((image) => ({
@@ -846,6 +872,43 @@ export const updateImageSensitivity = internalMutation({
             sensitiveConfidence: args.confidence,
             contentAnalysis: args.contentAnalysis,
         });
+    },
+});
+
+/**
+ * Internal mutation to update image with prompt inference results.
+ */
+export const updateImagePromptInference = internalMutation({
+    args: {
+        imageId: v.id("generatedImages"),
+        promptInference: v.object({
+            category: v.string(),
+            confidence: v.number(),
+            reasoning: v.string(),
+            provider: v.string(),
+            analyzedAt: v.number(),
+        }),
+        isSensitive: v.optional(v.boolean()), // If decided
+        confidence: v.optional(v.number()), // If decided
+    },
+    handler: async (ctx, args) => {
+        // Use a partial of the inferred document type + any extra fields we are patching
+        // But since we are patching raw fields, 'any' is sometimes practically needed if types aren't perfectly aligned
+        // However, we can use Record<string, unknown> which is safer
+        const updates: Record<string, unknown> = {
+            promptInference: args.promptInference,
+        };
+
+        if (args.isSensitive !== undefined) {
+            updates.isSensitive = args.isSensitive;
+            updates.sensitiveSource = "prompt_inference";
+        }
+        
+        if (args.confidence !== undefined) {
+            updates.sensitiveConfidence = args.confidence;
+        }
+
+        await ctx.db.patch(args.imageId, updates);
     },
 });
 

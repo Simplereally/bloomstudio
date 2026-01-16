@@ -20,6 +20,7 @@ import { usePollenApiKey, usePollenAuthActions } from "@/lib/pollen-auth"
 import { cn } from "@/lib/utils"
 import { useMutation, useQuery } from "convex/react"
 import { AlertCircle, CheckCircle, Loader2 } from "lucide-react"
+import Image from "next/image"
 import { useState } from "react"
 import { toast } from "sonner"
 
@@ -36,16 +37,10 @@ export function LimitTester() {
     const [width, setWidth] = useState<number>(1024)
     const [height, setHeight] = useState<number>(1024)
     const [prompt, setPrompt] = useState("A glitch art masterpiece of a cyberpunk city, extremely detailed")
-    const { generateSeed, isRandomMode } = useRandomSeed(modelId)
+    const { generateSeed } = useRandomSeed(modelId)
     
     // Track current generation
     const [currentGenId, setCurrentGenId] = useState<Id<"pendingGenerations"> | null>(null)
-    const [lastResult, setLastResult] = useState<{
-        success: boolean;
-        time?: number;
-        error?: string;
-        dimensions?: string;
-    } | null>(null)
     const [naturalDimensions, setNaturalDimensions] = useState<{ w: number; h: number } | null>(null)
 
     const startGeneration = useMutation(api.singleGeneration.startGeneration)
@@ -72,7 +67,6 @@ export function LimitTester() {
         }
         
         try {
-            setLastResult(null)
             setNaturalDimensions(null)
             const id = await startGeneration({
                 generationParams: {
@@ -129,10 +123,13 @@ export function LimitTester() {
                                         <SelectItem key={id} value={id}>
                                             <div className="flex items-center gap-2">
                                                 {model?.logo && (
-                                                    <img 
-                                                        src={model.logo} 
-                                                        alt="" 
+                                                    <Image
+                                                        src={model.logo}
+                                                        alt=""
+                                                        width={16}
+                                                        height={16}
                                                         className="w-4 h-4 object-contain opacity-80"
+                                                        unoptimized
                                                     />
                                                 )}
                                                 {model?.displayName || id}
@@ -301,15 +298,19 @@ export function LimitTester() {
                     {image ? (
                             <div className="relative w-full h-full flex flex-col">
                             <div className="flex-1 flex items-center justify-center p-4 bg-black/20 min-h-[300px]">
-                                <img 
-                                    src={image.url} 
-                                    alt="Result" 
-                                    onLoad={(e) => {
-                                        const img = e.currentTarget
-                                        setNaturalDimensions({ w: img.naturalWidth, h: img.naturalHeight })
-                                    }}
-                                    className="w-full h-auto max-h-[500px] object-contain shadow-2xl"
-                                />
+                                <div className="relative w-full max-w-5xl h-[500px]">
+                                    <Image
+                                        src={image.url}
+                                        alt="Result"
+                                        fill
+                                        sizes="(max-width: 1024px) 90vw, 1024px"
+                                        className="object-contain shadow-2xl"
+                                        unoptimized
+                                        onLoadingComplete={(img) => {
+                                            setNaturalDimensions({ w: img.naturalWidth, h: img.naturalHeight })
+                                        }}
+                                    />
+                                </div>
                             </div>
                             <div className="p-4 bg-black/80 flex flex-col gap-3 border-t border-white/10 text-xs text-muted-foreground">
                                 <div className="space-y-1">

@@ -3,7 +3,6 @@
 import { PaginatedImageGrid } from "@/components/gallery/paginated-image-grid"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
 import { api } from "@/convex/_generated/api"
 import { useProfileImages } from "@/hooks/queries/use-image-history"
 import { invalidateFollowChange } from "@/app/_server/actions/invalidation"
@@ -11,6 +10,7 @@ import { useMutation, useQuery } from "convex/react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Loader2, LogIn, Plus, UserCheck } from "lucide-react"
 import Link from "next/link"
+import { ProfileSkeleton } from "@/components/profile/profile-skeleton"
 import { useParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
@@ -24,6 +24,10 @@ export default function ProfilePage() {
 
     // Fetch images
     const { results, status, loadMore } = useProfileImages(username)
+
+    // Get user's sensitive content preference for overlay display
+    const preference = useQuery(api.users.getSensitiveContentPreference)
+    const userShowsSensitive = preference === "allow"
 
     // Auto-load more if we got an empty page but aren't done
     useEffect(() => {
@@ -71,6 +75,7 @@ export default function ProfilePage() {
                         status={status}
                         loadMore={loadMore}
                         showUser={false} // Don't show user badge on their own profile
+                        userShowsSensitive={userShowsSensitive}
                         emptyState={
                             <div className="text-center py-20 text-muted-foreground">
                                 This user hasn&apos;t shared any public images yet.
@@ -99,16 +104,10 @@ function FollowButton({ followeeId }: { followeeId: string }) {
         return (
             <Tooltip delayDuration={200}>
                 <TooltipTrigger asChild>
-                    <Button
-                        variant="default"
-                        className="w-32 rounded-full font-medium"
-                        asChild
-                    >
-                        <Link href="/sign-in">
-                            <Plus className="mr-2 h-4 w-4" />
-                            Follow
-                        </Link>
-                    </Button>
+                    <Link href="/sign-in" className="inline-flex items-center justify-center whitespace-nowrap rounded-full text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-32">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Follow
+                    </Link>
                 </TooltipTrigger>
                 <TooltipContent side="top">
                     <div className="flex items-center gap-2">
@@ -164,24 +163,6 @@ function FollowButton({ followeeId }: { followeeId: string }) {
     )
 }
 
-function ProfileSkeleton() {
-    return (
-        <div className="min-h-screen pt-24 pb-12">
-            <div className="container mx-auto px-4 space-y-12">
-                <div className="flex flex-col items-center space-y-4">
-                    <Skeleton className="h-24 w-24 rounded-full" />
-                    <Skeleton className="h-8 w-48" />
-                    <Skeleton className="h-4 w-64" />
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {Array.from({ length: 8 }).map((_, i) => (
-                        <Skeleton key={i} className="aspect-square rounded-lg" />
-                    ))}
-                </div>
-            </div>
-        </div>
-    )
-}
 
 function ProfileNotFound() {
     return (

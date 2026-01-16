@@ -35,6 +35,7 @@ vi.mock("@/convex/_generated/api", () => ({
         users: {
             getCurrentUser: "getCurrentUser",
             getUserProfile: "getUserProfile",
+            getSensitiveContentPreference: "getSensitiveContentPreference",
         },
         follows: {
             isFollowing: "isFollowing",
@@ -89,7 +90,9 @@ vi.mock("sonner", () => ({
 
 // Mock PaginatedImageGrid
 vi.mock("@/components/gallery/paginated-image-grid", () => ({
-    PaginatedImageGrid: () => <div data-testid="image-grid">Image Grid</div>,
+    PaginatedImageGrid: ({ userShowsSensitive }: { userShowsSensitive?: boolean }) => (
+        <div data-testid="image-grid" data-user-shows-sensitive={userShowsSensitive?.toString()}>Image Grid</div>
+    ),
 }))
 
 // Mock lucide-react icons
@@ -316,6 +319,78 @@ describe("ProfilePage", () => {
             render(<ProfilePage />)
 
             expect(screen.getByText("User not found")).toBeInTheDocument()
+        })
+    })
+
+    describe("Sensitive content handling", () => {
+        const mockUserProfile = {
+            clerkId: "user_456",
+            username: "testuser",
+            pictureUrl: "https://example.com/avatar.jpg",
+            imagesCount: 10,
+            followersCount: 100,
+            followingCount: 50,
+        }
+
+        it("passes userShowsSensitive=false to grid when preference is blur", () => {
+            mockUseQuery.mockImplementation((queryRef: string) => {
+                if (queryRef === "getUserProfile") return mockUserProfile
+                if (queryRef === "getCurrentUser") return null
+                if (queryRef === "isFollowing") return false
+                if (queryRef === "getSensitiveContentPreference") return "blur"
+                return undefined
+            })
+
+            render(<ProfilePage />)
+
+            const grid = screen.getByTestId("image-grid")
+            expect(grid).toHaveAttribute("data-user-shows-sensitive", "false")
+        })
+
+        it("passes userShowsSensitive=false to grid when preference is block", () => {
+            mockUseQuery.mockImplementation((queryRef: string) => {
+                if (queryRef === "getUserProfile") return mockUserProfile
+                if (queryRef === "getCurrentUser") return null
+                if (queryRef === "isFollowing") return false
+                if (queryRef === "getSensitiveContentPreference") return "block"
+                return undefined
+            })
+
+            render(<ProfilePage />)
+
+            const grid = screen.getByTestId("image-grid")
+            expect(grid).toHaveAttribute("data-user-shows-sensitive", "false")
+        })
+
+        it("passes userShowsSensitive=true to grid when preference is allow", () => {
+            mockUseQuery.mockImplementation((queryRef: string) => {
+                if (queryRef === "getUserProfile") return mockUserProfile
+                if (queryRef === "getCurrentUser") return null
+                if (queryRef === "isFollowing") return false
+                if (queryRef === "getSensitiveContentPreference") return "allow"
+                return undefined
+            })
+
+            render(<ProfilePage />)
+
+            const grid = screen.getByTestId("image-grid")
+            expect(grid).toHaveAttribute("data-user-shows-sensitive", "true")
+        })
+
+        it("defaults to userShowsSensitive=false when preference is undefined (unauthenticated)", () => {
+            mockUseQuery.mockImplementation((queryRef: string) => {
+                if (queryRef === "getUserProfile") return mockUserProfile
+                if (queryRef === "getCurrentUser") return null
+                if (queryRef === "isFollowing") return false
+                if (queryRef === "getSensitiveContentPreference") return undefined
+                return undefined
+            })
+
+            render(<ProfilePage />)
+
+            const grid = screen.getByTestId("image-grid")
+            // undefined !== "allow", so userShowsSensitive should be false
+            expect(grid).toHaveAttribute("data-user-shows-sensitive", "false")
         })
     })
 })

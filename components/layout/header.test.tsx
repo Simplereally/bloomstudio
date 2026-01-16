@@ -32,6 +32,10 @@ vi.mock("@/components/subscription/subscription-badge", () => ({
     SubscriptionBadge: () => <div data-testid="subscription-badge" />,
 }))
 
+vi.mock("@/components/pollen-balance", () => ({
+    PollenBalanceDisplay: () => <div data-testid="pollen-balance-display" />,
+}))
+
 vi.mock("@/components/studio/upgrade-modal", () => ({
     UpgradeModal: () => <div data-testid="upgrade-modal" />,
 }))
@@ -42,7 +46,7 @@ vi.mock("@/components/studio/api-key-onboarding-modal", () => ({
 
 // Mock utils
 vi.mock("@/lib/utils", () => ({
-    cn: (...inputs: any[]) => inputs.filter(Boolean).join(" "),
+    cn: (...inputs: Array<string | undefined | null | false>) => inputs.filter(Boolean).join(" "),
     isLocalhost: vi.fn(() => false),
 }))
 
@@ -53,13 +57,17 @@ describe("Header", () => {
         vi.mocked(useUser).mockReturnValue({
             isSignedIn: true,
             isLoaded: true,
-            user: { id: "user_1" } as any,
-        } as any)
+            user: { id: "user_1" },
+        } as unknown as ReturnType<typeof useUser>)
         vi.mocked(usePathname).mockReturnValue("/studio")
         vi.mocked(useTheme).mockReturnValue({
             theme: "dark",
             setTheme: vi.fn(),
-        } as any)
+            themes: ["light", "dark"],
+            resolvedTheme: "dark",
+            systemTheme: "dark",
+            forcedTheme: undefined,
+        } as unknown as ReturnType<typeof useTheme>)
         vi.mocked(useQuery).mockReturnValue({ status: "pro" })
     })
 
@@ -100,10 +108,27 @@ describe("Header", () => {
         vi.mocked(useUser).mockReturnValue({
             isSignedIn: false,
             isLoaded: true,
-        } as any)
+            user: null,
+        })
 
         render(<Header />)
         expect(screen.getByText("Sign In")).toBeInTheDocument()
+    })
+
+    it("does not render settings cogwheel when not signed in", () => {
+        vi.mocked(useUser).mockReturnValue({
+            isSignedIn: false,
+            isLoaded: true,
+            user: null,
+        })
+
+        render(<Header />)
+        expect(screen.queryByRole("button", { name: /settings/i })).not.toBeInTheDocument()
+    })
+
+    it("renders settings cogwheel when signed in", () => {
+        render(<Header />)
+        expect(screen.getByRole("button", { name: /settings/i })).toBeInTheDocument()
     })
 
     it("shows mobile menu when toggle is clicked", () => {
@@ -118,5 +143,38 @@ describe("Header", () => {
         // Note: we can check for multiple instances if they share labels
         const studioLinks = screen.getAllByText("Studio")
         expect(studioLinks.length).toBeGreaterThan(1)
+    })
+
+    describe("Pollen Balance Display Integration", () => {
+        it("renders pollen balance display when signed in", () => {
+            render(<Header />)
+            expect(screen.getByTestId("pollen-balance-display")).toBeInTheDocument()
+        })
+
+        it("does not render pollen balance display when not signed in", () => {
+            vi.mocked(useUser).mockReturnValue({
+                isSignedIn: false,
+                isLoaded: true,
+                user: null,
+            })
+
+            render(<Header />)
+            expect(screen.queryByTestId("pollen-balance-display")).not.toBeInTheDocument()
+        })
+
+        it("positions pollen balance display near subscription badge", () => {
+            render(<Header />)
+            const subscriptionBadge = screen.getByTestId("subscription-badge")
+            const pollenBalance = screen.getByTestId("pollen-balance-display")
+            
+            // Both should be in the document
+            expect(subscriptionBadge).toBeInTheDocument()
+            expect(pollenBalance).toBeInTheDocument()
+            
+            // Both should be siblings in the same container (right side of header)
+            expect(subscriptionBadge.parentElement?.parentElement).toBe(
+                pollenBalance.parentElement?.parentElement
+            )
+        })
     })
 })

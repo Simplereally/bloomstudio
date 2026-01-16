@@ -72,7 +72,7 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
     handleMouseMove,
     handleMouseUp,
     handleMouseLeave,
-    hasDragged,
+    hasDragged: hasDraggedRef,
     isHovering,
     setIsHovering
   } = useImageLightbox({ image: displayImage, isOpen })
@@ -136,9 +136,9 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseLeave}
-                onClick={(e) => {
-                  if (hasDragged.current) {
-                    hasDragged.current = false
+              onClick={(e) => {
+                  if (hasDraggedRef.current) {
+                    hasDraggedRef.current = false
                     return
                   }
                   if (e.target === e.currentTarget) {

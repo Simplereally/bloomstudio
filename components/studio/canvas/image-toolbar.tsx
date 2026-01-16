@@ -48,19 +48,17 @@ export interface ImageToolbarProps {
     className?: string
 }
 
-export function ImageToolbar({
-    image,
-    isFavorited = false,
-    onDownload,
-    onCopyUrl,
-    onShare,
-    onToggleFavorite,
-    onFullscreen,
-    onRegenerate,
-    onOpenInNewTab,
-    position = "top",
-    className,
-}: ImageToolbarProps) {
+export function ImageToolbar(props: ImageToolbarProps) {
+    const {
+        image,
+        isFavorited = false,
+        onDownload,
+        onCopyUrl,
+        onToggleFavorite,
+        onRegenerate,
+        position = "top",
+        className,
+    } = props
     const [copied, setCopied] = React.useState(false)
 
     if (!image) return null

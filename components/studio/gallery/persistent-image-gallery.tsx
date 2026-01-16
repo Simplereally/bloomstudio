@@ -108,6 +108,8 @@ export function PersistentImageGallery(props: PersistentImageGalleryProps) {
         models: filterState.selectedModels.length > 0 ? filterState.selectedModels : undefined,
     }), [filterState])
 
+    const modelsKey = queryFilters.models?.join(",") ?? ""
+
     // ========================================
     // Hybrid Data Strategy
     // ========================================
@@ -138,7 +140,7 @@ export function PersistentImageGallery(props: PersistentImageGalleryProps) {
         setCachedCursor(null)
         setCachedIsDone(false)
         initializedRef.current = false
-    }, [queryFilters.visibility, queryFilters.models?.join(",")])
+    }, [queryFilters.visibility, modelsKey])
 
     // Combine Convex results with cached pages
     const convexResults = convexQuery.results
@@ -228,7 +230,7 @@ export function PersistentImageGallery(props: PersistentImageGalleryProps) {
             // Handle both Convex results and cached ThumbnailData
             // Convex results have _id, cached ThumbnailData has id
             const id = "_id" in img ? String(img._id) : (img as ThumbnailData).id
-            // eslint-disable-next-line react-hooks/refs -- Optimization: accessing ref during render for stable object identity
+             
             const cached = imageCache.current.get(id)
 
             // Get values from either format
@@ -267,7 +269,7 @@ export function PersistentImageGallery(props: PersistentImageGalleryProps) {
         })
 
         // Update cache for next render
-        // eslint-disable-next-line react-hooks/refs -- Optimization: updating ref during render
+         
         imageCache.current = newCache
 
         return stableImages

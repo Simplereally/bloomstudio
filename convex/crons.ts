@@ -18,10 +18,10 @@ crons.daily(
 );
 
 // Ongoing analysis of unanalyzed images (catch-up mechanism)
-// Aggressive schedule to clear backlog (every minute)
+// Runs hourly to restart processing if recursive chain stops
 crons.interval(
     "analyze unanalyzed images",
-    { minutes: 1 },
+    { hours: 1 },
     internal.contentAnalysis.analyzeRecentImages,
 );
 

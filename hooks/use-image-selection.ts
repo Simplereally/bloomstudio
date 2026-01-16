@@ -9,10 +9,15 @@
  * Performance optimizations:
  * - Uses ref pattern for selectedIds to avoid recreating callbacks on selection changes
  * - All callbacks are stable (don't change reference) to prevent child re-renders
+ * 
+ * Optimistic Updates:
+ * - Accepts optional onOptimisticDelete callback for immediate UI updates
+ * - Parent component can remove items from local state before server confirms
+ * - If deletion fails, parent should handle rollback via the callback's return value
  */
 
 import type { Id } from "@/convex/_generated/dataModel"
-import { useDeleteGeneratedImage } from "@/hooks/mutations/use-delete-image"
+import { useBulkDeleteGeneratedImages } from "@/hooks/mutations/use-delete-image"
 import { useSetBulkVisibility, type ImageVisibility } from "@/hooks/mutations/use-set-visibility"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
@@ -20,6 +25,15 @@ import { toast } from "sonner"
 export interface SelectableImage {
     _id: string
     [key: string]: unknown
+}
+
+export interface UseImageSelectionOptions {
+    /**
+     * Callback for optimistic UI updates on delete.
+     * Called with the IDs being deleted BEFORE the server request.
+     * Returns a rollback function to restore state if the deletion fails.
+     */
+    onOptimisticDelete?: (deletedIds: string[]) => (() => void) | void
 }
 
 export interface UseImageSelectionReturn {
@@ -47,21 +61,32 @@ export interface UseImageSelectionReturn {
 /**
  * Hook for managing image selection and bulk actions in list views.
  * Uses ref pattern to keep callbacks stable while still accessing current selection state.
+ * 
+ * @param options - Optional configuration including optimistic update callbacks
  */
-export function useImageSelection(): UseImageSelectionReturn {
+export function useImageSelection(options?: UseImageSelectionOptions): UseImageSelectionReturn {
+    const { onOptimisticDelete } = options ?? {}
+    
     // Selection state
     const [selectionMode, setSelectionMode] = useState(false)
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
     
     // Ref to access current selectedIds without causing callback recreation
     const selectedIdsRef = useRef(selectedIds)
+    
+    // Ref for optimistic delete callback to keep handleDeleteSelected stable
+    const onOptimisticDeleteRef = useRef(onOptimisticDelete)
 
     useEffect(() => {
         selectedIdsRef.current = selectedIds
     }, [selectedIds])
+    
+    useEffect(() => {
+        onOptimisticDeleteRef.current = onOptimisticDelete
+    }, [onOptimisticDelete])
 
     // Mutations
-    const deleteMutation = useDeleteGeneratedImage()
+    const deleteMutation = useBulkDeleteGeneratedImages()
     const setBulkVisibilityMutation = useSetBulkVisibility()
 
     // Toggle selection for a single image - stable callback using ref
@@ -99,18 +124,23 @@ export function useImageSelection(): UseImageSelectionReturn {
         if (currentSelectedIds.size === 0) return
 
         const imageIds = Array.from(currentSelectedIds) as Id<"generatedImages">[]
+        const idsAsStrings = Array.from(currentSelectedIds)
+        
+        // Optimistically update UI before server request
+        const rollback = onOptimisticDeleteRef.current?.(idsAsStrings)
+        
+        // Clear selection immediately for responsive feel
+        setSelectedIds(new Set())
+        setSelectionMode(false)
 
         try {
-            // Delete all selected images sequentially (Convex handles the logic)
-            await Promise.all(
-                imageIds.map((id) => deleteMutation.mutateAsync(id))
-            )
-            toast.success(`Deleted ${imageIds.length} image${imageIds.length > 1 ? "s" : ""}`)
-            setSelectedIds(new Set())
-            setSelectionMode(false)
+            // Delete all selected images in one batch (handles toast internally)
+            await deleteMutation.mutateAsync(imageIds)
         } catch (error) {
             console.error("Bulk delete failed:", error)
-            // Individual failures are handled by the mutation
+            // Rollback optimistic update on failure
+            rollback?.()
+            // Error handling (toast) is managed by the mutation
         }
     }, [deleteMutation])
 

@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { useUser } from "@clerk/nextjs";
 import { ArrowRight, Sparkles, Users } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
 
@@ -41,7 +41,6 @@ function useScrolled(threshold = 50) {
  */
 export function LandingHeader() {
   const pathname = usePathname();
-  const router = useRouter();
   const { isSignedIn, isLoaded } = useUser();
   const scrolled = useScrolled();
   const activeSection = useScrollSpy(LANDING_SECTIONS);

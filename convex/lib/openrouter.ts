@@ -9,7 +9,7 @@ export interface ContentAnalysisResult {
 }
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const ANALYSIS_MODEL = "qwen/qwen2.5-vl-72b:free"; // Free vision model
+const ANALYSIS_MODEL = "qwen/qwen-2.5-vl-7b-instruct:free"; // Free vision model with image input
 
 /** Timeout for OpenRouter API requests in milliseconds */
 const FETCH_TIMEOUT_MS = 30_000; // 30 seconds
@@ -42,6 +42,31 @@ export async function analyzeImageContent(imageUrl: string): Promise<ContentAnal
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
+    // Build request body for logging and sending
+    const requestBody = {
+        model: ANALYSIS_MODEL,
+        messages: [{
+            role: "user",
+            content: [
+                {
+                    type: "image_url",
+                    image_url: { url: imageUrl }
+                },
+                {
+                    type: "text",
+                    text: `Analyze this image for content appropriateness. Classify:
+1. Nudity: none/partial/full
+2. Sexual content: none/suggestive/explicit  
+3. Violence: none/mild/graphic
+
+Respond ONLY with valid JSON:
+{"nudity":"none|partial|full","sexual_content":"none|suggestive|explicit","violence":"none|mild|graphic","confidence":0.0-1.0,"reasoning":"brief explanation"}`
+                }
+            ]
+        }],
+        temperature: 0.1,
+    };
+
     try {
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
@@ -49,29 +74,7 @@ export async function analyzeImageContent(imageUrl: string): Promise<ContentAnal
                 "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-                model: ANALYSIS_MODEL,
-                messages: [{
-                    role: "user",
-                    content: [
-                        {
-                            type: "image_url",
-                            image_url: { url: imageUrl }
-                        },
-                        {
-                            type: "text",
-                            text: `Analyze this image for content appropriateness. Classify:
-1. Nudity: none/partial/full
-2. Sexual content: none/suggestive/explicit  
-3. Violence: none/mild/graphic
-
-Respond ONLY with valid JSON:
-{"nudity":"none|partial|full","sexual_content":"none|suggestive|explicit","violence":"none|mild|graphic","confidence":0.0-1.0,"reasoning":"brief explanation"}`
-                        }
-                    ]
-                }],
-                temperature: 0.1, // Low temp for consistent classification
-            }),
+            body: JSON.stringify(requestBody),
             signal: controller.signal,
         });
 
@@ -79,7 +82,14 @@ Respond ONLY with valid JSON:
         clearTimeout(timeoutId);
 
         if (!response.ok) {
-            throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
+            // Read the error body for more details
+            let errorBody = "";
+            try {
+                errorBody = await response.text();
+            } catch {
+                // Could not read error body
+            }
+            throw new Error(`OpenRouter API error: ${response.status} ${response.statusText} - ${errorBody}`);
         }
 
         const data = await response.json();

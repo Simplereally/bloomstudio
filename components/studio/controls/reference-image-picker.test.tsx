@@ -8,13 +8,26 @@ import { useUploadReference } from "@/hooks/mutations/use-upload-reference"
 import { useReferenceImages } from "@/hooks/queries/use-reference-images"
 import { fireEvent, render, screen } from "@testing-library/react"
 import type { ImageProps } from "next/image"
+import type { Id } from "@/convex/_generated/dataModel"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { ReferenceImagePicker } from "./reference-image-picker"
 
 // Mock next/image
 vi.mock("next/image", () => ({
     // eslint-disable-next-line @next/next/no-img-element
-    default: ({ src, alt, ...props }: ImageProps) => <img src={src as string} alt={alt} {...props} />,
+    default: ({ src, alt, ...props }: ImageProps) => (
+        <img
+            src={
+                typeof src === "string"
+                    ? src
+                    : "default" in src
+                        ? src.default.src
+                        : src.src
+            }
+            alt={alt}
+            {...props}
+        />
+    ),
 }))
 
 // Mock hooks
@@ -32,22 +45,51 @@ vi.mock("@/hooks/mutations/use-delete-image", () => ({
 
 describe("ReferenceImagePicker", () => {
     const mockOnSelect = vi.fn()
-    const mockRecentImages = [
-        { _id: "1", url: "url1" },
-        { _id: "2", url: "url2" },
+
+    function createReferenceImageId(value: string): Id<"referenceImages"> {
+        return value as unknown as Id<"referenceImages">
+    }
+
+    const mockRecentImages: NonNullable<ReturnType<typeof useReferenceImages>> = [
+        {
+            _id: createReferenceImageId("1"),
+            _creationTime: Date.now(),
+            ownerId: "user_1",
+            r2Key: "reference/1.jpg",
+            url: "url1",
+            filename: "1.jpg",
+            contentType: "image/jpeg",
+            sizeBytes: 123,
+            width: 128,
+            height: 128,
+            createdAt: Date.now(),
+        },
+        {
+            _id: createReferenceImageId("2"),
+            _creationTime: Date.now(),
+            ownerId: "user_1",
+            r2Key: "reference/2.jpg",
+            url: "url2",
+            filename: "2.jpg",
+            contentType: "image/jpeg",
+            sizeBytes: 456,
+            width: 128,
+            height: 128,
+            createdAt: Date.now(),
+        },
     ]
 
     beforeEach(() => {
         vi.clearAllMocks()
-        vi.mocked(useReferenceImages).mockReturnValue(mockRecentImages as any)
+        vi.mocked(useReferenceImages).mockReturnValue(mockRecentImages)
         vi.mocked(useUploadReference).mockReturnValue({
             mutateAsync: vi.fn(),
             isPending: false,
-        } as any)
+        } as unknown as ReturnType<typeof useUploadReference>)
         vi.mocked(useDeleteReferenceImage).mockReturnValue({
             mutateAsync: vi.fn(),
             isPending: false,
-        } as any)
+        } as unknown as ReturnType<typeof useDeleteReferenceImage>)
     })
 
     it("renders upload button when no image selected", () => {

@@ -188,7 +188,7 @@ export function useAspectRatioDimensions({
             // For models with dynamic dimensions, calculate based on tier and constraints
             return getConstrainedDimensions(ratio)
         },
-        [tier, constraints?.dimensionsEnabled, constraints?.supportedTiers, availableRatios, getConstrainedDimensions]
+        [tier, constraints, availableRatios, getConstrainedDimensions]
     )
 
     /**

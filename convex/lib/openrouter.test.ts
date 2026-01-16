@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import type { Mock } from "vitest";
+
 
 // Store original env and fetch
 const originalEnv = { ...process.env };

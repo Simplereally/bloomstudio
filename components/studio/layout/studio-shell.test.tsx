@@ -2,7 +2,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { StudioShell, type StudioShellProps } from "./studio-shell"
-import { useQuery } from "convex/react"
 import type { GeneratedImage } from "@/types/pollinations"
 import { toast } from "sonner"
 import { useSubscriptionStatus } from "@/hooks/use-subscription-status"
@@ -468,7 +467,7 @@ describe("StudioShell", () => {
 
         it("shows success toast when upgraded=true and status is pro", () => {
             mockSearchParams.set("upgraded", "true")
-                ; (useSubscriptionStatus as any).mockReturnValueOnce({
+            vi.mocked(useSubscriptionStatus).mockReturnValueOnce({
                     status: "pro",
                     isLoading: false,
                     canGenerate: true,
@@ -482,7 +481,7 @@ describe("StudioShell", () => {
 
         it("shows loading toast when upgraded=true but status is still syncing", () => {
             mockSearchParams.set("upgraded", "true")
-                ; (useSubscriptionStatus as any).mockReturnValueOnce({
+            vi.mocked(useSubscriptionStatus).mockReturnValueOnce({
                     status: "expired",
                     isLoading: false,
                     canGenerate: false,
@@ -495,7 +494,7 @@ describe("StudioShell", () => {
 
         it("blocks generation and shows info toast when status is syncing", () => {
             mockSearchParams.set("upgraded", "true")
-                ; (useSubscriptionStatus as any).mockReturnValueOnce({
+            vi.mocked(useSubscriptionStatus).mockReturnValueOnce({
                     status: "expired",
                     isLoading: false,
                     canGenerate: false,
@@ -515,7 +514,7 @@ describe("StudioShell", () => {
 
         it("allows generation when status becomes pro", async () => {
             mockSearchParams.set("upgraded", "true")
-                ; (useSubscriptionStatus as any).mockReturnValueOnce({
+            vi.mocked(useSubscriptionStatus).mockReturnValueOnce({
                     status: "pro",
                     isLoading: false,
                     canGenerate: true,

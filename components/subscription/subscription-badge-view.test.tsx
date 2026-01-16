@@ -28,9 +28,9 @@ describe("SubscriptionBadgeView", () => {
         expect(container.querySelector(".animate-pulse")).toBeInTheDocument()
     })
 
-    it("renders PRO badge for pro status", () => {
-        renderWithProviders(<SubscriptionBadgeView {...defaultProps} status="pro" />)
-        expect(screen.getByText("PRO")).toBeInTheDocument()
+    it("returns null for pro status (subscribed users don't need a badge)", () => {
+        const { container } = renderWithProviders(<SubscriptionBadgeView {...defaultProps} status="pro" />)
+        expect(container.firstChild).toBeNull()
     })
 
     it("renders TRIAL badge for trial status", () => {

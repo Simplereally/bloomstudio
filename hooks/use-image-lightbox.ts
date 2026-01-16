@@ -33,6 +33,24 @@ interface UseImageLightboxProps {
 }
 
 export function useImageLightbox({ image, isOpen }: UseImageLightboxProps) {
+  const [isHovering, _setIsHovering] = React.useState(false)
+  const hoverTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const setIsHovering = React.useCallback((hovering: boolean) => {
+    if (hovering) {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current)
+        hoverTimeoutRef.current = null
+      }
+      _setIsHovering(true)
+    } else {
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
+      hoverTimeoutRef.current = setTimeout(() => {
+        _setIsHovering(false)
+      }, 100)
+    }
+  }, [])
+
   const [copied, setCopied] = React.useState(false)
   const [isZoomed, setIsZoomed] = React.useState(false)
   const [naturalSize, setNaturalSize] = React.useState({ width: 0, height: 0 })
@@ -147,23 +165,7 @@ export function useImageLightbox({ image, isOpen }: UseImageLightboxProps) {
     setIsDragging(false)
   }
 
-  const [isHovering, _setIsHovering] = React.useState(false)
-  const hoverTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const setIsHovering = React.useCallback((hovering: boolean) => {
-    if (hovering) {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current)
-        hoverTimeoutRef.current = null
-      }
-      _setIsHovering(true)
-    } else {
-      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
-      hoverTimeoutRef.current = setTimeout(() => {
-        _setIsHovering(false)
-      }, 100)
-    }
-  }, [])
+  // State defined at top of component
 
   return {
     copied,

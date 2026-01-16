@@ -10,6 +10,8 @@ import { useAuth } from "@clerk/nextjs"
 import { ImageOffIcon, ScanSearch } from "lucide-react"
 import Link from "next/link"
 import * as React from "react"
+import { api } from "@/convex/_generated/api"
+import { useQuery } from "convex/react"
 
 // Type for the paginated result from Convex/cached query
 type PaginatedFeedResult = Awaited<ReturnType<typeof loadPublicFeedPage>>
@@ -18,6 +20,8 @@ interface FeedClientProps {
     feedType: FeedType
     /** Server-provided initial page (from cache) */
     initialPage?: PaginatedFeedResult
+    /** Initial user preference (from server) */
+    initialPreference?: "block" | "blur" | "allow"
 }
 
 /**
@@ -29,7 +33,7 @@ interface FeedClientProps {
  * 
  * Uses server-provided initial page + server actions for "load more" pagination.
  */
-export function FeedClient({ feedType, initialPage }: FeedClientProps) {
+export function FeedClient({ feedType, initialPage, initialPreference }: FeedClientProps) {
     const { isSignedIn, isLoaded } = useAuth()
 
     // State for cached feed data (works for both public and following)
@@ -37,6 +41,13 @@ export function FeedClient({ feedType, initialPage }: FeedClientProps) {
     const [cursor, setCursor] = React.useState(() => initialPage?.continueCursor ?? null)
     const [isDone, setIsDone] = React.useState(() => initialPage?.isDone ?? false)
     const [isLoadingMore, setIsLoadingMore] = React.useState(false)
+    
+    // Get real-time preference to keep UI in sync, falling back to server-provided initial value
+    const preferenceQuery = useQuery(api.users.getSensitiveContentPreference)
+    const preference = preferenceQuery ?? initialPreference ?? "blur"
+    
+    // If preference is 'allow', we show sensitive content without overlay
+    const userShowsSensitive = preference === "allow"
 
     const isPublicFeed = feedType === "public"
 
@@ -61,7 +72,7 @@ export function FeedClient({ feedType, initialPage }: FeedClientProps) {
         setIsLoadingMore(true)
         try {
             const result = isPublicFeed
-                ? await loadPublicFeedPage({ cursor })
+                ? await loadPublicFeedPage({ cursor, filterPreference: preference })
                 : await loadFollowingFeedPage({ cursor })
             setItems(prev => [...prev, ...result.page])
             setCursor(result.continueCursor)
@@ -71,7 +82,7 @@ export function FeedClient({ feedType, initialPage }: FeedClientProps) {
         } finally {
             setIsLoadingMore(false)
         }
-    }, [cursor, isDone, isLoadingMore, isPublicFeed])
+    }, [cursor, isDone, isLoadingMore, isPublicFeed, preference])
 
     // Determine status for PaginatedImageGrid
     const status = isDone ? "Exhausted" : isLoadingMore ? "LoadingMore" : "CanLoadMore"
@@ -98,6 +109,7 @@ export function FeedClient({ feedType, initialPage }: FeedClientProps) {
                 status={status}
                 loadMore={loadMore}
                 emptyState={emptyState}
+                userShowsSensitive={userShowsSensitive}
             />
         </div>
     )

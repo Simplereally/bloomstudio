@@ -16,6 +16,7 @@
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
 import { usePollenApiKey, usePollenAuthActions } from "@/lib/pollen-auth"
+import { usePollenBalance } from "@/hooks/use-pollen-balance"
 import type {
     GeneratedImage,
     ImageGenerationParams,
@@ -137,6 +138,9 @@ export function useGenerateImage(
     // Get API key from BYOP context
     const apiKey = usePollenApiKey()
     const { authorize } = usePollenAuthActions()
+    
+    // Get balance invalidation function for post-generation refresh
+    const { invalidateBalance } = usePollenBalance()
 
     // Track generation state
     const [generationId, setGenerationId] = React.useState<Id<"pendingGenerations"> | null>(null)
@@ -181,6 +185,10 @@ export function useGenerateImage(
             setIsSuccess(true)
             setIsGenerating(false)
             setGenerationId(null)
+            
+            // Invalidate balance after successful generation (debounced)
+            // Requirements 3.1, 3.3, 3.4
+            invalidateBalance()
 
             options.onSuccess?.(image, currentParams)
             options.onSettled?.(image, null, currentParams)
@@ -193,11 +201,15 @@ export function useGenerateImage(
             setIsError(true)
             setIsGenerating(false)
             setGenerationId(null)
+            
+            // Invalidate balance after failed generation too (pollen may have been consumed)
+            // Requirements 3.1, 3.3, 3.4
+            invalidateBalance()
 
             options.onError?.(err, currentParams)
             options.onSettled?.(undefined, err, currentParams)
         }
-    }, [generationStatus, generatedImage, currentParams, options])
+    }, [generationStatus, generatedImage, currentParams, options, invalidateBalance])
 
     // Generate function
     const generate = React.useCallback(

@@ -1,4 +1,3 @@
-import { CommunitySection } from "@/components/landing/community-section";
 import { CtaSection } from "@/components/landing/cta-section";
 import { FeaturesSection } from "@/components/landing/features-section";
 // import { FloatingGallery } from "@/components/landing/floating-gallery";

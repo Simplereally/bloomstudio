@@ -41,7 +41,7 @@ const httpsAgent = new HttpsAgent({
 function getS3Client(): Promise<S3Client> {
     if (!s3ClientPromise) {
         s3ClientPromise = (async () => {
-            const initStart = performance.now() // PERF_LOG
+
             const accountId = process.env.R2_ACCOUNT_ID
             const accessKeyId = process.env.R2_ACCESS_KEY_ID
             const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY
@@ -63,11 +63,11 @@ function getS3Client(): Promise<S3Client> {
                     socketTimeout: 60000,      // 60s for large uploads
                 }),
             })
-            console.log(`[R2] [PERF] S3Client initialization took ${(performance.now() - initStart).toFixed(1)}ms`) // PERF_LOG
+
             return client
         })()
     } else {
-        console.log(`[R2] [PERF] S3Client cache hit (reusing existing client)`) // PERF_LOG
+
     }
     return s3ClientPromise
 }
@@ -121,7 +121,7 @@ export async function uploadToR2(
     key: string,
     contentType: string
 ): Promise<R2UploadResult> {
-    const startTime = performance.now() // PERF_LOG
+
     const bucketName = process.env.R2_BUCKET_NAME
     const publicUrl = process.env.R2_PUBLIC_URL
 
@@ -129,9 +129,8 @@ export async function uploadToR2(
         throw new Error("R2 configuration incomplete. Check R2_BUCKET_NAME and R2_PUBLIC_URL.")
     }
 
-    const clientStart = performance.now() // PERF_LOG
     const client = await getS3Client()
-    console.log(`[R2] [PERF] getS3Client() took ${(performance.now() - clientStart).toFixed(1)}ms`) // PERF_LOG
+
 
     const command = new PutObjectCommand({
         Bucket: bucketName,
@@ -141,12 +140,8 @@ export async function uploadToR2(
         CacheControl: "public, max-age=31536000, immutable",
     })
 
-    const uploadStart = performance.now() // PERF_LOG
     await client.send(command)
-    const uploadTime = performance.now() - uploadStart // PERF_LOG
-    const sizeMB = imageBuffer.length / 1024 / 1024 // PERF_LOG
-    console.log(`[R2] [PERF] client.send() took ${uploadTime.toFixed(1)}ms for ${sizeMB.toFixed(2)}MB (${(sizeMB / (uploadTime / 1000)).toFixed(1)} MB/s)`) // PERF_LOG
-    console.log(`[R2] [PERF] TOTAL uploadToR2 took ${(performance.now() - startTime).toFixed(1)}ms for ${key}`) // PERF_LOG
+
 
     return {
         url: `${publicUrl}/${key}`,
@@ -271,19 +266,17 @@ export async function uploadMediaWithThumbnail(
     r2Key: string,
     contentType: string
 ): Promise<MediaUploadResult> {
-    const startTime = performance.now() // PERF_LOG
+
     const isVideo = contentType.startsWith("video/")
 
     if (isVideo) {
         // For videos: run upload and thumbnail extraction in parallel
-        console.log(`[Upload] [PERF] Starting parallel video upload + thumbnail extraction (buffer: ${(buffer.length / 1024 / 1024).toFixed(2)}MB)...`) // PERF_LOG
         
-        const parallelStart = performance.now() // PERF_LOG
         const [mediaResult, thumbnailBuffer] = await Promise.all([
             uploadToR2(buffer, r2Key, contentType),
             extractVideoThumbnail(buffer),
         ])
-        console.log(`[Upload] [PERF] Promise.all (video upload + thumbnail extract) took ${(performance.now() - parallelStart).toFixed(1)}ms`) // PERF_LOG
+
 
         console.log(`[Upload] Video uploaded: ${mediaResult.url}`)
 
@@ -291,29 +284,22 @@ export async function uploadMediaWithThumbnail(
         let thumbnailResult: R2UploadResult | null = null
         if (thumbnailBuffer) {
             const thumbnailKey = generateThumbnailKey(r2Key)
-            const thumbUploadStart = performance.now() // PERF_LOG
             thumbnailResult = await uploadToR2(thumbnailBuffer, thumbnailKey, "image/jpeg")
-            console.log(`[Upload] [PERF] thumbnail upload took ${(performance.now() - thumbUploadStart).toFixed(1)}ms`) // PERF_LOG
+
             console.log(`[Upload] Thumbnail uploaded: ${thumbnailResult.url}`)
         } else {
             console.log("[Upload] Thumbnail extraction failed, skipping upload")
         }
 
-        console.log(`[Upload] [PERF] TOTAL uploadMediaWithThumbnail (video) took ${(performance.now() - startTime).toFixed(1)}ms`) // PERF_LOG
+
         return { media: mediaResult, thumbnail: thumbnailResult }
     } else {
         // For images: sequential is fine (jimp is fast)
-        console.log(`[Upload] [PERF] Starting sequential image upload (buffer: ${(buffer.length / 1024 / 1024).toFixed(2)}MB)...`) // PERF_LOG
         
-        const mediaStart = performance.now() // PERF_LOG
         const mediaResult = await uploadToR2(buffer, r2Key, contentType)
-        console.log(`[Upload] [PERF] image upload took ${(performance.now() - mediaStart).toFixed(1)}ms`) // PERF_LOG
         
-        const thumbStart = performance.now() // PERF_LOG
         const thumbnailResult = await generateAndUploadThumbnail(buffer, r2Key, contentType)
-        console.log(`[Upload] [PERF] thumbnail generation+upload took ${(performance.now() - thumbStart).toFixed(1)}ms`) // PERF_LOG
         
-        console.log(`[Upload] [PERF] TOTAL uploadMediaWithThumbnail (image) took ${(performance.now() - startTime).toFixed(1)}ms`) // PERF_LOG
         return { media: mediaResult, thumbnail: thumbnailResult }
     }
 }

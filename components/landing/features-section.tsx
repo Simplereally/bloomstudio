@@ -1,4 +1,4 @@
-import { Image as ImageIcon, Layers, Lock, MousePointer2, Palette, Video, Wand2, Zap } from "lucide-react"
+import { Image as ImageIcon, Layers, Lock, MousePointer2, Palette, Video, Zap } from "lucide-react"
 import Link from "next/link"
 import { FeatureCard } from "./feature-card"
 import { ScrollReveal } from "./scroll-reveal"

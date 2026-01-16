@@ -3,7 +3,7 @@
  *
  * Tests for useGenerateImage Hook
  */
-import { describe, it, expect, vi, beforeEach, type Mock } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 import { renderHook, waitFor, act } from "@testing-library/react"
 import type { ReactNode } from "react"
 import {
@@ -12,8 +12,6 @@ import {
     isServerGenerationError,
 } from "./use-generate-image"
 
-// Track the query arguments to return appropriate mock data
-let mockQueryArgs: Record<string, unknown> = {}
 let mockGenerationStatus: {
     status: "pending" | "processing" | "completed" | "failed"
     imageId?: string
@@ -40,9 +38,6 @@ vi.mock("convex/react", () => ({
         _apiRef: unknown,
         args: unknown
     ) => {
-        // Store the args for inspection
-        mockQueryArgs = args as Record<string, unknown>
-
         // Return appropriate mock data based on which query is being called
         // The hook passes "skip" when it doesn't want to run the query
         if (args === "skip") {
@@ -69,6 +64,27 @@ const mockAuthorize = vi.fn()
 vi.mock("@/lib/pollen-auth", () => ({
     usePollenApiKey: () => mockApiKey,
     usePollenAuthActions: () => ({ authorize: mockAuthorize }),
+    usePollenAuth: () => ({
+        apiKey: mockApiKey,
+        isAuthorized: true,
+        isLoading: false,
+    }),
+}))
+
+// Mock usePollenBalance hook
+const mockInvalidateBalance = vi.fn()
+vi.mock("@/hooks/use-pollen-balance", () => ({
+    usePollenBalance: () => ({
+        balance: 100,
+        formattedBalance: "100.00",
+        isLoading: false,
+        isError: false,
+        error: null,
+        isLowBalance: false,
+        refetch: vi.fn(),
+        invalidateBalance: mockInvalidateBalance,
+        isRefreshing: false,
+    }),
 }))
 
 // Mock Convex API - provide full structure that the hook expects
@@ -92,7 +108,6 @@ function TestWrapper({ children }: { children: ReactNode }) {
 describe("useGenerateImage", () => {
     beforeEach(() => {
         vi.clearAllMocks()
-        mockQueryArgs = {}
         mockGenerationStatus = null
         mockGeneratedImage = null
         mockStartGeneration.mockReset()

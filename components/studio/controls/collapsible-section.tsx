@@ -96,28 +96,29 @@ export const CollapsibleSection = React.memo(function CollapsibleSection({
                         <span className="text-[13px] uppercase tracking-wider font-semibold text-muted-foreground group-hover/header:text-foreground transition-colors truncate">
                             {title}
                         </span>
-
-                        {/* Spacer to push collapsed chevron to the right when no rightContent */}
-                        {!isExpanded && !collapsedContent && !rightContent && (
-                            <div className="flex-1" />
-                        )}
-
-                        {!isExpanded && (
-                            <ChevronRight
-                                data-testid={testId ? `${testId}-chevron` : undefined}
-                                className={cn(
-                                    "h-4 w-4 text-muted-foreground/50 transition-transform shrink-0",
-                                    !collapsedContent && !rightContent ? "" : "ml-2"
-                                )}
-                            />
-                        )}
                     </CollapsibleTrigger>
 
-                    {/* rightContent/collapsedContent OUTSIDE the trigger to prevent nested buttons */}
-                    {!isExpanded && (collapsedContent || rightContent) && (
-                        <div className="shrink-0 pr-1 opacity-90 ml-auto leading-none flex items-center">
-                            {collapsedContent ?? rightContent}
-                        </div>
+                    {/* Collapsed state: collapsedContent then chevron, both on the right */}
+                    {!isExpanded && (
+                        <>
+                            {(collapsedContent || rightContent) && (
+                                <div className="shrink-0 opacity-90 leading-none flex items-center">
+                                    {collapsedContent ?? rightContent}
+                                </div>
+                            )}
+                            <CollapsibleTrigger
+                                className={cn(
+                                    "flex items-center justify-center p-2 rounded-none transition-colors outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring select-none !cursor-pointer",
+                                    disabled ? "cursor-not-allowed" : ""
+                                )}
+                                disabled={disabled}
+                            >
+                                <ChevronRight
+                                    data-testid={testId ? `${testId}-chevron` : undefined}
+                                    className="h-4 w-4 text-muted-foreground/50 transition-transform shrink-0"
+                                />
+                            </CollapsibleTrigger>
+                        </>
                     )}
 
                     {/* Interactive rightContent OUTSIDE the main trigger */}
@@ -148,8 +149,13 @@ export const CollapsibleSection = React.memo(function CollapsibleSection({
 
                 <CollapsibleContent
                     className={cn(
-                        "w-full min-w-0 overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up",
-                        forceMount && !isExpanded && "hidden"
+                        "w-full min-w-0 overflow-hidden",
+                        "data-[state=open]:animate-collapsible-down",
+                        "data-[state=closed]:animate-collapsible-up",
+                        // When forceMount is used, we still want animations to play.
+                        // The collapsible-up animation ends at height:0 opacity:0, which visually hides the content
+                        // without needing 'hidden' class that would bypass the animation.
+                        forceMount && "data-[state=closed]:pointer-events-none"
                     )}
                     data-testid={testId ? `${testId}-content` : undefined}
                     forceMount={forceMount || undefined}

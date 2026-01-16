@@ -84,13 +84,11 @@ let ffmpegPromise: Promise<typeof Ffmpeg> | null = null
 function getFfmpeg(): Promise<typeof Ffmpeg> {
     if (!ffmpegPromise) {
         ffmpegPromise = (async () => {
-            const importStart = performance.now()
             const ffmpegStatic = (await import("ffmpeg-static")).default
-            console.log(`[VideoPreview] [PERF] import ffmpeg-static took ${(performance.now() - importStart).toFixed(1)}ms`)
+
             
-            const moduleStart = performance.now()
             const ffmpegModule = await import("fluent-ffmpeg")
-            console.log(`[VideoPreview] [PERF] import fluent-ffmpeg took ${(performance.now() - moduleStart).toFixed(1)}ms`)
+
 
             if (!ffmpegStatic) {
                 throw new Error("ffmpeg-static binary not found")
@@ -123,7 +121,7 @@ export async function generateVideoPreview(
     config: VideoPreviewConfig = PREVIEW_CONFIG
 ): Promise<VideoPreviewResult | null> {
     const logger = "[VideoPreview]"
-    const startTime = performance.now()
+
 
     // Create temp directory and files
     const tempDir = join(tmpdir(), "bloomstudio-previews")
@@ -136,12 +134,11 @@ export async function generateVideoPreview(
         const ffmpeg = await getFfmpeg()
 
         // Write video to temp file
-        const writeStart = performance.now()
         await writeFile(inputPath, videoBuffer)
-        console.log(`${logger} [PERF] writeFile took ${(performance.now() - writeStart).toFixed(1)}ms for ${(videoBuffer.length / 1024 / 1024).toFixed(2)}MB`)
+
 
         // Generate preview
-        const ffmpegStart = performance.now()
+
         await new Promise<void>((resolve, reject) => {
             let settled = false
 
@@ -183,17 +180,15 @@ export async function generateVideoPreview(
 
             command.run()
         })
-        console.log(`${logger} [PERF] ffmpeg processing took ${(performance.now() - ffmpegStart).toFixed(1)}ms`)
+
 
         // Read output file
-        const readStart = performance.now()
         const previewBuffer = await readFile(outputPath)
-        console.log(`${logger} [PERF] readFile took ${(performance.now() - readStart).toFixed(1)}ms`)
 
-        const totalTime = performance.now() - startTime
+
         const compressionRatio = ((videoBuffer.length - previewBuffer.length) / videoBuffer.length) * 100
         
-        console.log(`${logger} [PERF] TOTAL generateVideoPreview took ${totalTime.toFixed(1)}ms`)
+
         console.log(`${logger} Preview generated: ${(videoBuffer.length / 1024 / 1024).toFixed(2)}MB → ${(previewBuffer.length / 1024 / 1024).toFixed(2)}MB (${compressionRatio.toFixed(1)}% reduction)`)
 
         return {
@@ -206,12 +201,11 @@ export async function generateVideoPreview(
         return null
     } finally {
         // Cleanup temp files
-        const cleanupStart = performance.now()
         await Promise.all([
             unlink(inputPath).catch(() => { /* ignore cleanup errors */ }),
             unlink(outputPath).catch(() => { /* ignore cleanup errors */ }),
         ])
-        console.log(`${logger} [PERF] cleanup took ${(performance.now() - cleanupStart).toFixed(1)}ms`)
+
     }
 }
 

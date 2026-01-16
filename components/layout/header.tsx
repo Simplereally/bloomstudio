@@ -12,12 +12,34 @@ import { ApiKeyOnboardingModal } from "@/components/studio/api-key-onboarding-mo
 import { UpgradeModal } from "@/components/studio/upgrade-modal"
 import { cn, isLocalhost } from "@/lib/utils"
 import { SubscriptionBadge } from "@/components/subscription/subscription-badge"
+import { PollenBalanceDisplay } from "@/components/pollen-balance"
+import { usePollenAuth } from "@/lib/pollen-auth"
 import { UserButton, useUser } from "@clerk/nextjs"
-import { Crown, Heart, HelpCircle, History, Key, Menu, Moon, Settings, Sparkles, Sun, Users, X } from "lucide-react"
+import { Coins, Crown, Heart, HelpCircle, History, Key, Menu, Moon, Settings, Sparkles, Sun, User, Users, X, FileText } from "lucide-react"
 import { useTheme } from "next-themes"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useState, useSyncExternalStore } from "react"
+
+const POLLINATIONS_API_BASE = "https://gen.pollinations.ai"
+
+async function testPollinationsEndpoint(endpoint: string, apiKey: string) {
+    try {
+        const response = await fetch(`${POLLINATIONS_API_BASE}/api${endpoint}`, {
+            method: "GET",
+            headers: {
+                Authorization: `Bearer ${apiKey}`,
+            },
+        })
+        const data = await response.json()
+        console.log(`[Pollinations API] ${endpoint}:`, JSON.stringify(data, null, 2))
+        alert(`${endpoint} response logged to console:\n\n${JSON.stringify(data, null, 2)}`)
+        return data
+    } catch (error) {
+        console.error(`[Pollinations API] ${endpoint} error:`, error)
+        alert(`Error fetching ${endpoint}: ${error}`)
+    }
+}
 
 const navItems = [
     { href: "/studio", label: "Studio", icon: Sparkles },
@@ -33,23 +55,23 @@ const navItems = [
 export function Header() {
     const pathname = usePathname()
     const { isSignedIn, isLoaded } = useUser()
+    const { apiKey } = usePollenAuth()
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const { theme, setTheme } = useTheme()
     const [upgradeModalOpen, setUpgradeModalOpen] = useState(false)
     const [onboardingModalOpen, setOnboardingModalOpen] = useState(false)
 
-    // Prevent hydration mismatch
-    const [mounted, setMounted] = useState(false)
-    const [isLocalDev, setIsLocalDev] = useState(false)
+    const isClient = useSyncExternalStore(
+        () => () => {},
+        () => true,
+        () => false
+    )
 
-    useEffect(() => {
-        setMounted(true)
-        setIsLocalDev(isLocalhost())
-    }, [])
+    const isLocalDev = isClient && isLocalhost()
 
     if (pathname === "/" || pathname === "/about" || pathname.startsWith("/sign-in") || pathname.startsWith("/sign-up") || pathname.startsWith("/solutions") || pathname.startsWith("/faq") || pathname.startsWith("/pricing") || pathname.startsWith("/support") || pathname.startsWith("/contact") || pathname.startsWith("/privacy") || pathname.startsWith("/terms")) return null
 
-    const showAuthUI = mounted && isLoaded
+    const showAuthUI = isClient && isLoaded
 
     return (
         <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/60 backdrop-blur-xl supports-[backdrop-filter]:bg-background/40">
@@ -107,6 +129,7 @@ export function Header() {
                                     size="icon"
                                     className="h-7 w-7 rounded-full hover:bg-accent text-primary"
                                     onClick={() => setUpgradeModalOpen(true)}
+                                    title="Test Upgrade Modal"
                                 >
                                     <Crown className="h-3.5 w-3.5" />
                                 </Button>
@@ -115,14 +138,15 @@ export function Header() {
                                     size="icon"
                                     className="h-7 w-7 rounded-full hover:bg-accent text-amber-500"
                                     onClick={() => setOnboardingModalOpen(true)}
+                                    title="Test API Key Onboarding"
                                 >
                                     <Key className="h-3.5 w-3.5" />
                                 </Button>
                             </div>
                         )}
 
-                        {/* Settings */}
-                        {mounted && (
+                        {/* Settings - only show for authenticated users */}
+                        {showAuthUI && isSignedIn && (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button
@@ -163,18 +187,24 @@ export function Header() {
                             </DropdownMenu>
                         )}
 
+                        {/* Pollen Balance Display - only for users with BYOP key */}
+                        {showAuthUI && isSignedIn && (
+                            <div className="hidden sm:block">
+                                <PollenBalanceDisplay />
+                            </div>
+                        )}
+
                         {/* Subscription Tier Badge */}
                         {showAuthUI && isSignedIn && (
                             <div className="hidden sm:block">
                                 <SubscriptionBadge />
                             </div>
-                        )}
+                        )}                        
 
                         {/* User Button */}
                         {showAuthUI && isSignedIn && (
                             <div className="flex items-center pl-1 border-l border-border/50 ml-1 pr-1">
                                 <UserButton
-                                    afterSignOutUrl="/"
                                     appearance={{
                                         elements: {
                                             avatarBox: "h-8 w-8 ring-2 ring-border/50 hover:ring-primary/40 transition-all duration-300"
@@ -245,7 +275,7 @@ export function Header() {
             )}
 
             {/* Dev-only Modals */}
-            {isLocalDev && (
+                        {isLocalDev && (
                 <>
                     <UpgradeModal
                         isOpen={upgradeModalOpen}

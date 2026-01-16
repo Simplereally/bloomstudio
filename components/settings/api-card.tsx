@@ -31,15 +31,21 @@ export function ApiCard() {
     connectionStatus,
     actionState,
     handlers,
+    isLoading,
   } = useApiCardState();
 
+
+  if (isLoading) {
+    return <ApiCardSkeleton />;
+  }
+
   return (
-    <Card className="border-border/50 bg-background/50 backdrop-blur-sm shadow-sm overflow-hidden">
-      <CardHeader>
+    <Card className="border-border/50 bg-background/50 backdrop-blur-sm shadow-xl overflow-hidden">
+      <CardHeader className="pb-4">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
-            <CardTitle className="text-xl">Pollinations Connection</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-2xl font-bold">Pollinations Connection</CardTitle>
+            <CardDescription className="text-base text-muted-foreground/80">
               Manage your connection to Pollinations.ai for image generation.
             </CardDescription>
           </div>
@@ -49,7 +55,7 @@ export function ApiCard() {
           />
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-6">
         {/* BYOP Connection Section */}
         {byopState.isConnected ? (
           <ByopConnectedSection
@@ -89,6 +95,25 @@ export function ApiCard() {
           isRemoving={actionState.isRemoving}
           onRemove={handlers.handleRemoveLegacyKey}
         />
+      </CardContent>
+    </Card>
+  );
+}
+
+function ApiCardSkeleton() {
+  return (
+    <Card className="border-border/50 bg-background/50 backdrop-blur-sm shadow-xl overflow-hidden">
+      <CardHeader className="pb-4">
+        <div className="flex items-start justify-between">
+          <div className="space-y-2">
+            <div className="h-8 w-64 bg-muted rounded animate-pulse" />
+            <div className="h-4 w-96 bg-muted rounded animate-pulse" />
+          </div>
+          <div className="h-8 w-32 bg-muted rounded-full animate-pulse" />
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="h-48 w-full bg-muted/20 rounded-xl animate-pulse border border-border/40" />
       </CardContent>
     </Card>
   );

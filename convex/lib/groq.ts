@@ -110,7 +110,6 @@ export async function analyzeImageWithGroqDeps(
         const timeoutId = setTimeout(() => controller.abort(), deps.timeoutMs)
 
         try {
-            console.log(`[Groq Vision] Attempt ${attempt + 1}/${deps.maxRetries + 1}`)
 
             const response = await deps.fetchFn("https://api.groq.com/openai/v1/chat/completions", {
                 method: "POST",
@@ -140,8 +139,18 @@ export async function analyzeImageWithGroqDeps(
 
             if (!response.ok) {
                 const errorText = await response.text().catch(() => "")
+                
+                // For rate limit errors, capture the reset duration from headers
+                let rateLimitInfo = ""
+                if (response.status === 429) {
+                    const resetDuration = response.headers.get("x-ratelimit-reset-requests")
+                    if (resetDuration) {
+                        rateLimitInfo = ` x-ratelimit-reset-requests: ${resetDuration}`
+                    }
+                }
+                
                 throw new GroqApiError(
-                    `Groq API error: ${response.status} ${response.statusText} - ${errorText}`,
+                    `Groq API error: ${response.status} ${response.statusText} - ${errorText}${rateLimitInfo}`,
                     response.status
                 )
             }
@@ -153,7 +162,6 @@ export async function analyzeImageWithGroqDeps(
                 throw new GroqApiError("No content received from Groq")
             }
 
-            console.log(`[Groq Vision] Success on attempt ${attempt + 1}`)
             return { text: content }
 
         } catch (error) {
@@ -168,8 +176,6 @@ export async function analyzeImageWithGroqDeps(
                 lastError = error instanceof Error ? error : new Error(String(error))
             }
 
-            console.warn(`[Groq Vision] Attempt ${attempt + 1} failed: ${lastError.message}`)
-
             // Retry with backoff if we have attempts left
             if (attempt < deps.maxRetries) {
                 const delay = calculateBackoffDelay(
@@ -177,7 +183,6 @@ export async function analyzeImageWithGroqDeps(
                     deps.retryConfig.baseDelayMs,
                     deps.retryConfig.maxDelayMs
                 )
-                console.log(`[Groq Vision] Retrying in ${Math.round(delay)}ms...`)
                 await deps.sleepFn(delay)
             }
         }

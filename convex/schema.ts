@@ -120,7 +120,8 @@ export default defineSchema({
             v.literal("prompt_analysis"),
             v.literal("vision_analysis"),
             v.literal("manual_review"),
-            v.literal("user_report")
+            v.literal("user_report"),
+            v.literal("prompt_inference")
         )),
 
 
@@ -133,6 +134,15 @@ export default defineSchema({
             nudity: v.optional(v.string()), // none, partial, full
             sexual: v.optional(v.string()), // none, suggestive, explicit
             violence: v.optional(v.string()), // none, mild, graphic
+            analyzedAt: v.number(),
+        })),
+
+        /** Phase III: Prompt Inference Metadata */
+        promptInference: v.optional(v.object({
+            category: v.string(), // "explicit" | "suggestive" | "safe"
+            confidence: v.number(),
+            reasoning: v.string(),
+            provider: v.string(),
             analyzedAt: v.number(),
         })),
 
@@ -345,4 +355,25 @@ export default defineSchema({
         windowStart: v.number(),
     }).index("by_key", ["key"])
         .index("by_windowStart", ["windowStart"]),
+
+    /**
+     * Provider health tracking - monitors rate limit status for vision analysis providers
+     * Prevents wasteful API calls when providers are rate-limited
+     */
+    providerHealth: defineTable({
+        /** Provider identifier */
+        provider: v.union(v.literal("groq"), v.literal("openrouter")),
+        /** Whether the provider is currently available for requests */
+        isAvailable: v.boolean(),
+        /** Unix timestamp (ms) when the rate limit resets and provider becomes available */
+        rateLimitedUntil: v.optional(v.number()),
+        /** Last error message received from the provider */
+        lastError: v.optional(v.string()),
+        /** Unix timestamp (ms) of the last health check */
+        lastChecked: v.number(),
+        /** Number of remaining requests in the current window (if known) */
+        remainingRequests: v.optional(v.number()),
+        /** Maximum requests allowed in the window (if known) */
+        requestLimit: v.optional(v.number()),
+    }).index("by_provider", ["provider"]),
 })
