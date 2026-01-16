@@ -55,12 +55,12 @@ describe("hooks/use-pollen-balance", () => {
           (balance) => {
             const result = formatBalance(balance);
             expect(result).not.toBeNull();
-            
+
             // Verify format: should have exactly 2 decimal places
             const parts = result!.split(".");
             expect(parts.length).toBe(2);
             expect(parts[1].length).toBe(2);
-            
+
             // Verify the numeric value is preserved (within floating point tolerance)
             const parsed = parseFloat(result!);
             expect(Math.abs(parsed - balance)).toBeLessThan(0.01);
@@ -206,7 +206,7 @@ describe("usePollenBalance hook", () => {
 
       // Make fetch hang to test loading state
       mockFetchPollenBalance.mockImplementation(
-        () => new Promise(() => {}) // Never resolves
+        () => new Promise(() => { }) // Never resolves
       );
 
       const { result } = renderHook(() => usePollenBalance(), {
@@ -253,7 +253,7 @@ describe("usePollenBalance hook", () => {
         isLoading: false,
       });
 
-      mockFetchPollenBalance.mockResolvedValue({ balance: 0.5 }); // Below default threshold of 1
+      mockFetchPollenBalance.mockResolvedValue({ balance: 0.49 }); // Below default threshold of 1
 
       const { result } = renderHook(() => usePollenBalance(), {
         wrapper: createWrapper(),
