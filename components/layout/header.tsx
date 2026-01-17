@@ -42,7 +42,7 @@ export function Header() {
     const [lowBalanceModalOpen, setLowBalanceModalOpen] = useState(false)
 
     const isClient = useSyncExternalStore(
-        () => () => {},
+        () => () => { },
         () => true,
         () => false
     )
@@ -55,7 +55,7 @@ export function Header() {
 
     return (
         <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/60 backdrop-blur-xl supports-[backdrop-filter]:bg-background/40">
-            <div className="grid h-14 w-full grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 sm:px-8">
+            <div className="grid h-14 w-full grid-cols-[1fr_auto_1fr] items-center gap-4 px-4">
                 {/* Left Side: Logo - Start Aligned */}
                 <div className="justify-self-start">
                     <Link href="/" className="flex items-center gap-2">
@@ -195,7 +195,7 @@ export function Header() {
                             <div className="hidden sm:block">
                                 <SubscriptionBadge />
                             </div>
-                        )}                        
+                        )}
 
                         {/* User Button */}
                         {showAuthUI && isSignedIn && (
@@ -271,7 +271,7 @@ export function Header() {
             )}
 
             {/* Dev-only Modals */}
-                        {isLocalDev && (
+            {isLocalDev && (
                 <>
                     <UpgradeModal
                         isOpen={upgradeModalOpen}
