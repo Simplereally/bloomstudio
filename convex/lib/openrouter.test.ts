@@ -73,7 +73,7 @@ describe("openrouter", () => {
 
         it("parses successful JSON response", async () => {
             const analysisResult = {
-                nudity: "partial",
+                nudity: "none",
                 sexual_content: "suggestive",
                 violence: "none",
                 confidence: 0.87,
@@ -224,18 +224,19 @@ describe("openrouter", () => {
             expect(score).toBe(0);
         });
 
-        it("calculates score for partial nudity", async () => {
+        it("returns 0 for content with none nudity (treats partial as none)", async () => {
             const { calculateSensitivityScore } = await import("./openrouter");
 
+            // Note: "partial" is no longer a valid type, only "none" or "full"
             const score = calculateSensitivityScore({
-                nudity: "partial",
+                nudity: "none",
                 sexual_content: "none",
                 violence: "none",
                 confidence: 1.0,
-                reasoning: "Partial nudity"
+                reasoning: "No explicit nudity"
             });
 
-            expect(score).toBe(0.4);
+            expect(score).toBe(0);
         });
 
         it("calculates score for full nudity", async () => {
@@ -252,18 +253,18 @@ describe("openrouter", () => {
             expect(score).toBe(0.9);
         });
 
-        it("calculates cumulative score for multiple factors", async () => {
+        it("calculates cumulative score for multiple factors (without partial nudity)", async () => {
             const { calculateSensitivityScore } = await import("./openrouter");
 
             const score = calculateSensitivityScore({
-                nudity: "partial",    // +0.4
+                nudity: "none",           // +0 (partial no longer counts)
                 sexual_content: "suggestive", // +0.3
                 violence: "mild",     // +0.2
                 confidence: 1.0,
-                reasoning: "Mixed content"
+                reasoning: "Mixed content without explicit nudity"
             });
 
-            expect(score).toBeCloseTo(0.9, 10); // 0.4 + 0.3 + 0.2 = 0.9 (using toBeCloseTo for floating point)
+            expect(score).toBeCloseTo(0.5, 10); // 0 + 0.3 + 0.2 = 0.5
         });
 
         it("caps score at 1.0 for extreme content", async () => {

@@ -1,7 +1,8 @@
 "use node"
 
 export interface ContentAnalysisResult {
-    nudity: "none" | "partial" | "full";
+    /** Binary nudity: "none" = clothed/partial skin, "full" = sexual organs visible OR completely nude */
+    nudity: "none" | "full";
     sexual_content: "none" | "suggestive" | "explicit";
     violence: "none" | "mild" | "graphic";
     confidence: number;
@@ -55,12 +56,12 @@ export async function analyzeImageContent(imageUrl: string): Promise<ContentAnal
                 {
                     type: "text",
                     text: `Analyze this image for content appropriateness. Classify:
-1. Nudity: none/partial/full
+1. Nudity: none/full ("full" = sexual organs visible such as nipples, genitals, anus OR subject is entirely nude with zero clothing. Bikinis, lingerie, or partial skin showing is "none".)
 2. Sexual content: none/suggestive/explicit  
 3. Violence: none/mild/graphic
 
 Respond ONLY with valid JSON:
-{"nudity":"none|partial|full","sexual_content":"none|suggestive|explicit","violence":"none|mild|graphic","confidence":0.0-1.0,"reasoning":"brief explanation"}`
+{"nudity":"none|full","sexual_content":"none|suggestive|explicit","violence":"none|mild|graphic","confidence":0.0-1.0,"reasoning":"brief explanation"}`
                 }
             ]
         }],
@@ -122,10 +123,15 @@ Respond ONLY with valid JSON:
     }
 }
 
+/**
+ * Calculate a sensitivity score from 0-1 based on content analysis.
+ * Nudity is now binary: "full" (explicit/nude) scores high, "none" scores 0.
+ * Threshold for isSensitive is >= 0.8.
+ */
 export function calculateSensitivityScore(analysis: ContentAnalysisResult): number {
     let score = 0;
 
-    if (analysis.nudity === "partial") score += 0.4;
+    // Binary nudity: "full" means sexual organs visible OR completely nude
     if (analysis.nudity === "full") score += 0.9;
 
     if (analysis.sexual_content === "suggestive") score += 0.3;

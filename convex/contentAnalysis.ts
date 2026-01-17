@@ -26,7 +26,8 @@ async function analyzeOneImage(
     try {
         const analysis = await analyzeImageContent(imageUrl, { onRateLimited });
         const sensitivityScore = calculateSensitivityScore(analysis);
-        const isSensitive = sensitivityScore >= 0.5;
+        // Threshold updated: >= 0.8 required to mark as sensitive (was 0.5)
+        const isSensitive = sensitivityScore >= 0.8;
 
         await ctx.runMutation(internal.generatedImages.updateImageSensitivity, {
             imageId,
@@ -176,8 +177,8 @@ export const analyzeRecentImages = internalAction({
                         console.log(`[Vision] Skipped vision for ${image._id} (Resolved by Prompt Inference: ${decision.action})`);
                         processed++;
                         continue;
-                    } 
-                    
+                    }
+
                     console.log(`[Vision] Prompt Inference ambiguous for ${image._id}, proceeding to vision...`);
 
                 } catch (error) {

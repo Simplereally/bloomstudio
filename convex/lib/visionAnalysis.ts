@@ -19,7 +19,8 @@ import { analyzeImageContent as analyzeWithOpenRouter, calculateSensitivityScore
 // =============================================================================
 
 export interface ContentAnalysisResult {
-    nudity: "none" | "partial" | "full"
+    /** Binary nudity: "none" = clothed/partial skin, "full" = sexual organs visible OR completely nude */
+    nudity: "none" | "full"
     sexual_content: "none" | "suggestive" | "explicit"
     violence: "none" | "mild" | "graphic"
     confidence: number
@@ -33,12 +34,12 @@ export interface ContentAnalysisResult {
 
 /** The analysis prompt for content moderation */
 const CONTENT_ANALYSIS_PROMPT = `Analyze this image for content appropriateness. Classify:
-1. Nudity: none/partial/full
+1. Nudity: none/full ("full" = sexual organs visible such as nipples, genitals, anus OR subject is entirely nude with zero clothing. Bikinis, lingerie, or partial skin showing is "none".)
 2. Sexual content: none/suggestive/explicit  
 3. Violence: none/mild/graphic
 
 Respond ONLY with valid JSON:
-{"nudity":"none|partial|full","sexual_content":"none|suggestive|explicit","violence":"none|mild|graphic","confidence":0.0-1.0,"reasoning":"brief explanation"}`
+{"nudity":"none|full","sexual_content":"none|suggestive|explicit","violence":"none|mild|graphic","confidence":0.0-1.0,"reasoning":"brief explanation"}`
 
 // =============================================================================
 // Core Functions
@@ -57,8 +58,12 @@ function parseAnalysisResponse(text: string): Omit<ContentAnalysisResult, "provi
         const parsed = JSON.parse(jsonContent)
 
         // Validate and normalize the response
+        // Nudity is now binary: treat "partial" as "none" (only "full" counts)
+        const rawNudity = typeof parsed.nudity === "string" ? parsed.nudity.toLowerCase() : "none";
+        const nudity: "none" | "full" = rawNudity === "full" ? "full" : "none";
+
         return {
-            nudity: normalizeLevel(parsed.nudity, ["none", "partial", "full"]),
+            nudity,
             sexual_content: normalizeLevel(parsed.sexual_content, ["none", "suggestive", "explicit"]),
             violence: normalizeLevel(parsed.violence, ["none", "mild", "graphic"]),
             confidence: typeof parsed.confidence === "number" ? Math.min(1, Math.max(0, parsed.confidence)) : 0.5,
@@ -106,7 +111,7 @@ export async function analyzeImageContent(
     const errors: Array<{ provider: "groq" | "openrouter"; error: Error }> = []
 
     // Helper to check if an error is a rate limit error
-    const isRateLimitError = (err: Error) => 
+    const isRateLimitError = (err: Error) =>
         err.message.includes("429") || err.message.toLowerCase().includes("rate limit")
 
     // Helper to extract error body for rate limit parsing
