@@ -10,13 +10,13 @@ import { PollinationsApiError, ApiErrorCodeConst, ClientErrorCodeConst } from "@
 
 // Mock Shadcn UI components to avoid testing them and focus on GenerationError logic
 vi.mock("@/components/ui/alert", () => ({
-    Alert: ({ children, variant, className }: any) => <div data-testid="alert" data-variant={variant} className={className}>{children}</div>,
-    AlertTitle: ({ children, className }: any) => <div data-testid="alert-title" className={className}>{children}</div>,
-    AlertDescription: ({ children, className }: any) => <div data-testid="alert-description" className={className}>{children}</div>,
+    Alert: ({ children, variant, className }: { children?: React.ReactNode; variant?: string; className?: string }) => <div data-testid="alert" data-variant={variant} className={className}>{children}</div>,
+    AlertTitle: ({ children, className }: { children?: React.ReactNode; className?: string }) => <div data-testid="alert-title" className={className}>{children}</div>,
+    AlertDescription: ({ children, className }: { children?: React.ReactNode; className?: string }) => <div data-testid="alert-description" className={className}>{children}</div>,
 }))
 
 vi.mock("@/components/ui/button", () => ({
-    Button: ({ children, onClick, disabled, variant, size, className }: any) => (
+    Button: ({ children, onClick, disabled, variant, size, className }: { children?: React.ReactNode; onClick?: () => void; disabled?: boolean; variant?: string; size?: string; className?: string }) => (
         <button
             data-testid="button"
             onClick={onClick}
@@ -31,18 +31,18 @@ vi.mock("@/components/ui/button", () => ({
 }))
 
 vi.mock("@/components/ui/collapsible", () => ({
-    Collapsible: ({ children, open, onOpenChange }: any) => (
+    Collapsible: ({ children, open, onOpenChange }: { children?: React.ReactNode; open?: boolean; onOpenChange?: (open: boolean) => void }) => (
         <div data-testid="collapsible" data-open={open}>
             {children}
             {/* simulate trigger click for testing state change if needed, but since we mock, we control state usually? 
                 Actually, GenerationError controls the state. 
                 For the mock to work with state, we need to pass props through.
             */}
-            <button data-testid="collapsible-trigger-internal" onClick={() => onOpenChange(!open)}>Toggle</button>
+            <button data-testid="collapsible-trigger-internal" onClick={() => onOpenChange?.(!open)}>Toggle</button>
         </div>
     ),
-    CollapsibleTrigger: ({ children, asChild }: any) => <div data-testid="collapsible-trigger">{children}</div>,
-    CollapsibleContent: ({ children }: any) => <div data-testid="collapsible-content">{children}</div>,
+    CollapsibleTrigger: ({ children }: { children?: React.ReactNode; asChild?: boolean }) => <div data-testid="collapsible-trigger">{children}</div>,
+    CollapsibleContent: ({ children }: { children?: React.ReactNode }) => <div data-testid="collapsible-content">{children}</div>,
 }))
 
 describe("GenerationError", () => {
