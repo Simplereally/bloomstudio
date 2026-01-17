@@ -64,6 +64,8 @@ interface ImageCardProps {
     className?: string
     /** If true, image loads with high priority and eager loading (for above-the-fold) */
     priority?: boolean
+    /** Pre-fetched favorite status from parent (skips individual subscription if provided) */
+    isFavorited?: boolean
 }
 
 /**
@@ -82,6 +84,7 @@ export const ImageCard = React.memo(function ImageCard({
     onSelectionChange,
     className,
     priority = false,
+    isFavorited: isFavoritedProp,
 }: ImageCardProps) {
     const [copied, setCopied] = React.useState(false)
     const [isHovered, setIsHovered] = React.useState(false)
@@ -93,15 +96,18 @@ export const ImageCard = React.memo(function ImageCard({
     // Detect if content is video
     const isVideo = isVideoContent(image.contentType, image.url)
 
-    // Favorite state
-    const isFavorited = useQuery(
+    // Favorite state - skip individual subscription if prop is provided (batched from parent)
+    const isFavoritedQuery = useQuery(
         api.favorites.isFavorited,
-        isSignedIn ? { imageId: image._id as Id<"generatedImages"> } : "skip"
+        // Skip if: prop provided OR not signed in
+        isSignedIn && isFavoritedProp === undefined
+            ? { imageId: image._id as Id<"generatedImages"> }
+            : "skip"
     )
     const toggleFavorite = useToggleFavorite()
 
-    // Use optimistic state if set, otherwise use server state
-    const displayFavorited = optimisticFavorited ?? isFavorited ?? false
+    // Priority: optimistic > prop > query
+    const displayFavorited = optimisticFavorited ?? isFavoritedProp ?? isFavoritedQuery ?? false
 
     const handleCopyPrompt = React.useCallback(async (e: React.MouseEvent) => {
         e.stopPropagation()

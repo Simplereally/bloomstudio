@@ -25,6 +25,14 @@ type EnrichedImage = Doc<"generatedImages"> & {
 /**
  * Helper to batch-enrich images with owner display info.
  * Collects unique owner IDs and performs batch lookups to avoid N+1 queries.
+ * 
+ * NOTE: Current Limitation (Bandwidth Consideration)
+ * This fetches full user documents including encrypted API keys (pollinationsApiKey).
+ * Convex doesn't support field projection at the DB layer.
+ * 
+ * If user documents grow significantly (>10KB), consider splitting into a separate
+ * `userProfiles` table with only public display fields (username, pictureUrl).
+ * This would reduce internal bandwidth usage per enrichImages call.
  */
 async function enrichImages(
     ctx: QueryCtx,
@@ -648,7 +656,16 @@ export const getImagesByUsername = query({
 
 /**
  * Get feed of images from users the current user follows.
- * Uses single-pass over-fetch + filter strategy (Convex only allows one paginate call per query).
+ * 
+ * OPTIMIZATION: Uses per-user indexed queries instead of scanning all public images.
+ * - Old approach: Scan ALL public images with filter → O(total_public_images)
+ * - New approach: Query each followed user with index → O(followed_users * IMAGES_PER_USER)
+ * 
+ * For users following <50 accounts, this is dramatically faster and more scalable.
+ * 
+ * Note: This simplified implementation fetches a fixed number of recent images per user
+ * and does not support cursor-based pagination. For MVP, this is acceptable since
+ * most users follow <50 accounts. Cursor support can be added later if needed.
  */
 export const getFollowingFeed = query({
     args: {
@@ -671,32 +688,39 @@ export const getFollowingFeed = query({
             return { page: [], isDone: true, continueCursor: "" }
         }
 
-        // Use server-side filtering for ownerId and aspectRatio.
-        // We scan the public feed and only return images from users we follow.
-        // Pages may be sparse if matches are infrequent in the public stream.
-        const paginatedResult = await ctx.db
-            .query("generatedImages")
-            .withIndex("by_visibility", (q) => q.eq("visibility", "public"))
-            .filter((q) => {
-                // Owner filter: ownerId must be in followedIds
-                const ownerConditions = followedIds.map(id => q.eq(q.field("ownerId"), id))
-                const ownerFilter = ownerConditions.length === 1
-                    ? ownerConditions[0]
-                    : q.or(...ownerConditions)
+        // Fetch latest N images per followed user using indexed queries
+        // This uses the by_owner_visibility index for O(log n) lookups per user
+        // instead of scanning all public images
+        const IMAGES_PER_USER = 10 // Tune this based on expected follow counts
+        const perUserResults = await Promise.all(
+            followedIds.map((userId) =>
+                ctx.db
+                    .query("generatedImages")
+                    .withIndex("by_owner_visibility", (q) =>
+                        q.eq("ownerId", userId).eq("visibility", "public")
+                    )
+                    .filter((q) => q.not(q.gt(q.field("aspectRatio"), 4)))
+                    .order("desc")
+                    .take(IMAGES_PER_USER)
+            )
+        )
 
-                // Aspect ratio filter: not extreme
-                const aspectRatioFilter = q.not(q.gt(q.field("aspectRatio"), 4))
+        // Merge and sort by createdAt descending
+        const allImages = perUserResults.flat()
+        allImages.sort((a, b) => b.createdAt - a.createdAt)
 
-                return q.and(ownerFilter, aspectRatioFilter)
-            })
-            .order("desc")
-            .paginate(args.paginationOpts)
+        // Take requested page size
+        const pageSize = args.paginationOpts.numItems ?? 20
+        const page = allImages.slice(0, pageSize)
 
-        const enrichedPage = await enrichImages(ctx, paginatedResult.page)
+        const enrichedPage = await enrichImages(ctx, page)
 
+        // Note: Simplified pagination - isDone when we've shown all merged images
+        // For true cursor-based pagination, we'd need a more complex approach
         return {
-            ...paginatedResult,
             page: toPublicFeedImages(enrichedPage),
+            isDone: allImages.length <= pageSize,
+            continueCursor: "", // Simplified: no cursor support
         }
     },
 })

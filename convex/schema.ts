@@ -105,7 +105,15 @@ export default defineSchema({
         /** Seed used for generation (-1 if random) */
         seed: v.optional(v.number()),
 
-        /** Full generation parameters for reproducibility */
+        /**
+         * Full generation parameters for reproducibility.
+         * 
+         * WARNING: Currently unvalidated (v.any()). This field can be 10-50KB
+         * for complex workflows (e.g., ComfyUI). Consider:
+         * - Adding mutation-time validation to limit payload size (<50KB)
+         * - Using a stricter schema if generation params become standardized
+         * - Stripping from list views (see getUserBatchJobs optimization)
+         */
         generationParams: v.optional(v.any()),
 
         // --- Sensitive Content Fields ---

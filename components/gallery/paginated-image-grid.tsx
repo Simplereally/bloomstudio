@@ -4,9 +4,13 @@ import { ImageLightbox } from "@/components/images/image-lightbox"
 import { ImageCard, type ImageCardData } from "@/components/ui/image-card"
 import { MasonryGrid } from "@/components/ui/masonry-grid"
 import { Skeleton } from "@/components/ui/skeleton"
+import { api } from "@/convex/_generated/api"
+import type { Id } from "@/convex/_generated/dataModel"
+import { useUser } from "@clerk/nextjs"
+import { useQuery } from "convex/react"
 import { motion, type Variants } from "framer-motion"
 import { ArrowUp, Loader2, Sparkles } from "lucide-react"
-import React, { useCallback, useEffect, useRef, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 interface PaginatedImageGridProps {
     images: ImageCardData[]
@@ -73,11 +77,23 @@ export function PaginatedImageGrid({
     onSelectionChange,
     userShowsSensitive = false,
 }: PaginatedImageGridProps) {
+    const { isSignedIn } = useUser()
     const [selectedImage, setSelectedImage] = useState<ImageCardData | null>(null)
     const [isPageScrollable, setIsPageScrollable] = useState(false)
 
     const sentinelRef = useRef<HTMLDivElement>(null)
     const footerRef = useRef<HTMLDivElement>(null)
+
+    // Batch fetch favorite statuses to avoid N+1 subscriptions per ImageCard
+    // This single query replaces 50+ individual isFavorited queries
+    const imageIds = useMemo(
+        () => images.map((img) => img._id as Id<"generatedImages">),
+        [images]
+    )
+    const favoriteStatuses = useQuery(
+        api.favorites.batchIsFavorited,
+        isSignedIn && imageIds.length > 0 ? { imageIds } : "skip"
+    )
 
     const handleSelectImage = useCallback((image: ImageCardData) => {
         setSelectedImage(image)
@@ -215,6 +231,7 @@ export function PaginatedImageGrid({
                         isSelected={selectedIds.has(image._id)}
                         onSelectionChange={onSelectionChange}
                         userShowsSensitive={userShowsSensitive}
+                        isFavorited={favoriteStatuses?.[image._id]}
                     />
                 ))}
             </MasonryGrid>
