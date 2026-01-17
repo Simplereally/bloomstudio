@@ -478,7 +478,7 @@ export function StudioShell({ defaultLayout, initialGalleryPage }: StudioShellPr
             </div>
 
             {/* Generate / Pause / Resume Batch Button */}
-            <div className="p-1.5 border-t bg-background/60">
+            <div className="p-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))] border-t bg-background/60">
                 {batchMode.isBatchActive ? (
                     <BatchActionButton
                         isPaused={batchMode.isBatchPaused}

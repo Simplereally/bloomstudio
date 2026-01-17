@@ -11,8 +11,10 @@ import {
     SidebarInset,
     SidebarProvider,
     SidebarRail,
+    useSidebar,
 } from "@/components/ui/sidebar"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, PanelLeft, PanelRight } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import * as React from "react"
 
@@ -33,13 +35,29 @@ export interface StudioLayoutProps {
     onGalleryOpenChange?: (open: boolean) => void
     /** Additional class names */
     className?: string
-    
+
     // Legacy props - kept for compatibility but unused
     defaultSidebarSize?: number | string
     defaultGallerySize?: number | string
     minSidebarSize?: number | string
     maxSidebarSize?: number | string
     defaultLayout?: Record<string, number>
+}
+
+function MobileMenuButton({ side, className }: { side: "left" | "right", className?: string }) {
+    const { toggleSidebar } = useSidebar()
+
+    return (
+        <Button
+            variant="ghost"
+            size="icon"
+            className={cn("md:hidden h-10 w-10 shrink-0", className)}
+            onClick={toggleSidebar}
+        >
+            {side === "left" ? <PanelLeft className="h-6 w-6" /> : <PanelRight className="h-6 w-6" />}
+            <span className="sr-only">Toggle Sidebar</span>
+        </Button>
+    )
 }
 
 export function StudioLayout({
@@ -77,9 +95,9 @@ export function StudioLayout({
                     <SidebarContent className="h-full min-h-0 overflow-hidden">
                         {sidebar}
                     </SidebarContent>
-                    <SidebarRail className="group/rail">
+                    <SidebarRail className="group/rail !flex">
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-background shadow-sm border opacity-0 group-hover/rail:opacity-100 transition-all">
+                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-background shadow-sm border opacity-100 md:opacity-0 md:group-hover/rail:opacity-100 transition-all">
                                 <ChevronLeft className="h-3 w-3" />
                             </div>
                         </div>
@@ -87,6 +105,11 @@ export function StudioLayout({
                 </Sidebar>
 
                 <SidebarInset className="h-full min-h-0 min-w-0 flex-1 overflow-hidden relative">
+                    {/* Left Mobile Trigger - Top Left */}
+                    <div className="absolute top-2 left-2 z-50 md:hidden">
+                        <MobileMenuButton side="left" className="bg-background/80 backdrop-blur-sm border shadow-sm rounded-md" />
+                    </div>
+
                     {/* Right Sidebar Provider (Nested) */}
                     <SidebarProvider
                         open={showGallery && !!gallery}
@@ -101,13 +124,20 @@ export function StudioLayout({
                             } as React.CSSProperties
                         }
                     >
-                         <SidebarInset className="h-full min-h-0 min-w-0 flex-1 overflow-hidden relative">
-                             <div className="h-full w-full" data-testid="studio-canvas-panel">
-                                 {canvas}
-                             </div>
-                         </SidebarInset>
+                        <SidebarInset className="h-full min-h-0 min-w-0 flex-1 overflow-hidden relative">
+                            {/* Right Mobile Trigger - Top Right (only if gallery enabled) */}
+                            {gallery && (
+                                <div className="absolute top-2 right-2 z-50 md:hidden">
+                                    <MobileMenuButton side="right" className="bg-background/80 backdrop-blur-sm border shadow-sm rounded-md" />
+                                </div>
+                            )}
 
-                         {gallery && (
+                            <div className="h-full w-full" data-testid="studio-canvas-panel">
+                                {canvas}
+                            </div>
+                        </SidebarInset>
+
+                        {gallery && (
                             <Sidebar
                                 side="right"
                                 collapsible="offcanvas"
@@ -117,9 +147,9 @@ export function StudioLayout({
                                 <SidebarContent className="h-full min-h-0 overflow-hidden">
                                     {gallery}
                                 </SidebarContent>
-                                <SidebarRail className="group/rail">
+                                <SidebarRail className="group/rail !flex">
                                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-background shadow-sm border opacity-0 group-hover/rail:opacity-100 transition-all">
+                                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-background shadow-sm border opacity-100 md:opacity-0 md:group-hover/rail:opacity-100 transition-all">
                                             <ChevronRight className="h-3 w-3" />
                                         </div>
                                     </div>
