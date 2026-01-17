@@ -1,5 +1,7 @@
 
-# Convex Bandwidth & Performance Audit
+# Convex Bandwidth & Performance Audit (Superseded)
+
+This document is superseded by [convex-bandwidth-audit.md](file:///c:/Code/pixelstream/todo/convex-bandwidth-audit.md).
 
 **Date**: 2026-01-17
 **Scope**: Database queries, schema design, and frontend data consumption.
