@@ -43,9 +43,16 @@ vi.mock("@/components/ui/sidebar", () => ({
             {children}
         </div>
     ),
-    SidebarRail: () => (
-        <button data-testid="sidebar-rail" aria-label="Toggle Sidebar" />
+    SidebarRail: ({ className, children }: { className?: string, children?: ReactNode }) => (
+        <button data-testid="sidebar-rail" className={className} aria-label="Toggle Sidebar">
+            {children}
+        </button>
     ),
+    useSidebar: () => ({
+        toggleSidebar: vi.fn(),
+        open: true,
+        isMobile: false
+    })
 }))
 
 describe("StudioLayout", () => {
@@ -64,7 +71,7 @@ describe("StudioLayout", () => {
 
         expect(screen.getByTestId("sidebar-content")).toBeInTheDocument()
         expect(screen.getByTestId("canvas-content")).toBeInTheDocument()
-        
+
         // Check if SidebarProvider for left sidebar receives correct open prop
         const providers = screen.getAllByTestId("sidebar-provider")
         expect(providers[0]).toHaveAttribute("data-open", "true")
@@ -81,12 +88,12 @@ describe("StudioLayout", () => {
         )
 
         expect(screen.getByTestId("gallery-content")).toBeInTheDocument()
-        
+
         // Check if nested SidebarProvider for gallery receives correct open prop
         const providers = screen.getAllByTestId("sidebar-provider")
         // Provider 0 is usually left, Provider 1 is inner/right
         expect(providers[1]).toHaveAttribute("data-open", "true")
-        
+
         // Check if right sidebar is rendered
         const sidebars = screen.getAllByTestId("studio-gallery-panel")
         expect(sidebars.length).toBeGreaterThan(0)
@@ -124,7 +131,7 @@ describe("StudioLayout", () => {
             <StudioLayout
                 sidebar={mockSidebar}
                 canvas={mockCanvas}
-                // No gallery prop
+            // No gallery prop
             />
         )
 
@@ -143,5 +150,39 @@ describe("StudioLayout", () => {
 
         const layout = screen.getByTestId("studio-layout")
         expect(layout).toHaveClass("custom-class")
+    })
+
+    it("renders mobile toggle buttons", () => {
+        render(
+            <StudioLayout
+                sidebar={mockSidebar}
+                canvas={mockCanvas}
+                gallery={mockGallery}
+                showSidebar={true}
+                showGallery={true}
+            />
+        )
+
+        // There should be two mobile triggers (left and right)
+        // We can find them by the Button (which renders as button) or the icon?
+        // Note: MobileMenuButton has sr-only text "Toggle Sidebar"
+        // But checking for 'md:hidden' class on the container or button is a good proxy for "mobile only" validity
+
+        // Use getAllByRole to find buttons with "Toggle Sidebar" name
+        // We expect at least 2 (Left, Right) + Rails might have aria-label "Toggle Sidebar" too?
+        // The mock SidebarRail has aria-label="Toggle Sidebar".
+        // The real SidebarRail does too.
+
+        // Let's look at the implementation. MobileMenuButton has <span className="sr-only">Toggle Sidebar</span>
+        // So they will be found.
+
+        // Filter for the ones that are NOT the rails.
+        // The rails in our mock have data-testid="sidebar-rail".
+        // The mobile buttons do not have that test id, but they have class 'md:hidden'
+
+        const buttons = screen.getAllByRole("button", { name: "Toggle Sidebar" })
+        const mobileButtons = buttons.filter(b => b.classList.contains("md:hidden"))
+
+        expect(mobileButtons.length).toBeGreaterThanOrEqual(2)
     })
 })
