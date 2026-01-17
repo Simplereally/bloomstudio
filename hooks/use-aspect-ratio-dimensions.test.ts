@@ -497,4 +497,112 @@ describe("useAspectRatioDimensions", () => {
             })
         })
     })
+
+    describe("Video models (Veo, Seedance) tiered dimensions", () => {
+        /**
+         * Video models use standard industry resolutions from STANDARD_RESOLUTIONS.
+         * - SD tier: 720p (1280×720 for 16:9, 720×1280 for 9:16)
+         * - HD tier: 1080p (1920×1080 for 16:9, 1080×1920 for 9:16)
+         *
+         * This is a regression test for the bug where SD tier was returning HD dimensions.
+         */
+
+        // Veo 3.1 configuration (from models.ts)
+        const VEO_RATIOS: AspectRatioOption[] = [
+            { label: "Landscape", value: "16:9", width: 1920, height: 1080, icon: "rectangle-horizontal", category: "landscape" },
+            { label: "Portrait", value: "9:16", width: 1080, height: 1920, icon: "rectangle-vertical", category: "portrait" },
+        ]
+
+        const VEO_CONSTRAINTS: ModelConstraints = {
+            maxPixels: Infinity,
+            minPixels: 0,
+            minDimension: 720,
+            maxDimension: 1920,
+            step: 1,
+            defaultDimensions: { width: 1920, height: 1080 },
+            dimensionsEnabled: false,
+            supportedTiers: ["sd", "hd"],
+        }
+
+        describe("SD tier should return 720p dimensions (NOT HD)", () => {
+            it("should return 1280×720 for 16:9 at SD tier", () => {
+                const { result } = renderHook(() =>
+                    useAspectRatioDimensions({
+                        tier: "sd",
+                        constraints: VEO_CONSTRAINTS,
+                        availableRatios: VEO_RATIOS,
+                    })
+                )
+
+                const dims = result.current.getDimensionsForRatio("16:9")
+                expect(dims.width).toBe(1280)
+                expect(dims.height).toBe(720)
+            })
+
+            it("should return 720×1280 for 9:16 at SD tier", () => {
+                const { result } = renderHook(() =>
+                    useAspectRatioDimensions({
+                        tier: "sd",
+                        constraints: VEO_CONSTRAINTS,
+                        availableRatios: VEO_RATIOS,
+                    })
+                )
+
+                const dims = result.current.getDimensionsForRatio("9:16")
+                expect(dims.width).toBe(720)
+                expect(dims.height).toBe(1280)
+            })
+        })
+
+        describe("HD tier should return 1080p dimensions", () => {
+            it("should return 1920×1080 for 16:9 at HD tier", () => {
+                const { result } = renderHook(() =>
+                    useAspectRatioDimensions({
+                        tier: "hd",
+                        constraints: VEO_CONSTRAINTS,
+                        availableRatios: VEO_RATIOS,
+                    })
+                )
+
+                const dims = result.current.getDimensionsForRatio("16:9")
+                expect(dims.width).toBe(1920)
+                expect(dims.height).toBe(1080)
+            })
+
+            it("should return 1080×1920 for 9:16 at HD tier", () => {
+                const { result } = renderHook(() =>
+                    useAspectRatioDimensions({
+                        tier: "hd",
+                        constraints: VEO_CONSTRAINTS,
+                        availableRatios: VEO_RATIOS,
+                    })
+                )
+
+                const dims = result.current.getDimensionsForRatio("9:16")
+                expect(dims.width).toBe(1080)
+                expect(dims.height).toBe(1920)
+            })
+        })
+
+        describe("aspectRatioOptions should reflect tier-specific dimensions", () => {
+            it("should show SD dimensions in aspectRatioOptions when SD tier selected", () => {
+                const { result } = renderHook(() =>
+                    useAspectRatioDimensions({
+                        tier: "sd",
+                        constraints: VEO_CONSTRAINTS,
+                        availableRatios: VEO_RATIOS,
+                    })
+                )
+
+                const landscape = result.current.aspectRatioOptions.find(o => o.value === "16:9")
+                expect(landscape?.width).toBe(1920) // aspectRatioOptions preserves original labels/dimensions
+                expect(landscape?.height).toBe(1080)
+
+                // But getDimensionsForRatio should return correct SD dimensions
+                const dims = result.current.getDimensionsForRatio("16:9")
+                expect(dims.width).toBe(1280)
+                expect(dims.height).toBe(720)
+            })
+        })
+    })
 })

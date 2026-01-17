@@ -218,4 +218,33 @@ describe("ImageCard", () => {
             expect(screen.getByTestId("sensitive-overlay")).toHaveAttribute("data-allowed", "false")
         })
     })
+
+    describe("isFavorited Prop (Batch Optimization)", () => {
+        it("uses isFavorited prop when provided instead of querying", () => {
+            render(<ImageCard {...defaultProps} isFavorited={true} />)
+            // When isFavorited prop is provided, useQuery should be called with "skip"
+            // The last call to useQuery should have "skip" as the second arg
+            const calls = vi.mocked(useQuery).mock.calls
+            const lastCall = calls[calls.length - 1]
+            expect(lastCall[1]).toBe("skip")
+        })
+
+        it("queries favorites when isFavorited prop is not provided", () => {
+            render(<ImageCard {...defaultProps} />)
+            // When isFavorited prop is NOT provided, useQuery should be called with args object
+            const calls = vi.mocked(useQuery).mock.calls
+            const lastCall = calls[calls.length - 1]
+            expect(lastCall[1]).toEqual({ imageId: "img1" })
+        })
+
+        it("displays filled heart when isFavorited prop is true", () => {
+            render(<ImageCard {...defaultProps} isFavorited={true} />)
+            // The heart button should have active styling when favorited
+            const heartButtons = document.querySelectorAll("button")
+            const favoriteButton = Array.from(heartButtons).find(btn =>
+                btn.className.includes("bg-red-500")
+            )
+            expect(favoriteButton).toBeInTheDocument()
+        })
+    })
 })

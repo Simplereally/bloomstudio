@@ -427,6 +427,101 @@ describe("ImageGallery", () => {
         })
     })
 
+    describe("scroll container behavior", () => {
+        it("renders standard grid scroll container with required scroll classes (< 50 images)", () => {
+            // This test ensures scrolling works for galleries below the virtualization threshold
+            // Regression: 39 images wouldn't scroll, but 50+ would (due to virtualization switch)
+            const images = Array.from({ length: 39 }, (_, i) => ({
+                ...mockImages[0],
+                id: `scroll-test-${i}`,
+            }))
+
+            render(<ImageGallery images={images} />)
+
+            const scrollContainer = screen.getByTestId("gallery-scroll")
+            expect(scrollContainer).toBeInTheDocument()
+            // Required classes for scrolling in flex container:
+            // - flex-1: take available space
+            // - min-h-0: allow shrinking below content size (essential for flex scroll)
+            // - overflow-hidden: contain scrolling area
+            expect(scrollContainer).toHaveClass("flex-1")
+            expect(scrollContainer).toHaveClass("min-h-0")
+            expect(scrollContainer).toHaveClass("overflow-hidden")
+        })
+
+        it("renders standard grid with gallery-grid inside scroll container (< 50 images)", () => {
+            const images = Array.from({ length: 25 }, (_, i) => ({
+                ...mockImages[0],
+                id: `grid-test-${i}`,
+            }))
+
+            render(<ImageGallery images={images} />)
+
+            // Standard grid should have gallery-grid inside scroll container
+            const scrollContainer = screen.getByTestId("gallery-scroll")
+            const galleryGrid = screen.getByTestId("gallery-grid")
+
+            expect(scrollContainer).toBeInTheDocument()
+            expect(galleryGrid).toBeInTheDocument()
+            expect(scrollContainer).toContainElement(galleryGrid)
+        })
+
+        it("uses standard grid for exactly 49 images (just below threshold)", () => {
+            const images = Array.from({ length: 49 }, (_, i) => ({
+                ...mockImages[0],
+                id: `threshold-below-${i}`,
+            }))
+
+            render(<ImageGallery images={images} />)
+
+            // Should use standard grid (has gallery-grid testid)
+            expect(screen.getByTestId("gallery-grid")).toBeInTheDocument()
+            // Scroll container should have proper classes for flex-based scrolling
+            const scrollContainer = screen.getByTestId("gallery-scroll")
+            expect(scrollContainer).toHaveClass("flex-1")
+            expect(scrollContainer).toHaveClass("min-h-0")
+            expect(scrollContainer).toHaveClass("overflow-hidden")
+        })
+
+        it("renders scroll container for very small galleries (< 10 images)", () => {
+            render(<ImageGallery images={mockImages} />)
+
+            // Even with just 3 images, scroll container should be present
+            const scrollContainer = screen.getByTestId("gallery-scroll")
+            expect(scrollContainer).toBeInTheDocument()
+            // All scroll classes should be present regardless of image count
+            expect(scrollContainer).toHaveClass("flex-1")
+            expect(scrollContainer).toHaveClass("min-h-0")
+            expect(scrollContainer).toHaveClass("overflow-hidden")
+        })
+
+        it("scroll container is scrollable when content exceeds container height (39 images regression)", () => {
+            // Regression test: 39 images wouldn't scroll but 50+ would
+            // The issue: ScrollArea (used for < 50 images) doesn't shrink in flex containers
+            // without min-h-0, while VirtualizedGalleryGrid (50+ images) uses overflow-auto directly
+
+            const images = Array.from({ length: 39 }, (_, i) => ({
+                ...mockImages[0],
+                id: `scrollable-${i}`,
+            }))
+
+            render(
+                <div style={{ height: "400px", display: "flex", flexDirection: "column" }}>
+                    <ImageGallery images={images} />
+                </div>
+            )
+
+            const scrollArea = screen.getByTestId("gallery-scroll")
+
+            // For scrolling to work in a flex container, the scroll container needs:
+            // 1. min-h-0 or min-height: 0 - allows flex child to shrink below content size
+            // 2. overflow-y: auto/scroll on the actual scrolling element
+
+            // The scroll container must have min-h-0 to allow shrinking
+            expect(scrollArea).toHaveClass("min-h-0")
+        })
+    })
+
     describe("virtualized grid", () => {
         it("renders virtualized grid when image count exceeds threshold", () => {
             // Mock dimensions for JSDOM

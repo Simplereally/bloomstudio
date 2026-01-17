@@ -42,6 +42,45 @@ const MIN_JITTER_MS = 20
 const MAX_JITTER_MS = 100
 
 /**
+ * Lightweight batch job data for list views.
+ * Excludes heavy fields (generationParams, apiKey, imageIds) to reduce bandwidth.
+ */
+type BatchJobSummary = {
+    _id: Doc<"batchJobs">["_id"]
+    _creationTime: number
+    status: Doc<"batchJobs">["status"]
+    totalCount: number
+    completedCount: number
+    failedCount: number
+    currentIndex: number
+    inFlightCount?: number
+    createdAt: number
+    updatedAt: number
+    lastErrorCode?: number
+}
+
+/**
+ * Convert a full batch job document to a lightweight summary.
+ * Strips generationParams (can be 10-50KB for complex workflows),
+ * apiKey (sensitive), and imageIds (only needed for detail views).
+ */
+function toBatchJobSummary(job: Doc<"batchJobs">): BatchJobSummary {
+    return {
+        _id: job._id,
+        _creationTime: job._creationTime,
+        status: job.status,
+        totalCount: job.totalCount,
+        completedCount: job.completedCount,
+        failedCount: job.failedCount,
+        currentIndex: job.currentIndex,
+        inFlightCount: job.inFlightCount,
+        createdAt: job.createdAt,
+        updatedAt: job.updatedAt,
+        lastErrorCode: job.lastErrorCode,
+    }
+}
+
+/**
  * Generation params validator (shared between functions)
  */
 const generationParamsValidator = v.object({
@@ -420,11 +459,10 @@ export const getUserActiveBatches = query({
             .collect()
 
         // Filter to only active (pending/processing/paused) jobs
-        // Filter out apiKey to prevent exposing sensitive data to clients
+        // Use summary type to reduce bandwidth (strips generationParams, apiKey, imageIds)
         return jobs
             .filter((job) => job.status === "pending" || job.status === "processing" || job.status === "paused")
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            .map(({ apiKey: _, ...safeJob }) => safeJob)
+            .map(toBatchJobSummary)
     },
 })
 
@@ -449,9 +487,9 @@ export const getUserBatchJobs = query({
             .order("desc")
             .take(limit)
 
-        // Filter out apiKey to prevent exposing sensitive data to clients
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        return jobs.map(({ apiKey: _, ...safeJob }) => safeJob)
+        // Use summary type to reduce bandwidth (strips generationParams, apiKey, imageIds)
+        // This dramatically reduces payload size for list views (generationParams can be 10-50KB)
+        return jobs.map(toBatchJobSummary)
     },
 })
 
