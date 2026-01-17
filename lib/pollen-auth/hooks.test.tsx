@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook } from "@testing-library/react";
+import { renderHook, act } from "@testing-library/react";
 import type React from "react";
 import {
   usePollenAuth,
@@ -66,7 +66,7 @@ describe("pollen-auth/hooks", () => {
       // Suppress console.error for this test since React will log the error
       const consoleSpy = vi
         .spyOn(console, "error")
-        .mockImplementation(() => {});
+        .mockImplementation(() => { });
 
       expect(() => {
         renderHook(() => usePollenAuth());
@@ -223,6 +223,28 @@ describe("pollen-auth/hooks", () => {
 
       const { result } = renderHook(() => useNeedsReconnect(), {
         wrapper: createWrapper(),
+      });
+
+      expect(result.current.needsReconnect).toBe(false);
+    });
+
+    it("should update state when setNeedsReconnect is called", () => {
+      mockUseQuery.mockReturnValue(null);
+
+      const { result } = renderHook(() => useNeedsReconnect(), {
+        wrapper: createWrapper(),
+      });
+
+      expect(result.current.needsReconnect).toBe(false);
+
+      act(() => {
+        result.current.setNeedsReconnect(true);
+      });
+
+      expect(result.current.needsReconnect).toBe(true);
+
+      act(() => {
+        result.current.setNeedsReconnect(false);
       });
 
       expect(result.current.needsReconnect).toBe(false);

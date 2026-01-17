@@ -123,11 +123,11 @@ describe("ReferenceImagePicker", () => {
 
   it("shows error when file is too large", () => {
     render(<ReferenceImagePicker onSelect={mockOnSelect} />);
-    
+
     const input = document.querySelector('input[type="file"]');
     expect(input).toBeInTheDocument();
 
-    const largeFile = new File(["x".repeat(10 * 1024 * 1024 + 1)], "large.png", { type: "image/png" });
+    const largeFile = new File(["dummy content"], "large.png", { type: "image/png" });
     Object.defineProperty(largeFile, 'size', { value: 10 * 1024 * 1024 + 1 });
 
     fireEvent.change(input!, { target: { files: [largeFile] } });

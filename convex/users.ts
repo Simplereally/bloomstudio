@@ -152,7 +152,12 @@ export const getPollinationsApiKey = query({
       return null;
     }
 
-    return await decryptApiKey(user.pollinationsApiKey);
+    try {
+      return await decryptApiKey(user.pollinationsApiKey);
+    } catch (err) {
+      console.error(`Failed to decrypt API key for user ${user._id}:`, err);
+      return null;
+    }
   },
 });
 
