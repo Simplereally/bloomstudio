@@ -2,38 +2,11 @@
  * Pollen Auth Constants
  *
  * Configuration constants for the BYOP (Bring Your Own Pollen) authentication system.
- * These constants define storage keys, expiration settings, and Pollinations OAuth URLs.
+ * These constants define Pollinations OAuth URLs and callback configuration.
+ *
+ * Note: localStorage constants have been removed. Convex is now the single
+ * source of truth for API key persistence. See context.tsx for details.
  */
-
-/**
- * localStorage key for storing the BYOP API key.
- * The key is stored client-side only for security.
- */
-export const STORAGE_KEY = "pollinations_byop_key";
-
-/**
- * localStorage key for storing the expiry timestamp.
- * Stored as Unix timestamp (milliseconds).
- */
-export const STORAGE_EXPIRY_KEY = "pollinations_byop_expiry";
-
-/**
- * localStorage key for storing when the user authorized.
- * Stored as Unix timestamp (milliseconds).
- */
-export const STORAGE_AUTHORIZED_AT_KEY = "pollinations_byop_authorized_at";
-
-/**
- * Number of days until the BYOP API key expires.
- * Pollinations BYOP keys have a 30-day lifetime.
- */
-export const EXPIRY_DAYS = 30;
-
-/**
- * Number of days before expiry to start showing "expiring soon" warnings.
- * Users will see a reconnect prompt when their key is about to expire.
- */
-export const EXPIRING_SOON_THRESHOLD_DAYS = 7;
 
 /**
  * The base URL for Pollinations OAuth authorization.

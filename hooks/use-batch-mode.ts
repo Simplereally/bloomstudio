@@ -31,7 +31,7 @@ import {
 } from "@/hooks/queries"
 import { usePollenBalance } from "@/hooks/use-pollen-balance"
 import { ClientErrorCodeConst, showErrorToast } from "@/lib/errors"
-import { usePollenApiKey, usePollenAuthActions } from "@/lib/pollen-auth"
+import { usePollenApiKey, usePollenAuthActions, useNeedsReconnect } from "@/lib/pollen-auth"
 import type { GeneratedImage } from "@/types/pollinations"
 import { ConvexError } from "convex/values"
 import * as React from "react"
@@ -175,6 +175,7 @@ export function useBatchMode({
     // ========================================
     const apiKey = usePollenApiKey()
     const { authorize } = usePollenAuthActions()
+    const { setNeedsReconnect } = useNeedsReconnect()
     
     // ========================================
     // Balance Invalidation
@@ -200,6 +201,24 @@ export function useBatchMode({
         // Update ref for next comparison
         prevCompletedCountRef.current = currentCompletedCount
     }, [batchJob?.completedCount, invalidateBalance])
+
+    // ========================================
+    // Auth Error Detection
+    // ========================================
+    // Detect 401/402/403 errors from batch processing and trigger appropriate response
+    React.useEffect(() => {
+        const errorCode = batchJob?.lastErrorCode
+        if (errorCode === 401) {
+            // Auth error - key is invalid/expired, trigger reconnect modal
+            setNeedsReconnect(true)
+        } else if (errorCode === 402) {
+            // Budget exhausted - show appropriate toast
+            showErrorToast(new Error("Your Pollinations balance is exhausted. Please top up your pollen."))
+        } else if (errorCode === 403) {
+            // Model access denied - show appropriate toast
+            showErrorToast(new Error("Access to the selected model was denied. Try a different model."))
+        }
+    }, [batchJob?.lastErrorCode, setNeedsReconnect])
 
     // ========================================
     // Batch Start Handler

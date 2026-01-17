@@ -14,7 +14,7 @@ import { config, isProtectedRoute } from "./proxy"
  * Helper to wrap pathname in a NextRequest for Clerk's matcher
  */
 function createRequest(pathname: string) {
-    return new NextRequest(`https://pixelstream.app${pathname}`)
+    return new NextRequest(`https://bloomstudio.app${pathname}`)
 }
 
 describe("proxy route protection", () => {

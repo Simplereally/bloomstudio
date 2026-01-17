@@ -1,6 +1,6 @@
 # AI Image Prompts for Solution Pages
 
-This document contains detailed image generation prompts for the various sections of the PixelStream solution pages.
+This document contains detailed image generation prompts for the various sections of the Bloom Studio solution pages.
 
 ## Recommended Aspect Ratios
 

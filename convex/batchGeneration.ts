@@ -274,6 +274,8 @@ export const recordBatchItemResult = internalMutation({
         success: v.boolean(),
         imageId: v.optional(v.id("generatedImages")),
         errorMessage: v.optional(v.string()),
+        /** HTTP error code from Pollinations API (401=auth, 402=budget, 403=access) */
+        errorCode: v.optional(v.number()),
         retryCount: v.optional(v.number()),
     },
     handler: async (ctx, args) => {
@@ -299,6 +301,10 @@ export const recordBatchItemResult = internalMutation({
             }
         } else {
             updates.failedCount = batchJob.failedCount + 1
+            // Store the HTTP error code for client-side detection (401=auth, 402=budget, 403=access)
+            if (args.errorCode !== undefined) {
+                updates.lastErrorCode = args.errorCode
+            }
         }
 
         // Track the retry count for the completed item (for metrics/debugging)

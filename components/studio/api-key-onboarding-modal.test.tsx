@@ -15,7 +15,6 @@ let mockConvexAuthState = {
   isLoading: false,
 };
 
-let mockExistingApiKey: string | null | undefined = null;
 const mockGetOrCreateUser = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("@/lib/pollen-auth", () => ({
@@ -24,14 +23,12 @@ vi.mock("@/lib/pollen-auth", () => ({
 
 vi.mock("convex/react", () => ({
   useConvexAuth: () => mockConvexAuthState,
-  useQuery: () => mockExistingApiKey,
   useMutation: () => mockGetOrCreateUser,
 }));
 
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     users: {
-      getPollinationsApiKey: "getPollinationsApiKey",
       getOrCreateUser: "getOrCreateUser",
     },
   },
@@ -54,9 +51,7 @@ vi.mock("@/components/pollen-auth", () => ({
 
 // Mock framer-motion to avoid animation issues in tests
 vi.mock("framer-motion", () => ({
-  AnimatePresence: ({ children }: { children: ReactNode }) => (
-    <>{children}</>
-  ),
+  AnimatePresence: ({ children }: { children: ReactNode }) => <>{children}</>,
   motion: {
     div: ({
       children,
@@ -80,7 +75,6 @@ describe("ApiKeyOnboardingModal", () => {
       isAuthenticated: true,
       isLoading: false,
     };
-    mockExistingApiKey = null;
   });
 
   describe("Automatic mode (no forceOpen prop)", () => {
@@ -88,21 +82,15 @@ describe("ApiKeyOnboardingModal", () => {
       render(<ApiKeyOnboardingModal />);
 
       await waitFor(() => {
-        expect(screen.getByRole("dialog", { name: /connect to pollinations/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole("dialog", { name: /connect to pollinations/i }),
+        ).toBeInTheDocument();
         expect(screen.getByText(/zero api costs/i)).toBeInTheDocument();
       });
     });
 
     it("does not render when user is already authorized via BYOP", () => {
       mockPollenAuthState.isAuthorized = true;
-
-      render(<ApiKeyOnboardingModal />);
-
-      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    });
-
-    it("does not render when user has existing API key", () => {
-      mockExistingApiKey = "existing-key";
 
       render(<ApiKeyOnboardingModal />);
 
@@ -145,12 +133,13 @@ describe("ApiKeyOnboardingModal", () => {
   describe("Controlled mode (forceOpen prop)", () => {
     it("renders when forceOpen is true regardless of auth state", async () => {
       mockPollenAuthState.isAuthorized = true;
-      mockExistingApiKey = "existing-key";
 
       render(<ApiKeyOnboardingModal forceOpen={true} onClose={vi.fn()} />);
 
       await waitFor(() => {
-        expect(screen.getByRole("dialog", { name: /connect to pollinations/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole("dialog", { name: /connect to pollinations/i }),
+        ).toBeInTheDocument();
       });
     });
 
@@ -179,9 +168,13 @@ describe("ApiKeyOnboardingModal", () => {
       render(<ApiKeyOnboardingModal forceOpen={true} onClose={vi.fn()} />);
 
       await waitFor(() => {
-        expect(screen.getByRole("dialog", { name: /connect to pollinations/i })).toBeInTheDocument();
         expect(
-          screen.getByText(/one-click setup\. generate unlimited images for free\./i)
+          screen.getByRole("dialog", { name: /connect to pollinations/i }),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText(
+            /one-click setup\. generate unlimited images for free\./i,
+          ),
         ).toBeInTheDocument();
       });
     });
@@ -191,7 +184,7 @@ describe("ApiKeyOnboardingModal", () => {
 
       expect(screen.getByTestId("connect-button")).toBeInTheDocument();
       expect(
-        screen.getByText(/connect with pollinations/i)
+        screen.getByText(/connect with pollinations/i),
       ).toBeInTheDocument();
     });
 
@@ -206,7 +199,7 @@ describe("ApiKeyOnboardingModal", () => {
       render(<ApiKeyOnboardingModal forceOpen={true} onClose={vi.fn()} />);
 
       expect(
-        screen.getByText(/your connection is secure and renews every 30 days/i)
+        screen.getByText(/your connection is secure and renews every 30 days/i),
       ).toBeInTheDocument();
     });
   });
@@ -217,7 +210,7 @@ describe("ApiKeyOnboardingModal", () => {
       render(<ApiKeyOnboardingModal forceOpen={true} onClose={vi.fn()} />);
 
       expect(
-        screen.getByRole("button", { name: /preview upgrade/i })
+        screen.getByRole("button", { name: /preview upgrade/i }),
       ).toBeInTheDocument();
     });
 
@@ -232,7 +225,9 @@ describe("ApiKeyOnboardingModal", () => {
       await user.click(previewButton);
 
       await waitFor(() => {
-        expect(screen.getByRole("heading", { name: /github developer bonus/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: /github developer bonus/i }),
+        ).toBeInTheDocument();
       });
     });
 
@@ -241,10 +236,11 @@ describe("ApiKeyOnboardingModal", () => {
 
       render(<ApiKeyOnboardingModal forceOpen={true} onClose={vi.fn()} />);
 
-      await user.click(screen.getByRole("button", { name: /preview upgrade/i }));
+      await user.click(
+        screen.getByRole("button", { name: /preview upgrade/i }),
+      );
 
       await waitFor(() => {
-        // Updated to match "Increased Quota" which is in the current component
         expect(screen.getByText("Increased Quota")).toBeInTheDocument();
         expect(screen.getByText(/3× limits/i)).toBeInTheDocument();
         expect(screen.getByText("180")).toBeInTheDocument();
@@ -257,7 +253,9 @@ describe("ApiKeyOnboardingModal", () => {
 
       render(<ApiKeyOnboardingModal forceOpen={true} onClose={vi.fn()} />);
 
-      await user.click(screen.getByRole("button", { name: /preview upgrade/i }));
+      await user.click(
+        screen.getByRole("button", { name: /preview upgrade/i }),
+      );
 
       await waitFor(() => {
         expect(screen.getByText("Connected")).toBeInTheDocument();
@@ -274,17 +272,21 @@ describe("ApiKeyOnboardingModal", () => {
           forceOpen={true}
           onClose={onClose}
           onComplete={onComplete}
-        />
+        />,
       );
 
-      await user.click(screen.getByRole("button", { name: /preview upgrade/i }));
+      await user.click(
+        screen.getByRole("button", { name: /preview upgrade/i }),
+      );
 
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: /continue to studio/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /continue to studio/i }),
+        ).toBeInTheDocument();
       });
 
       await user.click(
-        screen.getByRole("button", { name: /continue to studio/i })
+        screen.getByRole("button", { name: /continue to studio/i }),
       );
 
       await waitFor(() => {
@@ -298,10 +300,14 @@ describe("ApiKeyOnboardingModal", () => {
 
       render(<ApiKeyOnboardingModal forceOpen={true} onClose={vi.fn()} />);
 
-      await user.click(screen.getByRole("button", { name: /preview upgrade/i }));
+      await user.click(
+        screen.getByRole("button", { name: /preview upgrade/i }),
+      );
 
       await waitFor(() => {
-        expect(screen.getByText(/powered by pollinations/i)).toBeInTheDocument();
+        expect(
+          screen.getByText(/powered by pollinations/i),
+        ).toBeInTheDocument();
       });
     });
   });

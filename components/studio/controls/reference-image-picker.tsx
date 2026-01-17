@@ -41,6 +41,14 @@ export function ReferenceImagePicker({ selectedImage, onSelect, disabled, hideHe
         const file = e.target.files?.[0]
         if (!file) return
 
+        // Client-side validation for file size (10MB limit)
+        const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+        if (file.size > MAX_FILE_SIZE) {
+            toast.error("File is too large. Maximum size is 10MB.")
+            if (fileInputRef.current) fileInputRef.current.value = ""
+            return
+        }
+
         setUploadFilename(file.name)
         setUploadProgress(0)
 
@@ -50,7 +58,8 @@ export function ReferenceImagePicker({ selectedImage, onSelect, disabled, hideHe
             toast.success("Reference image uploaded")
         } catch (error) {
             console.error("Upload failed:", error)
-            toast.error("Failed to upload reference image")
+            const errorMessage = error instanceof Error ? error.message : "Failed to upload reference image"
+            toast.error(errorMessage)
         } finally {
             if (fileInputRef.current) fileInputRef.current.value = ""
             setUploadProgress(null)

@@ -22,11 +22,9 @@ export default defineSchema({
         /** User's profile picture URL from Clerk identity */
         pictureUrl: v.optional(v.string()),
         /**
-         * @deprecated BYOP Migration - This field is deprecated.
-         * API keys are now stored client-side in localStorage via the BYOP (Bring Your Own Pollen) flow.
-         * See lib/pollen-auth for the new implementation.
-         * This field is kept for backward compatibility during migration.
-         * TODO: Remove this field once all users have migrated to BYOP.
+         * Encrypted Pollinations API key for cross-device persistence.
+         * Stored using AES-256-GCM encryption (IV + Ciphertext + AuthTag).
+         * Decrypted key is synced to localStorage on login.
          */
         pollinationsApiKey: v.optional(v.string()),
         /** Timestamp of record creation */
@@ -241,6 +239,8 @@ export default defineSchema({
         generationParams: v.any(),
         /** Error message if failed */
         errorMessage: v.optional(v.string()),
+        /** HTTP error code from Pollinations API (401=auth, 402=budget, 403=access) */
+        errorCode: v.optional(v.number()),
         /** ID of the generated image (when completed) */
         imageId: v.optional(v.id("generatedImages")),
         /** Number of retry attempts made (for transient failures) */
@@ -289,6 +289,8 @@ export default defineSchema({
         imageIds: v.array(v.id("generatedImages")),
         /** Number of retry attempts for current item (for transient failures) */
         currentItemRetryCount: v.optional(v.number()),
+        /** Last HTTP error code from Pollinations API (401=auth, 402=budget, 403=access) */
+        lastErrorCode: v.optional(v.number()),
         /** Timestamp of creation */
         createdAt: v.number(),
         /** Timestamp of last update */

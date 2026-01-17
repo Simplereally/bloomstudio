@@ -56,6 +56,9 @@ export function LowBalanceWarningDialog({
 }: LowBalanceWarningDialogProps) {
     const generationType =
         isBatch ? `${batchCount} ${batchCount === 1 ? "image" : "images"}` : "generation"
+    
+    // Format remaining balance for display
+    const formattedRemainingBalance = remainingBalance
 
     return (
         <AlertDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -105,6 +108,11 @@ export function LowBalanceWarningDialog({
                                 <p className="text-sm font-semibold">
                                     But this costs <span className={`font-medium font-semibold tabular-nums ${cannotAfford ? "text-destructive" : "text-amber-600 dark:text-amber-400"}`}>{estimatedCost ?? "—"}</span> pollen
                                 </p>
+                                {formattedRemainingBalance && (
+                                    <p className="text-xs text-muted-foreground">
+                                        Remaining: {formattedRemainingBalance} pollen
+                                    </p>
+                                )}
                             </div>
 
                             <p className="text-xs text-muted-foreground">

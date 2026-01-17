@@ -49,6 +49,10 @@ vi.mock("@/lib/pollen-auth", () => ({
         isAuthorized: true,
         isLoading: false,
     }),
+    useNeedsReconnect: () => ({
+        needsReconnect: false,
+        setNeedsReconnect: vi.fn(),
+    }),
 }))
 
 // Mock usePollenBalance hook

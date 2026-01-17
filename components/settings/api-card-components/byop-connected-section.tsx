@@ -3,7 +3,8 @@
 /**
  * BYOP Connected Section
  *
- * Shows the connected state for BYOP authentication with expiry info and actions.
+ * Shows the connected state for BYOP authentication with actions.
+ * Expiry countdown has been removed since Pollinations doesn't provide expiry info.
  */
 
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,6 @@ import {
 import { Loader2, RefreshCw, LogOut, Zap } from "lucide-react";
 
 export interface ByopConnectedSectionProps {
-  daysUntilExpiry: number | null;
   isRedirecting: boolean;
   onReconnect: () => void;
   onDisconnect: () => void;
@@ -29,10 +29,9 @@ export interface ByopConnectedSectionProps {
 
 /**
  * Renders the connected state for BYOP authentication.
- * Shows expiry countdown and provides reconnect/disconnect actions.
+ * Provides reconnect/disconnect actions.
  */
 export function ByopConnectedSection({
-  daysUntilExpiry,
   isRedirecting,
   onReconnect,
   onDisconnect,
@@ -44,16 +43,8 @@ export function ByopConnectedSection({
         <span className="font-medium text-foreground">Connected via BYOP</span>
       </div>
       <p className="text-sm text-muted-foreground">
-        Your Pollinations connection is active.
-        {daysUntilExpiry !== null && (
-          <span className="block mt-1">
-            Expires in{" "}
-            <span className="font-medium text-foreground">
-              {daysUntilExpiry} days
-            </span>
-            .
-          </span>
-        )}
+        Your Pollinations connection is active. You can generate images and
+        videos using your Pollen balance.
       </p>
       <div className="flex gap-2 pt-1">
         <Button

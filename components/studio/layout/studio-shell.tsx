@@ -46,7 +46,7 @@ import {
 // Hooks
 import { useGenerateImage } from "@/hooks/queries"
 import { useBatchMode } from "@/hooks/use-batch-mode"
-import { useEstimatedCost, formatRemainingBalance, LOW_BALANCE_AFTER_GENERATION_THRESHOLD } from "@/hooks/use-estimated-cost"
+import { useEstimatedCost, formatRemainingBalance } from "@/hooks/use-estimated-cost"
 import { useGenerationSettings } from "@/hooks/use-generation-settings"
 import { useImageGalleryState } from "@/hooks/use-image-gallery-state"
 import { usePollenBalance } from "@/hooks/use-pollen-balance"
@@ -54,7 +54,7 @@ import { usePromptManager } from "@/hooks/use-prompt-manager"
 import { useStudioUI } from "@/hooks/use-studio-ui"
 import { useSubscriptionStatus } from "@/hooks/use-subscription-status"
 import { getModel, getModelSupportsNegativePrompt } from "@/lib/config/models"
-import { isTrialExpiredError, showAuthRequiredToast, showErrorToast } from "@/lib/errors"
+import { showAuthRequiredToast, showErrorToast } from "@/lib/errors"
 import type { ImageGenerationParams, VideoGenerationParams, VideoModel } from "@/types/pollinations"
 import type { ThumbnailData } from "@/components/studio/gallery/image-gallery"
 import { useConvexAuth } from "convex/react"
@@ -168,7 +168,6 @@ export function StudioShell({ defaultLayout, initialGalleryPage }: StudioShellPr
 
     // Estimate cost based on current model and settings
     const {
-        estimatedCost,
         canAfford,
         willDepleteBalance,
         remainingAfter,
@@ -205,9 +204,17 @@ export function StudioShell({ defaultLayout, initialGalleryPage }: StudioShellPr
         onError: (error) => {
             if (error.code === "UNAUTHORIZED") {
                 showAuthRequiredToast()
-            } else if (isTrialExpiredError(error)) {
-                // Show upgrade modal instead of trial expired error
                 setShowUpgradeModal(true)
+            } else if (error.code === "AUTH_ERROR") {
+                // Handled globally by needsReconnect state - no toast needed
+            } else if (error.code === "BUDGET_EXHAUSTED") {
+                toast.error("Your Pollinations balance is exhausted", {
+                    description: "Please top up your pollen to continue generating."
+                })
+            } else if (error.code === "MODEL_ACCESS_DENIED") {
+                toast.error("Model access denied", {
+                    description: "You don't have permission to use this model. Try a different one."
+                })
             } else {
                 showErrorToast(error)
             }

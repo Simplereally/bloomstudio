@@ -4,6 +4,14 @@
  * Barrel export for the BYOP (Bring Your Own Pollen) authentication system.
  * This module provides client-side authentication with Pollinations API.
  *
+ * Architecture:
+ * - Convex is the single source of truth for API key storage
+ * - Keys are stored encrypted in Convex (AES-256-GCM)
+ * - No localStorage caching - simplifies sync and improves security
+ *
+ * Note: Expiry tracking has been removed. Invalid/expired keys are detected
+ * via 401 responses from the Pollinations API during generation.
+ *
  * ## Usage
  *
  * 1. Wrap your app with `PollenAuthProvider`:
@@ -45,28 +53,14 @@ export {
   usePollenAuthActions,
   useIsPollenConnected,
   usePollenApiKey,
+  useNeedsReconnect,
 } from "./hooks";
 
-// Storage utilities (for advanced use cases)
-export {
-  storeApiKey,
-  getStoredApiKey,
-  getStoredMetadata,
-  clearStoredAuth,
-  isAuthExpired,
-  getDaysUntilExpiry,
-  isValidApiKeyFormat,
-  POLLEN_AUTH_CHANGED_EVENT,
-} from "./storage";
-export type { PollenAuthMetadata } from "./storage";
+// Validation utilities
+export { isValidApiKeyFormat } from "./storage";
 
-// Constants (for configuration and testing)
+// Constants (for OAuth flow)
 export {
-  STORAGE_KEY,
-  STORAGE_EXPIRY_KEY,
-  STORAGE_AUTHORIZED_AT_KEY,
-  EXPIRY_DAYS,
-  EXPIRING_SOON_THRESHOLD_DAYS,
   POLLINATIONS_AUTH_BASE_URL,
   CALLBACK_KEY_PARAM,
   buildAuthorizationUrl,

@@ -26,12 +26,6 @@ import { CanvasWave } from "./canvas-wave"
 // Premium easing: Expo out for satisfying deceleration
 const EXPO_OUT = [0.22, 1, 0.36, 1] as const
 
-// Timing choreography (in ms)
-const TIMING = {
-    iconMorph: 250,       // Icon transition duration
-    textStagger: 30,      // Per-letter delay for text reveal
-} as const
-
 // --- Animation Variants ---
 
 const containerVariants: Variants = {
@@ -46,39 +40,6 @@ const containerVariants: Variants = {
     },
 }
 
-// Text entrance with stagger
-const textContainerVariants: Variants = {
-    initial: {},
-    animate: {
-        transition: {
-            staggerChildren: TIMING.textStagger / 1000,
-            delayChildren: 0.15,
-        }
-    },
-    exit: {
-        transition: {
-            staggerChildren: 0.012,
-            staggerDirection: -1,
-        }
-    }
-}
-
-const letterVariants: Variants = {
-    initial: { opacity: 0, y: 12, filter: "blur(4px)" },
-    animate: { 
-        opacity: 1, 
-        y: 0, 
-        filter: "blur(0px)",
-        transition: { duration: 0.35, ease: EXPO_OUT }
-    },
-    exit: { 
-        opacity: 0, 
-        y: -6,
-        filter: "blur(2px)",
-        transition: { duration: 0.1 }
-    },
-}
-
 // --- Component ---
 
 export interface ImageCanvasProps {
@@ -88,35 +49,6 @@ export interface ImageCanvasProps {
     onImageClick?: () => void
     children?: React.ReactNode
     className?: string
-}
-
-// Helper to split text into animated letters
-function AnimatedText({ 
-    text, 
-    className 
-}: { 
-    text: string
-    className?: string 
-}) {
-    return (
-        <motion.span
-            className={cn("inline-flex", className)}
-            variants={textContainerVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-        >
-            {text.split("").map((char, i) => (
-                <motion.span
-                    key={i}
-                    variants={letterVariants}
-                    className={char === " " ? "w-[0.25em]" : undefined}
-                >
-                    {char === " " ? "\u00A0" : char}
-                </motion.span>
-            ))}
-        </motion.span>
-    )
 }
 
 // Refined capillary progress bar - liquid-like precision
@@ -256,10 +188,6 @@ export const ImageCanvas = React.memo(function ImageCanvas({
                                         transition={{ duration: 0.4 }}
                                         className="flex flex-col items-center justify-center gap-6"
                                     >
-                                        <AnimatedText
-                                            text="GENERATING"
-                                            className="text-lg font-medium tracking-[0.3em] text-primary/50"
-                                        />
                                         
                                         {typeof progress === "number" && (
                                             <motion.div

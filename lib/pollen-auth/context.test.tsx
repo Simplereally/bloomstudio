@@ -3,13 +3,28 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PollenAuthProvider, PollenAuthContext } from "./context";
 import { useContext } from "react";
-import {
-  STORAGE_KEY,
-  STORAGE_EXPIRY_KEY,
-  STORAGE_AUTHORIZED_AT_KEY,
-  EXPIRY_DAYS,
-  EXPIRING_SOON_THRESHOLD_DAYS,
-} from "./constants";
+
+// Mock Convex hooks
+const mockUseQuery = vi.fn();
+const mockUseMutation = vi.fn();
+const mockRemoveApiKey = vi.fn();
+
+vi.mock("convex/react", () => ({
+  useQuery: (...args: unknown[]) => mockUseQuery(...args),
+  useMutation: () => {
+    mockUseMutation();
+    return mockRemoveApiKey;
+  },
+}));
+
+vi.mock("@/convex/_generated/api", () => ({
+  api: {
+    users: {
+      getPollinationsApiKey: "getPollinationsApiKey",
+      removePollinationsApiKey: "removePollinationsApiKey",
+    },
+  },
+}));
 
 // Test component that consumes the context
 function TestConsumer() {
@@ -18,51 +33,31 @@ function TestConsumer() {
     <div>
       <span data-testid="isLoading">{String(context.isLoading)}</span>
       <span data-testid="isAuthorized">{String(context.isAuthorized)}</span>
-      <span data-testid="isExpiringSoon">{String(context.isExpiringSoon)}</span>
-      <span data-testid="isExpired">{String(context.isExpired)}</span>
-      <span data-testid="daysUntilExpiry">
-        {context.daysUntilExpiry ?? "null"}
-      </span>
       <span data-testid="apiKey">{context.apiKey ?? "null"}</span>
+      <span data-testid="needsReconnect">{String(context.needsReconnect)}</span>
       <button onClick={context.authorize} data-testid="authorize">
         Authorize
       </button>
       <button onClick={context.deauthorize} data-testid="deauthorize">
         Deauthorize
       </button>
+      <button
+        onClick={() => context.setNeedsReconnect(true)}
+        data-testid="setNeedsReconnect"
+      >
+        Set Needs Reconnect
+      </button>
     </div>
   );
 }
 
 describe("pollen-auth/context", () => {
-  // Mock localStorage
-  const localStorageMock = (() => {
-    let store: Record<string, string> = {};
-    return {
-      getItem: vi.fn((key: string) => store[key] || null),
-      setItem: vi.fn((key: string, value: string) => {
-        store[key] = value;
-      }),
-      removeItem: vi.fn((key: string) => {
-        delete store[key];
-      }),
-      clear: () => {
-        store = {};
-      },
-      get length() {
-        return Object.keys(store).length;
-      },
-      key: vi.fn((i: number) => Object.keys(store)[i] || null),
-    };
-  })();
-
   // Store original location
   const originalLocation = window.location;
 
   beforeEach(() => {
-    vi.stubGlobal("localStorage", localStorageMock);
-    localStorageMock.clear();
     vi.clearAllMocks();
+    mockRemoveApiKey.mockResolvedValue({ success: true });
   });
 
   afterEach(() => {
@@ -73,145 +68,87 @@ describe("pollen-auth/context", () => {
     });
   });
 
-  describe("Initial State", () => {
-    it("should show loading state initially", async () => {
+  describe("Loading State", () => {
+    it("should show loading state when Convex query is undefined", () => {
+      mockUseQuery.mockReturnValue(undefined);
+
       render(
         <PollenAuthProvider>
           <TestConsumer />
-        </PollenAuthProvider>
+        </PollenAuthProvider>,
       );
 
-      // Wait for loading to complete
-      await waitFor(() => {
-        expect(screen.getByTestId("isLoading").textContent).toBe("false");
-      });
-    });
-
-    it("should show unauthorized when no key is stored", async () => {
-      render(
-        <PollenAuthProvider>
-          <TestConsumer />
-        </PollenAuthProvider>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByTestId("isLoading").textContent).toBe("false");
-      });
-
+      expect(screen.getByTestId("isLoading").textContent).toBe("true");
       expect(screen.getByTestId("isAuthorized").textContent).toBe("false");
       expect(screen.getByTestId("apiKey").textContent).toBe("null");
     });
   });
 
-  describe("With Valid Stored Key", () => {
-    beforeEach(() => {
-      const authorizedAt = Date.now();
-      const expiresAt = authorizedAt + EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+  describe("Unauthorized State", () => {
+    it("should show unauthorized when Convex returns null", () => {
+      mockUseQuery.mockReturnValue(null);
 
-      localStorageMock.setItem(STORAGE_KEY, "sk_valid_test_key");
-      localStorageMock.setItem(STORAGE_EXPIRY_KEY, String(expiresAt));
-      localStorageMock.setItem(
-        STORAGE_AUTHORIZED_AT_KEY,
-        String(authorizedAt)
-      );
-    });
-
-    it("should show authorized state with valid key", async () => {
       render(
         <PollenAuthProvider>
           <TestConsumer />
-        </PollenAuthProvider>
+        </PollenAuthProvider>,
       );
 
-      await waitFor(() => {
-        expect(screen.getByTestId("isLoading").textContent).toBe("false");
-      });
+      expect(screen.getByTestId("isLoading").textContent).toBe("false");
+      expect(screen.getByTestId("isAuthorized").textContent).toBe("false");
+      expect(screen.getByTestId("apiKey").textContent).toBe("null");
+    });
+  });
 
+  describe("Authorized State", () => {
+    it("should show authorized state when Convex returns a key", () => {
+      mockUseQuery.mockReturnValue("sk_valid_test_key");
+
+      render(
+        <PollenAuthProvider>
+          <TestConsumer />
+        </PollenAuthProvider>,
+      );
+
+      expect(screen.getByTestId("isLoading").textContent).toBe("false");
       expect(screen.getByTestId("isAuthorized").textContent).toBe("true");
       expect(screen.getByTestId("apiKey").textContent).toBe(
-        "sk_valid_test_key"
+        "sk_valid_test_key",
       );
-      expect(screen.getByTestId("isExpired").textContent).toBe("false");
     });
 
-    it("should show correct days until expiry", async () => {
-      render(
+    it("should clear needsReconnect when authorized", async () => {
+      // Start with no key and needsReconnect
+      mockUseQuery.mockReturnValue(null);
+
+      const { rerender } = render(
         <PollenAuthProvider>
           <TestConsumer />
-        </PollenAuthProvider>
+        </PollenAuthProvider>,
       );
 
-      await waitFor(() => {
-        expect(screen.getByTestId("isLoading").textContent).toBe("false");
-      });
+      const user = userEvent.setup();
+      await user.click(screen.getByTestId("setNeedsReconnect"));
 
-      const daysUntilExpiry = screen.getByTestId("daysUntilExpiry").textContent;
-      expect(Number(daysUntilExpiry)).toBe(EXPIRY_DAYS);
-    });
-  });
+      expect(screen.getByTestId("needsReconnect").textContent).toBe("true");
 
-  describe("With Expiring Soon Key", () => {
-    beforeEach(() => {
-      const daysRemaining = EXPIRING_SOON_THRESHOLD_DAYS - 2; // 5 days
-      const expiresAt = Date.now() + daysRemaining * 24 * 60 * 60 * 1000;
-      const authorizedAt = expiresAt - EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+      // Simulate user reconnecting (Convex now returns a key)
+      mockUseQuery.mockReturnValue("sk_new_key");
 
-      localStorageMock.setItem(STORAGE_KEY, "sk_expiring_soon_key");
-      localStorageMock.setItem(STORAGE_EXPIRY_KEY, String(expiresAt));
-      localStorageMock.setItem(
-        STORAGE_AUTHORIZED_AT_KEY,
-        String(authorizedAt)
-      );
-    });
-
-    it("should show expiring soon state", async () => {
-      render(
+      rerender(
         <PollenAuthProvider>
           <TestConsumer />
-        </PollenAuthProvider>
+        </PollenAuthProvider>,
       );
 
-      await waitFor(() => {
-        expect(screen.getByTestId("isLoading").textContent).toBe("false");
-      });
-
-      expect(screen.getByTestId("isAuthorized").textContent).toBe("true");
-      expect(screen.getByTestId("isExpiringSoon").textContent).toBe("true");
-    });
-  });
-
-  describe("With Expired Key", () => {
-    beforeEach(() => {
-      const expiredTime = Date.now() - 24 * 60 * 60 * 1000; // 1 day ago
-      const authorizedAt = expiredTime - EXPIRY_DAYS * 24 * 60 * 60 * 1000;
-
-      localStorageMock.setItem(STORAGE_KEY, "sk_expired_key");
-      localStorageMock.setItem(STORAGE_EXPIRY_KEY, String(expiredTime));
-      localStorageMock.setItem(
-        STORAGE_AUTHORIZED_AT_KEY,
-        String(authorizedAt)
-      );
-    });
-
-    it("should show expired state", async () => {
-      render(
-        <PollenAuthProvider>
-          <TestConsumer />
-        </PollenAuthProvider>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByTestId("isLoading").textContent).toBe("false");
-      });
-
-      expect(screen.getByTestId("isAuthorized").textContent).toBe("false");
-      expect(screen.getByTestId("isExpired").textContent).toBe("true");
-      expect(screen.getByTestId("apiKey").textContent).toBe("null"); // Key is cleared when expired
+      expect(screen.getByTestId("needsReconnect").textContent).toBe("false");
     });
   });
 
   describe("Authorize Action", () => {
     it("should redirect to Pollinations when authorize is called", async () => {
+      mockUseQuery.mockReturnValue(null);
+
       const user = userEvent.setup();
 
       // Mock window.location.href setter
@@ -228,12 +165,8 @@ describe("pollen-auth/context", () => {
       render(
         <PollenAuthProvider>
           <TestConsumer />
-        </PollenAuthProvider>
+        </PollenAuthProvider>,
       );
-
-      await waitFor(() => {
-        expect(screen.getByTestId("isLoading").textContent).toBe("false");
-      });
 
       await user.click(screen.getByTestId("authorize"));
 
@@ -243,36 +176,161 @@ describe("pollen-auth/context", () => {
   });
 
   describe("Deauthorize Action", () => {
-    beforeEach(() => {
-      const authorizedAt = Date.now();
-      const expiresAt = authorizedAt + EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+    it("should call removeApiKey mutation when deauthorize is called", async () => {
+      mockUseQuery.mockReturnValue("sk_valid_test_key");
 
-      localStorageMock.setItem(STORAGE_KEY, "sk_valid_test_key");
-      localStorageMock.setItem(STORAGE_EXPIRY_KEY, String(expiresAt));
-      localStorageMock.setItem(
-        STORAGE_AUTHORIZED_AT_KEY,
-        String(authorizedAt)
-      );
-    });
-
-    it("should clear auth state when deauthorize is called", async () => {
       const user = userEvent.setup();
 
       render(
         <PollenAuthProvider>
           <TestConsumer />
-        </PollenAuthProvider>
+        </PollenAuthProvider>,
+      );
+
+      expect(screen.getByTestId("isAuthorized").textContent).toBe("true");
+
+      await user.click(screen.getByTestId("deauthorize"));
+
+      expect(mockRemoveApiKey).toHaveBeenCalled();
+    });
+
+    it("should reset needsReconnect when deauthorize is called", async () => {
+      mockUseQuery.mockReturnValue(null);
+
+      const user = userEvent.setup();
+
+      render(
+        <PollenAuthProvider>
+          <TestConsumer />
+        </PollenAuthProvider>,
+      );
+
+      // Set needsReconnect first
+      await user.click(screen.getByTestId("setNeedsReconnect"));
+      expect(screen.getByTestId("needsReconnect").textContent).toBe("true");
+
+      // Deauthorize should clear it
+      await user.click(screen.getByTestId("deauthorize"));
+      expect(screen.getByTestId("needsReconnect").textContent).toBe("false");
+    });
+  });
+
+  describe("setNeedsReconnect Action", () => {
+    it("should set needsReconnect to true", async () => {
+      mockUseQuery.mockReturnValue(null);
+
+      const user = userEvent.setup();
+
+      render(
+        <PollenAuthProvider>
+          <TestConsumer />
+        </PollenAuthProvider>,
+      );
+
+      expect(screen.getByTestId("needsReconnect").textContent).toBe("false");
+
+      await user.click(screen.getByTestId("setNeedsReconnect"));
+
+      expect(screen.getByTestId("needsReconnect").textContent).toBe("true");
+    });
+
+    it("should call removeApiKey when setting needsReconnect to true", async () => {
+      mockUseQuery.mockReturnValue("sk_invalid_key");
+
+      const user = userEvent.setup();
+
+      render(
+        <PollenAuthProvider>
+          <TestConsumer />
+        </PollenAuthProvider>,
+      );
+
+      await user.click(screen.getByTestId("setNeedsReconnect"));
+
+      // Should remove the invalid key from server
+      expect(mockRemoveApiKey).toHaveBeenCalled();
+    });
+  });
+
+  describe("Context Default Values", () => {
+    it("should warn when used outside provider", () => {
+      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      function OutsideConsumer() {
+        const context = useContext(PollenAuthContext);
+        return (
+          <button onClick={context.authorize} data-testid="authorize">
+            Authorize
+          </button>
+        );
+      }
+
+      render(<OutsideConsumer />);
+
+      // Trigger the action
+      screen.getByTestId("authorize").click();
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "[PollenAuth] authorize called outside of provider",
+      );
+
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe("Reactive Updates", () => {
+    it("should update state when Convex query changes", async () => {
+      // Start with no key
+      mockUseQuery.mockReturnValue(null);
+
+      const { rerender } = render(
+        <PollenAuthProvider>
+          <TestConsumer />
+        </PollenAuthProvider>,
+      );
+
+      expect(screen.getByTestId("isAuthorized").textContent).toBe("false");
+
+      // Simulate key being added (e.g., after OAuth callback)
+      mockUseQuery.mockReturnValue("sk_new_key");
+
+      rerender(
+        <PollenAuthProvider>
+          <TestConsumer />
+        </PollenAuthProvider>,
       );
 
       await waitFor(() => {
         expect(screen.getByTestId("isAuthorized").textContent).toBe("true");
+        expect(screen.getByTestId("apiKey").textContent).toBe("sk_new_key");
       });
+    });
 
-      await user.click(screen.getByTestId("deauthorize"));
+    it("should update state when key is removed", async () => {
+      // Start with a key
+      mockUseQuery.mockReturnValue("sk_existing_key");
 
-      expect(screen.getByTestId("isAuthorized").textContent).toBe("false");
-      expect(screen.getByTestId("apiKey").textContent).toBe("null");
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith(STORAGE_KEY);
+      const { rerender } = render(
+        <PollenAuthProvider>
+          <TestConsumer />
+        </PollenAuthProvider>,
+      );
+
+      expect(screen.getByTestId("isAuthorized").textContent).toBe("true");
+
+      // Simulate key being removed
+      mockUseQuery.mockReturnValue(null);
+
+      rerender(
+        <PollenAuthProvider>
+          <TestConsumer />
+        </PollenAuthProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("isAuthorized").textContent).toBe("false");
+        expect(screen.getByTestId("apiKey").textContent).toBe("null");
+      });
     });
   });
 });

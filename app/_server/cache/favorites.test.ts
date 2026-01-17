@@ -43,7 +43,7 @@ vi.mock("convex/nextjs", () => ({
 
 // Mock unstable_cache to track when its callback is executed
 vi.mock("next/cache", () => ({
-    unstable_cache: (fn: () => Promise<unknown>, _keys: string[], _opts: unknown) => {
+    unstable_cache: (fn: () => Promise<unknown>) => {
         // Return a function that, when called, executes the cached function
         return async () => {
             callOrder.push("unstable_cache_callback_start")

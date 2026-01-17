@@ -29,6 +29,8 @@ export interface RetryResult<T> {
     data?: T
     /** Error message (if failed) */
     error?: string
+    /** HTTP status code of the last response (if available) */
+    lastStatus?: number
     /** Number of retry attempts made */
     attemptsMade: number
     /** Whether the failure was due to a non-retryable error */
@@ -154,6 +156,7 @@ export async function fetchWithRetry(
                 return {
                     success: false,
                     error: lastError,
+                    lastStatus: response.status,
                     attemptsMade: attempt + 1,
                     wasNonRetryable: true,
                 }
@@ -184,6 +187,7 @@ export async function fetchWithRetry(
     return {
         success: false,
         error: lastError ?? `Request failed with status ${lastStatus}`,
+        lastStatus,
         attemptsMade: config.maxRetries + 1,
     }
 }

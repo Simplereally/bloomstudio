@@ -101,7 +101,7 @@ export function ProfileCard() {
                                 </div>
                             </div>
                             <p className="text-sm text-muted-foreground leading-relaxed">
-                                This is your unique handle on Pixelstream. It will be used in your profile URL and when others mention you.
+                                This is your unique handle on Bloom Studio. It will be used in your profile URL and when others mention you.
                             </p>
                         </div>
                     </div>

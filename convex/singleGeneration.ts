@@ -173,6 +173,8 @@ export const updateGenerationStatus = internalMutation({
             v.literal("failed")
         ),
         errorMessage: v.optional(v.string()),
+        /** HTTP error code from Pollinations API (401=auth, 402=budget, 403=access) */
+        errorCode: v.optional(v.number()),
         imageId: v.optional(v.id("generatedImages")),
         retryCount: v.optional(v.number()),
     },
@@ -181,6 +183,7 @@ export const updateGenerationStatus = internalMutation({
             status: typeof args.status
             updatedAt: number
             errorMessage?: string
+            errorCode?: number
             imageId?: typeof args.imageId
             retryCount?: number
         } = {
@@ -190,6 +193,9 @@ export const updateGenerationStatus = internalMutation({
 
         if (args.errorMessage !== undefined) {
             updates.errorMessage = args.errorMessage
+        }
+        if (args.errorCode !== undefined) {
+            updates.errorCode = args.errorCode
         }
         if (args.imageId !== undefined) {
             updates.imageId = args.imageId

@@ -7,4 +7,15 @@
  * This follows the existing provider pattern in the application.
  */
 
-export { PollenAuthProvider } from "@/lib/pollen-auth";
+import { PollenAuthProvider as BasePollenAuthProvider } from "@/lib/pollen-auth";
+import { GlobalReconnectModal } from "@/components/pollen-auth";
+import { ReactNode } from "react";
+
+export function PollenAuthProvider({ children }: { children: ReactNode }) {
+  return (
+    <BasePollenAuthProvider>
+      {children}
+      <GlobalReconnectModal />
+    </BasePollenAuthProvider>
+  );
+}

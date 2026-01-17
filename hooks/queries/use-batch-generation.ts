@@ -63,6 +63,8 @@ export interface BatchJob {
     inFlightCount?: number
     generationParams: BatchGenerationParams
     imageIds: Id<"generatedImages">[]
+    /** Last HTTP error code from Pollinations API (401=auth, 402=budget, 403=access) */
+    lastErrorCode?: number
     createdAt: number
     updatedAt: number
 }

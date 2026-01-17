@@ -4,7 +4,10 @@
  * API Card
  *
  * Settings card for managing Pollinations API connection.
- * Shows BYOP connection status, expiration countdown, and connection actions.
+ * Shows BYOP connection status and connection actions.
+ *
+ * Note: Legacy API key support has been removed. BYOP OAuth is now
+ * the only supported authentication method.
  */
 
 import {
@@ -18,22 +21,12 @@ import { useApiCardState } from "@/hooks/use-api-card-state";
 import {
   ConnectionStatusBadge,
   ByopConnectedSection,
-  ByopExpiredSection,
   NotConnectedSection,
-  ExpiringSoonWarning,
-  LegacyKeySection,
 } from "./api-card-components";
 
 export function ApiCard() {
-  const {
-    legacyState,
-    byopState,
-    connectionStatus,
-    actionState,
-    handlers,
-    isLoading,
-  } = useApiCardState();
-
+  const { byopState, connectionStatus, actionState, handlers, isLoading } =
+    useApiCardState();
 
   if (isLoading) {
     return <ApiCardSkeleton />;
@@ -44,57 +37,29 @@ export function ApiCard() {
       <CardHeader className="pb-4">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
-            <CardTitle className="text-2xl font-bold">Pollinations Connection</CardTitle>
+            <CardTitle className="text-2xl font-bold">
+              Pollinations Connection
+            </CardTitle>
             <CardDescription className="text-base text-muted-foreground/80">
               Manage your connection to Pollinations.ai for image generation.
             </CardDescription>
           </div>
-          <ConnectionStatusBadge
-            status={connectionStatus}
-            daysUntilExpiry={byopState.daysUntilExpiry}
-          />
+          <ConnectionStatusBadge status={connectionStatus} />
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* BYOP Connection Section */}
         {byopState.isConnected ? (
           <ByopConnectedSection
-            daysUntilExpiry={byopState.daysUntilExpiry}
             isRedirecting={actionState.isRedirecting}
             onReconnect={handlers.handleReconnect}
             onDisconnect={handlers.handleDisconnect}
           />
-        ) : byopState.isExpired ? (
-          <ByopExpiredSection
-            isRedirecting={actionState.isRedirecting}
-            onReconnect={handlers.handleReconnect}
-          />
-        ) : !legacyState.hasLegacyKey ? (
+        ) : (
           <NotConnectedSection
             isRedirecting={actionState.isRedirecting}
             onConnect={handlers.handleReconnect}
           />
-        ) : null}
-
-        {/* Expiring Soon Warning */}
-        {byopState.isExpiringSoon && !byopState.isExpired && (
-          <ExpiringSoonWarning
-            daysUntilExpiry={byopState.daysUntilExpiry}
-            isRedirecting={actionState.isRedirecting}
-            onReconnect={handlers.handleReconnect}
-          />
         )}
-
-        {/* Legacy Key Section - Only shows if user has a legacy key */}
-        <LegacyKeySection
-          isOpen={actionState.showLegacySection}
-          onOpenChange={actionState.setShowLegacySection}
-          hasLegacyKey={legacyState.hasLegacyKey}
-          isByopConnected={byopState.isConnected}
-          isLoading={legacyState.isLegacyLoading}
-          isRemoving={actionState.isRemoving}
-          onRemove={handlers.handleRemoveLegacyKey}
-        />
       </CardContent>
     </Card>
   );
