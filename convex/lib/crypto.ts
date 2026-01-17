@@ -16,51 +16,16 @@ const IV_LENGTH = 12;
 // ============================================================
 // Helper Functions
 // ============================================================
-
 /**
- * Converts a hex string to a Uint8Array.
+ * Imports and memoizes the encryption key from the environment variable.
+ * The key is parsed once and cached for subsequent calls to improve performance.
  */
-function hexToBytes(hex: string): Uint8Array {
-    if (hex.length % 2 !== 0) {
-        throw new Error("Invalid hex string: length must be even");
-    }
-    if (!/^[0-9a-fA-F]*$/.test(hex)) {
-        throw new Error("Invalid hex string: input contains non-hex characters");
-    }
-    const bytes = new Uint8Array(hex.length / 2);
-    for (let i = 0; i < hex.length; i += 2) {
-        bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
-    }
-    return bytes;
-}
-
-/**
- * Converts a Uint8Array to a base64 string.
- */
-function bytesToBase64(bytes: Uint8Array): string {
-    let binary = "";
-    for (let i = 0; i < bytes.length; i++) {
-        binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
-}
-
-/**
- * Converts a base64 string to a Uint8Array.
- */
-function base64ToBytes(base64: string): Uint8Array {
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-    }
-    return bytes;
-}
-
-/**
- * Imports the encryption key from the environment variable.
- */
+let cachedKey: CryptoKey | null = null;
 async function getEncryptionKey(): Promise<CryptoKey> {
+    if (cachedKey) {
+        return cachedKey;
+    }
+
     const encryptionKey = process.env.ENCRYPTION_KEY;
     if (!encryptionKey) {
         throw new Error("ENCRYPTION_KEY environment variable is not set in Convex");
@@ -76,22 +41,19 @@ async function getEncryptionKey(): Promise<CryptoKey> {
         );
     }
 
-    const keyBytes = hexToBytes(encryptionKey);
+    // Convert to Uint8Array to ensure compatibility with Web Crypto API types
+    // (avoiding explicit 'as unknown as BufferSource' casts)
+    const keyData = new Uint8Array(Buffer.from(encryptionKey, "hex"));
 
-    // Create a clean ArrayBuffer copy to satisfy TypeScript's BufferSource type
-    // avoiding SharedArrayBuffer type ambiguity.
-    const keyBuffer = keyBytes.buffer.slice(
-        keyBytes.byteOffset,
-        keyBytes.byteOffset + keyBytes.byteLength,
-    );
-
-    return crypto.subtle.importKey(
+    cachedKey = await crypto.subtle.importKey(
         "raw",
-        keyBuffer,
+        keyData,
         { name: ALGORITHM },
         false, // not extractable
         ["encrypt", "decrypt"],
     );
+
+    return cachedKey;
 }
 
 // ============================================================
@@ -114,10 +76,10 @@ export async function encryptApiKey(apiKey: string): Promise<string> {
     crypto.getRandomValues(iv);
 
     // Encode the API key as UTF-8
-    const encoder = new TextEncoder();
-    const data = encoder.encode(apiKey);
+    const data = Buffer.from(apiKey, "utf8");
 
     // Encrypt (Web Crypto API includes auth tag in the ciphertext)
+    // crypto.subtle.encrypt returns an ArrayBuffer
     const ciphertext = await crypto.subtle.encrypt(
         { name: ALGORITHM, iv },
         key,
@@ -125,11 +87,9 @@ export async function encryptApiKey(apiKey: string): Promise<string> {
     );
 
     // Combine IV + ciphertext (which includes auth tag)
-    const combined = new Uint8Array(IV_LENGTH + ciphertext.byteLength);
-    combined.set(iv, 0);
-    combined.set(new Uint8Array(ciphertext), IV_LENGTH);
+    const combined = Buffer.concat([iv, Buffer.from(ciphertext)]);
 
-    return bytesToBase64(combined);
+    return combined.toString("base64");
 }
 
 // ============================================================
@@ -147,20 +107,21 @@ export async function encryptApiKey(apiKey: string): Promise<string> {
 export async function decryptApiKey(ciphertext: string): Promise<string> {
     const key = await getEncryptionKey();
 
-    const combined = base64ToBytes(ciphertext);
+    const combined = Buffer.from(ciphertext, "base64");
 
     // Extract IV and ciphertext (which includes auth tag)
-    const iv = combined.slice(0, IV_LENGTH);
-    const encrypted = combined.slice(IV_LENGTH);
+    // subarray shares memory, similar to slice on TypedArray
+    const iv = combined.subarray(0, IV_LENGTH);
+    const encrypted = combined.subarray(IV_LENGTH);
 
     // Decrypt
     const decrypted = await crypto.subtle.decrypt(
         { name: ALGORITHM, iv },
         key,
-        encrypted,
+        new Uint8Array(encrypted), // explicit Uint8Array for Web Crypto compatibility
     );
 
     // Decode as UTF-8
-    const decoder = new TextDecoder();
-    return decoder.decode(decrypted);
+    return Buffer.from(decrypted).toString("utf8");
 }
+
