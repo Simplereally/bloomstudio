@@ -10,17 +10,20 @@ type Cursor = string | null
 /**
  * Cached user favorites page query.
  * Cache is per-user, keyed by userId.
+ * 
+ * Note: Token is captured in closure but NOT part of cache key.
+ * userId provides stable cache key isolation.
  */
 export async function getFavoritesPageCached(
     userId: string,
     cursor: Cursor,
     numItems: number = PAGE_SIZES.FAVORITES
 ) {
+    const token = await getConvexClerkToken()
     const isFirstPage = cursor === null
 
     return unstable_cache(
         async () => {
-            const token = await getConvexClerkToken()
             return fetchQuery(
                 api.favorites.list,
                 { paginationOpts: { numItems, cursor } },

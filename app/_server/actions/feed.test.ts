@@ -59,6 +59,24 @@ describe("feed server actions", () => {
 
             expect(mockGetPublicFeedPageCached).toHaveBeenCalledWith(null, 50, "blur")
         })
+
+        it("passes filterPreference 'block' when provided", async () => {
+            await loadPublicFeedPage({ cursor: null, filterPreference: "block" })
+
+            expect(mockGetPublicFeedPageCached).toHaveBeenCalledWith(null, undefined, "block")
+        })
+
+        it("passes filterPreference 'allow' when provided", async () => {
+            await loadPublicFeedPage({ cursor: null, filterPreference: "allow" })
+
+            expect(mockGetPublicFeedPageCached).toHaveBeenCalledWith(null, undefined, "allow")
+        })
+
+        it("passes all parameters together correctly", async () => {
+            await loadPublicFeedPage({ cursor: "cursor_xyz", numItems: 25, filterPreference: "block" })
+
+            expect(mockGetPublicFeedPageCached).toHaveBeenCalledWith("cursor_xyz", 25, "block")
+        })
     })
 
     describe("loadFollowingFeedPage", () => {
