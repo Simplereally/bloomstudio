@@ -338,7 +338,7 @@ const StandardGalleryGrid = React.memo(function StandardGalleryGrid({
     }, [onLoadMore, canLoadMore, isLoadingMore])
 
     return (
-        <ScrollArea className="flex-1" data-testid="gallery-scroll" ref={scrollRef}>
+        <ScrollArea className="flex-1 min-h-0 overflow-hidden" data-testid="gallery-scroll" ref={scrollRef}>
             <div
                 className={cn(
                     "p-2",
