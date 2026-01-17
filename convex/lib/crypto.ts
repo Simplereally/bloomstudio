@@ -72,19 +72,6 @@ function concatBytes(...arrays: Uint8Array[]): Uint8Array {
     return result;
 }
 
-/**
- * Converts a Uint8Array to a proper ArrayBuffer.
- * Used to satisfy TypeScript's strict BufferSource types for Web Crypto API.
- * Creates a new ArrayBuffer (not a view) to avoid SharedArrayBuffer type issues.
- */
-function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
-    // Create a new ArrayBuffer and copy the data
-    // This ensures we get a proper ArrayBuffer type (not ArrayBuffer | SharedArrayBuffer)
-    const buffer = new ArrayBuffer(bytes.length);
-    new Uint8Array(buffer).set(bytes);
-    return buffer;
-}
-
 // TextEncoder/TextDecoder for UTF-8 string conversion
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
@@ -121,9 +108,11 @@ async function getEncryptionKey(): Promise<CryptoKey> {
     // Convert hex string to Uint8Array using Web-standard helper
     const keyData = hexToBytes(encryptionKey);
 
+    // Note: Uint8Array is a valid BufferSource for Web Crypto API
+    // Type assertion needed for Convex's strict TypeScript config
     cachedKey = await crypto.subtle.importKey(
         "raw",
-        toArrayBuffer(keyData),
+        keyData as BufferSource,
         { name: ALGORITHM },
         false, // not extractable
         ["encrypt", "decrypt"],
@@ -155,8 +144,9 @@ export async function encryptApiKey(apiKey: string): Promise<string> {
     const data = textEncoder.encode(apiKey);
 
     // Encrypt (Web Crypto API includes auth tag in the ciphertext)
+    // Type assertion needed for Convex's strict TypeScript config (iv is BufferSource)
     const ciphertext = await crypto.subtle.encrypt(
-        { name: ALGORITHM, iv: toArrayBuffer(iv) },
+        { name: ALGORITHM, iv: iv as BufferSource },
         key,
         data,
     );
@@ -191,10 +181,11 @@ export async function decryptApiKey(ciphertext: string): Promise<string> {
     const encrypted = combined.subarray(IV_LENGTH);
 
     // Decrypt
+    // Type assertions needed for Convex's strict TypeScript config
     const decrypted = await crypto.subtle.decrypt(
-        { name: ALGORITHM, iv: toArrayBuffer(iv) },
+        { name: ALGORITHM, iv: iv as BufferSource },
         key,
-        toArrayBuffer(encrypted),
+        encrypted as BufferSource,
     );
 
     // Decode as UTF-8 using TextDecoder
