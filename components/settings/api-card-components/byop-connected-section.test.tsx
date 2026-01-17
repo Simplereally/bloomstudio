@@ -6,7 +6,6 @@ import { ByopConnectedSection } from "./byop-connected-section";
 
 describe("ByopConnectedSection", () => {
   const defaultProps = {
-    daysUntilExpiry: 25,
     isRedirecting: false,
     onReconnect: vi.fn(),
     onDisconnect: vi.fn(),
@@ -17,14 +16,11 @@ describe("ByopConnectedSection", () => {
     expect(screen.getByText("Connected via BYOP")).toBeInTheDocument();
   });
 
-  it("shows days until expiry", () => {
-    render(<ByopConnectedSection {...defaultProps} daysUntilExpiry={15} />);
-    expect(screen.getByText(/15 days/)).toBeInTheDocument();
-  });
-
-  it("hides expiry when null", () => {
-    render(<ByopConnectedSection {...defaultProps} daysUntilExpiry={null} />);
-    expect(screen.queryByText(/days/)).not.toBeInTheDocument();
+  it("shows connection info message", () => {
+    render(<ByopConnectedSection {...defaultProps} />);
+    expect(
+      screen.getByText(/Your Pollinations connection is active/)
+    ).toBeInTheDocument();
   });
 
   it("calls onReconnect when Reconnect button is clicked", async () => {

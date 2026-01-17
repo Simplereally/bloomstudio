@@ -6,11 +6,16 @@
  * A sleek onboarding flow for users to connect their Pollinations BYOP account.
  * Shows automatically when an authenticated user doesn't have a valid connection.
  *
- * Uses BYOP OAuth flow for one-click setup - manual key entry has been deprecated.
+ * Uses BYOP OAuth flow for one-click setup.
  */
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useConvexAuth, useMutation } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Check, Zap } from "lucide-react";
 import * as React from "react";
@@ -43,20 +48,15 @@ export function ApiKeyOnboardingModal({
 
   const shouldShowPreviewButton = process.env.NODE_ENV !== "production";
 
-  // BYOP auth state
-  const { isAuthorized: isByopAuthorized, isLoading: isByopLoading } =
-    usePollenAuth();
+  // BYOP auth state - single source of truth for connection status
+  const { isAuthorized, isLoading: isByopLoading } = usePollenAuth();
 
   // Controlled mode: forceOpen prop overrides internal state
   const isControlled = forceOpen !== undefined;
   const isOpen = isControlled ? forceOpen : isOpenInternal;
 
-  // Check if user has an API key (legacy Convex-stored key - deprecated)
+  // Clerk auth state
   const { isAuthenticated, isLoading: isLoadingAuth } = useConvexAuth();
-  const existingApiKey = useQuery(
-    api.users.getPollinationsApiKey,
-    isAuthenticated ? {} : "skip"
-  );
   const getOrCreateUser = useMutation(api.users.getOrCreateUser);
 
   // Initialize user on mount (only in automatic mode)
@@ -66,34 +66,30 @@ export function ApiKeyOnboardingModal({
     getOrCreateUser().catch((error) => {
       console.error("Error initializing user:", error);
     });
-    // getOrCreateUser is stable from Convex, safe to include
   }, [isAuthenticated, isLoadingAuth, isControlled, getOrCreateUser]);
 
   // Show/hide modal based on auth state (only in automatic mode)
   React.useEffect(() => {
     if (isControlled) return;
 
+    // Don't show while loading
     if (isLoadingAuth || !isAuthenticated || isByopLoading) {
       setIsOpenInternal(false);
       return;
     }
 
-    const hasValidAuth =
-      isByopAuthorized ||
-      (existingApiKey !== null && existingApiKey !== undefined);
-
-    if (!hasValidAuth) {
+    // Show modal if not authorized, hide if authorized (and on setup page)
+    if (!isAuthorized) {
       setIsOpenInternal(true);
     } else if (page === "setup") {
       setIsOpenInternal(false);
     }
   }, [
-    existingApiKey,
     isAuthenticated,
     isLoadingAuth,
     isControlled,
     page,
-    isByopAuthorized,
+    isAuthorized,
     isByopLoading,
   ]);
 
@@ -116,16 +112,8 @@ export function ApiKeyOnboardingModal({
     setPage("upgrade");
   }, []);
 
-  // In automatic mode: don't render if still loading or user has valid auth
-  const hasValidAuth =
-    isByopAuthorized ||
-    (existingApiKey !== null && existingApiKey !== undefined);
-  if (
-    !isControlled &&
-    (existingApiKey === undefined ||
-      isByopLoading ||
-      (hasValidAuth && !isOpenInternal))
-  ) {
+  // In automatic mode: don't render while loading or if user is authorized
+  if (!isControlled && (isByopLoading || (isAuthorized && !isOpenInternal))) {
     return null;
   }
 
@@ -177,7 +165,10 @@ interface SetupFaceProps {
   onPreviewUpgrade: () => void;
 }
 
-function SetupFace({ shouldShowPreviewButton, onPreviewUpgrade }: SetupFaceProps) {
+function SetupFace({
+  shouldShowPreviewButton,
+  onPreviewUpgrade,
+}: SetupFaceProps) {
   return (
     <div className="relative">
       {/* Header */}
@@ -268,7 +259,8 @@ function UpgradeFace({ onFinish }: UpgradeFaceProps) {
           GitHub Developer Bonus
         </h2>
         <p className="text-sm text-muted-foreground max-w-[340px] mx-auto">
-          Did you know that if you have a developer account on GitHub, you may receive 3x limits through Pollinations automatically? See{" "}
+          Did you know that if you have a developer account on GitHub, you may
+          receive 3x limits through Pollinations automatically? See{" "}
           <a
             href="https://enter.pollinations.ai"
             target="_blank"

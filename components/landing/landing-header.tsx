@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useUser } from "@clerk/nextjs";
 import { ArrowRight, Sparkles, Users } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
@@ -83,10 +84,13 @@ export function LandingHeader() {
       <div className="container mx-auto px-6 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2">
-            <img
+            <Image
               src="/icon.png"
               alt="Bloom Studio Logo"
+              width={32}
+              height={32}
               className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8"
+              priority
             />
             <span className="text-xl sm:text-2xl lg:text-3xl font-bold text-primary font-brand tracking-tight -skew-x-6 whitespace-nowrap">Bloom Studio</span>
           </Link>

@@ -3,8 +3,11 @@
 /**
  * Reconnect Modal
  *
- * A modal that forces re-authorization when the user's BYOP API key
- * has expired or been revoked. Cannot be dismissed without reconnecting.
+ * A modal that prompts re-authorization when the user's BYOP API key
+ * has become invalid (detected via 401 response from Pollinations API).
+ *
+ * Note: This modal is now triggered by `needsReconnect` state (set by API error detection)
+ * rather than local expiry tracking, since Pollinations doesn't provide expiry info.
  */
 
 import {
@@ -15,49 +18,48 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ConnectButton } from "./connect-button";
-import { usePollenAuth } from "@/lib/pollen-auth";
 import { AlertTriangle } from "lucide-react";
 
 export interface ReconnectModalProps {
-  /** Override automatic display behavior (for testing) */
-  forceOpen?: boolean;
-  /** Callback when modal closes (only available if expiration is resolved) */
-  onClose?: () => void;
+  /** Whether the modal should be open */
+  open: boolean;
+  /** Callback when modal requests to close */
+  onOpenChange: (open: boolean) => void;
 }
 
 /**
- * A modal that appears when the user's API key has expired.
- * Cannot be dismissed until the user reconnects or auth is restored.
+ * A modal that appears when the user's API key has become invalid.
+ * Cannot be dismissed until the user reconnects.
  *
  * Note: This modal does NOT block navigation - it only prevents dismissal.
  * Apps should still function in a degraded mode when this is shown.
  *
  * @example
  * ```tsx
- * // Auto-displays when key expires
- * <ReconnectModal />
+ * const [needsReconnect, setNeedsReconnect] = useState(false);
  *
- * // Force open for testing
- * <ReconnectModal forceOpen={true} />
+ * // On 401 from Pollinations API:
+ * // setNeedsReconnect(true);
+ *
+ * <ReconnectModal
+ *   open={needsReconnect}
+ *   onOpenChange={setNeedsReconnect}
+ * />
  * ```
  */
-export function ReconnectModal({ forceOpen, onClose }: ReconnectModalProps) {
-  const { isExpired, isAuthorized, isLoading } = usePollenAuth();
-
-  // Determine if modal should be open
-  // Show when expired AND NOT authorized (expired key exists but is no longer valid)
-  const shouldShow = forceOpen ?? (isExpired && !isAuthorized && !isLoading);
-
-  // Handle open change - only allow closing if issue is resolved
-  const handleOpenChange = (open: boolean) => {
-    if (!open && !isExpired && isAuthorized) {
-      onClose?.();
+export function ReconnectModal({ open, onOpenChange }: ReconnectModalProps) {
+  // Handle open change - prevent closing by clicking outside
+  const handleOpenChange = (newOpen: boolean) => {
+    // Only allow programmatic closing (e.g., after successful reconnect)
+    if (!newOpen) {
+      // Prevent close - user must reconnect
+      return;
     }
-    // Otherwise, prevent closing
+    onOpenChange(newOpen);
   };
 
   return (
-    <Dialog open={shouldShow} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className="sm:max-w-md"
         onPointerDownOutside={(e) => e.preventDefault()}
@@ -71,10 +73,11 @@ export function ReconnectModal({ forceOpen, onClose }: ReconnectModalProps) {
           <div className="mx-auto mb-4 w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center">
             <AlertTriangle className="w-7 h-7 text-destructive" />
           </div>
-          <DialogTitle className="text-xl">Connection Expired</DialogTitle>
+          <DialogTitle className="text-xl">Connection Issue</DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            Your Pollinations connection has expired after 30 days. Reconnect to
-            continue generating images and videos.
+            Your Pollinations connection is no longer valid. This may happen if
+            your key expired or was revoked. Reconnect to continue generating
+            images and videos.
           </DialogDescription>
         </DialogHeader>
 
@@ -95,7 +98,7 @@ export function ReconnectModal({ forceOpen, onClose }: ReconnectModalProps) {
               </li>
               <li className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                Secure, temporary 30-day connection
+                Secure connection to Pollinations
               </li>
             </ul>
           </div>

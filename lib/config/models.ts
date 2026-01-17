@@ -5,7 +5,7 @@
  * Each model is defined with its ID, display name, type, constraints, and aspect ratios.
  */
 
-import type { AspectRatio, AspectRatioOption, ModelConstraints, ModelPricing } from "@/types/pollinations";
+import type { AspectRatio, AspectRatioOption, ModelConstraints } from "@/types/pollinations";
 import { STANDARD_RESOLUTIONS } from "./standard-resolutions";
 import {
   IMAGE_MODEL_PRICING,

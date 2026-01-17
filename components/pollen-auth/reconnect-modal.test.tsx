@@ -2,17 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { ReconnectModal } from "./reconnect-modal";
 
-// Mock the usePollenAuth hook
-let mockAuthState = {
-  isExpired: false,
-  isAuthorized: false,
-  isLoading: false,
-};
-
-vi.mock("@/lib/pollen-auth", () => ({
-  usePollenAuth: () => mockAuthState,
-}));
-
 // Mock the ConnectButton since it's tested separately
 vi.mock("./connect-button", () => ({
   ConnectButton: ({
@@ -33,62 +22,37 @@ vi.mock("./connect-button", () => ({
 describe("ReconnectModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockAuthState = {
-      isExpired: false,
-      isAuthorized: false,
-      isLoading: false,
-    };
   });
 
-  it("does not render when not expired", () => {
-    mockAuthState.isExpired = false;
-    mockAuthState.isAuthorized = true;
+  it("does not render when open is false", () => {
+    render(<ReconnectModal open={false} onOpenChange={() => {}} />);
 
-    render(<ReconnectModal />);
-
-    expect(screen.queryByText(/connection expired/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/connection issue/i)).not.toBeInTheDocument();
   });
 
-  it("renders when key is expired and not authorized", () => {
-    mockAuthState.isExpired = true;
-    mockAuthState.isAuthorized = false;
+  it("renders when open is true", () => {
+    render(<ReconnectModal open={true} onOpenChange={() => {}} />);
 
-    render(<ReconnectModal />);
-
-    expect(screen.getByText(/connection expired/i)).toBeInTheDocument();
+    expect(screen.getByText(/connection issue/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/your pollinations connection has expired/i)
+      screen.getByText(/your pollinations connection is no longer valid/i)
     ).toBeInTheDocument();
   });
 
-  it("does not render while loading", () => {
-    mockAuthState.isExpired = true;
-    mockAuthState.isAuthorized = false;
-    mockAuthState.isLoading = true;
-
-    render(<ReconnectModal />);
-
-    expect(screen.queryByText(/connection expired/i)).not.toBeInTheDocument();
-  });
-
   it("shows reconnect benefits", () => {
-    mockAuthState.isExpired = true;
-    mockAuthState.isAuthorized = false;
+    render(<ReconnectModal open={true} onOpenChange={() => {}} />);
 
-    render(<ReconnectModal />);
-
-    expect(screen.getByText(/zero api costs for generating/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/zero api costs for generating/i)
+    ).toBeInTheDocument();
     expect(screen.getByText(/full access to all models/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/secure, temporary 30-day connection/i)
+      screen.getByText(/secure connection to pollinations/i)
     ).toBeInTheDocument();
   });
 
   it("contains reconnect button", () => {
-    mockAuthState.isExpired = true;
-    mockAuthState.isAuthorized = false;
-
-    render(<ReconnectModal />);
+    render(<ReconnectModal open={true} onOpenChange={() => {}} />);
 
     expect(screen.getByTestId("connect-button")).toBeInTheDocument();
     expect(
@@ -96,21 +60,11 @@ describe("ReconnectModal", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders when forceOpen is true regardless of auth state", () => {
-    mockAuthState.isExpired = false;
-    mockAuthState.isAuthorized = true;
+  it("contains redirect info text", () => {
+    render(<ReconnectModal open={true} onOpenChange={() => {}} />);
 
-    render(<ReconnectModal forceOpen={true} />);
-
-    expect(screen.getByText(/connection expired/i)).toBeInTheDocument();
-  });
-
-  it("does not render when forceOpen is false even if expired", () => {
-    mockAuthState.isExpired = true;
-    mockAuthState.isAuthorized = false;
-
-    render(<ReconnectModal forceOpen={false} />);
-
-    expect(screen.queryByText(/connection expired/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/this will redirect you to pollinations/i)
+    ).toBeInTheDocument();
   });
 });

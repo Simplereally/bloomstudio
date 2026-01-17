@@ -4,29 +4,30 @@
  * Pollinations OAuth Callback Handler
  *
  * This page handles the redirect back from Pollinations after OAuth authorization.
- * It extracts the API key from the URL hash fragment and stores it in localStorage.
+ * It extracts the API key from the URL hash fragment and stores it in Convex.
  *
  * ## Flow
  * 1. User clicks "Connect to Pollinations" in the app
  * 2. User is redirected to Pollinations to authorize
  * 3. Pollinations redirects back here with the API key in the hash: #api_key=sk_...
- * 4. This page extracts the key, validates it, and stores it
+ * 4. This page extracts the key, validates it, and stores it in Convex (encrypted)
  * 5. User is redirected back to the Studio
  *
  * ## Security Notes
  * - The API key is passed in the URL hash fragment (#), NOT the query string
  * - Hash fragments are never sent to the server, only accessible via JavaScript
- * - This provides implicit security as the key never touches server logs
+ * - The key is stored encrypted in Convex (AES-256-GCM)
  */
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, CheckCircle, XCircle, ArrowRight } from "lucide-react";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
   CALLBACK_KEY_PARAM,
-  storeApiKey,
   isValidApiKeyFormat,
   buildAuthorizationUrl,
   getCallbackUrl,
@@ -38,7 +39,7 @@ type CallbackState =
   | "success"
   | "error_missing_key"
   | "error_invalid_key"
-  | "error_storage";
+  | "error_save_failed";
 
 /** Error messages for each error state */
 const ERROR_MESSAGES: Record<string, { title: string; description: string }> = {
@@ -52,10 +53,10 @@ const ERROR_MESSAGES: Record<string, { title: string; description: string }> = {
     description:
       "The received API key appears to be invalid. Please try authorizing again.",
   },
-  error_storage: {
-    title: "Storage Error",
+  error_save_failed: {
+    title: "Connection Error",
     description:
-      "Failed to store the API key. Please ensure cookies and localStorage are enabled.",
+      "Failed to save your connection. Please check your internet connection and try again.",
   },
 };
 
@@ -81,7 +82,6 @@ function isSafeReturnTo(returnTo: string | null): returnTo is string {
   // Reject paths starting with "//" (protocol-relative URLs)
   if (returnTo.startsWith("//")) return false;
 
-
   // Reject URLs with encoded protocol attempts or suspicious patterns
   // This catches patterns like "/\\evil.com" or "/@evil.com"
   if (/[\\\/]{2,}|@/.test(returnTo)) return false;
@@ -99,7 +99,9 @@ function isSafeReturnTo(returnTo: string | null): returnTo is string {
  * @param searchParams - URLSearchParams or compatible object
  * @returns A validated local path safe for redirection
  */
-function getSafeReturnTo(searchParams: { get: (key: string) => string | null }): string {
+function getSafeReturnTo(searchParams: {
+  get: (key: string) => string | null;
+}): string {
   const returnTo = searchParams.get("returnTo");
   return isSafeReturnTo(returnTo) ? returnTo : DEFAULT_RETURN_PATH;
 }
@@ -109,6 +111,7 @@ export default function PollinationsCallbackPage() {
   const searchParams = useSearchParams();
   const [state, setState] = useState<CallbackState>("processing");
   const [redirectCountdown, setRedirectCountdown] = useState(3);
+  const setApiKey = useMutation(api.users.setPollinationsApiKey);
 
   /**
    * Extracts the API key from the URL hash fragment.
@@ -128,7 +131,7 @@ export default function PollinationsCallbackPage() {
   /**
    * Processes the OAuth callback by extracting and storing the API key.
    */
-  const processCallback = useCallback(() => {
+  const processCallback = useCallback(async () => {
     try {
       // Extract key from hash
       const apiKey = extractKeyFromHash();
@@ -144,22 +147,18 @@ export default function PollinationsCallbackPage() {
         return;
       }
 
-      // Store the key
-      const stored = storeApiKey(apiKey);
-      if (!stored) {
-        setState("error_storage");
-        return;
-      }
-
       // Clear the hash from the URL for security (prevent accidental sharing)
-      // Preserve the query string (including returnTo) so redirects still work
+      // Do this before the async call to minimize exposure time
       if (typeof window !== "undefined") {
         window.history.replaceState(
           null,
           "",
-          window.location.pathname + window.location.search
+          window.location.pathname + window.location.search,
         );
       }
+
+      // Store the key in Convex (encrypted server-side)
+      await setApiKey({ apiKey });
 
       setState("success");
       toast.success("Connected to Pollinations successfully!", {
@@ -167,9 +166,9 @@ export default function PollinationsCallbackPage() {
       });
     } catch (error) {
       console.error("[PollinationsCallback] Error processing callback:", error);
-      setState("error_storage");
+      setState("error_save_failed");
     }
-  }, [extractKeyFromHash]);
+  }, [extractKeyFromHash, setApiKey]);
 
   // Process the callback on mount
   // NOTE: The 100ms delay is a defensive measure for browser timing quirks.
@@ -181,11 +180,10 @@ export default function PollinationsCallbackPage() {
   // there's a 100ms delay before showing the "Authorization Cancelled" error.
   // Testing has shown this delay is necessary for reliable OAuth flows in Safari
   // and some mobile browsers.
-  //
-  // TODO(@pollinations): Re-evaluate this delay if OAuth flow changes or if
-  // browser support for immediate hash access improves.
   useEffect(() => {
-    const timer = setTimeout(processCallback, 100);
+    const timer = setTimeout(() => {
+      void processCallback();
+    }, 100);
     return () => clearTimeout(timer);
   }, [processCallback]);
 

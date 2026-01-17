@@ -17,6 +17,7 @@ import { PollenBalanceDisplay } from "@/components/pollen-balance"
 import { UserButton, useUser } from "@clerk/nextjs"
 import { Crown, Heart, HelpCircle, History, Key, Menu, Moon, Settings, Sparkles, Sun, Users, Wallet, X } from "lucide-react"
 import { useTheme } from "next-themes"
+import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState, useSyncExternalStore } from "react"
@@ -59,10 +60,13 @@ export function Header() {
                 {/* Left Side: Logo - Start Aligned */}
                 <div className="justify-self-start">
                     <Link href="/" className="flex items-center gap-2">
-                        <img
+                        <Image
                             src="/icon.png"
                             alt="Bloom Studio Logo"
+                            width={28}
+                            height={28}
                             className="h-7 w-7"
+                            priority
                         />
                         <span className="text-2xl font-bold text-primary font-brand tracking-tight -skew-x-6 whitespace-nowrap">
                             Bloom Studio

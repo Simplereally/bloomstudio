@@ -1,10 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
-  STORAGE_KEY,
-  STORAGE_EXPIRY_KEY,
-  STORAGE_AUTHORIZED_AT_KEY,
-  EXPIRY_DAYS,
-  EXPIRING_SOON_THRESHOLD_DAYS,
   POLLINATIONS_AUTH_BASE_URL,
   CALLBACK_KEY_PARAM,
   buildAuthorizationUrl,
@@ -12,28 +7,10 @@ import {
 } from "./constants";
 
 describe("pollen-auth/constants", () => {
-  describe("Storage Keys", () => {
-    it("should have correct storage key values", () => {
-      expect(STORAGE_KEY).toBe("pollinations_byop_key");
-      expect(STORAGE_EXPIRY_KEY).toBe("pollinations_byop_expiry");
-      expect(STORAGE_AUTHORIZED_AT_KEY).toBe("pollinations_byop_authorized_at");
-    });
-  });
-
-  describe("Expiry Configuration", () => {
-    it("should have 30 day expiry", () => {
-      expect(EXPIRY_DAYS).toBe(30);
-    });
-
-    it("should warn 7 days before expiry", () => {
-      expect(EXPIRING_SOON_THRESHOLD_DAYS).toBe(7);
-    });
-  });
-
   describe("Auth URLs", () => {
     it("should have correct Pollinations auth base URL", () => {
       expect(POLLINATIONS_AUTH_BASE_URL).toBe(
-        "https://enter.pollinations.ai/authorize"
+        "https://enter.pollinations.ai/authorize",
       );
     });
 
@@ -49,7 +26,7 @@ describe("pollen-auth/constants", () => {
 
       expect(result).toContain(POLLINATIONS_AUTH_BASE_URL);
       expect(result).toContain(
-        `redirect_url=${encodeURIComponent(redirectUrl)}`
+        `redirect_url=${encodeURIComponent(redirectUrl)}`,
       );
     });
 
@@ -104,9 +81,7 @@ describe("pollen-auth/constants", () => {
       vi.stubEnv("NEXT_PUBLIC_APP_URL", undefined);
 
       const result = getCallbackUrl();
-      expect(result).toBe(
-        "https://bloomstudio.fun/auth/pollinations/callback"
-      );
+      expect(result).toBe("https://bloomstudio.fun/auth/pollinations/callback");
     });
   });
 });

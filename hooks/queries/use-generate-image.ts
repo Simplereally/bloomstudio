@@ -7,7 +7,7 @@
  * Uses the client-provided Pollinations API key from BYOP context.
  * 
  * BYOP (Bring Your Own Pollen) Flow:
- * 1. Hook reads API key from PollenAuth context (stored in localStorage)
+ * 1. Hook reads API key from PollenAuth context (sourced from encrypted Convex storage)
  * 2. API key is passed to the Convex mutation
  * 3. Mutation schedules server-side processing with the key
  * 4. Generation happens on Convex servers - users can close their browser
@@ -15,7 +15,7 @@
 
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
-import { usePollenApiKey, usePollenAuthActions } from "@/lib/pollen-auth"
+import { usePollenApiKey, usePollenAuthActions, useNeedsReconnect } from "@/lib/pollen-auth"
 import { usePollenBalance } from "@/hooks/use-pollen-balance"
 import type {
     GeneratedImage,
@@ -138,6 +138,7 @@ export function useGenerateImage(
     // Get API key from BYOP context
     const apiKey = usePollenApiKey()
     const { authorize } = usePollenAuthActions()
+    const { setNeedsReconnect } = useNeedsReconnect()
     
     // Get balance invalidation function for post-generation refresh
     const { invalidateBalance } = usePollenBalance()
@@ -193,9 +194,27 @@ export function useGenerateImage(
             options.onSuccess?.(image, currentParams)
             options.onSettled?.(image, null, currentParams)
         } else if (generationStatus.status === "failed") {
+            const errorCode = generationStatus.errorCode
+            
+            // Determine error code string based on HTTP status
+            // 401 = auth error (key invalid/expired)
+            // 402 = budget exhausted
+            // 403 = model access denied
+            let codeString = "GENERATION_FAILED"
+            if (errorCode === 401) {
+                codeString = "AUTH_ERROR"
+                // Trigger reconnect modal for auth failures
+                setNeedsReconnect(true)
+            } else if (errorCode === 402) {
+                codeString = "BUDGET_EXHAUSTED"
+            } else if (errorCode === 403) {
+                codeString = "MODEL_ACCESS_DENIED"
+            }
+            
             const err = new ServerGenerationError(
                 generationStatus.errorMessage || "Generation failed",
-                "GENERATION_FAILED"
+                codeString,
+                errorCode
             )
             setError(err)
             setIsError(true)
@@ -209,7 +228,7 @@ export function useGenerateImage(
             options.onError?.(err, currentParams)
             options.onSettled?.(undefined, err, currentParams)
         }
-    }, [generationStatus, generatedImage, currentParams, options, invalidateBalance])
+    }, [generationStatus, generatedImage, currentParams, options, invalidateBalance, setNeedsReconnect])
 
     // Generate function
     const generate = React.useCallback(

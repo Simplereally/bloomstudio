@@ -167,6 +167,8 @@ export const processGeneration = internalAction({
                     generationId: args.generationId,
                     status: "failed",
                     errorMessage: result.error ?? "Generation failed after retries",
+                    // Include HTTP status code for client-side error detection (401=auth, 402=budget, 403=access)
+                    errorCode: result.lastStatus,
                     retryCount: result.attemptsMade - 1,
                 })
                 return

@@ -84,7 +84,7 @@ export function SubscriptionCard() {
                                 </h3>
                                 <p className="text-muted-foreground max-w-[400px]">
                                     {isPro 
-                                        ? "You're enjoying the full power of Pixelstream with priority access and premium features." 
+                                        ? "You're enjoying the full power of Bloom Studio with priority access and premium features." 
                                         : "You're currently on our common entry tier. Upgrade to unlock the full creative potential."}
                                 </p>
                             </div>

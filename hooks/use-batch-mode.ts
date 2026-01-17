@@ -31,7 +31,7 @@ import {
 } from "@/hooks/queries"
 import { usePollenBalance } from "@/hooks/use-pollen-balance"
 import { ClientErrorCodeConst, showErrorToast } from "@/lib/errors"
-import { usePollenApiKey, usePollenAuthActions } from "@/lib/pollen-auth"
+import { usePollenApiKey, usePollenAuthActions, useNeedsReconnect } from "@/lib/pollen-auth"
 import type { GeneratedImage } from "@/types/pollinations"
 import { ConvexError } from "convex/values"
 import * as React from "react"
@@ -82,7 +82,7 @@ export interface UseBatchModeReturn {
     // Batch item generation callback (kept for backward compatibility, but deprecated)
     /** @deprecated Not used with server-side processing */
     handleBatchGenerateItem: (
-        params: BatchGenerationParams, 
+        params: BatchGenerationParams,
         itemIndex: number
     ) => Promise<{ success: boolean; imageId?: Id<"generatedImages"> }>
 }
@@ -143,7 +143,7 @@ export function useBatchMode({
     // Batch Generation Hooks
     // ========================================
     const { startBatch, cancelBatch, pauseBatch, resumeBatch, hasActiveBatch, activeBatches } = useBatchGeneration()
-    
+
     // Use DB batch if no local activeBatchId (handles page reload with existing batch)
     const dbActiveBatch = activeBatches[0] ?? null
     const effectiveBatchId = activeBatchId ?? dbActiveBatch?._id ?? null
@@ -175,31 +175,66 @@ export function useBatchMode({
     // ========================================
     const apiKey = usePollenApiKey()
     const { authorize } = usePollenAuthActions()
-    
+    const { setNeedsReconnect } = useNeedsReconnect()
+
     // ========================================
     // Balance Invalidation
     // ========================================
     // Get balance invalidation function for post-generation refresh
     const { invalidateBalance } = usePollenBalance()
-    
+
     // Track previous completedCount to detect new completions
     const prevCompletedCountRef = React.useRef<number>(0)
-    
+
     // Invalidate balance when batch items complete
     // Requirements 3.2, 3.3, 3.4
     React.useEffect(() => {
         const currentCompletedCount = batchJob?.completedCount ?? 0
         const prevCompletedCount = prevCompletedCountRef.current
-        
+
         // Only invalidate if completedCount increased (new items completed)
         if (currentCompletedCount > prevCompletedCount) {
             // Invalidate balance (debounced internally by usePollenBalance)
             invalidateBalance()
         }
-        
+
         // Update ref for next comparison
         prevCompletedCountRef.current = currentCompletedCount
     }, [batchJob?.completedCount, invalidateBalance])
+
+    // ========================================
+    // Auth Error Detection
+    // ========================================
+    // Track handled errors to prevent duplicate toasts
+    const lastHandledErrorRef = React.useRef<number | undefined>(undefined)
+
+    // Detect 401/402/403 errors from batch processing and trigger appropriate response
+    React.useEffect(() => {
+        const errorCode = batchJob?.lastErrorCode
+
+        // Reset handled error if error code clears
+        if (!errorCode) {
+            lastHandledErrorRef.current = undefined
+            return
+        }
+
+        // Skip if already handled to prevent duplicate toasts on re-renders
+        if (errorCode === lastHandledErrorRef.current) return
+
+        if (errorCode === 401) {
+            // Auth error - key is invalid/expired, trigger reconnect modal
+            setNeedsReconnect(true)
+            lastHandledErrorRef.current = errorCode
+        } else if (errorCode === 402) {
+            // Budget exhausted - show appropriate toast
+            showErrorToast(new Error("Your Pollinations balance is exhausted. Please top up your pollen."))
+            lastHandledErrorRef.current = errorCode
+        } else if (errorCode === 403) {
+            // Model access denied - show appropriate toast
+            showErrorToast(new Error("Access to the selected model was denied. Try a different model."))
+            lastHandledErrorRef.current = errorCode
+        }
+    }, [batchJob?.lastErrorCode, setNeedsReconnect])
 
     // ========================================
     // Batch Start Handler

@@ -30,7 +30,7 @@ vi.mock("convex/nextjs", () => ({
 }))
 
 vi.mock("next/cache", () => ({
-    unstable_cache: (fn: () => Promise<unknown>, _keys: string[], _opts: unknown) => {
+    unstable_cache: (fn: () => Promise<unknown>) => {
         return async () => {
             callOrder.push("unstable_cache_callback_start")
             const result = await fn()

@@ -64,6 +64,10 @@ const mockAuthorize = vi.fn()
 vi.mock("@/lib/pollen-auth", () => ({
     usePollenApiKey: () => mockApiKey,
     usePollenAuthActions: () => ({ authorize: mockAuthorize }),
+    useNeedsReconnect: () => ({
+        needsReconnect: false,
+        setNeedsReconnect: vi.fn(),
+    }),
     usePollenAuth: () => ({
         apiKey: mockApiKey,
         isAuthorized: true,

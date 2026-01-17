@@ -41,7 +41,7 @@ export function usePollenAuth(): PollenAuthContextValue {
   if (!context._fromProvider) {
     throw new Error(
       "[usePollenAuth] must be used within a PollenAuthProvider. " +
-      "Make sure your component is wrapped in <PollenAuthProvider>."
+        "Make sure your component is wrapped in <PollenAuthProvider>.",
     );
   }
 
@@ -56,35 +56,20 @@ export function usePollenAuth(): PollenAuthContextValue {
  * @example
  * ```tsx
  * function AuthStatus() {
- *   const { isAuthorized, isExpiringSoon, daysUntilExpiry } = usePollenAuthState();
- *
- *   if (isExpiringSoon) {
- *     return <span>Expires in {daysUntilExpiry} days</span>;
- *   }
+ *   const { isAuthorized } = usePollenAuthState();
  *
  *   return <span>{isAuthorized ? "Connected" : "Not connected"}</span>;
  * }
  * ```
  */
 export function usePollenAuthState(): PollenAuthState {
-  const {
-    apiKey,
-    isAuthorized,
-    expiresAt,
-    daysUntilExpiry,
-    isExpiringSoon,
-    isExpired,
-    isLoading,
-  } = usePollenAuth();
+  const { apiKey, isAuthorized, isLoading, needsReconnect } = usePollenAuth();
 
   return {
     apiKey,
     isAuthorized,
-    expiresAt,
-    daysUntilExpiry,
-    isExpiringSoon,
-    isExpired,
     isLoading,
+    needsReconnect,
   };
 }
 
@@ -102,17 +87,17 @@ export function usePollenAuthState(): PollenAuthState {
  * ```
  */
 export function usePollenAuthActions(): PollenAuthActions {
-  const { authorize, deauthorize, refreshAuthState } = usePollenAuth();
+  const { authorize, deauthorize, setNeedsReconnect } = usePollenAuth();
 
   return {
     authorize,
     deauthorize,
-    refreshAuthState,
+    setNeedsReconnect,
   };
 }
 
 /**
- * Hook to check if the user has a valid, non-expired API key.
+ * Hook to check if the user has a valid API key.
  *
  * Simple boolean check for conditional rendering.
  *
@@ -143,7 +128,7 @@ export function useIsPollenConnected(): boolean {
 /**
  * Hook to get the BYOP API key if available and valid.
  *
- * Returns null if not authorized, expired, or still loading.
+ * Returns null if not authorized or still loading.
  *
  * @example
  * ```tsx
@@ -167,4 +152,34 @@ export function usePollenApiKey(): string | null {
   }
 
   return apiKey;
+}
+
+/**
+ * Hook to check if the user needs to reconnect to Pollinations.
+ *
+ * Returns true when a 401 error was received, indicating the API key
+ * is invalid or expired and needs to be refreshed via the OAuth flow.
+ *
+ * Also returns the setter to update the state from error handlers.
+ *
+ * @example
+ * ```tsx
+ * function MyComponent() {
+ *   const { needsReconnect, setNeedsReconnect } = useNeedsReconnect();
+ *
+ *   // Show modal when reconnection is needed
+ *   return <ReconnectModal open={needsReconnect} onOpenChange={setNeedsReconnect} />;
+ * }
+ * ```
+ */
+export function useNeedsReconnect(): {
+  needsReconnect: boolean;
+  setNeedsReconnect: (value: boolean) => void;
+} {
+  const { needsReconnect, setNeedsReconnect } = usePollenAuth();
+
+  return {
+    needsReconnect,
+    setNeedsReconnect,
+  };
 }

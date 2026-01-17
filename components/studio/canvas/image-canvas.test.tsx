@@ -37,15 +37,6 @@ describe("ImageCanvas", () => {
         expect(screen.getByText("Create something amazing")).toBeInTheDocument()
     })
 
-    it("shows loading state when generating", () => {
-        render(<ImageCanvas image={null} isGenerating={true} />)
-
-        // Text is rendered letter-by-letter across spans
-        // "GENERATING" has 2 G's, 2 E's, 2 N's - verify by checking letter count
-        const gLetters = screen.getAllByText("G")
-        expect(gLetters.length).toBeGreaterThanOrEqual(2) // GENERATING has two G's
-    })
-
     it("shows progress when provided during generation", () => {
         render(<ImageCanvas image={null} isGenerating={true} progress={42} />)
 

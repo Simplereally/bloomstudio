@@ -11,6 +11,15 @@ import type { ImageProps } from "next/image";
 import type { Id } from "@/convex/_generated/dataModel";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ReferenceImagePicker } from "./reference-image-picker";
+import { toast } from "sonner";
+
+// Mock toast
+vi.mock("sonner", () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
+}));
 
 // Mock next/image
 vi.mock("next/image", () => ({
@@ -110,5 +119,20 @@ describe("ReferenceImagePicker", () => {
     render(<ReferenceImagePicker selectedImage="url1" onSelect={mockOnSelect} hideHeader={true} />);
     expect(screen.queryByText("Reference Image")).not.toBeInTheDocument();
     expect(screen.queryByText("Clear")).not.toBeInTheDocument();
+  });
+
+  it("shows error when file is too large", () => {
+    render(<ReferenceImagePicker onSelect={mockOnSelect} />);
+
+    const input = document.querySelector('input[type="file"]');
+    expect(input).toBeInTheDocument();
+
+    const largeFile = new File(["dummy content"], "large.png", { type: "image/png" });
+    Object.defineProperty(largeFile, 'size', { value: 10 * 1024 * 1024 + 1 });
+
+    fireEvent.change(input!, { target: { files: [largeFile] } });
+
+    expect(toast.error).toHaveBeenCalledWith("File is too large. Maximum size is 10MB.");
+    expect(mockOnSelect).not.toHaveBeenCalled();
   });
 });

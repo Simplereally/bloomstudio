@@ -36,7 +36,7 @@ describe("LowBalanceWarningDialog", () => {
         expect(screen.getByText(/You have/)).toBeInTheDocument()
         expect(screen.getByText(/1\.50/)).toBeInTheDocument()
         expect(screen.getByText(/But this costs/)).toBeInTheDocument()
-        expect(screen.getByText(/0\.75/)).toBeInTheDocument()
+        expect(screen.getAllByText(/0\.75/)).toHaveLength(2)
     })
 
     it("displays model name", () => {

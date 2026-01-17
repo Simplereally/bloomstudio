@@ -160,6 +160,7 @@ const VirtualizedGalleryGrid = React.memo(function VirtualizedGalleryGrid({
     const getScrollElement = React.useCallback(() => parentRef.current, [])
     const estimateSize = React.useCallback(() => rowHeight, [rowHeight])
 
+    // eslint-disable-next-line react-hooks/incompatible-library
     const virtualizer = useVirtualizer({
         count: rowCount,
         getScrollElement,

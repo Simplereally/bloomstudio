@@ -11,15 +11,21 @@
  * - Consistent branding across all loading states
  * - Zero maintenance overhead (single component, multiple re-exports)
  */
+
+import Image from "next/image"
+
 export default function BrandedLoading() {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background text-foreground">
       <div className="flex flex-col items-center gap-4">
-        <div className="relative h-16 w-16 animate-pulse">
-          <img 
+        <div className="relative h-16 w-16 animate-pulse-subtle">
+          <Image 
             src="/icon.png" 
             alt="Bloom Studio Logo" 
+            width={64}
+            height={64}
             className="h-full w-full object-contain relative z-10"
+            priority
           />
           {/* Pollen Particles - Increased count (16) and reduced sizes */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full pointer-events-none">
@@ -59,7 +65,7 @@ export default function BrandedLoading() {
         <div className="h-1 w-24 overflow-hidden rounded-full bg-muted">
           <div className="h-full w-full animate-loading-bar bg-primary origin-left" />
         </div>
-        <p className="text-sm font-medium animate-pulse text-muted-foreground">Bloom Studio</p>
+        <p className="text-sm font-medium animate-pulse-subtle text-muted-foreground">Bloom Studio</p>
       </div>
     </div>
   )
