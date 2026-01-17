@@ -16,7 +16,7 @@ interface PaginatedImageGridProps {
     showUser?: boolean
     /** Whether user chooses to see sensitive content without overlay. If false, sensitive content gets blurred. */
     userShowsSensitive?: boolean
-    
+
     // Selection mode props
     selectionMode?: boolean
     selectedIds?: Set<string>
@@ -74,8 +74,10 @@ export function PaginatedImageGrid({
     userShowsSensitive = false,
 }: PaginatedImageGridProps) {
     const [selectedImage, setSelectedImage] = useState<ImageCardData | null>(null)
+    const [isPageScrollable, setIsPageScrollable] = useState(false)
 
     const sentinelRef = useRef<HTMLDivElement>(null)
+    const footerRef = useRef<HTMLDivElement>(null)
 
     const handleSelectImage = useCallback((image: ImageCardData) => {
         setSelectedImage(image)
@@ -103,6 +105,44 @@ export function PaginatedImageGrid({
     const isLoadingMore = status === "LoadingMore"
     const canLoadMore = status === "CanLoadMore"
     const isExhausted = status === "Exhausted"
+
+    // Track whether the page has enough content to scroll
+    // Only show "back to top" button if there's actual scrolling needed
+    useEffect(() => {
+        const checkScrollable = () => {
+            let contentHeight = document.documentElement.scrollHeight
+            const viewportHeight = window.innerHeight
+
+            // If the footer is currently visible, subtract its height from the check
+            // This prevents a feedback loop where showing the button makes the page scrollable,
+            // which keeps the button shown.
+            if (footerRef.current) {
+                // Get exact visual height including margins/padding if possible, 
+                // but offsetHeight is usually good enough for the container
+                contentHeight -= footerRef.current.offsetHeight
+            }
+
+            // Add a small threshold (e.g. 50px) so we don't show the button 
+            // if there's only a tiny bit of scroll
+            const isScrollable = contentHeight > (viewportHeight + 50)
+            setIsPageScrollable(isScrollable)
+        }
+
+        // Check immediately
+        checkScrollable()
+
+        // Re-check on resize (viewport changes may affect scrollability)
+        window.addEventListener("resize", checkScrollable)
+
+        // Use ResizeObserver to detect content height changes
+        const resizeObserver = new ResizeObserver(checkScrollable)
+        resizeObserver.observe(document.body)
+
+        return () => {
+            window.removeEventListener("resize", checkScrollable)
+            resizeObserver.disconnect()
+        }
+    }, [isExhausted, images.length])
 
     // Infinite scroll: automatically load more when sentinel becomes visible
     useEffect(() => {
@@ -195,8 +235,9 @@ export function PaginatedImageGrid({
                 </div>
             )}
 
-            {isExhausted && images.length > 0 && (
+            {isExhausted && images.length > 0 && isPageScrollable && (
                 <motion.div
+                    ref={footerRef}
                     className="flex flex-col items-center gap-4 pb-16 pt-4"
                     variants={containerVariants}
                     initial="hidden"

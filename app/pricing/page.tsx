@@ -335,12 +335,9 @@ export default function PricingPage() {
                 <section className="container mx-auto px-6 py-16 md:py-20 lg:py-24 xl:py-28 2xl:py-32">
                     <div className="max-w-4xl mx-auto text-center rounded-3xl bg-gradient-to-br from-primary/10 via-card to-accent/10 border border-primary/20 p-12">
                         <h2 className="text-3xl font-bold text-foreground mb-4">Ready to create stunning images?</h2>
-                        <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-                            Get 180 images every month effectively for free. Upgrade to Pro for just $3/month for 180 images.
-                        </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
                             <Link href="/studio">
-                                <Button size="lg" className="px-8">
+                                <Button size="lg" className="text-xs font-bold uppercase tracking-[0.2em]">
                                     Start Creating
                                     <ArrowRight className="ml-2 h-4 w-4" />
                                 </Button>

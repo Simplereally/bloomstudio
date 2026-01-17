@@ -94,7 +94,7 @@ export function ImageHistory() {
                 ))}
             </div>
 
-            {status === "CanLoadMore" && (
+            {(status === "CanLoadMore" || status === "LoadingMore") && (
                 <div className="flex justify-center pb-8 border-t border-border/50 pt-8">
                     <Button
                         variant="secondary"
