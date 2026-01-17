@@ -168,9 +168,27 @@ export function useAspectRatioDimensions({
                         return { width: matchingRatio.width, height: matchingRatio.height }
                     }
 
-                    // Multi-tier model (e.g., Nano Banana Pro)
-                    // availableRatios contains base (HD/1K) dimensions
-                    // Scale based on selected tier: HD=1×, 2K=2×, 4K=4×
+                    // Multi-tier model: check if this model uses standard resolutions or custom base dimensions
+                    // Compare the model's base dimensions to STANDARD_RESOLUTIONS.hd
+                    // If they match, use STANDARD_RESOLUTIONS lookup (e.g., Veo, Seedance)
+                    // If they don't match, use scaling from custom base (e.g., Nano Banana Pro)
+                    if (ratio !== "custom") {
+                        const standardHdDims = getStandardDimensions(ratio, "hd")
+                        const usesStandardResolutions = standardHdDims &&
+                            matchingRatio.width === standardHdDims.width &&
+                            matchingRatio.height === standardHdDims.height
+
+                        if (usesStandardResolutions) {
+                            // Model uses standard resolutions - lookup from STANDARD_RESOLUTIONS
+                            const standardDims = getStandardDimensions(ratio, tier)
+                            if (standardDims) {
+                                return standardDims
+                            }
+                        }
+                    }
+
+                    // Model has custom base dimensions (e.g., Nano Banana Pro)
+                    // Scale from base: HD=1×, 2K=2×, 4K=4×
                     let scale = 1
                     if (tier === "2k") {
                         scale = 2
@@ -179,8 +197,8 @@ export function useAspectRatioDimensions({
                     }
 
                     return {
-                        width: matchingRatio.width * scale,
-                        height: matchingRatio.height * scale,
+                        width: Math.round(matchingRatio.width * scale),
+                        height: Math.round(matchingRatio.height * scale),
                     }
                 }
             }
