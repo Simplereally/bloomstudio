@@ -131,17 +131,30 @@ export const VirtualizedGalleryGrid = React.memo(function VirtualizedGalleryGrid
   // Get mobile drawer visibility state (undefined when not in a drawer)
   const drawerState = useMobileDrawerVisibility();
   const isDrawerVisible = drawerState?.isVisible ?? true; // Default to true for desktop
+  const [hasUserScrolled, setHasUserScrolled] = React.useState(false);
 
   // Track when drawer becomes visible to add a small delay for animation
   const prevDrawerVisibleRef = React.useRef(isDrawerVisible);
   const [observerEnabled, setObserverEnabled] = React.useState(
-    !isMobile || isDrawerVisible
+    !isMobile || (isDrawerVisible && hasUserScrolled)
   );
 
   React.useEffect(() => {
     setIsMounted(true);
     return () => setIsMounted(false);
   }, []);
+
+  React.useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      if (!hasUserScrolled && el.scrollTop > 0) {
+        setHasUserScrolled(true);
+      }
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [scrollContainerRef, hasUserScrolled]);
 
   // Handle drawer visibility changes
   React.useEffect(() => {
@@ -153,7 +166,7 @@ export const VirtualizedGalleryGrid = React.memo(function VirtualizedGalleryGrid
       // Small delay to let drawer animation complete before enabling observer
       // This prevents the sentinel from being detected during the animation
       const timer = setTimeout(() => {
-        setObserverEnabled(true);
+        setObserverEnabled(hasUserScrolled);
       }, 250); // Animation reduced to 200ms + 50ms buffer
 
       return () => clearTimeout(timer);
@@ -169,8 +182,12 @@ export const VirtualizedGalleryGrid = React.memo(function VirtualizedGalleryGrid
       setObserverEnabled(true);
     }
 
+    if (isMobile && isNowVisible && hasUserScrolled) {
+      setObserverEnabled(true);
+    }
+
     prevDrawerVisibleRef.current = isNowVisible;
-  }, [isDrawerVisible, isMobile]);
+  }, [isDrawerVisible, isMobile, hasUserScrolled]);
 
   // Infinite scroll: trigger loadMore when sentinel becomes visible
   React.useEffect(() => {
@@ -208,7 +225,7 @@ export const VirtualizedGalleryGrid = React.memo(function VirtualizedGalleryGrid
           // This prevents automatic fetching when drawer opens (scrollTop is 0)
           // The IntersectionObserver fires immediately on observe() if target is visible,
           // which can happen during drawer animation before layout stabilizes
-          if (isMobile && drawerState && scrollContainer.scrollTop === 0) {
+          if (isMobile && drawerState && !hasUserScrolled) {
             return;
           }
           debouncedLoadMore();
@@ -238,12 +255,16 @@ export const VirtualizedGalleryGrid = React.memo(function VirtualizedGalleryGrid
     isMobile,
     drawerState,
     scrollContainerRef,
+    hasUserScrolled,
   ]);
 
   // Failsafe: Check if we need to load more immediately after a load finishes
   // This handles cases where the observer might not re-fire (e.g. if we are already intersecting)
   React.useEffect(() => {
     if (!isLoadingMore && canLoadMore && isMounted && onLoadMore) {
+      if (isMobile && drawerState && !hasUserScrolled) {
+        return;
+      }
       // Small delay to allow layout to settle
       const timer = setTimeout(() => {
         const sentinel = sentinelRef.current;
@@ -279,6 +300,7 @@ export const VirtualizedGalleryGrid = React.memo(function VirtualizedGalleryGrid
     isMobile,
     drawerState,
     scrollContainerRef,
+    hasUserScrolled,
   ]);
 
   return (
