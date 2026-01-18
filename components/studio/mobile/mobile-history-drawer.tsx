@@ -120,7 +120,7 @@ export function MobileHistoryDrawer({
       <DrawerContent
         className={cn(
           // Override max-height to use dynamic viewport height
-          "max-h-[85dvh]",
+          "h-[85dvh] max-h-[85dvh]",
           // Dark glass effect matching studio theme
           "bg-card/95 backdrop-blur-xl",
           // Subtle border for depth
@@ -135,8 +135,7 @@ export function MobileHistoryDrawer({
           </DrawerTitle>
         </DrawerHeader>
 
-        {/* Scrollable content area - native scroll for better touch handling */}
-        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col overscroll-contain">
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
           {/* Provide drawer visibility to children for infinite scroll control */}
           <MobileDrawerVisibilityContext.Provider
             value={visibilityContextValue}

@@ -87,16 +87,11 @@ export function useStudioUI(): UseStudioUIReturn {
   // Sync drawer state on mobile after hydration
   // This runs once after the client-side isMobile value is determined
   React.useEffect(() => {
-    // Only run once, on initial client-side mount
+    if (!isMobile) return;
     if (hasInitializedMobileRef.current) return;
     hasInitializedMobileRef.current = true;
-
-    // If we're on mobile, ensure drawers are closed
-    // This corrects the SSR mismatch where isMobile was false on server
-    if (isMobile) {
-      setShowLeftSidebar(false);
-      setShowGallery(false);
-    }
+    setShowLeftSidebar(false);
+    setShowGallery(false);
   }, [isMobile]);
 
   // ========================================

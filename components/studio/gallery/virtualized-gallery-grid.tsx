@@ -131,17 +131,30 @@ export const VirtualizedGalleryGrid = React.memo(function VirtualizedGalleryGrid
   // Get mobile drawer visibility state (undefined when not in a drawer)
   const drawerState = useMobileDrawerVisibility();
   const isDrawerVisible = drawerState?.isVisible ?? true; // Default to true for desktop
+  const [hasUserScrolled, setHasUserScrolled] = React.useState(false);
 
   // Track when drawer becomes visible to add a small delay for animation
   const prevDrawerVisibleRef = React.useRef(isDrawerVisible);
   const [observerEnabled, setObserverEnabled] = React.useState(
-    !isMobile || isDrawerVisible
+    !isMobile || (isDrawerVisible && hasUserScrolled)
   );
 
   React.useEffect(() => {
     setIsMounted(true);
     return () => setIsMounted(false);
   }, []);
+
+  React.useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      if (!hasUserScrolled && el.scrollTop > 0) {
+        setHasUserScrolled(true);
+      }
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [scrollContainerRef, hasUserScrolled]);
 
   // Handle drawer visibility changes
   React.useEffect(() => {
@@ -153,7 +166,7 @@ export const VirtualizedGalleryGrid = React.memo(function VirtualizedGalleryGrid
       // Small delay to let drawer animation complete before enabling observer
       // This prevents the sentinel from being detected during the animation
       const timer = setTimeout(() => {
-        setObserverEnabled(true);
+        setObserverEnabled(hasUserScrolled);
       }, 250); // Animation reduced to 200ms + 50ms buffer
 
       return () => clearTimeout(timer);
@@ -169,8 +182,12 @@ export const VirtualizedGalleryGrid = React.memo(function VirtualizedGalleryGrid
       setObserverEnabled(true);
     }
 
+    if (isMobile && isNowVisible && hasUserScrolled) {
+      setObserverEnabled(true);
+    }
+
     prevDrawerVisibleRef.current = isNowVisible;
-  }, [isDrawerVisible, isMobile]);
+  }, [isDrawerVisible, isMobile, hasUserScrolled]);
 
   // Infinite scroll: trigger loadMore when sentinel becomes visible
   React.useEffect(() => {
@@ -187,23 +204,6 @@ export const VirtualizedGalleryGrid = React.memo(function VirtualizedGalleryGrid
       isLoadingMore
     ) {
       return;
-    }
-
-    // On mobile in a drawer, the actual scroll container is the drawer's container, not our scrollContainerRef
-    // The drawer has its own scroll container that wraps the gallery
-    // We need to find it by traversing up the DOM
-    let actualScrollContainer = scrollContainer;
-    if (isMobile && drawerState) {
-      // Look for the drawer's scroll container (has overflow-y-auto and is a parent of our container)
-      let parent = scrollContainer.parentElement;
-      while (parent) {
-        const styles = window.getComputedStyle(parent);
-        if (styles.overflowY === "auto" || styles.overflowY === "scroll") {
-          actualScrollContainer = parent as HTMLDivElement;
-          break;
-        }
-        parent = parent.parentElement;
-      }
     }
 
     // Debounce to prevent rapid-fire requests
@@ -225,18 +225,14 @@ export const VirtualizedGalleryGrid = React.memo(function VirtualizedGalleryGrid
           // This prevents automatic fetching when drawer opens (scrollTop is 0)
           // The IntersectionObserver fires immediately on observe() if target is visible,
           // which can happen during drawer animation before layout stabilizes
-          if (
-            isMobile &&
-            actualScrollContainer &&
-            actualScrollContainer.scrollTop === 0
-          ) {
+          if (isMobile && drawerState && !hasUserScrolled) {
             return;
           }
           debouncedLoadMore();
         }
       },
       {
-        root: actualScrollContainer,
+        root: scrollContainer,
         // Desktop & Mobile: 800px look-ahead for aggressive pre-fetching
         // This triggers loading well before the user reaches the bottom
         rootMargin: "0px 0px 800px 0px",
@@ -259,37 +255,24 @@ export const VirtualizedGalleryGrid = React.memo(function VirtualizedGalleryGrid
     isMobile,
     drawerState,
     scrollContainerRef,
+    hasUserScrolled,
   ]);
 
   // Failsafe: Check if we need to load more immediately after a load finishes
   // This handles cases where the observer might not re-fire (e.g. if we are already intersecting)
   React.useEffect(() => {
     if (!isLoadingMore && canLoadMore && isMounted && onLoadMore) {
+      if (isMobile && drawerState && !hasUserScrolled) {
+        return;
+      }
       // Small delay to allow layout to settle
       const timer = setTimeout(() => {
         const sentinel = sentinelRef.current;
         const scrollContainer = scrollContainerRef.current;
 
         if (sentinel && scrollContainer) {
-          // Determine the actual scroll container (handling mobile drawer case)
-          let actualScrollContainer = scrollContainer;
-          if (isMobile && drawerState) {
-            let parent = scrollContainer.parentElement;
-            while (parent) {
-              const styles = window.getComputedStyle(parent);
-              if (
-                styles.overflowY === "auto" ||
-                styles.overflowY === "scroll"
-              ) {
-                actualScrollContainer = parent as HTMLDivElement;
-                break;
-              }
-              parent = parent.parentElement;
-            }
-          }
-
           const sentinelRect = sentinel.getBoundingClientRect();
-          const containerRect = actualScrollContainer.getBoundingClientRect();
+          const containerRect = scrollContainer.getBoundingClientRect();
           const rootMargin = 800; // Match the 800px margin in IntersectionObserver
 
           // If sentinel top is above (container bottom + margin)
@@ -300,7 +283,7 @@ export const VirtualizedGalleryGrid = React.memo(function VirtualizedGalleryGrid
             sentinelRect.bottom >= containerRect.top
           ) {
             // On mobile, also check scrollTop to respect the "don't load on open" rule
-            if (isMobile && actualScrollContainer.scrollTop === 0) {
+            if (isMobile && drawerState && scrollContainer.scrollTop === 0) {
               return;
             }
             onLoadMore();
@@ -317,6 +300,7 @@ export const VirtualizedGalleryGrid = React.memo(function VirtualizedGalleryGrid
     isMobile,
     drawerState,
     scrollContainerRef,
+    hasUserScrolled,
   ]);
 
   return (

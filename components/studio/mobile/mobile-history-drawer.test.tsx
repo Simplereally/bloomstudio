@@ -127,6 +127,14 @@ describe("MobileHistoryDrawer", () => {
       expect(content).toHaveClass("bg-card/95");
       expect(content).toHaveClass("backdrop-blur-xl");
     });
+
+    it("constrains drawer height for scrollable content", () => {
+      render(<MobileHistoryDrawer {...defaultProps} />);
+
+      const content = screen.getByTestId("mobile-history-drawer");
+      expect(content).toHaveClass("h-[85dvh]");
+      expect(content).toHaveClass("max-h-[85dvh]");
+    });
   });
 
   describe("Custom className", () => {
