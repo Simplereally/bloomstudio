@@ -44,29 +44,44 @@ const createDefaultProps = () => ({
 
 describe("VirtualizedGalleryGrid", () => {
   let originalIntersectionObserver: typeof IntersectionObserver;
+  let originalResizeObserver: typeof ResizeObserver;
+  let originalGetBoundingClientRect: typeof HTMLElement.prototype.getBoundingClientRect;
+  let originalOffsetHeightDescriptor: PropertyDescriptor | undefined;
+  let originalClientHeightDescriptor: PropertyDescriptor | undefined;
   let observeMock: ReturnType<typeof vi.fn>;
   let disconnectMock: ReturnType<typeof vi.fn>;
   let constructorMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    // Capture originals
+    originalIntersectionObserver = global.IntersectionObserver;
+    originalResizeObserver = global.ResizeObserver;
+    originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    originalOffsetHeightDescriptor = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "offsetHeight"
+    );
+    originalClientHeightDescriptor = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "clientHeight"
+    );
+
     vi.mocked(useIsMobile).mockReturnValue(false); // Default to desktop
 
     // Mock IntersectionObserver
-    originalIntersectionObserver = global.IntersectionObserver;
     observeMock = vi.fn();
     disconnectMock = vi.fn();
     constructorMock = vi.fn();
 
     // Mock ResizeObserver
     global.ResizeObserver = class ResizeObserver {
-      observe() {}
-      unobserve() {}
-      disconnect() {}
+      observe() { }
+      unobserve() { }
+      disconnect() { }
     };
 
     global.IntersectionObserver = class MockIntersectionObserver
-      implements IntersectionObserver
-    {
+      implements IntersectionObserver {
       readonly root: Element | Document | null = null;
       readonly rootMargin: string = "";
       readonly thresholds: readonly number[] = [];
@@ -94,7 +109,7 @@ describe("VirtualizedGalleryGrid", () => {
       right: 800,
       x: 0,
       y: 0,
-      toJSON: () => {},
+      toJSON: () => { },
     });
     Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
       configurable: true,
@@ -107,7 +122,33 @@ describe("VirtualizedGalleryGrid", () => {
   });
 
   afterEach(() => {
+    // Restore originals
     global.IntersectionObserver = originalIntersectionObserver;
+    global.ResizeObserver = originalResizeObserver;
+    HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+
+    if (originalOffsetHeightDescriptor) {
+      Object.defineProperty(
+        HTMLElement.prototype,
+        "offsetHeight",
+        originalOffsetHeightDescriptor
+      );
+    } else {
+      // @ts-expect-error - cleanup of mocked property
+      delete HTMLElement.prototype.offsetHeight;
+    }
+
+    if (originalClientHeightDescriptor) {
+      Object.defineProperty(
+        HTMLElement.prototype,
+        "clientHeight",
+        originalClientHeightDescriptor
+      );
+    } else {
+      // @ts-expect-error - cleanup of mocked property
+      delete HTMLElement.prototype.clientHeight;
+    }
+
     vi.clearAllMocks();
   });
 
@@ -165,29 +206,29 @@ describe("VirtualizedGalleryGrid", () => {
 
     expect(constructorMock).toHaveBeenCalled();
     const options = constructorMock.mock.lastCall?.[1];
-                         // "0px 0px 800px 0px" is expected now as we unified/increased margin
+    // "0px 0px 800px 0px" is expected now as we unified/increased margin
     expect(options?.rootMargin).toBe("0px 0px 800px 0px");
     vi.useRealTimers();
   });
 
   it("renders sentinel when canLoadMore is true", () => {
-     render(
-       <VirtualizedGalleryGrid
+    render(
+      <VirtualizedGalleryGrid
         {...createDefaultProps()}
         canLoadMore={true}
         isLoadingMore={false}
-       />
+      />
     );
     expect(screen.getByTestId("load-more-sentinel")).toBeInTheDocument();
   });
 
   it("shows loading spinner in sentinel when isLoadingMore is true", () => {
-     render(
-       <VirtualizedGalleryGrid
+    render(
+      <VirtualizedGalleryGrid
         {...createDefaultProps()}
         canLoadMore={true}
         isLoadingMore={true}
-       />
+      />
     );
     const sentinel = screen.getByTestId("load-more-sentinel");
     // Check for spinner - typically by class or svg

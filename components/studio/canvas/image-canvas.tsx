@@ -30,11 +30,11 @@ const EXPO_OUT = [0.22, 1, 0.36, 1] as const
 
 const containerVariants: Variants = {
     initial: { opacity: 0 },
-    idle: { 
+    idle: {
         opacity: 1,
         transition: { duration: 0.5, ease: EXPO_OUT }
     },
-    generating: { 
+    generating: {
         opacity: 1,
         transition: { duration: 0.4, ease: EXPO_OUT }
     },
@@ -72,7 +72,7 @@ function CapillaryProgress({ progress }: { progress: number }) {
                     transition={{ duration: 1.2, repeat: Infinity }}
                 />
             </div>
-            
+
             {/* Percentage */}
             <div className="flex justify-between items-center">
                 <span className="text-[10px] font-mono text-muted-foreground/70 uppercase tracking-[0.15em]">
@@ -125,7 +125,7 @@ export const ImageCanvas = React.memo(function ImageCanvas({
             {/* === CANVASPUNK WAVE ENGINE === */}
             {/* High-fidelity 3D dot simulation */}
             <div className="absolute inset-0 z-0">
-                 <CanvasWave isActive={isGenerating} className="w-full h-full" />
+                <CanvasWave isActive={isGenerating} className="w-full h-full" />
             </div>
 
             <div
@@ -158,7 +158,7 @@ export const ImageCanvas = React.memo(function ImageCanvas({
                                             "bg-foreground/[0.02] backdrop-blur-sm border border-white/5",
                                             "shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)]"
                                         )}>
-                                            <ImagePlus className="h-8 w-8 text-foreground/20" strokeWidth={1.5} />
+                                            <ImagePlus data-testid="empty-state-icon" className="h-8 w-8 text-foreground/20" strokeWidth={1.5} />
                                         </div>
                                     </motion.div>
                                 ) : (
@@ -170,7 +170,7 @@ export const ImageCanvas = React.memo(function ImageCanvas({
                                         transition={{ duration: 0.4 }}
                                         className="flex flex-col items-center justify-center gap-6"
                                     >
-                                        
+
                                         {typeof progress === "number" && (
                                             <motion.div
                                                 initial={{ opacity: 0, y: 10 }}

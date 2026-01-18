@@ -1,5 +1,5 @@
 import { readdir, stat } from "fs/promises";
-import { join, extname, basename, relative } from "path";
+import { join, extname, basename, relative, dirname, sep, normalize } from "path";
 
 const IGNORE_DIRS = new Set([
   ".next",
@@ -82,7 +82,7 @@ async function getFiles(dir: string, allFiles: string[] = []) {
 
 async function runAudit() {
   const rootDir = process.cwd();
-  const allFiles = await getFiles(rootDir);
+  const allFiles = (await getFiles(rootDir)).map((f) => normalize(f));
 
   const sourceFiles = allFiles.filter((file) => {
     const ext = extname(file);
@@ -90,15 +90,15 @@ async function runAudit() {
     // Ignore config files and definition files
     if (base.includes("config.") || base.endsWith(".d.ts")) return false;
     // Ignore internal convex files
-    if (file.includes("convex\\_generated")) return false;
-    
+    if (file.includes(join("convex", "_generated"))) return false;
+
     // Ignore shadcn components
-    if (file.includes("components\\ui") && SHADCN_COMPONENTS.has(base)) return false;
+    if (file.includes(join("components", "ui")) && SHADCN_COMPONENTS.has(base)) return false;
 
     return SOURCE_EXTENSIONS.includes(ext) && !TEST_EXTENSIONS.some(tExt => file.endsWith(tExt));
   });
 
-  const testFiles = new Set(allFiles.filter((file) => 
+  const testFiles = new Set(allFiles.filter((file) =>
     TEST_EXTENSIONS.some(tExt => file.endsWith(tExt))
   ));
 
@@ -107,12 +107,12 @@ async function runAudit() {
   for (const sourceFile of sourceFiles) {
     const ext = extname(sourceFile);
     const baseWithoutExt = sourceFile.slice(0, -ext.length);
-    
+
     const hasTest = TEST_EXTENSIONS.some(tExt => testFiles.has(baseWithoutExt + tExt));
 
     if (!hasTest) {
       const relPath = relative(rootDir, sourceFile);
-      const dir = relPath.includes("\\") ? relPath.split("\\").slice(0, -1).join("\\") : ".";
+      const dir = dirname(relPath);
       if (!untested[dir]) untested[dir] = [];
       untested[dir].push(basename(sourceFile));
     }

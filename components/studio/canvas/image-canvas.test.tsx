@@ -36,6 +36,7 @@ describe("ImageCanvas", () => {
 
         // Empty state should show the ImagePlus icon
         expect(screen.getByTestId("image-canvas")).toBeInTheDocument()
+        expect(screen.getByTestId("empty-state-icon")).toBeInTheDocument()
     })
 
     it("shows progress when provided during generation", () => {

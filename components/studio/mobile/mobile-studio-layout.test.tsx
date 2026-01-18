@@ -350,7 +350,7 @@ describe("MobileStudioLayout", () => {
         it("canvas container has bottom padding for nav bar", () => {
             render(<MobileStudioLayout {...defaultProps} />)
 
-            expect(screen.getByTestId("mobile-canvas-container")).toHaveClass("pb-16")
+            expect(screen.getByTestId("mobile-canvas-container")).toHaveClass("pb-20")
         })
 
         it("layout prevents overflow", () => {

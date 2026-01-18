@@ -2,7 +2,7 @@ import * as React from "react";
 import { GalleryThumbnail } from "./gallery-thumbnail";
 import { ThumbnailData } from "./types";
 
-interface ThumbnailItemProps {
+export interface ThumbnailItemProps {
   image: ThumbnailData;
   isActive: boolean;
   isChecked: boolean;

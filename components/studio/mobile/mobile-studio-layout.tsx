@@ -138,8 +138,8 @@ export function MobileStudioLayout({
                     "flex-1",
                     // Allow canvas to handle its own overflow
                     "min-h-0 overflow-hidden",
-                    // Account for bottom navigation bar height (64px = h-16)
-                    "pb-16"
+                    // Account for bottom navigation bar height (80px = h-20)
+                    "pb-20"
                 )}
                 data-testid="mobile-canvas-container"
             >

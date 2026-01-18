@@ -254,7 +254,7 @@ export const ImageGallery = React.memo(function ImageGallery({
       )}
       data-testid="image-gallery"
     >
-      <div 
+      <div
         className={cn(
           "flex flex-col bg-background shrink-0 border-b z-20 transition-all duration-200",
           isMobile && "sticky top-0"
@@ -268,7 +268,8 @@ export const ImageGallery = React.memo(function ImageGallery({
                 <Checkbox
                   id="gallery-select-all"
                   checked={
-                    images.length > 0 && selectedIds.size === images.length
+                    images.length > 0 &&
+                    images.every((img) => selectedIds.has(img.id))
                   }
                   onCheckedChange={(checked) => {
                     if (checked) {
@@ -387,7 +388,7 @@ export const ImageGallery = React.memo(function ImageGallery({
             {onToggleSelectionMode && (
               <>
                 <Separator orientation="vertical" className={cn("mx-1", isMobile ? "h-8" : "h-6")} />
-                
+
                 <Button
                   variant={selectionMode ? "default" : "outline"}
                   size={isMobile ? "default" : "sm"}
@@ -418,7 +419,7 @@ export const ImageGallery = React.memo(function ImageGallery({
 
       {isMobile ? (
         // Mobile: Render direct div to allow parent (Drawer) to handle scrolling
-        <div 
+        <div
           className="flex-1 min-h-0"
           ref={scrollContainerRef}
           data-testid="gallery-scroll-container-mobile"
