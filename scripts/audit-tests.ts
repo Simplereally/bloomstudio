@@ -1,5 +1,5 @@
 import { readdir, stat } from "fs/promises";
-import { join, extname, basename, relative, dirname, sep, normalize } from "path";
+import { join, extname, basename, relative, dirname, normalize } from "path";
 
 const IGNORE_DIRS = new Set([
   ".next",

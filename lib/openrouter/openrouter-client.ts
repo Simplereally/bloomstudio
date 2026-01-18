@@ -124,6 +124,7 @@ export function createOpenRouterClient(): OpenRouterProvider {
   // Create new client with optimized fetch
   cachedClient = createOpenRouter({
     apiKey,
+    // @ts-expect-error - highThroughputFetch matches functional fetch signature but lacks static/environment properties like 'preconnect'
     fetch: highThroughputFetch,
   })
   cachedApiKey = apiKey

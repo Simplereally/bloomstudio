@@ -17,7 +17,6 @@ import { cn } from "@/lib/utils"
 import type { GeneratedImage } from "@/types/pollinations"
 import { AnimatePresence, motion, type Variants } from "framer-motion"
 import { ImagePlus, Loader2 } from "lucide-react"
-import NextImage from "next/image"
 import * as React from "react"
 import { CanvasWave } from "./canvas-wave"
 
