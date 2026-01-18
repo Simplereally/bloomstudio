@@ -33,6 +33,9 @@ import { StandardGalleryGrid } from "./standard-gallery-grid";
 import { ThumbnailData } from "./types";
 import { VirtualizedGalleryGrid } from "./virtualized-gallery-grid";
 
+// Re-export ThumbnailData for external consumers
+export type { ThumbnailData };
+
 // HACK: Suppress "flushSync was called from inside a lifecycle method" warning
 // This is a known issue with TanStack Virtual v3 and React 19 where disabling flushSync
 // causes performance regressions, but keeping it enabled triggers this console error.
