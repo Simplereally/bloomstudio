@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { renderHook, act, waitFor } from "@testing-library/react";
 import { useStudioUI } from "./use-studio-ui";
 import { createMockImage } from "@/lib/test-utils";
 
@@ -199,6 +199,24 @@ describe("useStudioUI", () => {
       // Re-render should not close it (simulates any state change causing re-render)
       rerender();
       expect(result.current.showLeftSidebar).toBe(true);
+    });
+  });
+
+  describe("SSR hydration mismatch behavior", () => {
+    it("closes drawers when isMobile flips to true after mount", async () => {
+      mockUseIsMobile.mockReturnValue(false);
+      const { result, rerender } = renderHook(() => useStudioUI());
+
+      expect(result.current.showLeftSidebar).toBe(true);
+      expect(result.current.showGallery).toBe(true);
+
+      mockUseIsMobile.mockReturnValue(true);
+      rerender();
+
+      await waitFor(() => {
+        expect(result.current.showLeftSidebar).toBe(false);
+        expect(result.current.showGallery).toBe(false);
+      });
     });
   });
 

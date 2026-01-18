@@ -46,7 +46,7 @@ export const GalleryView = React.memo(function GalleryView({
     initialPage,
 }: GalleryViewProps) {
     return (
-        <div className="h-full bg-card/50 backdrop-blur-sm border-l border-border/50">
+        <div className="h-full min-h-0 flex flex-col bg-card/50 backdrop-blur-sm border-l border-border/50">
             <PersistentImageGallery
                 activeImageId={activeImageId}
                 onSelectImage={onSelectImage}
