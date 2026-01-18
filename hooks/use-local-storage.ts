@@ -1,78 +1,135 @@
-"use client"
+"use client";
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+
+// Use useLayoutEffect on client, useEffect on server (to avoid SSR warnings)
+const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 /**
  * A hook that persists state to localStorage.
- * Handles hydration by initializing with initialValue and syncing in useEffect.
- * 
+ *
+ * This implementation:
+ * - Initializes with initialValue during SSR to avoid hydration mismatch
+ * - Uses useLayoutEffect to sync from localStorage before browser paint (no flicker)
+ * - Subscribes to storage events for cross-tab synchronization
+ * - Properly handles key changes
+ *
  * @param key The localStorage key
  * @param initialValue The initial value if no value is found in localStorage
  * @returns [storedValue, setValue]
  */
-export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((val: T) => T)) => void] {
-    // State to store our value
-    // Initialize with initialValue exactly as provided to avoid hydration mismatch
-    const [storedValue, setStoredValue] = useState<T>(initialValue)
+export function useLocalStorage<T>(
+  key: string,
+  initialValue: T,
+): [T, (value: T | ((val: T) => T)) => void] {
+  // Always initialize with initialValue for SSR hydration safety
+  const [storedValue, setStoredValue] = useState<T>(initialValue);
 
-    // Use refs to avoid unnecessary re-renders when these change
-    const initialValueRef = useRef(initialValue)
-    useEffect(() => {
-        initialValueRef.current = initialValue
-    }, [initialValue])
+  // Track the current key and whether we've done initial sync
+  const keyRef = useRef(key);
+  const initialSyncDoneRef = useRef(false);
 
-    // Load from local storage on mount or key change
-    useEffect(() => {
-        if (typeof window === "undefined") return
+  // Helper to read from localStorage
+  const readFromStorage = useCallback(
+    (storageKey: string): T => {
+      if (typeof window === "undefined") {
+        return initialValue;
+      }
 
-        try {
-            const item = window.localStorage.getItem(key)
-            if (item) {
-                const parsed = JSON.parse(item) as T
-                
-                // Only update state if the value is different from current state
-                // This prevents the "Maximum update depth exceeded" loop when 
-                // initialValue is a literal object that changes reference on every render.
-                // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentionally syncing from localStorage to avoid hydration mismatch
-                setStoredValue((current) => {
-                    // Simple stringify comparison for deep equality check
-                    // Enough for filter states and small settings objects
-                    if (JSON.stringify(current) === item) {
-                        return current
-                    }
-                    return parsed
-                })
-            } else {
-                setStoredValue(initialValueRef.current)
-            }
-        } catch (error) {
-            console.warn(`Error reading localStorage key “${key}”:`, error)
+      try {
+        const item = window.localStorage.getItem(storageKey);
+        // Check for null, undefined value, "undefined" string, and empty strings
+        if (
+          item !== null &&
+          item !== undefined &&
+          item !== "undefined" &&
+          item.trim() !== ""
+        ) {
+          return JSON.parse(item) as T;
         }
-        // ONLY re-run on key changes
-        // initialValue is handled via ref to avoid dependency loops
-    }, [key])
+      } catch (error) {
+        console.warn(`Error reading localStorage key "${storageKey}":`, error);
+      }
+      return initialValue;
+    },
+    [initialValue],
+  );
 
-    // Return a wrapped version of useState's setter function that ...
-    // ... persists the new value to localStorage.
-    const setValue = useCallback((value: T | ((val: T) => T)) => {
-        try {
-            // Get the value to store
-            // We use a temporary variable because we can't reliably read storedValue 
-            // from the closure if multiple updates happen quickly (though usually fine in UI)
-            setStoredValue((prev) => {
-                const valueToStore = value instanceof Function ? value(prev) : value
-                
-                // Save to local storage
-                if (typeof window !== "undefined") {
-                    window.localStorage.setItem(key, JSON.stringify(valueToStore))
-                }
-                
-                return valueToStore
-            })
-        } catch (error) {
-            console.warn(`Error setting localStorage key “${key}”:`, error)
+  // Sync from localStorage immediately after hydration (before paint)
+  // This runs synchronously before the browser paints, eliminating flicker
+  useIsomorphicLayoutEffect(() => {
+    // Handle initial sync or key change
+    if (!initialSyncDoneRef.current || keyRef.current !== key) {
+      keyRef.current = key;
+      initialSyncDoneRef.current = true;
+
+      const valueFromStorage = readFromStorage(key);
+
+      // Only update if the value is different to avoid unnecessary re-renders
+      setStoredValue((current) => {
+        // Deep equality check for objects
+        if (JSON.stringify(current) === JSON.stringify(valueFromStorage)) {
+          return current;
         }
-    }, [key])
+        return valueFromStorage;
+      });
+    }
+  }, [key, readFromStorage]);
 
-    return [storedValue, setValue]
+  // Subscribe to storage events from other tabs
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === key) {
+        if (e.newValue !== null && e.newValue !== "undefined") {
+          try {
+            const parsed = JSON.parse(e.newValue) as T;
+            setStoredValue(parsed);
+          } catch (error) {
+            console.warn(
+              `Error parsing storage event for key "${key}":`,
+              error,
+            );
+          }
+        } else {
+          // Key was removed or set to null
+          setStoredValue(initialValue);
+        }
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, [key, initialValue]);
+
+  // Setter function that updates both state and localStorage
+  const setValue = useCallback(
+    (value: T | ((val: T) => T)) => {
+      try {
+        setStoredValue((prev) => {
+          const valueToStore = value instanceof Function ? value(prev) : value;
+
+          // Save to localStorage
+          if (typeof window !== "undefined") {
+            window.localStorage.setItem(key, JSON.stringify(valueToStore));
+          }
+
+          return valueToStore;
+        });
+      } catch (error) {
+        console.warn(`Error setting localStorage key "${key}":`, error);
+      }
+    },
+    [key],
+  );
+
+  return [storedValue, setValue];
 }

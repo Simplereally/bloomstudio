@@ -236,11 +236,6 @@ export function HistoryClient({ initialPage }: HistoryClientProps) {
                             filters={filterState}
                             onFiltersChange={setFilterState}
                         />
-                        {hasActiveFilters && (
-                            <span className="text-sm text-muted-foreground">
-                                Showing filtered results
-                            </span>
-                        )}
                     </div>
 
                     {/* Selection Toolbar */}

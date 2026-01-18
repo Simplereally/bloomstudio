@@ -175,7 +175,7 @@ export function useGenerateImage(
                 id: generatedImage._id,
                 url: generatedImage.url,
                 prompt: generatedImage.prompt,
-                params: currentParams as any,
+                params: currentParams as ImageGenerationParams,
                 timestamp: generatedImage.createdAt,
                 r2Key: generatedImage.r2Key,
                 sizeBytes: generatedImage.sizeBytes,

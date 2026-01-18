@@ -118,7 +118,12 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
           {displayImage && (
             <div
               className="w-full h-full bg-black/80 backdrop-blur-md cursor-default flex items-center justify-center animate-in fade-in duration-150"
-              onClick={onClose}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                onClose()
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
             >
               {/* Scrollable container for zoomed view, centered flex for non-zoomed */}
               <div

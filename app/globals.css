@@ -28,7 +28,7 @@
   --accent: oklch(0.91 0.045 50);
   --accent-foreground: oklch(0.18 0.015 30);
 
-  --destructive: oklch(0.50 0.22 20);
+  --destructive: oklch(0.5 0.22 20);
   --destructive-foreground: oklch(0.99 0.005 20);
 
   --border: oklch(0.88 0.01 50);
@@ -36,8 +36,8 @@
   --ring: oklch(0.58 0.18 45);
 
   --chart-1: oklch(0.58 0.18 45);
-  --chart-2: oklch(0.55 0.20 40);
-  --chart-3: oklch(0.50 0.15 50);
+  --chart-2: oklch(0.55 0.2 40);
+  --chart-3: oklch(0.5 0.15 50);
   --chart-4: oklch(0.45 0.12 38);
   --chart-5: oklch(0.62 0.16 48);
 
@@ -54,7 +54,7 @@
 
   /* Canvas texture */
   --canvas-bg: oklch(0.94 0.008 50);
-  --canvas-dot: oklch(0.50 0.01 50 / 0.10);
+  --canvas-dot: oklch(0.5 0.01 50 / 0.1);
 }
 
 .dark {
@@ -69,7 +69,7 @@
   --secondary: oklch(0.28 0.02 40);
   --secondary-foreground: oklch(0.95 0.005 40);
   --muted: oklch(0.25 0.015 35);
-  --muted-foreground: oklch(0.70 0.01 50);
+  --muted-foreground: oklch(0.7 0.01 50);
   /* Accent: Warm-tinted highlight for interactive selection hovers */
   --accent: oklch(0.28 0.045 45);
   --accent-foreground: oklch(0.95 0.005 40);
@@ -93,8 +93,8 @@
   --sidebar-ring: oklch(0.68 0.18 45);
 
   /* Canvas texture - much darker in dark mode */
-  --canvas-bg: oklch(0.10 0.01 30);
-  --canvas-dot: oklch(0.40 0.01 45 / 0.15);
+  --canvas-bg: oklch(0.1 0.01 30);
+  --canvas-dot: oklch(0.4 0.01 45 / 0.15);
 }
 
 @theme inline {
@@ -102,10 +102,10 @@
   --font-mono: "Geist Mono", "Geist Mono Fallback";
   --font-brand: var(--font-bricolage);
 
-  --breakpoint-xs: 480px;    /* Small mobile landscape / large mobile portrait */
-  --breakpoint-3xl: 2000px;  /* Above 1080p monitors (effectively targets 1440p+ when combined with scaling) */
-  --breakpoint-4xl: 2400px;  /* 1440p monitors (2560px - browser chrome) */
-  --breakpoint-5xl: 3600px;  /* 4K monitors (3840px - browser chrome) */
+  --breakpoint-xs: 480px; /* Small mobile landscape / large mobile portrait */
+  --breakpoint-3xl: 2000px; /* Above 1080p monitors (effectively targets 1440p+ when combined with scaling) */
+  --breakpoint-4xl: 2400px; /* 1440p monitors (2560px - browser chrome) */
+  --breakpoint-5xl: 3600px; /* 4K monitors (3840px - browser chrome) */
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -147,7 +147,6 @@
   --animate-pulse-glow: pulse-glow 3s ease-in-out infinite;
 
   @keyframes pulse-glow {
-
     0%,
     100% {
       opacity: 0.3;
@@ -165,7 +164,8 @@
   --animate-pulse-subtle: pulse-subtle 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 
   @keyframes pulse-subtle {
-    0%, 100% {
+    0%,
+    100% {
       opacity: 1;
     }
     50% {
@@ -176,7 +176,6 @@
   --animate-lightbulb-glow: lightbulb-glow 1.5s ease-in-out infinite;
 
   @keyframes lightbulb-glow {
-
     0%,
     100% {
       filter: drop-shadow(0 0 4px rgba(250, 204, 21, 0.6));
@@ -192,7 +191,6 @@
   --animate-float: float 6s ease-in-out infinite;
 
   @keyframes float {
-
     0%,
     100% {
       transform: translateY(0px);
@@ -295,23 +293,49 @@
   /* Pollen Particle Animation - Split into left/right variations for natural spread */
   --animate-pollen-left: pollen-float-left 2.5s ease-out infinite;
   --animate-pollen-right: pollen-float-right 2.5s ease-out infinite;
-  
+
   @keyframes pollen-float-left {
-    0% { transform: translate(0, 0) scale(0.5); opacity: 0; }
-    20% { opacity: 0.8; transform: translate(-3px, -15px) scale(0.8); }
-    50% { transform: translate(-8px, -45px) scale(0.9); opacity: 0.6; }
-    100% { transform: translate(-15px, -80px) scale(0); opacity: 0; }
+    0% {
+      transform: translate(0, 0) scale(0.5);
+      opacity: 0;
+    }
+    20% {
+      opacity: 0.8;
+      transform: translate(-3px, -15px) scale(0.8);
+    }
+    50% {
+      transform: translate(-8px, -45px) scale(0.9);
+      opacity: 0.6;
+    }
+    100% {
+      transform: translate(-15px, -80px) scale(0);
+      opacity: 0;
+    }
   }
 
   @keyframes pollen-float-right {
-    0% { transform: translate(0, 0) scale(0.5); opacity: 0; }
-    20% { opacity: 0.8; transform: translate(3px, -15px) scale(0.8); }
-    50% { transform: translate(8px, -45px) scale(0.9); opacity: 0.6; }
-    100% { transform: translate(15px, -80px) scale(0); opacity: 0; }
+    0% {
+      transform: translate(0, 0) scale(0.5);
+      opacity: 0;
+    }
+    20% {
+      opacity: 0.8;
+      transform: translate(3px, -15px) scale(0.8);
+    }
+    50% {
+      transform: translate(8px, -45px) scale(0.9);
+      opacity: 0.6;
+    }
+    100% {
+      transform: translate(15px, -80px) scale(0);
+      opacity: 0;
+    }
   }
 
-  --animate-collapsible-down: collapsible-down 300ms cubic-bezier(0.3, 1.5, 0.6, 1) forwards;
-  --animate-collapsible-up: collapsible-up 200ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  --animate-collapsible-down: collapsible-down 300ms
+    cubic-bezier(0.3, 1.5, 0.6, 1) forwards;
+  --animate-collapsible-up: collapsible-up 200ms cubic-bezier(0.4, 0, 0.2, 1)
+    forwards;
 
   @keyframes collapsible-down {
     from {
@@ -340,9 +364,7 @@
       opacity: 0;
     }
   }
-
 }
-
 
 @utility glass-effect {
   /* Apple-style 'Liquid Glass' - Light Mode */
@@ -354,9 +376,37 @@
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
   border: 1px solid rgba(255, 255, 255, 0.45);
-  box-shadow: 
+  box-shadow:
     0 8px 32px 0 rgba(31, 38, 135, 0.07),
     inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+
+/* Dark mode override for glass-effect */
+.dark .glass-effect {
+  background: linear-gradient(
+    135deg,
+    rgba(17, 25, 40, 0.85),
+    rgba(17, 25, 40, 0.65)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 8px 32px 0 rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Studio-specific glass nav bar - premium dark aesthetic */
+@utility glass-nav-dark {
+  background: linear-gradient(
+    180deg,
+    rgba(20, 20, 24, 0.92),
+    rgba(12, 12, 16, 0.96)
+  );
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 -4px 24px 0 rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
 }
 
 @utility glass-effect-home {
@@ -369,11 +419,10 @@
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 
+  box-shadow:
     0 8px 32px 0 rgba(0, 0, 0, 0.4),
     inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
-
 
 @layer base {
   * {
@@ -405,11 +454,11 @@
 
   /**
    * Radix Dialog / react-remove-scroll layout shift fix
-   * 
+   *
    * When a modal opens, Radix adds padding-right to the body to prevent layout shift.
-   * However, since we globally enable `scrollbar-gutter: stable`, this results in 
+   * However, since we globally enable `scrollbar-gutter: stable`, this results in
    * double-spacing (gutter + padding) which squeezes the layout and causes a shift.
-   * 
+   *
    * The Fix: We force Radix's padding to 0 on the body. We rely on `scrollbar-gutter: stable`
    * (on html) to keep the layout stable by reserving the scrollbar space permanently.
    */
@@ -495,3 +544,28 @@ body[data-resizing="true"] * {
 body[data-resizing="true"] .group-hover\:scale-105:hover {
   transform: none !important;
 }
+
+/* ============================================================================
+ * Mobile Studio Drawer Animation Speed Override
+ * 
+ * Vaul drawer uses a 500ms default animation that feels sluggish on mobile.
+ * We override this for studio drawers to make them feel more responsive.
+ * 
+ * Animation: 200ms with smooth ease-out for polished feel
+ * ============================================================================ */
+
+/* Target all vaul drawers with our test IDs for snappier animation */
+[data-testid="mobile-editor-drawer"],
+[data-testid="mobile-history-drawer"] {
+  /* Smooth but snappy animation */
+  transition-duration: 200ms !important;
+  /* Smooth ease-out for polished feel */
+  transition-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1) !important;
+}
+
+/* Fast overlay fade - instant visual feedback */
+[data-slot="drawer-overlay"] {
+  transition-duration: 150ms !important;
+  transition-timing-function: ease-out !important;
+}
+

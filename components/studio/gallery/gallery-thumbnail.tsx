@@ -109,6 +109,12 @@ export const GalleryThumbnail = React.memo(function GalleryThumbnail({
         isActive ? "border-primary ring-2 ring-primary/20" : "border-transparent hover:border-primary/50",
         // Add selected state styling
         showCheckbox && isChecked && "border-primary ring-2 ring-primary/30",
+        // Use template literal to allow overriding size classes via className
+        // If className contains width/height classes, they will win due to tailwind precedence (if configured)
+        // or we rely on cn to merge. But standard tailwind merge might not override if not conflicting.
+        // Actually, sizeClasses[size] adds w-X h-X. 
+        // To allow responsive sizing (w-full h-auto), we need to ensure those classes take precedence or are strictly applied.
+        // In this case, passing "w-full h-auto aspect-square" in className should override fixed sizes if using proper tw-merge (cn uses it).
         sizeClasses[size],
         className
       )}

@@ -160,24 +160,6 @@ export const ImageCanvas = React.memo(function ImageCanvas({
                                         )}>
                                             <ImagePlus className="h-8 w-8 text-foreground/20" strokeWidth={1.5} />
                                         </div>
-
-                                        <div className="flex flex-col items-center text-center">
-                                            <h3 className="text-lg font-medium tracking-tight text-foreground/85">
-                                                Create something amazing
-                                            </h3>
-                                            <div className="mt-5 flex items-center gap-2 opacity-85 transition-opacity duration-300 pointer-events-auto">
-                                                <span className="text-sm text-muted-foreground font-light">
-                                                    Powered by
-                                                </span>
-                                                <NextImage
-                                                    src="/branding/pollinations/logo-white.svg"
-                                                    alt="Pollinations"
-                                                    width={120}
-                                                    height={22}
-                                                    className="h-6 w-auto invert dark:invert-0"
-                                                />
-                                            </div>
-                                        </div>
                                     </motion.div>
                                 ) : (
                                     <motion.div
