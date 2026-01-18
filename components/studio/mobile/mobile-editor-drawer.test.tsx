@@ -110,6 +110,16 @@ describe("MobileEditorDrawer", () => {
         })
     })
 
+    describe("Drawer Configuration", () => {
+        it("constrains drawer height for scrollable content", () => {
+            render(<MobileEditorDrawer {...defaultProps} />)
+
+            const content = screen.getByTestId("mobile-editor-drawer")
+            expect(content).toHaveClass("h-[85dvh]")
+            expect(content).toHaveClass("max-h-[85dvh]")
+        })
+    })
+
     /**
      * Snap Point Behavior Tests
      * 
@@ -178,4 +188,3 @@ describe("MobileEditorDrawer", () => {
         })
     })
 })
-

@@ -218,14 +218,17 @@ describe("VirtualizedGalleryGrid", () => {
   it("uses 800px rootMargin on mobile for infinite scroll", async () => {
     vi.useFakeTimers();
     vi.mocked(useIsMobile).mockReturnValue(true);
+    const props = createDefaultProps();
     render(
       <VirtualizedGalleryGrid
-        {...createDefaultProps()}
+        {...props}
         canLoadMore={true}
         onLoadMore={vi.fn()}
         isMobile={true}
       />
     );
+    props.scrollContainerRef.current!.scrollTop = 1;
+    props.scrollContainerRef.current!.dispatchEvent(new Event("scroll"));
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(500);

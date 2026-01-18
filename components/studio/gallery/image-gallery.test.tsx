@@ -219,6 +219,20 @@ describe("ImageGallery", () => {
       expect(screen.queryByTestId("gallery-empty")).not.toBeInTheDocument();
     });
 
+    it("renders a scrollable mobile container with vaul drag disabled", () => {
+      vi.mocked(useIsMobile).mockReturnValue(true);
+
+      render(<ImageGallery images={mockImages} />);
+
+      const scrollContainer = screen.getByTestId(
+        "gallery-scroll-container-mobile",
+      );
+      expect(scrollContainer).toBeInTheDocument();
+      expect(scrollContainer).toHaveClass("overflow-y-auto");
+      expect(scrollContainer).toHaveAttribute("data-vaul-no-drag");
+    });
+
+
     it("shows loading state when isLoading is true", () => {
       render(<ImageGallery images={[]} isLoading={true} />);
 

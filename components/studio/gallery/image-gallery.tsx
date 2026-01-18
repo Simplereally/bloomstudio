@@ -249,7 +249,7 @@ export const ImageGallery = React.memo(function ImageGallery({
     <div
       className={cn(
         "flex flex-col bg-background",
-        isMobile ? "min-h-0 w-full" : "h-full overflow-hidden",
+        isMobile ? "h-full min-h-0 w-full overflow-hidden" : "h-full overflow-hidden",
         className,
       )}
       data-testid="image-gallery"
@@ -420,11 +420,12 @@ export const ImageGallery = React.memo(function ImageGallery({
       </div>
 
       {isMobile ? (
-        // Mobile: Render direct div to allow parent (Drawer) to handle scrolling
+        // Mobile: Use native scroll container for smooth touch + reliable virtualization
         <div
-          className="flex-1 min-h-0"
+          className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch]"
           ref={scrollContainerRef}
           data-testid="gallery-scroll-container-mobile"
+          data-vaul-no-drag
         >
           {renderGalleryContent()}
         </div>

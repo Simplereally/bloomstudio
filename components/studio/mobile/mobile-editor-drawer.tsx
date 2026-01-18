@@ -82,7 +82,7 @@ export function MobileEditorDrawer({
       <DrawerContent
         className={cn(
           // Override max-height to use dynamic viewport height
-          "max-h-[85dvh]",
+          "h-[85dvh] max-h-[85dvh]",
           // Lower z-index (z-40) to allow popovers (z-50) to appear above
           // Mobile-specific component doesn't need to compete with global overlays
           "!z-40",
