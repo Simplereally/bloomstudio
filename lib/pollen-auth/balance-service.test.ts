@@ -96,14 +96,12 @@ describe("pollen-auth/balance-service", () => {
 
 
   describe("fetchPollenBalance", () => {
-    const originalFetch = global.fetch;
-
     beforeEach(() => {
       vi.clearAllMocks();
     });
 
     afterEach(() => {
-      global.fetch = originalFetch;
+      vi.unstubAllGlobals();
     });
 
     /**
@@ -112,10 +110,11 @@ describe("pollen-auth/balance-service", () => {
      */
     describe("error handling", () => {
       it("should return UNAUTHORIZED error for 401 response", async () => {
-        global.fetch = vi.fn().mockResolvedValue({
+        const fetchMock = vi.fn().mockResolvedValue({
           ok: false,
           status: 401,
         });
+        vi.stubGlobal("fetch", fetchMock);
 
         await expect(fetchPollenBalance("sk_test_key")).rejects.toMatchObject({
           code: "UNAUTHORIZED",
@@ -124,10 +123,11 @@ describe("pollen-auth/balance-service", () => {
       });
 
       it("should return FORBIDDEN error for 403 response", async () => {
-        global.fetch = vi.fn().mockResolvedValue({
+        const fetchMock = vi.fn().mockResolvedValue({
           ok: false,
           status: 403,
         });
+        vi.stubGlobal("fetch", fetchMock);
 
         await expect(fetchPollenBalance("sk_test_key")).rejects.toMatchObject({
           code: "FORBIDDEN",
@@ -136,9 +136,10 @@ describe("pollen-auth/balance-service", () => {
       });
 
       it("should return NETWORK_ERROR for network failures", async () => {
-        global.fetch = vi.fn().mockRejectedValue(
+        const fetchMock = vi.fn().mockRejectedValue(
           new TypeError("Failed to fetch")
         );
+        vi.stubGlobal("fetch", fetchMock);
 
         await expect(fetchPollenBalance("sk_test_key")).rejects.toMatchObject({
           code: "NETWORK_ERROR",
@@ -146,10 +147,11 @@ describe("pollen-auth/balance-service", () => {
       });
 
       it("should return UNKNOWN_ERROR for other HTTP errors", async () => {
-        global.fetch = vi.fn().mockResolvedValue({
+        const fetchMock = vi.fn().mockResolvedValue({
           ok: false,
           status: 500,
         });
+        vi.stubGlobal("fetch", fetchMock);
 
         await expect(fetchPollenBalance("sk_test_key")).rejects.toMatchObject({
           code: "UNKNOWN_ERROR",
@@ -161,10 +163,11 @@ describe("pollen-auth/balance-service", () => {
     describe("successful fetch", () => {
       it("should return balance on successful response", async () => {
         const mockBalance = 1234.56;
-        global.fetch = vi.fn().mockResolvedValue({
+        const fetchMock = vi.fn().mockResolvedValue({
           ok: true,
           json: () => Promise.resolve({ balance: mockBalance }),
         });
+        vi.stubGlobal("fetch", fetchMock);
 
         const result = await fetchPollenBalance("sk_test_key");
         expect(result.balance).toBe(mockBalance);
@@ -172,14 +175,15 @@ describe("pollen-auth/balance-service", () => {
 
       it("should call fetch with correct URL and headers", async () => {
         const apiKey = "sk_test_api_key_123";
-        global.fetch = vi.fn().mockResolvedValue({
+        const fetchMock = vi.fn().mockResolvedValue({
           ok: true,
           json: () => Promise.resolve({ balance: 100 }),
         });
+        vi.stubGlobal("fetch", fetchMock);
 
         await fetchPollenBalance(apiKey);
 
-        expect(global.fetch).toHaveBeenCalledWith(
+        expect(fetchMock).toHaveBeenCalledWith(
           "https://gen.pollinations.ai/api/account/balance",
           {
             method: "GET",

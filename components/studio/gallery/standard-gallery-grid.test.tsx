@@ -39,18 +39,34 @@ const createDefaultProps = () => ({
 
 describe("StandardGalleryGrid", () => {
   let originalIntersectionObserver: typeof IntersectionObserver;
-  let observeMock: ReturnType<typeof vi.fn>;
-  let disconnectMock: ReturnType<typeof vi.fn>;
-  let constructorMock: ReturnType<typeof vi.fn>;
+  let observeMock: ReturnType<typeof vi.fn<(target: Element) => void>>;
+  let unobserveMock: ReturnType<typeof vi.fn<(target: Element) => void>>;
+  let disconnectMock: ReturnType<typeof vi.fn<() => void>>;
+  let takeRecordsMock: ReturnType<typeof vi.fn<() => IntersectionObserverEntry[]>>;
+  let constructorMock: ReturnType<
+    typeof vi.fn<
+      (
+        callback: IntersectionObserverCallback,
+        options?: IntersectionObserverInit
+      ) => void
+    >
+  >;
 
   beforeEach(() => {
     vi.mocked(useIsMobile).mockReturnValue(false);
 
     // Mock IntersectionObserver
     originalIntersectionObserver = global.IntersectionObserver;
-    observeMock = vi.fn();
-    disconnectMock = vi.fn();
-    constructorMock = vi.fn();
+    observeMock = vi.fn<(target: Element) => void>();
+    unobserveMock = vi.fn<(target: Element) => void>();
+    disconnectMock = vi.fn<() => void>();
+    takeRecordsMock = vi.fn<() => IntersectionObserverEntry[]>(() => []);
+    constructorMock = vi.fn<
+      (
+        callback: IntersectionObserverCallback,
+        options?: IntersectionObserverInit
+      ) => void
+    >();
 
     global.IntersectionObserver = class MockIntersectionObserver
       implements IntersectionObserver
@@ -66,10 +82,21 @@ describe("StandardGalleryGrid", () => {
         constructorMock(callback, options);
       }
 
-      observe = observeMock;
-      unobserve = vi.fn();
-      disconnect = disconnectMock;
-      takeRecords = vi.fn(() => []);
+      observe(target: Element): void {
+        observeMock(target);
+      }
+
+      unobserve(target: Element): void {
+        unobserveMock(target);
+      }
+
+      disconnect(): void {
+        disconnectMock();
+      }
+
+      takeRecords(): IntersectionObserverEntry[] {
+        return takeRecordsMock();
+      }
     } as unknown as typeof IntersectionObserver;
   });
 

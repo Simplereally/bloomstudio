@@ -33,6 +33,7 @@ vi.mock("@/components/ui/popover", () => ({
         onPointerDownOutside,
         onFocusOutside,
         onInteractOutside,
+        "data-vaul-no-drag": dataVaulNoDrag,
         ...props
     }: { 
         children: React.ReactNode
@@ -40,12 +41,14 @@ vi.mock("@/components/ui/popover", () => ({
         onPointerDownOutside?: (e: { preventDefault: () => void }) => void
         onFocusOutside?: (e: { preventDefault: () => void }) => void
         onInteractOutside?: (e: { preventDefault: () => void }) => void
+        "data-vaul-no-drag"?: unknown
     }) => {
         // Capture props for testing
         capturedPopoverContentProps = {
             onPointerDownOutside,
             onFocusOutside,
             onInteractOutside,
+            "data-vaul-no-drag": dataVaulNoDrag,
             ...props,
         }
         return (
@@ -55,7 +58,7 @@ vi.mock("@/components/ui/popover", () => ({
                 data-has-pointer-handler={String(!!onPointerDownOutside)}
                 data-has-focus-handler={String(!!onFocusOutside)}
                 data-has-interact-handler={String(!!onInteractOutside)}
-                data-vaul-no-drag={props["data-vaul-no-drag"] ? "true" : undefined}
+                data-vaul-no-drag={dataVaulNoDrag ? "true" : undefined}
             >
                 {children}
             </div>

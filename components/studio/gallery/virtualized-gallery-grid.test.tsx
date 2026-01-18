@@ -48,9 +48,18 @@ describe("VirtualizedGalleryGrid", () => {
   let originalGetBoundingClientRect: typeof HTMLElement.prototype.getBoundingClientRect;
   let originalOffsetHeightDescriptor: PropertyDescriptor | undefined;
   let originalClientHeightDescriptor: PropertyDescriptor | undefined;
-  let observeMock: ReturnType<typeof vi.fn>;
-  let disconnectMock: ReturnType<typeof vi.fn>;
-  let constructorMock: ReturnType<typeof vi.fn>;
+  let observeMock: ReturnType<typeof vi.fn<(target: Element) => void>>;
+  let unobserveMock: ReturnType<typeof vi.fn<(target: Element) => void>>;
+  let disconnectMock: ReturnType<typeof vi.fn<() => void>>;
+  let takeRecordsMock: ReturnType<typeof vi.fn<() => IntersectionObserverEntry[]>>;
+  let constructorMock: ReturnType<
+    typeof vi.fn<
+      (
+        callback: IntersectionObserverCallback,
+        options?: IntersectionObserverInit
+      ) => void
+    >
+  >;
 
   beforeEach(() => {
     // Capture originals
@@ -69,9 +78,16 @@ describe("VirtualizedGalleryGrid", () => {
     vi.mocked(useIsMobile).mockReturnValue(false); // Default to desktop
 
     // Mock IntersectionObserver
-    observeMock = vi.fn();
-    disconnectMock = vi.fn();
-    constructorMock = vi.fn();
+    observeMock = vi.fn<(target: Element) => void>();
+    unobserveMock = vi.fn<(target: Element) => void>();
+    disconnectMock = vi.fn<() => void>();
+    takeRecordsMock = vi.fn<() => IntersectionObserverEntry[]>(() => []);
+    constructorMock = vi.fn<
+      (
+        callback: IntersectionObserverCallback,
+        options?: IntersectionObserverInit
+      ) => void
+    >();
 
     // Mock ResizeObserver
     global.ResizeObserver = class ResizeObserver {
@@ -93,10 +109,21 @@ describe("VirtualizedGalleryGrid", () => {
         constructorMock(callback, options);
       }
 
-      observe = observeMock;
-      unobserve = vi.fn();
-      disconnect = disconnectMock;
-      takeRecords = vi.fn(() => []);
+      observe(target: Element): void {
+        observeMock(target);
+      }
+
+      unobserve(target: Element): void {
+        unobserveMock(target);
+      }
+
+      disconnect(): void {
+        disconnectMock();
+      }
+
+      takeRecords(): IntersectionObserverEntry[] {
+        return takeRecordsMock();
+      }
     } as unknown as typeof IntersectionObserver;
 
     // Mock dimensions for virtualizer

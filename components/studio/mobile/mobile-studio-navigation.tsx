@@ -37,6 +37,7 @@ export interface MobileStudioNavigationProps {
   isGenerating?: boolean;
   /** Whether generation is disabled (e.g., no prompt) */
   isGenerateDisabled?: boolean;
+  generateAriaLabel?: string;
   /** Whether the editor drawer is currently open */
   isEditorOpen?: boolean;
   /** Whether the history sheet is currently open */
@@ -127,10 +128,12 @@ function GenerateFAB({
   onClick,
   isGenerating,
   disabled,
+  ariaLabel,
 }: {
   onClick: () => void;
   isGenerating?: boolean;
   disabled?: boolean;
+  ariaLabel?: string;
 }) {
   return (
     <button
@@ -158,7 +161,7 @@ function GenerateFAB({
         // Generating state - pulse animation
         isGenerating && "animate-pulse ring-primary/40",
       )}
-      aria-label={isGenerating ? "Generating..." : "Generate"}
+      aria-label={ariaLabel ?? (isGenerating ? "Generating..." : "Generate")}
       data-testid="mobile-generate-fab"
     >
       {/* Pulse glow effect when generating */}
@@ -252,6 +255,7 @@ export function MobileStudioNavigation({
   onGenerate,
   isGenerating = false,
   isGenerateDisabled = false,
+  generateAriaLabel,
   isEditorOpen = false,
   isHistoryOpen = false,
   selectionMode,
@@ -301,6 +305,7 @@ export function MobileStudioNavigation({
             onClick={onGenerate}
             isGenerating={isGenerating}
             disabled={isGenerateDisabled}
+            ariaLabel={generateAriaLabel}
           />
           <NavButton
             icon={History}

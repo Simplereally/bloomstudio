@@ -41,7 +41,6 @@ describe("useImageDisplay", () => {
   };
 
   const originalClipboard = navigator.clipboard;
-  const originalFetch = global.fetch;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -58,10 +57,11 @@ describe("useImageDisplay", () => {
     window.URL.revokeObjectURL = vi.fn();
 
     // Mock fetch
-    global.fetch = vi.fn().mockResolvedValue({
+    const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       blob: vi.fn().mockResolvedValue(new Blob()),
     });
+    vi.stubGlobal("fetch", fetchMock);
 
     // Mock document.createElement and body.appendChild for download test
     vi.spyOn(document, "createElement");
@@ -69,7 +69,7 @@ describe("useImageDisplay", () => {
 
   afterEach(() => {
     Object.assign(navigator, { clipboard: originalClipboard });
-    global.fetch = originalFetch;
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 

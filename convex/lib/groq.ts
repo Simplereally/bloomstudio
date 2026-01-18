@@ -35,10 +35,12 @@ export interface GroqVisionResult {
     text: string
 }
 
+export type FetchFn = (...args: Parameters<typeof fetch>) => ReturnType<typeof fetch>
+
 /** Dependencies that can be injected for testing */
 export interface GroqVisionDeps {
     apiKey: string | undefined
-    fetchFn: typeof fetch
+    fetchFn: FetchFn
     sleepFn: (ms: number) => Promise<void>
     retryConfig: RetryConfig
     maxRetries: number

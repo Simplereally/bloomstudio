@@ -5,7 +5,6 @@ import { PollinationsApiError, ClientErrorCode } from "./image-api"
 
 // Mock fetch globally
 const mockFetch = vi.fn()
-global.fetch = mockFetch
 
 describe("models-api", () => {
     const mockModels = [
@@ -25,9 +24,11 @@ describe("models-api", () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
+        vi.stubGlobal("fetch", mockFetch)
     })
 
     afterEach(() => {
+        vi.unstubAllGlobals()
         vi.restoreAllMocks()
     })
 

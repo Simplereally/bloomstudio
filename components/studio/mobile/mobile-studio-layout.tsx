@@ -93,10 +93,21 @@ export function MobileStudioLayout({
     onGenerate,
     isGenerating = false,
     isGenerateDisabled = false,
+    batchSettings,
+    isBatchActive = false,
 
     selectionMode,
     className,
 }: MobileStudioLayoutProps) {
+    const isGeneratingForNav = isGenerating || isBatchActive
+    const generateAriaLabel = isGenerating
+        ? "Generating..."
+        : isBatchActive
+          ? "Batch in progress"
+          : batchSettings?.enabled
+            ? `Generate Batch (${batchSettings.count})`
+            : "Generate"
+
     // Handle opening the editor drawer
     const handleOpenEditor = React.useCallback(() => {
         onEditorOpenChange(true)
@@ -151,8 +162,9 @@ export function MobileStudioLayout({
                 onOpenEditor={handleOpenEditor}
                 onOpenHistory={handleOpenHistory}
                 onGenerate={handleGenerate}
-                isGenerating={isGenerating}
+                isGenerating={isGeneratingForNav}
                 isGenerateDisabled={isGenerateDisabled}
+                generateAriaLabel={generateAriaLabel}
                 isEditorOpen={isEditorOpen}
                 isHistoryOpen={isHistoryOpen}
                 selectionMode={selectionMode}

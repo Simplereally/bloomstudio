@@ -77,7 +77,11 @@ describe("useBatchMode", () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        global.fetch = vi.fn()
+        vi.stubGlobal("fetch", vi.fn())
+    })
+
+    afterEach(() => {
+        vi.unstubAllGlobals()
     })
 
     it("initializes with default values", () => {
@@ -256,7 +260,7 @@ describe("useBatchMode", () => {
 
         it("handleBatchGenerateItem does not call fetch (processing happens server-side)", async () => {
             const mockFetch = vi.fn()
-            global.fetch = mockFetch
+            vi.stubGlobal("fetch", mockFetch)
 
             const { result } = renderHook(() =>
                 useBatchMode({
