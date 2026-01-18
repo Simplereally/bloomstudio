@@ -6,7 +6,8 @@
       "esnext"
     ],
     "types": [
-      "vitest/globals"
+      "vitest/globals",
+      "bun"
     ],
     "allowJs": true,
     "target": "ES6",

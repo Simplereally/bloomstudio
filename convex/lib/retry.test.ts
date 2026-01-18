@@ -74,9 +74,14 @@ describe("retry utilities", () => {
             vi.useRealTimers()
         })
 
+        afterEach(() => {
+            vi.unstubAllGlobals()
+        })
+
         it("returns success on first attempt when response is ok", async () => {
             const mockResponse = new Response("OK", { status: 200 })
-            global.fetch = vi.fn().mockResolvedValue(mockResponse)
+            const fetchMock = vi.fn().mockResolvedValue(mockResponse)
+            vi.stubGlobal("fetch", fetchMock)
 
             const result = await fetchWithRetry(
                 "https://example.com",
@@ -87,16 +92,17 @@ describe("retry utilities", () => {
 
             expect(result.success).toBe(true)
             expect(result.attemptsMade).toBe(1)
-            expect(fetch).toHaveBeenCalledTimes(1)
+            expect(fetchMock).toHaveBeenCalledTimes(1)
         })
 
         it("retries on retryable errors", async () => {
             const errorResponse = new Response("Server Error", { status: 500 })
             const successResponse = new Response("OK", { status: 200 })
             
-            global.fetch = vi.fn()
+            const fetchMock = vi.fn()
                 .mockResolvedValueOnce(errorResponse)
                 .mockResolvedValueOnce(successResponse)
+            vi.stubGlobal("fetch", fetchMock)
 
             const result = await fetchWithRetry(
                 "https://example.com",
@@ -107,12 +113,13 @@ describe("retry utilities", () => {
 
             expect(result.success).toBe(true)
             expect(result.attemptsMade).toBe(2)
-            expect(fetch).toHaveBeenCalledTimes(2)
+            expect(fetchMock).toHaveBeenCalledTimes(2)
         })
 
         it("does not retry on non-retryable errors", async () => {
             const errorResponse = new Response("Bad Request", { status: 400 })
-            global.fetch = vi.fn().mockResolvedValue(errorResponse)
+            const fetchMock = vi.fn().mockResolvedValue(errorResponse)
+            vi.stubGlobal("fetch", fetchMock)
 
             const result = await fetchWithRetry(
                 "https://example.com",
@@ -124,12 +131,13 @@ describe("retry utilities", () => {
             expect(result.success).toBe(false)
             expect(result.attemptsMade).toBe(1)
             expect(result.wasNonRetryable).toBe(true)
-            expect(fetch).toHaveBeenCalledTimes(1)
+            expect(fetchMock).toHaveBeenCalledTimes(1)
         })
 
         it("exhausts all retries on persistent errors", async () => {
             const errorResponse = new Response("Server Error", { status: 500 })
-            global.fetch = vi.fn().mockResolvedValue(errorResponse)
+            const fetchMock = vi.fn().mockResolvedValue(errorResponse)
+            vi.stubGlobal("fetch", fetchMock)
 
             const result = await fetchWithRetry(
                 "https://example.com",
@@ -140,15 +148,16 @@ describe("retry utilities", () => {
 
             expect(result.success).toBe(false)
             expect(result.attemptsMade).toBe(3) // 1 initial + 2 retries
-            expect(fetch).toHaveBeenCalledTimes(3)
+            expect(fetchMock).toHaveBeenCalledTimes(3)
         })
 
         it("retries on network errors", async () => {
             const successResponse = new Response("OK", { status: 200 })
             
-            global.fetch = vi.fn()
+            const fetchMock = vi.fn()
                 .mockRejectedValueOnce(new Error("Network error"))
                 .mockResolvedValueOnce(successResponse)
+            vi.stubGlobal("fetch", fetchMock)
 
             const result = await fetchWithRetry(
                 "https://example.com",
@@ -163,7 +172,8 @@ describe("retry utilities", () => {
 
         it("includes error message in failed result", async () => {
             const errorResponse = new Response("Validation failed: prompt too long", { status: 400 })
-            global.fetch = vi.fn().mockResolvedValue(errorResponse)
+            const fetchMock = vi.fn().mockResolvedValue(errorResponse)
+            vi.stubGlobal("fetch", fetchMock)
 
             const result = await fetchWithRetry(
                 "https://example.com",

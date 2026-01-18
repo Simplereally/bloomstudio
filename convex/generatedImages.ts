@@ -174,18 +174,21 @@ export const create = mutation({
             negativePrompt: args.negativePrompt,
             model: args.model,
             seed: args.seed,
-            generationParams: args.generationParams,
             createdAt: Date.now(),
-
             // Initial sensitive content tagging based on prompt
             // Tri-state logic: true=NSFW, false=Safe, null=Pending/Unknown
-
             // If explicit (>= 0.9), mark Sensitive.
             // If any less, mark Pending (null) to run Phase 3 Prompt Inference.
             isSensitive: promptAnalysis.confidence >= 0.9 ? true : null,
 
             sensitiveSource: promptAnalysis.confidence >= 0.9 ? "prompt_analysis" : undefined,
             sensitiveConfidence: promptAnalysis.confidence,
+        })
+
+        // Store heavy details in side table (P0 Optimization)
+        await ctx.db.insert("generatedImageDetails", {
+            imageId,
+            generationParams: args.generationParams,
         })
 
         // Schedule async Prompt Inference (Phase 3) if prompt was not explicitly flagged
@@ -889,13 +892,32 @@ export const updateImageSensitivity = internalMutation({
         }),
     },
     handler: async (ctx, args) => {
+        // Update main record with lightweight flags
         await ctx.db.patch(args.imageId, {
             isSensitive: args.isSensitive,
             // If vision found it sensitive, update source
             sensitiveSource: "vision_analysis",
             sensitiveConfidence: args.confidence,
-            contentAnalysis: args.contentAnalysis,
         });
+
+        // Update details record with heavy analysis object
+        const details = await ctx.db
+            .query("generatedImageDetails")
+            .withIndex("by_image", (q) => q.eq("imageId", args.imageId))
+            .unique();
+
+        if (details) {
+            await ctx.db.patch(details._id, {
+                contentAnalysis: args.contentAnalysis,
+            });
+        } else {
+            // Create details if missing (legacy data)
+            await ctx.db.insert("generatedImageDetails", {
+                imageId: args.imageId,
+                generationParams: {}, // Required field, placeholder for legacy
+                contentAnalysis: args.contentAnalysis,
+            });
+        }
     },
 });
 
@@ -916,23 +938,38 @@ export const updateImagePromptInference = internalMutation({
         confidence: v.optional(v.number()), // If decided
     },
     handler: async (ctx, args) => {
-        // Use a partial of the inferred document type + any extra fields we are patching
-        // But since we are patching raw fields, 'any' is sometimes practically needed if types aren't perfectly aligned
-        // However, we can use Record<string, unknown> which is safer
-        const updates: Record<string, unknown> = {
-            promptInference: args.promptInference,
-        };
-
+        // 1. Update main record if sensitivity decision was made
         if (args.isSensitive !== undefined) {
-            updates.isSensitive = args.isSensitive;
-            updates.sensitiveSource = "prompt_inference";
-        }
-        
-        if (args.confidence !== undefined) {
-            updates.sensitiveConfidence = args.confidence;
+             const updates: Record<string, unknown> = {
+                isSensitive: args.isSensitive,
+                sensitiveSource: "prompt_inference",
+            };
+            
+            if (args.confidence !== undefined) {
+                updates.sensitiveConfidence = args.confidence;
+            }
+            
+            await ctx.db.patch(args.imageId, updates);
         }
 
-        await ctx.db.patch(args.imageId, updates);
+        // 2. Update details record with inference data
+        const details = await ctx.db
+            .query("generatedImageDetails")
+            .withIndex("by_image", (q) => q.eq("imageId", args.imageId))
+            .unique();
+
+        if (details) {
+            await ctx.db.patch(details._id, {
+                promptInference: args.promptInference,
+            });
+        } else {
+            // Create details if missing (legacy data)
+            await ctx.db.insert("generatedImageDetails", {
+                imageId: args.imageId,
+                generationParams: {}, // Required field, placeholder for legacy
+                promptInference: args.promptInference,
+            });
+        }
     },
 });
 

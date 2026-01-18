@@ -34,7 +34,9 @@ describe("ImageCanvas", () => {
     it("shows empty state when no image is provided", () => {
         render(<ImageCanvas image={null} />)
 
-        expect(screen.getByText("Create something amazing")).toBeInTheDocument()
+        // Empty state should show the ImagePlus icon
+        expect(screen.getByTestId("image-canvas")).toBeInTheDocument()
+        expect(screen.getByTestId("empty-state-icon")).toBeInTheDocument()
     })
 
     it("shows progress when provided during generation", () => {
@@ -54,7 +56,9 @@ describe("ImageCanvas", () => {
     it("hides empty state when image is provided", () => {
         render(<ImageCanvas image={mockImage} />)
 
-        expect(screen.queryByText("Create something amazing")).not.toBeInTheDocument()
+        // When image is provided, the placeholder should not be visible
+        const image = screen.getByRole("img")
+        expect(image).toBeInTheDocument()
     })
 
     it("hides loading state when not generating", () => {

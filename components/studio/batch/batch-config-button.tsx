@@ -51,7 +51,7 @@ export function BatchConfigButton({
 
     return (
         <Tooltip>
-            <Popover>
+            <Popover modal={false}>
                 <PopoverTrigger asChild>
                     <TooltipTrigger asChild>
                         <Button
@@ -90,22 +90,40 @@ export function BatchConfigButton({
                     </TooltipTrigger>
                 </PopoverTrigger>
                 <PopoverContent 
-                    className="w-64 p-4 mb-2 bg-popover/95 backdrop-blur-xl border-primary/20 shadow-2xl animate-in zoom-in-95 duration-200" 
+                    className="w-64 p-4 mb-2 bg-popover/95 backdrop-blur-xl border-primary/20 shadow-2xl animate-in zoom-in-95 duration-200 z-[100] pointer-events-auto" 
                     side="top" 
                     align="end" 
                     sideOffset={8}
+                    // Prevent Vaul drawer from treating this as a drag target
+                    data-vaul-no-drag
+                    // Stop click propagation to prevent drawer from capturing it
+                    onClick={(e) => e.stopPropagation()}
+                    // CRITICAL: Prevent popover from closing on pointer/focus events
+                    // When inside a Vaul drawer, the drawer's overlay causes spurious
+                    // "outside" event detection, causing the popover to close when
+                    // clicking interactive elements like the Switch.
+                    // 
+                    // By preventing these events, the user can interact with the popover
+                    // content normally. The popover will still close when clicking
+                    // the trigger button again.
+                    onPointerDownOutside={(e) => e.preventDefault()}
+                    onFocusOutside={(e) => e.preventDefault()}
+                    onInteractOutside={(e) => e.preventDefault()}
                 >
-                    <div className="space-y-4 relative z-10">
+                    {/* data-vaul-no-drag on this container to prevent Vaul from intercepting touch events */}
+                    <div className="space-y-4 relative z-10" data-vaul-no-drag>
                         <div className="flex flex-col gap-1">
                             <div className="flex items-center justify-between">
                                 <Label htmlFor="batch-enabled-quick" className="text-sm font-semibold flex items-center gap-2 font-display">
                                     <Layers className="h-3.5 w-3.5" />
                                     Batch Mode
                                 </Label>
+                                {/* data-vaul-no-drag on Switch ensures click events reach it */}
                                 <Switch
                                     id="batch-enabled-quick"
                                     checked={settings.enabled}
                                     onCheckedChange={handleToggle}
+                                    data-vaul-no-drag
                                 />
                             </div>
                             <p className="text-[11px] text-muted-foreground leading-relaxed">

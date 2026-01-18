@@ -9,7 +9,6 @@ export interface ContentAnalysisResult {
     reasoning: string;
 }
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const ANALYSIS_MODEL = "qwen/qwen-2.5-vl-7b-instruct:free"; // Free vision model with image input
 
 /** Timeout for OpenRouter API requests in milliseconds */
@@ -26,8 +25,30 @@ export class OpenRouterTimeoutError extends Error {
     }
 }
 
-export async function analyzeImageContent(imageUrl: string): Promise<ContentAnalysisResult> {
-    if (!OPENROUTER_API_KEY) {
+/** Dependencies that can be injected for testing */
+export interface OpenRouterDeps {
+    apiKey: string | undefined;
+    fetchFn: (url: string, init?: RequestInit) => Promise<Response>;
+    timeoutMs: number;
+}
+
+/** Get default dependencies */
+const getDefaultDeps = (): OpenRouterDeps => ({
+    apiKey: process.env.OPENROUTER_API_KEY,
+    fetchFn: fetch,
+    timeoutMs: FETCH_TIMEOUT_MS,
+});
+
+/**
+ * Analyze image content with dependency injection for testing.
+ * @internal Exported for testing - use analyzeImageContent() in production
+ */
+export async function analyzeImageContentWithDeps(
+    imageUrl: string,
+    deps: OpenRouterDeps
+): Promise<ContentAnalysisResult> {
+    const { apiKey, fetchFn, timeoutMs } = deps;
+    if (!apiKey) {
         console.warn("OPENROUTER_API_KEY is not set, skipping image analysis");
         // Return a safe default so we don't crash, but logged warning
         return {
@@ -41,7 +62,7 @@ export async function analyzeImageContent(imageUrl: string): Promise<ContentAnal
 
     // Set up AbortController with timeout to prevent hanging requests
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     // Build request body for logging and sending
     const requestBody = {
@@ -69,10 +90,10 @@ Respond ONLY with valid JSON:
     };
 
     try {
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        const response = await fetchFn("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
             headers: {
-                "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+                "Authorization": `Bearer ${apiKey}`,
                 "Content-Type": "application/json",
             },
             body: JSON.stringify(requestBody),
@@ -112,7 +133,7 @@ Respond ONLY with valid JSON:
         // Handle abort/timeout specifically
         if (error instanceof Error && error.name === "AbortError") {
             const timeoutError = new OpenRouterTimeoutError(
-                `OpenRouter API request timed out after ${FETCH_TIMEOUT_MS}ms`
+                `OpenRouter API request timed out after ${timeoutMs}ms`
             );
             console.error("Image analysis timeout:", timeoutError.message);
             throw timeoutError;
@@ -121,6 +142,14 @@ Respond ONLY with valid JSON:
         console.error("Image analysis failed:", error);
         throw error;
     }
+}
+
+/**
+ * Analyze image content using OpenRouter API.
+ * Public API that uses default dependencies.
+ */
+export async function analyzeImageContent(imageUrl: string): Promise<ContentAnalysisResult> {
+    return analyzeImageContentWithDeps(imageUrl, getDefaultDeps());
 }
 
 /**

@@ -1,9 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import type { OpenRouterDeps } from "./openrouter";
 
-
-// Store original env and fetch
+// Store original env
 const originalEnv = { ...process.env };
-const originalFetch = global.fetch;
+
+/** Create mock dependencies with sensible defaults */
+function createMockDeps(overrides: Partial<OpenRouterDeps> = {}): OpenRouterDeps {
+    return {
+        apiKey: "test-api-key",
+        fetchFn: vi.fn(),
+        timeoutMs: 30_000,
+        ...overrides,
+    };
+}
 
 describe("openrouter", () => {
     beforeEach(() => {
@@ -15,16 +24,16 @@ describe("openrouter", () => {
     afterEach(() => {
         vi.useRealTimers();
         vi.clearAllMocks();
+        vi.unstubAllGlobals();
         process.env = { ...originalEnv };
-        global.fetch = originalFetch;
     });
 
-    describe("analyzeImageContent", () => {
+    describe("analyzeImageContentWithDeps", () => {
         it("returns safe defaults when API key is missing", async () => {
-            delete process.env.OPENROUTER_API_KEY;
-
-            const { analyzeImageContent } = await import("./openrouter");
-            const result = await analyzeImageContent("https://example.com/image.jpg");
+            const { analyzeImageContentWithDeps } = await import("./openrouter");
+            const deps = createMockDeps({ apiKey: undefined });
+            
+            const result = await analyzeImageContentWithDeps("https://example.com/image.jpg", deps);
 
             expect(result).toEqual({
                 nudity: "none",
@@ -50,15 +59,17 @@ describe("openrouter", () => {
                 }]
             };
 
-            global.fetch = vi.fn().mockResolvedValue({
+            const mockFetch = vi.fn().mockResolvedValue({
                 ok: true,
                 json: () => Promise.resolve(mockResponse)
             });
 
-            const { analyzeImageContent } = await import("./openrouter");
-            await analyzeImageContent("https://example.com/image.jpg");
+            const { analyzeImageContentWithDeps } = await import("./openrouter");
+            const deps = createMockDeps({ fetchFn: mockFetch });
+            
+            await analyzeImageContentWithDeps("https://example.com/image.jpg", deps);
 
-            expect(fetch).toHaveBeenCalledWith(
+            expect(mockFetch).toHaveBeenCalledWith(
                 "https://openrouter.ai/api/v1/chat/completions",
                 expect.objectContaining({
                     method: "POST",
@@ -80,15 +91,17 @@ describe("openrouter", () => {
                 reasoning: "Contains mild content"
             };
 
-            global.fetch = vi.fn().mockResolvedValue({
+            const mockFetch = vi.fn().mockResolvedValue({
                 ok: true,
                 json: () => Promise.resolve({
                     choices: [{ message: { content: JSON.stringify(analysisResult) } }]
                 })
             });
 
-            const { analyzeImageContent } = await import("./openrouter");
-            const result = await analyzeImageContent("https://example.com/image.jpg");
+            const { analyzeImageContentWithDeps } = await import("./openrouter");
+            const deps = createMockDeps({ fetchFn: mockFetch });
+            
+            const result = await analyzeImageContentWithDeps("https://example.com/image.jpg", deps);
 
             expect(result).toEqual(analysisResult);
         });
@@ -102,7 +115,7 @@ describe("openrouter", () => {
                 reasoning: "Clean"
             };
 
-            global.fetch = vi.fn().mockResolvedValue({
+            const mockFetch = vi.fn().mockResolvedValue({
                 ok: true,
                 json: () => Promise.resolve({
                     choices: [{
@@ -113,34 +126,39 @@ describe("openrouter", () => {
                 })
             });
 
-            const { analyzeImageContent } = await import("./openrouter");
-            const result = await analyzeImageContent("https://example.com/image.jpg");
+            const { analyzeImageContentWithDeps } = await import("./openrouter");
+            const deps = createMockDeps({ fetchFn: mockFetch });
+            
+            const result = await analyzeImageContentWithDeps("https://example.com/image.jpg", deps);
 
             expect(result).toEqual(analysisResult);
         });
 
         it("throws on HTTP error response", async () => {
-            global.fetch = vi.fn().mockResolvedValue({
+            const mockFetch = vi.fn().mockResolvedValue({
                 ok: false,
                 status: 500,
-                statusText: "Internal Server Error"
+                statusText: "Internal Server Error",
+                text: () => Promise.resolve("Error details")
             });
 
-            const { analyzeImageContent } = await import("./openrouter");
+            const { analyzeImageContentWithDeps } = await import("./openrouter");
+            const deps = createMockDeps({ fetchFn: mockFetch });
 
-            await expect(analyzeImageContent("https://example.com/image.jpg"))
+            await expect(analyzeImageContentWithDeps("https://example.com/image.jpg", deps))
                 .rejects.toThrow("OpenRouter API error: 500 Internal Server Error");
         });
 
         it("throws when no content in response", async () => {
-            global.fetch = vi.fn().mockResolvedValue({
+            const mockFetch = vi.fn().mockResolvedValue({
                 ok: true,
                 json: () => Promise.resolve({ choices: [] })
             });
 
-            const { analyzeImageContent } = await import("./openrouter");
+            const { analyzeImageContentWithDeps } = await import("./openrouter");
+            const deps = createMockDeps({ fetchFn: mockFetch });
 
-            await expect(analyzeImageContent("https://example.com/image.jpg"))
+            await expect(analyzeImageContentWithDeps("https://example.com/image.jpg", deps))
                 .rejects.toThrow("No content received from OpenRouter");
         });
 
@@ -149,28 +167,24 @@ describe("openrouter", () => {
             const abortError = new Error("Aborted");
             abortError.name = "AbortError";
 
-            global.fetch = vi.fn().mockRejectedValue(abortError);
+            const mockFetch = vi.fn().mockRejectedValue(abortError);
 
-            const { analyzeImageContent, OpenRouterTimeoutError } = await import("./openrouter");
+            const { analyzeImageContentWithDeps, OpenRouterTimeoutError } = await import("./openrouter");
+            const deps = createMockDeps({ fetchFn: mockFetch });
 
             // Should throw OpenRouterTimeoutError which wraps AbortError
-            await expect(analyzeImageContent("https://example.com/image.jpg"))
+            await expect(analyzeImageContentWithDeps("https://example.com/image.jpg", deps))
                 .rejects.toThrow(OpenRouterTimeoutError);
 
-            // Re-import for fresh module since vi.resetModules is used
-            vi.resetModules();
-            process.env.OPENROUTER_API_KEY = "test-api-key";
-            global.fetch = vi.fn().mockRejectedValue(abortError);
-
-            const mod = await import("./openrouter");
-            await expect(mod.analyzeImageContent("https://example.com/image.jpg"))
+            // Test the error message
+            await expect(analyzeImageContentWithDeps("https://example.com/image.jpg", deps))
                 .rejects.toThrow(/timed out after 30000ms/);
         });
 
         it("clears timeout on successful response", async () => {
             const clearTimeoutSpy = vi.spyOn(global, "clearTimeout");
 
-            global.fetch = vi.fn().mockResolvedValue({
+            const mockFetch = vi.fn().mockResolvedValue({
                 ok: true,
                 json: () => Promise.resolve({
                     choices: [{
@@ -187,8 +201,10 @@ describe("openrouter", () => {
                 })
             });
 
-            const { analyzeImageContent } = await import("./openrouter");
-            await analyzeImageContent("https://example.com/image.jpg");
+            const { analyzeImageContentWithDeps } = await import("./openrouter");
+            const deps = createMockDeps({ fetchFn: mockFetch });
+            
+            await analyzeImageContentWithDeps("https://example.com/image.jpg", deps);
 
             // Timeout should be cleared
             expect(clearTimeoutSpy).toHaveBeenCalled();
@@ -197,15 +213,49 @@ describe("openrouter", () => {
         it("clears timeout on error", async () => {
             const clearTimeoutSpy = vi.spyOn(global, "clearTimeout");
 
-            global.fetch = vi.fn().mockRejectedValue(new Error("Network error"));
+            const mockFetch = vi.fn().mockRejectedValue(new Error("Network error"));
 
-            const { analyzeImageContent } = await import("./openrouter");
+            const { analyzeImageContentWithDeps } = await import("./openrouter");
+            const deps = createMockDeps({ fetchFn: mockFetch });
 
-            await expect(analyzeImageContent("https://example.com/image.jpg"))
+            await expect(analyzeImageContentWithDeps("https://example.com/image.jpg", deps))
                 .rejects.toThrow("Network error");
 
             // Timeout should be cleared even on error
             expect(clearTimeoutSpy).toHaveBeenCalled();
+        });
+    });
+
+    describe("analyzeImageContent", () => {
+        it("uses default dependencies and calls through to analyzeImageContentWithDeps", async () => {
+            // This test verifies the public API wrapper works correctly
+            const mockResponse = {
+                choices: [{
+                    message: {
+                        content: JSON.stringify({
+                            nudity: "none",
+                            sexual_content: "none",
+                            violence: "none",
+                            confidence: 0.95,
+                            reasoning: "Safe image"
+                        })
+                    }
+                }]
+            };
+
+            // Mock global fetch for the default deps
+            const mockFetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve(mockResponse)
+            });
+            vi.stubGlobal("fetch", mockFetch);
+
+            const { analyzeImageContent } = await import("./openrouter");
+            const result = await analyzeImageContent("https://example.com/image.jpg");
+
+            expect(result.nudity).toBe("none");
+            expect(result.confidence).toBe(0.95);
+            expect(mockFetch).toHaveBeenCalled();
         });
     });
 

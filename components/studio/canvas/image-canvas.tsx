@@ -17,7 +17,6 @@ import { cn } from "@/lib/utils"
 import type { GeneratedImage } from "@/types/pollinations"
 import { AnimatePresence, motion, type Variants } from "framer-motion"
 import { ImagePlus, Loader2 } from "lucide-react"
-import NextImage from "next/image"
 import * as React from "react"
 import { CanvasWave } from "./canvas-wave"
 
@@ -30,11 +29,11 @@ const EXPO_OUT = [0.22, 1, 0.36, 1] as const
 
 const containerVariants: Variants = {
     initial: { opacity: 0 },
-    idle: { 
+    idle: {
         opacity: 1,
         transition: { duration: 0.5, ease: EXPO_OUT }
     },
-    generating: { 
+    generating: {
         opacity: 1,
         transition: { duration: 0.4, ease: EXPO_OUT }
     },
@@ -72,7 +71,7 @@ function CapillaryProgress({ progress }: { progress: number }) {
                     transition={{ duration: 1.2, repeat: Infinity }}
                 />
             </div>
-            
+
             {/* Percentage */}
             <div className="flex justify-between items-center">
                 <span className="text-[10px] font-mono text-muted-foreground/70 uppercase tracking-[0.15em]">
@@ -125,7 +124,7 @@ export const ImageCanvas = React.memo(function ImageCanvas({
             {/* === CANVASPUNK WAVE ENGINE === */}
             {/* High-fidelity 3D dot simulation */}
             <div className="absolute inset-0 z-0">
-                 <CanvasWave isActive={isGenerating} className="w-full h-full" />
+                <CanvasWave isActive={isGenerating} className="w-full h-full" />
             </div>
 
             <div
@@ -158,25 +157,7 @@ export const ImageCanvas = React.memo(function ImageCanvas({
                                             "bg-foreground/[0.02] backdrop-blur-sm border border-white/5",
                                             "shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)]"
                                         )}>
-                                            <ImagePlus className="h-8 w-8 text-foreground/20" strokeWidth={1.5} />
-                                        </div>
-
-                                        <div className="flex flex-col items-center text-center">
-                                            <h3 className="text-lg font-medium tracking-tight text-foreground/85">
-                                                Create something amazing
-                                            </h3>
-                                            <div className="mt-5 flex items-center gap-2 opacity-85 transition-opacity duration-300 pointer-events-auto">
-                                                <span className="text-sm text-muted-foreground font-light">
-                                                    Powered by
-                                                </span>
-                                                <NextImage
-                                                    src="/branding/pollinations/logo-white.svg"
-                                                    alt="Pollinations"
-                                                    width={120}
-                                                    height={22}
-                                                    className="h-6 w-auto invert dark:invert-0"
-                                                />
-                                            </div>
+                                            <ImagePlus data-testid="empty-state-icon" className="h-8 w-8 text-foreground/20" strokeWidth={1.5} />
                                         </div>
                                     </motion.div>
                                 ) : (
@@ -188,7 +169,7 @@ export const ImageCanvas = React.memo(function ImageCanvas({
                                         transition={{ duration: 0.4 }}
                                         className="flex flex-col items-center justify-center gap-6"
                                     >
-                                        
+
                                         {typeof progress === "number" && (
                                             <motion.div
                                                 initial={{ opacity: 0, y: 10 }}

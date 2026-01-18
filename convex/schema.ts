@@ -105,17 +105,6 @@ export default defineSchema({
         /** Seed used for generation (-1 if random) */
         seed: v.optional(v.number()),
 
-        /**
-         * Full generation parameters for reproducibility.
-         * 
-         * WARNING: Currently unvalidated (v.any()). This field can be 10-50KB
-         * for complex workflows (e.g., ComfyUI). Consider:
-         * - Adding mutation-time validation to limit payload size (<50KB)
-         * - Using a stricter schema if generation params become standardized
-         * - Stripping from list views (see getUserBatchJobs optimization)
-         */
-        generationParams: v.optional(v.any()),
-
         // --- Sensitive Content Fields ---
 
         /** Whether the content is flagged as sensitive/NSFW. null = pending/untagged. */
@@ -130,10 +119,37 @@ export default defineSchema({
             v.literal("prompt_inference")
         )),
 
-
-
         /** Confidence score of the automated detection (0-1) */
         sensitiveConfidence: v.optional(v.number()),
+
+        /** Timestamp of creation */
+        createdAt: v.number(),
+    })
+        .index("by_owner", ["ownerId", "createdAt"])
+        .index("by_visibility", ["visibility", "createdAt"])
+        .index("by_r2_key", ["r2Key"])
+        // NEW: Composite indexes for filtered queries
+        .index("by_owner_visibility", ["ownerId", "visibility", "createdAt"])
+        .index("by_owner_model", ["ownerId", "model", "createdAt"])
+        .index("by_owner_visibility_model", ["ownerId", "visibility", "model", "createdAt"])
+        // Index for "Block" preference (Safe only) or finding pending (isSensitive=null)
+        .index("by_visibility_sensitive", ["visibility", "isSensitive", "createdAt"])
+        // Index for scanning by sensitivity (e.g. finding pending)
+        .index("by_sensitivity", ["isSensitive", "createdAt"]),
+
+    /**
+     * Generated Image Details - Heavy fields split from the main table (P0 Optimization)
+     * Stores generation parameters and analysis data that are only needed for detail views.
+     */
+    generatedImageDetails: defineTable({
+        /** Reference to the parent image */
+        imageId: v.id("generatedImages"),
+
+        /**
+         * Full generation parameters for reproducibility.
+         * Can be 10-50KB for complex workflows.
+         */
+        generationParams: v.any(),
 
         /** Detailed analysis of the content */
         contentAnalysis: v.optional(v.object({
@@ -151,21 +167,8 @@ export default defineSchema({
             provider: v.string(),
             analyzedAt: v.number(),
         })),
-
-        /** Timestamp of creation */
-        createdAt: v.number(),
     })
-        .index("by_owner", ["ownerId", "createdAt"])
-        .index("by_visibility", ["visibility", "createdAt"])
-        .index("by_r2_key", ["r2Key"])
-        // NEW: Composite indexes for filtered queries
-        .index("by_owner_visibility", ["ownerId", "visibility", "createdAt"])
-        .index("by_owner_model", ["ownerId", "model", "createdAt"])
-        .index("by_owner_visibility_model", ["ownerId", "visibility", "model", "createdAt"])
-        // Index for "Block" preference (Safe only) or finding pending (isSensitive=null)
-        .index("by_visibility_sensitive", ["visibility", "isSensitive", "createdAt"])
-        // Index for scanning by sensitivity (e.g. finding pending)
-        .index("by_sensitivity", ["isSensitive", "createdAt"]),
+        .index("by_image", ["imageId"]),
 
     /**
      * Reference images - user uploads for image-to-image generation
@@ -259,7 +262,9 @@ export default defineSchema({
         updatedAt: v.number(),
     })
         .index("by_owner", ["ownerId", "createdAt"])
-        .index("by_status", ["status", "createdAt"]),
+        .index("by_status", ["status", "createdAt"])
+        // Optimization for getActiveGenerations (avoid .collect() scan)
+        .index("by_owner_status", ["ownerId", "status", "createdAt"]),
 
     /**
      * Batch generation jobs - tracks async batch image generation
@@ -305,7 +310,9 @@ export default defineSchema({
         updatedAt: v.number(),
     })
         .index("by_owner", ["ownerId", "createdAt"])
-        .index("by_status", ["status", "createdAt"]),
+        .index("by_status", ["status", "createdAt"])
+        // Optimization for getActiveGenerations (avoid .collect() scan)
+        .index("by_owner_status", ["ownerId", "status", "createdAt"]),
 
     /**
      * Prompts table - shared prompts that can be saved to user libraries

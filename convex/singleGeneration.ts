@@ -132,15 +132,25 @@ export const getActiveGenerations = query({
             return []
         }
 
-        const generations = await ctx.db
-            .query("pendingGenerations")
-            .withIndex("by_owner", (q) => q.eq("ownerId", identity.subject))
-            .order("desc")
-            .collect()
+        // Use indexed queries to only fetch active statuses (P0 Optimization)
+        const [pending, processing] = await Promise.all([
+            ctx.db
+                .query("pendingGenerations")
+                .withIndex("by_owner_status", (q) => 
+                    q.eq("ownerId", identity.subject).eq("status", "pending")
+                )
+                .order("desc")
+                .collect(),
+            ctx.db
+                .query("pendingGenerations")
+                .withIndex("by_owner_status", (q) => 
+                    q.eq("ownerId", identity.subject).eq("status", "processing")
+                )
+                .order("desc")
+                .collect()
+        ])
 
-        return generations.filter(
-            (g) => g.status === "pending" || g.status === "processing"
-        )
+        return [...pending, ...processing].sort((a, b) => b.createdAt - a.createdAt)
     },
 })
 
@@ -251,7 +261,6 @@ export const storeGeneratedImage = internalMutation({
             negativePrompt: undefined,
             model: args.model,
             seed: args.seed,
-            generationParams: args.generationParams,
             visibility: args.visibility,
             createdAt: now,
 
@@ -261,6 +270,12 @@ export const storeGeneratedImage = internalMutation({
             isSensitive: promptAnalysis.confidence >= 0.9 ? true : null,
             sensitiveSource: promptAnalysis.confidence >= 0.9 ? "prompt_analysis" : undefined,
             sensitiveConfidence: promptAnalysis.confidence,
+        })
+
+        // Store heavy details in side table (P0 Optimization)
+        await ctx.db.insert("generatedImageDetails", {
+            imageId,
+            generationParams: args.generationParams,
         })
 
         // Schedule async Prompt Inference (Phase 3) if prompt was not explicitly flagged

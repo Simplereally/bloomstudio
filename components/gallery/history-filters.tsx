@@ -1,356 +1,402 @@
-"use client"
+"use client";
 
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-    CommandSeparator,
-} from "@/components/ui/command"
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from "@/components/ui/command";
 import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover"
-import { MODEL_REGISTRY, type ModelDefinition } from "@/lib/config/models"
-import { cn } from "@/lib/utils"
-import { Filter, X } from "lucide-react"
-import * as React from "react"
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { MODEL_REGISTRY, type ModelDefinition } from "@/lib/config/models";
+import { cn } from "@/lib/utils";
+import { Filter, X } from "lucide-react";
+import * as React from "react";
 
 /** Visibility filter options */
-export type VisibilityFilter = "public" | "unlisted"
+export type VisibilityFilter = "public" | "unlisted";
 
 /** Filter state for history */
 export interface HistoryFilterState {
-    /** Selected visibility options (empty = show all) */
-    selectedVisibility: VisibilityFilter[]
-    /** Selected model IDs */
-    selectedModels: string[]
+  /** Selected visibility options (empty = show all) */
+  selectedVisibility: VisibilityFilter[];
+  /** Selected model IDs */
+  selectedModels: string[];
 }
 
 interface HistoryFiltersProps {
-    /** Current filter state */
-    filters: HistoryFilterState
-    /** Callback when filters change */
-    onFiltersChange: (filters: HistoryFilterState) => void
+  /** Current filter state */
+  filters: HistoryFilterState;
+  /** Callback when filters change */
+  onFiltersChange: (filters: HistoryFilterState) => void;
 }
 
 // Get all image models from the registry
 const IMAGE_MODELS: ModelDefinition[] = Object.values(MODEL_REGISTRY).filter(
-    (model): model is ModelDefinition => model.type === "image"
-)
+  (model): model is ModelDefinition => model.type === "image",
+);
 
 // Get all video models from the registry
 const VIDEO_MODELS: ModelDefinition[] = Object.values(MODEL_REGISTRY).filter(
-    (model): model is ModelDefinition => model.type === "video"
-)
+  (model): model is ModelDefinition => model.type === "video",
+);
 
 /**
  * Legacy models that are no longer available for generation but may exist in user history.
  * These are shown separately in the filter dropdown so users can still filter by them.
  */
 const LEGACY_FILTER_MODELS: { id: string; displayName: string }[] = [
-    // Currently empty - 'flux' was moved back to MODEL_REGISTRY as an active model
-]
+  // Currently empty - 'flux' was moved back to MODEL_REGISTRY as an active model
+];
 
 /** Combined list of all filterable models (image + video + legacy), sorted alphabetically */
 const ALL_FILTERABLE_MODELS = [
-    ...IMAGE_MODELS.map(m => ({ id: m.id, displayName: m.displayName, isLegacy: false, type: "image" as const })),
-    ...VIDEO_MODELS.map(m => ({ id: m.id, displayName: m.displayName, isLegacy: false, type: "video" as const })),
-    ...LEGACY_FILTER_MODELS.map(m => ({ ...m, isLegacy: true, type: "image" as const })),
-].sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { numeric: true }))
+  ...IMAGE_MODELS.map((m) => ({
+    id: m.id,
+    displayName: m.displayName,
+    isLegacy: false,
+    type: "image" as const,
+  })),
+  ...VIDEO_MODELS.map((m) => ({
+    id: m.id,
+    displayName: m.displayName,
+    isLegacy: false,
+    type: "video" as const,
+  })),
+  ...LEGACY_FILTER_MODELS.map((m) => ({
+    ...m,
+    isLegacy: true,
+    type: "image" as const,
+  })),
+].sort((a, b) =>
+  a.displayName.localeCompare(b.displayName, undefined, { numeric: true }),
+);
 
 // Visibility options with labels
 const VISIBILITY_OPTIONS: { value: VisibilityFilter; label: string }[] = [
-    { value: "unlisted", label: "Private" },
-    { value: "public", label: "Public" },
-]
+  { value: "unlisted", label: "Private" },
+  { value: "public", label: "Public" },
+];
 
 /**
  * Multi-select filter dropdown for filtering image history.
  * Allows filtering by visibility (private/public) and by specific generation models.
  */
-export function HistoryFiltersDropdown({ filters, onFiltersChange }: HistoryFiltersProps) {
-    const [open, setOpen] = React.useState(false)
+export function HistoryFiltersDropdown({
+  filters,
+  onFiltersChange,
+}: HistoryFiltersProps) {
+  const [open, setOpen] = React.useState(false);
 
-    // Buffer state changes internally while the popover is open
-    // This prevents triggering a backend fetch on every single checkbox toggle
-    const [pendingFilters, setPendingFilters] = React.useState<HistoryFilterState>(filters)
+  // Buffer state changes internally while the popover is open
+  // This prevents triggering a backend fetch on every single checkbox toggle
+  const [pendingFilters, setPendingFilters] =
+    React.useState<HistoryFilterState>(filters);
 
-    // Sync pending filters when the prop changes (e.g. cleared externally)
-    React.useEffect(() => {
-        if (!open) {
-            setPendingFilters(filters)
-        }
-    }, [filters, open])
+  // Sync pending filters when the prop changes (e.g. cleared externally)
+  // Use a ref to track the last known filters and do deep comparison to avoid infinite loops
+  const lastFiltersRef = React.useRef<string>(JSON.stringify(filters));
 
-    // When popover closes, commit the pending changes
-    const handleOpenChange = (isOpen: boolean) => {
-        setOpen(isOpen)
-        if (!isOpen) {
-            // Only fire the callback if something actually changed
-            if (JSON.stringify(pendingFilters) !== JSON.stringify(filters)) {
-                onFiltersChange(pendingFilters)
-            }
-        } else {
-            // Reset pending state to current real state when opening
-            setPendingFilters(filters)
-        }
+  React.useEffect(() => {
+    const filtersJson = JSON.stringify(filters);
+    // Only sync if the popover is closed AND the filters actually changed (deep comparison)
+    if (!open && filtersJson !== lastFiltersRef.current) {
+      lastFiltersRef.current = filtersJson;
+      setPendingFilters(filters);
     }
+  }, [filters, open]);
 
-    const activeFilterCount =
-        filters.selectedVisibility.length + filters.selectedModels.length
-
-    const handleVisibilityToggle = (visibility: VisibilityFilter) => {
-        const isSelected = pendingFilters.selectedVisibility.includes(visibility)
-        const newVisibility = isSelected
-            ? pendingFilters.selectedVisibility.filter((v) => v !== visibility)
-            : [...pendingFilters.selectedVisibility, visibility]
-
-        setPendingFilters({
-            ...pendingFilters,
-            selectedVisibility: newVisibility,
-        })
+  // When popover closes, commit the pending changes
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (!isOpen) {
+      // Only fire the callback if something actually changed
+      if (JSON.stringify(pendingFilters) !== JSON.stringify(filters)) {
+        onFiltersChange(pendingFilters);
+      }
+    } else {
+      // Reset pending state to current real state when opening
+      setPendingFilters(filters);
     }
+  };
 
-    const handleModelToggle = (modelId: string) => {
-        const isSelected = pendingFilters.selectedModels.includes(modelId)
-        const newModels = isSelected
-            ? pendingFilters.selectedModels.filter((id) => id !== modelId)
-            : [...pendingFilters.selectedModels, modelId]
+  const activeFilterCount =
+    filters.selectedVisibility.length + filters.selectedModels.length;
 
-        setPendingFilters({
-            ...pendingFilters,
-            selectedModels: newModels,
-        })
-    }
+  const handleVisibilityToggle = (visibility: VisibilityFilter) => {
+    const isSelected = pendingFilters.selectedVisibility.includes(visibility);
+    const newVisibility = isSelected
+      ? pendingFilters.selectedVisibility.filter((v) => v !== visibility)
+      : [...pendingFilters.selectedVisibility, visibility];
 
-    const handleClearFilters = () => {
-        setPendingFilters({
-            selectedVisibility: [],
-            selectedModels: [],
-        })
-    }
+    setPendingFilters({
+      ...pendingFilters,
+      selectedVisibility: newVisibility,
+    });
+  };
 
-    const handleSelectAllModels = () => {
-        setPendingFilters({
-            ...pendingFilters,
-            selectedModels: ALL_FILTERABLE_MODELS.map((m) => m.id),
-        })
-    }
+  const handleModelToggle = (modelId: string) => {
+    const isSelected = pendingFilters.selectedModels.includes(modelId);
+    const newModels = isSelected
+      ? pendingFilters.selectedModels.filter((id) => id !== modelId)
+      : [...pendingFilters.selectedModels, modelId];
 
-    const handleClearModels = () => {
-        setPendingFilters({
-            ...pendingFilters,
-            selectedModels: [],
-        })
-    }
+    setPendingFilters({
+      ...pendingFilters,
+      selectedModels: newModels,
+    });
+  };
 
-    return (
-        <Popover open={open} onOpenChange={handleOpenChange}>
-            <PopoverTrigger asChild>
+  const handleClearFilters = () => {
+    setPendingFilters({
+      selectedVisibility: [],
+      selectedModels: [],
+    });
+  };
+
+  const handleSelectAllModels = () => {
+    setPendingFilters({
+      ...pendingFilters,
+      selectedModels: ALL_FILTERABLE_MODELS.map((m) => m.id),
+    });
+  };
+
+  const handleClearModels = () => {
+    setPendingFilters({
+      ...pendingFilters,
+      selectedModels: [],
+    });
+  };
+
+  return (
+    <Popover open={open} onOpenChange={handleOpenChange}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "h-12 w-12 sm:h-8 sm:w-8 relative shrink-0",
+            activeFilterCount > 0 && "text-primary bg-primary/10",
+          )}
+          aria-label={`Filter history${activeFilterCount > 0 ? ` (${activeFilterCount} active)` : ''}`}
+          title="Filter history"
+        >
+          <Filter className="h-6 w-6 sm:h-4 sm:w-4" />
+          {activeFilterCount > 0 && (
+            <Badge
+              variant="secondary"
+              className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] font-semibold pointer-events-none"
+            >
+              {activeFilterCount}
+            </Badge>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[280px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Search filters..." />
+          <CommandList>
+            <CommandEmpty>No filters found.</CommandEmpty>
+
+            {/* Visibility Section */}
+            <CommandGroup heading="Visibility">
+              {VISIBILITY_OPTIONS.map((option) => {
+                const isSelected = pendingFilters.selectedVisibility.includes(
+                  option.value,
+                );
+                return (
+                  <CommandItem
+                    key={option.value}
+                    onSelect={() => handleVisibilityToggle(option.value)}
+                    className="gap-2"
+                  >
+                    <Checkbox
+                      checked={isSelected}
+                      className="pointer-events-none"
+                    />
+                    <span>{option.label}</span>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+
+            <CommandSeparator />
+
+            {/* Image Models Section */}
+            <CommandGroup heading="Image Models">
+              {/* Quick actions for models */}
+              <div className="flex items-center gap-1 px-2 py-1.5">
                 <Button
-                    variant="outline"
-                    size="sm"
-                    className={cn(
-                        "h-8 gap-2 border-dashed",
-                        activeFilterCount > 0 && "border-primary/50 bg-primary/5"
-                    )}
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs px-2"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSelectAllModels();
+                  }}
                 >
-                    <Filter className="h-3.5 w-3.5" />
-                    <span>Filters</span>
-                    {activeFilterCount > 0 && (
-                        <Badge
-                            variant="secondary"
-                            className="ml-1 h-5 px-1.5 text-xs font-normal"
-                        >
-                            {activeFilterCount}
-                        </Badge>
-                    )}
+                  Select all
                 </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[280px] p-0" align="start">
-                <Command>
-                    <CommandInput placeholder="Search filters..." />
-                    <CommandList>
-                        <CommandEmpty>No filters found.</CommandEmpty>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs px-2"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleClearModels();
+                  }}
+                >
+                  Clear
+                </Button>
+              </div>
 
-                        {/* Visibility Section */}
-                        <CommandGroup heading="Visibility">
-                            {VISIBILITY_OPTIONS.map((option) => {
-                                const isSelected = pendingFilters.selectedVisibility.includes(option.value)
-                                return (
-                                    <CommandItem
-                                        key={option.value}
-                                        onSelect={() => handleVisibilityToggle(option.value)}
-                                        className="gap-2"
-                                    >
-                                        <Checkbox
-                                            checked={isSelected}
-                                            className="pointer-events-none"
-                                        />
-                                        <span>{option.label}</span>
-                                    </CommandItem>
-                                )
-                            })}
-                        </CommandGroup>
+              {ALL_FILTERABLE_MODELS.filter((m) => m.type === "image").map(
+                (model) => {
+                  const isSelected = pendingFilters.selectedModels.includes(
+                    model.id,
+                  );
+                  return (
+                    <CommandItem
+                      key={model.id}
+                      onSelect={() => handleModelToggle(model.id)}
+                      className={cn("gap-2", model.isLegacy && "opacity-60")}
+                    >
+                      <Checkbox
+                        checked={isSelected}
+                        className="pointer-events-none"
+                      />
+                      <span>{model.displayName}</span>
+                    </CommandItem>
+                  );
+                },
+              )}
+            </CommandGroup>
 
-                        <CommandSeparator />
+            <CommandSeparator />
 
-                        {/* Image Models Section */}
-                        <CommandGroup heading="Image Models">
-                            {/* Quick actions for models */}
-                            <div className="flex items-center gap-1 px-2 py-1.5">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 text-xs px-2"
-                                    onClick={(e) => {
-                                        e.stopPropagation()
-                                        handleSelectAllModels()
-                                    }}
-                                >
-                                    Select all
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 text-xs px-2"
-                                    onClick={(e) => {
-                                        e.stopPropagation()
-                                        handleClearModels()
-                                    }}
-                                >
-                                    Clear
-                                </Button>
-                            </div>
+            {/* Video Models Section */}
+            <CommandGroup heading="Video Models">
+              {ALL_FILTERABLE_MODELS.filter((m) => m.type === "video").map(
+                (model) => {
+                  const isSelected = pendingFilters.selectedModels.includes(
+                    model.id,
+                  );
+                  return (
+                    <CommandItem
+                      key={model.id}
+                      onSelect={() => handleModelToggle(model.id)}
+                      className="gap-2"
+                    >
+                      <Checkbox
+                        checked={isSelected}
+                        className="pointer-events-none"
+                      />
+                      <span>{model.displayName}</span>
+                    </CommandItem>
+                  );
+                },
+              )}
+            </CommandGroup>
+          </CommandList>
 
-                            {ALL_FILTERABLE_MODELS.filter(m => m.type === "image").map((model) => {
-                                const isSelected = pendingFilters.selectedModels.includes(model.id)
-                                return (
-                                    <CommandItem
-                                        key={model.id}
-                                        onSelect={() => handleModelToggle(model.id)}
-                                        className={cn("gap-2", model.isLegacy && "opacity-60")}
-                                    >
-                                        <Checkbox
-                                            checked={isSelected}
-                                            className="pointer-events-none"
-                                        />
-                                        <span>{model.displayName}</span>
-                                    </CommandItem>
-                                )
-                            })}
-                        </CommandGroup>
-
-                        <CommandSeparator />
-
-                        {/* Video Models Section */}
-                        <CommandGroup heading="Video Models">
-                            {ALL_FILTERABLE_MODELS.filter(m => m.type === "video").map((model) => {
-                                const isSelected = pendingFilters.selectedModels.includes(model.id)
-                                return (
-                                    <CommandItem
-                                        key={model.id}
-                                        onSelect={() => handleModelToggle(model.id)}
-                                        className="gap-2"
-                                    >
-                                        <Checkbox
-                                            checked={isSelected}
-                                            className="pointer-events-none"
-                                        />
-                                        <span>{model.displayName}</span>
-                                    </CommandItem>
-                                )
-                            })}
-                        </CommandGroup>
-                    </CommandList>
-
-                    {/* Clear all footer */}
-                    {(pendingFilters.selectedVisibility.length > 0 || pendingFilters.selectedModels.length > 0) && (
-                        <>
-                            <CommandSeparator />
-                            <div className="p-2">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="w-full justify-center gap-2 text-muted-foreground hover:text-foreground"
-                                    onClick={handleClearFilters}
-                                >
-                                    <X className="h-3.5 w-3.5" />
-                                    Clear all filters
-                                </Button>
-                            </div>
-                        </>
-                    )}
-                </Command>
-            </PopoverContent>
-        </Popover>
-    )
+          {/* Clear all footer */}
+          {(pendingFilters.selectedVisibility.length > 0 ||
+            pendingFilters.selectedModels.length > 0) && (
+            <>
+              <CommandSeparator />
+              <div className="p-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-center gap-2 text-muted-foreground hover:text-foreground"
+                  onClick={handleClearFilters}
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Clear all filters
+                </Button>
+              </div>
+            </>
+          )}
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 /**
  * Display active filters as removable badges
  */
 export function ActiveFilterBadges({
-    filters,
-    onFiltersChange,
+  filters,
+  onFiltersChange,
 }: HistoryFiltersProps) {
-    if (filters.selectedVisibility.length === 0 && filters.selectedModels.length === 0) {
-        return null
-    }
+  if (
+    filters.selectedVisibility.length === 0 &&
+    filters.selectedModels.length === 0
+  ) {
+    return null;
+  }
 
-    const handleRemoveVisibility = (visibility: VisibilityFilter) => {
-        onFiltersChange({
-            ...filters,
-            selectedVisibility: filters.selectedVisibility.filter((v) => v !== visibility),
-        })
-    }
+  const handleRemoveVisibility = (visibility: VisibilityFilter) => {
+    onFiltersChange({
+      ...filters,
+      selectedVisibility: filters.selectedVisibility.filter(
+        (v) => v !== visibility,
+      ),
+    });
+  };
 
-    const handleRemoveModel = (modelId: string) => {
-        onFiltersChange({
-            ...filters,
-            selectedModels: filters.selectedModels.filter((id) => id !== modelId),
-        })
-    }
+  const handleRemoveModel = (modelId: string) => {
+    onFiltersChange({
+      ...filters,
+      selectedModels: filters.selectedModels.filter((id) => id !== modelId),
+    });
+  };
 
-    // Get the display label for a visibility option
-    const getVisibilityLabel = (visibility: VisibilityFilter) => {
-        return VISIBILITY_OPTIONS.find((o) => o.value === visibility)?.label || visibility
-    }
-
+  // Get the display label for a visibility option
+  const getVisibilityLabel = (visibility: VisibilityFilter) => {
     return (
-        <div className="flex flex-wrap gap-1.5">
-            {filters.selectedVisibility.map((visibility) => (
-                <Badge
-                    key={visibility}
-                    variant="secondary"
-                    className="gap-1 pr-1 cursor-pointer hover:bg-secondary/80"
-                    onClick={() => handleRemoveVisibility(visibility)}
-                >
-                    {getVisibilityLabel(visibility)}
-                    <X className="h-3 w-3" />
-                </Badge>
-            ))}
-            {filters.selectedModels.map((modelId) => {
-                const model = ALL_FILTERABLE_MODELS.find(m => m.id === modelId)
-                return (
-                    <Badge
-                        key={modelId}
-                        variant="secondary"
-                        className="gap-1 pr-1 cursor-pointer hover:bg-secondary/80"
-                        onClick={() => handleRemoveModel(modelId)}
-                    >
-                        {model?.displayName || modelId}
-                        <X className="h-3 w-3" />
-                    </Badge>
-                )
-            })}
-        </div>
-    )
+      VISIBILITY_OPTIONS.find((o) => o.value === visibility)?.label ||
+      visibility
+    );
+  };
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {filters.selectedVisibility.map((visibility) => (
+        <Badge
+          key={visibility}
+          variant="secondary"
+          className="gap-1 pr-1 cursor-pointer hover:bg-secondary/80"
+          onClick={() => handleRemoveVisibility(visibility)}
+        >
+          {getVisibilityLabel(visibility)}
+          <X className="h-3 w-3" />
+        </Badge>
+      ))}
+      {filters.selectedModels.map((modelId) => {
+        const model = ALL_FILTERABLE_MODELS.find((m) => m.id === modelId);
+        return (
+          <Badge
+            key={modelId}
+            variant="secondary"
+            className="gap-1 pr-1 cursor-pointer hover:bg-secondary/80"
+            onClick={() => handleRemoveModel(modelId)}
+          >
+            {model?.displayName || modelId}
+            <X className="h-3 w-3" />
+          </Badge>
+        );
+      })}
+    </div>
+  );
 }

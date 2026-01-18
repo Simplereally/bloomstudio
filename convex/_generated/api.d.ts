@@ -12,6 +12,7 @@ import type * as batchGeneration from "../batchGeneration.js";
 import type * as batchProcessor from "../batchProcessor.js";
 import type * as contentAnalysis from "../contentAnalysis.js";
 import type * as crons from "../crons.js";
+import type * as detailsMigration from "../detailsMigration.js";
 import type * as favorites from "../favorites.js";
 import type * as follows from "../follows.js";
 import type * as generatedImages from "../generatedImages.js";
@@ -58,6 +59,7 @@ declare const fullApi: ApiFromModules<{
   batchProcessor: typeof batchProcessor;
   contentAnalysis: typeof contentAnalysis;
   crons: typeof crons;
+  detailsMigration: typeof detailsMigration;
   favorites: typeof favorites;
   follows: typeof follows;
   generatedImages: typeof generatedImages;

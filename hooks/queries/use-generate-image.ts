@@ -134,12 +134,12 @@ export function useGenerateImage(
     options: UseGenerateImageOptions = {}
 ): UseGenerateImageReturn {
     const startGeneration = useMutation(api.singleGeneration.startGeneration)
-    
+
     // Get API key from BYOP context
     const apiKey = usePollenApiKey()
     const { authorize } = usePollenAuthActions()
     const { setNeedsReconnect } = useNeedsReconnect()
-    
+
     // Get balance invalidation function for post-generation refresh
     const { invalidateBalance } = usePollenBalance()
 
@@ -175,7 +175,7 @@ export function useGenerateImage(
                 id: generatedImage._id,
                 url: generatedImage.url,
                 prompt: generatedImage.prompt,
-                params: generatedImage.generationParams || currentParams,
+                params: currentParams as GeneratedImage["params"],
                 timestamp: generatedImage.createdAt,
                 r2Key: generatedImage.r2Key,
                 sizeBytes: generatedImage.sizeBytes,
@@ -186,7 +186,7 @@ export function useGenerateImage(
             setIsSuccess(true)
             setIsGenerating(false)
             setGenerationId(null)
-            
+
             // Invalidate balance after successful generation (debounced)
             // Requirements 3.1, 3.3, 3.4
             invalidateBalance()
@@ -195,7 +195,7 @@ export function useGenerateImage(
             options.onSettled?.(image, null, currentParams)
         } else if (generationStatus.status === "failed") {
             const errorCode = generationStatus.errorCode
-            
+
             // Determine error code string based on HTTP status
             // 401 = auth error (key invalid/expired)
             // 402 = budget exhausted
@@ -210,7 +210,7 @@ export function useGenerateImage(
             } else if (errorCode === 403) {
                 codeString = "MODEL_ACCESS_DENIED"
             }
-            
+
             const err = new ServerGenerationError(
                 generationStatus.errorMessage || "Generation failed",
                 codeString,
@@ -220,7 +220,7 @@ export function useGenerateImage(
             setIsError(true)
             setIsGenerating(false)
             setGenerationId(null)
-            
+
             // Invalidate balance after failed generation too (pollen may have been consumed)
             // Requirements 3.1, 3.3, 3.4
             invalidateBalance()

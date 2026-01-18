@@ -1,53 +1,55 @@
-"use client"
+"use client";
 
 /**
  * useStudioUI Hook
- * 
+ *
  * Manages Studio UI state: panel visibility, fullscreen, lightbox.
  * Completely isolated from generation logic for optimal performance.
- * 
+ *
  * Features:
  * - Left sidebar toggle state
  * - Right gallery panel toggle state
  * - Fullscreen/lightbox state
  * - Lightbox image selection
  * - Keyboard shortcuts integration
- * 
+ * - Mobile-aware default states (drawers closed on mobile)
+ *
  * This hook follows the "Headless UI" pattern - pure logic with stable callbacks.
  */
 
-import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
-import type { LightboxImage } from "@/hooks/use-image-lightbox"
-import * as React from "react"
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { useIsMobile } from "@/hooks/use-mobile";
+import type { LightboxImage } from "@/hooks/use-image-lightbox";
+import * as React from "react";
 
 /**
  * Return type for useStudioUI hook
  */
 export interface UseStudioUIReturn {
-    // Sidebar state
-    showLeftSidebar: boolean
-    setShowLeftSidebar: React.Dispatch<React.SetStateAction<boolean>>
-    toggleLeftSidebar: () => void
+  // Sidebar state
+  showLeftSidebar: boolean;
+  setShowLeftSidebar: React.Dispatch<React.SetStateAction<boolean>>;
+  toggleLeftSidebar: () => void;
 
-    // Gallery panel state
-    showGallery: boolean
-    setShowGallery: React.Dispatch<React.SetStateAction<boolean>>
-    toggleGallery: () => void
+  // Gallery panel state
+  showGallery: boolean;
+  setShowGallery: React.Dispatch<React.SetStateAction<boolean>>;
+  toggleGallery: () => void;
 
-    // Fullscreen/Lightbox state
-    isFullscreen: boolean
-    setIsFullscreen: React.Dispatch<React.SetStateAction<boolean>>
-    lightboxImage: LightboxImage | null
-    setLightboxImage: React.Dispatch<React.SetStateAction<LightboxImage | null>>
+  // Fullscreen/Lightbox state
+  isFullscreen: boolean;
+  setIsFullscreen: React.Dispatch<React.SetStateAction<boolean>>;
+  lightboxImage: LightboxImage | null;
+  setLightboxImage: React.Dispatch<React.SetStateAction<LightboxImage | null>>;
 
-    // Open lightbox with specific image
-    openLightbox: (image: LightboxImage | null) => void
-    closeLightbox: () => void
+  // Open lightbox with specific image
+  openLightbox: (image: LightboxImage | null) => void;
+  closeLightbox: () => void;
 }
 
 /**
  * Hook for managing Studio UI state.
- * 
+ *
  * @example
  * ```tsx
  * const {
@@ -56,75 +58,102 @@ export interface UseStudioUIReturn {
  *     showGallery,
  *     openLightbox,
  * } = useStudioUI()
- * 
+ *
  * // Toggle sidebar
  * <Button onClick={toggleLeftSidebar}>Toggle Sidebar</Button>
- * 
+ *
  * // Open lightbox
  * <ImageThumbnail onClick={() => openLightbox(image)} />
  * ```
  */
 export function useStudioUI(): UseStudioUIReturn {
-    // ========================================
-    // Panel Visibility State
-    // ========================================
-    const [showLeftSidebar, setShowLeftSidebar] = React.useState(true)
-    const [showGallery, setShowGallery] = React.useState(true)
+  const isMobile = useIsMobile();
 
-    // ========================================
-    // Fullscreen/Lightbox State
-    // ========================================
-    const [isFullscreen, setIsFullscreen] = React.useState(false)
-    const [lightboxImage, setLightboxImage] = React.useState<LightboxImage | null>(null)
+  // ========================================
+  // Panel Visibility State
+  // 
+  // IMPORTANT: SSR Hydration Behavior
+  // - During SSR, isMobile returns false (server doesn't know viewport)
+  // - This causes states to initialize as true (open) on server
+  // - On mobile clients, we need to close drawers after hydration
+  // - We use a ref to track if we've done the initial sync
+  // ========================================
+  const [showLeftSidebar, setShowLeftSidebar] = React.useState(() => !isMobile);
+  const [showGallery, setShowGallery] = React.useState(() => !isMobile);
 
-    // ========================================
-    // Stable Toggle Callbacks
-    // ========================================
-    const toggleLeftSidebar = React.useCallback(() => {
-        setShowLeftSidebar(prev => !prev)
-    }, [])
+  // Track if we've done the initial mobile sync
+  const hasInitializedMobileRef = React.useRef(false);
 
-    const toggleGallery = React.useCallback(() => {
-        setShowGallery(prev => !prev)
-    }, [])
+  // Sync drawer state on mobile after hydration
+  // This runs once after the client-side isMobile value is determined
+  React.useEffect(() => {
+    // Only run once, on initial client-side mount
+    if (hasInitializedMobileRef.current) return;
+    hasInitializedMobileRef.current = true;
 
-    // ========================================
-    // Lightbox Handlers
-    // ========================================
-    const openLightbox = React.useCallback((image: LightboxImage | null) => {
-        setLightboxImage(image)
-        setIsFullscreen(true)
-    }, [])
-
-    const closeLightbox = React.useCallback(() => {
-        setIsFullscreen(false)
-    }, [])
-
-    // ========================================
-    // Keyboard Shortcuts
-    // ========================================
-    useKeyboardShortcuts({
-        onToggleSidebar: toggleLeftSidebar,
-        onToggleGallery: toggleGallery,
-    })
-
-    return {
-        // Sidebar state
-        showLeftSidebar,
-        setShowLeftSidebar,
-        toggleLeftSidebar,
-
-        // Gallery panel state
-        showGallery,
-        setShowGallery,
-        toggleGallery,
-
-        // Fullscreen/Lightbox state
-        isFullscreen,
-        setIsFullscreen,
-        lightboxImage,
-        setLightboxImage,
-        openLightbox,
-        closeLightbox,
+    // If we're on mobile, ensure drawers are closed
+    // This corrects the SSR mismatch where isMobile was false on server
+    if (isMobile) {
+      setShowLeftSidebar(false);
+      setShowGallery(false);
     }
+  }, [isMobile]);
+
+  // ========================================
+  // Fullscreen/Lightbox State
+  // ========================================
+  const [isFullscreen, setIsFullscreen] = React.useState(false);
+  const [lightboxImage, setLightboxImage] =
+    React.useState<LightboxImage | null>(null);
+
+  // ========================================
+  // Stable Toggle Callbacks
+  // ========================================
+  const toggleLeftSidebar = React.useCallback(() => {
+    setShowLeftSidebar((prev) => !prev);
+  }, []);
+
+  const toggleGallery = React.useCallback(() => {
+    setShowGallery((prev) => !prev);
+  }, []);
+
+  // ========================================
+  // Lightbox Handlers
+  // ========================================
+  const openLightbox = React.useCallback((image: LightboxImage | null) => {
+    setLightboxImage(image);
+    setIsFullscreen(true);
+  }, []);
+
+  const closeLightbox = React.useCallback(() => {
+    setIsFullscreen(false);
+  }, []);
+
+  // ========================================
+  // Keyboard Shortcuts
+  // ========================================
+  useKeyboardShortcuts({
+    onToggleSidebar: toggleLeftSidebar,
+    onToggleGallery: toggleGallery,
+  });
+
+  return {
+    // Sidebar state
+    showLeftSidebar,
+    setShowLeftSidebar,
+    toggleLeftSidebar,
+
+    // Gallery panel state
+    showGallery,
+    setShowGallery,
+    toggleGallery,
+
+    // Fullscreen/Lightbox state
+    isFullscreen,
+    setIsFullscreen,
+    lightboxImage,
+    setLightboxImage,
+    openLightbox,
+    closeLightbox,
+  };
 }

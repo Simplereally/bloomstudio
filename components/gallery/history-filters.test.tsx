@@ -141,7 +141,7 @@ describe("HistoryFilters", () => {
                     onFiltersChange={vi.fn()}
                 />
             )
-            expect(screen.getByRole("button", { name: /filters/i })).toBeInTheDocument()
+            expect(screen.getByRole("button", { name: /filter history/i })).toBeInTheDocument()
             // Should not show badge count if 0
             expect(screen.queryByText("0")).not.toBeInTheDocument()
         })
@@ -169,7 +169,7 @@ describe("HistoryFilters", () => {
                 />
             )
 
-            const trigger = screen.getByRole("button", { name: /filters/i })
+            const trigger = screen.getByRole("button", { name: /filter history/i })
             await user.click(trigger)
 
             // Popover content should be visible
@@ -189,7 +189,7 @@ describe("HistoryFilters", () => {
             )
 
             // Open
-            await user.click(screen.getByRole("button", { name: /filters/i }))
+            await user.click(screen.getByRole("button", { name: /filter history/i }))
 
             // Click "Public" option
             // cmdk options are usually buttons or listitems. 
@@ -222,7 +222,7 @@ describe("HistoryFilters", () => {
                 />
             )
 
-            await user.click(screen.getByRole("button", { name: /filters/i }))
+            await user.click(screen.getByRole("button", { name: /filter history/i }))
 
             // Find "Select all" button
             const selectAllBtn = screen.getByText("Select all")
@@ -250,7 +250,7 @@ describe("HistoryFilters", () => {
                 />
             )
 
-            await user.click(screen.getByRole("button", { name: /filters/i })) // text might satisfy regex if count is 2? actually button name contains "Filters" + count badge
+            await user.click(screen.getByRole("button", { name: /filter history/i })) // aria-label is "Filter history (1 active)"
 
             const clearModelsBtn = screen.getByText("Clear") // Warning: there is also "Clear all filters" at bottom
             // The one in the models section is just "Clear". The one at bottom is "Clear all filters"
