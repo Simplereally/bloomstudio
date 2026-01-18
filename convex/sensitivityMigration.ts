@@ -42,7 +42,6 @@ export const findImagesToMigrate = internalQuery({
         return candidates.map((img) => ({
             _id: img._id,
             sensitiveConfidence: img.sensitiveConfidence,
-            contentAnalysis: img.contentAnalysis,
         }));
     },
 });

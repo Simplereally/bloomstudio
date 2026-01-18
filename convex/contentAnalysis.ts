@@ -148,7 +148,9 @@ export const analyzeRecentImages = internalAction({
             if (!image.url) continue;
 
             // Phase III: Attempt Prompt Inference first (if not already done)
-            if (!image.promptInference && image.prompt) {
+            // Note: We skip the check for existing promptInference to avoid an extra DB call.
+            // If it was already done, re-running it is acceptable redundancy for this background job.
+            if (image.prompt) {
                 try {
                     const inference = await analyzePromptWithCerebras(image.prompt);
                     const decision = decideSensitivity(inference);

@@ -210,11 +210,11 @@ export const storeGeneratedImage = internalMutation({
             sizeBytes: args.sizeBytes,
             width: args.width,
             height: args.height,
+            aspectRatio: Math.max(args.width, args.height) / Math.min(args.width, args.height),
             prompt: args.prompt,
             negativePrompt: undefined,
             model: args.model,
             seed: args.seed,
-            generationParams: args.generationParams,
             visibility: args.visibility,
             createdAt: now,
 
@@ -224,6 +224,12 @@ export const storeGeneratedImage = internalMutation({
             isSensitive: promptAnalysis.confidence >= 0.9 ? true : null,
             sensitiveSource: promptAnalysis.confidence >= 0.9 ? "prompt_analysis" : undefined,
             sensitiveConfidence: promptAnalysis.confidence,
+        })
+
+        // Store heavy details in side table (P0 Optimization)
+        await ctx.db.insert("generatedImageDetails", {
+            imageId,
+            generationParams: args.generationParams,
         })
 
         // Schedule async Prompt Inference (Phase 3) if prompt was not explicitly flagged
@@ -451,18 +457,35 @@ export const getUserActiveBatches = query({
             return []
         }
 
-        // Get pending and processing jobs
-        const jobs = await ctx.db
-            .query("batchJobs")
-            .withIndex("by_owner", (q) => q.eq("ownerId", identity.subject))
-            .order("desc")
-            .collect()
+        // Use indexed queries to only fetch active statuses
+        // This avoids scanning through thousands of completed/failed jobs (P0 Optimization)
+        const [pending, processing, paused] = await Promise.all([
+            ctx.db
+                .query("batchJobs")
+                .withIndex("by_owner_status", (q) => 
+                    q.eq("ownerId", identity.subject).eq("status", "pending")
+                )
+                .order("desc")
+                .collect(),
+            ctx.db
+                .query("batchJobs")
+                .withIndex("by_owner_status", (q) => 
+                    q.eq("ownerId", identity.subject).eq("status", "processing")
+                )
+                .order("desc")
+                .collect(),
+            ctx.db
+                .query("batchJobs")
+                .withIndex("by_owner_status", (q) => 
+                    q.eq("ownerId", identity.subject).eq("status", "paused")
+                )
+                .order("desc")
+                .collect()
+        ])
 
-        // Filter to only active (pending/processing/paused) jobs
-        // Use summary type to reduce bandwidth (strips generationParams, apiKey, imageIds)
-        return jobs
-            .filter((job) => job.status === "pending" || job.status === "processing" || job.status === "paused")
-            .map(toBatchJobSummary)
+        const jobs = [...pending, ...processing, ...paused].sort((a, b) => b.createdAt - a.createdAt)
+
+        return jobs.map(toBatchJobSummary)
     },
 })
 

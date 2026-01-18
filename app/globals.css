@@ -395,6 +395,7 @@
   html:has(body[data-fixed-viewport="true"]) {
     overflow: hidden;
     height: 100%;
+    scrollbar-gutter: auto; /* Disable scrollbar gutter for fixed viewport pages */
   }
 
   body[data-fixed-viewport="true"] {

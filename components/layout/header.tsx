@@ -55,7 +55,7 @@ export function Header() {
     const showAuthUI = isClient && isLoaded
 
     return (
-        <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/60 backdrop-blur-xl supports-[backdrop-filter]:bg-background/40">
+        <header className="sticky top-0 z-[60] w-full border-b border-border/40 bg-background/60 backdrop-blur-xl supports-[backdrop-filter]:bg-background/40">
             <div className="grid h-14 w-full grid-cols-[1fr_auto_1fr] items-center gap-4 px-4">
                 {/* Left Side: Logo - Start Aligned */}
                 <div className="justify-self-start">

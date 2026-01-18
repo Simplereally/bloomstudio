@@ -3,6 +3,9 @@
 /**
  * StudioLayout - Core layout component using static sidebars
  * Uses shadcn Sidebar for collapsible, fixed-width panels.
+ * 
+ * Toggle buttons are positioned exactly on the sidebar edge using transform-based
+ * centering. Both desktop and mobile use the same caret toggle for consistency.
  */
 
 import {
@@ -10,11 +13,9 @@ import {
     SidebarContent,
     SidebarInset,
     SidebarProvider,
-    SidebarRail,
     useSidebar,
 } from "@/components/ui/sidebar"
-import { ChevronLeft, ChevronRight, PanelLeft, PanelRight } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import * as React from "react"
 
@@ -44,19 +45,123 @@ export interface StudioLayoutProps {
     defaultLayout?: Record<string, number>
 }
 
-function MobileMenuButton({ side, className }: { side: "left" | "right", className?: string }) {
-    const { toggleSidebar } = useSidebar()
+/**
+ * SidebarToggleButton - The actual toggle button UI.
+ * Renders a semi-circle button with chevron icon that expands/collapses the sidebar.
+ * Left sidebar: flat left edge sits on border, rounded right edge extends into canvas
+ * Right sidebar: rounded left edge extends into canvas, flat right edge sits on border
+ */
+function SidebarToggleButton({ 
+    side, 
+    isOpen, 
+    onClick 
+}: { 
+    side: "left" | "right"
+    isOpen: boolean
+    onClick: () => void 
+}) {
+    // Determine which chevron to show based on side and state
+    const Icon = side === "left"
+        ? (isOpen ? ChevronLeft : ChevronRight)
+        : (isOpen ? ChevronRight : ChevronLeft)
 
     return (
-        <Button
-            variant="ghost"
-            size="icon"
-            className={cn("md:hidden h-10 w-10 shrink-0", className)}
-            onClick={toggleSidebar}
+        <button
+            type="button"
+            onClick={onClick}
+            aria-label={isOpen ? `Collapse ${side} sidebar` : `Expand ${side} sidebar`}
+            className={cn(
+                // Base positioning - vertically centered
+                "absolute top-1/2 -translate-y-1/2",
+                // Position so flat edge is at sidebar edge, rounded part extends into canvas
+                // Left sidebar: position at right edge, no transform (extends right into canvas)
+                // Right sidebar: position at left edge, no transform (extends left into canvas)
+                side === "left" ? "left-full" : "right-full",
+                // Toggle appearance - semi-circle design
+                "flex h-8 w-4 items-center justify-center",
+                "bg-background border border-border shadow-md",
+                "text-muted-foreground hover:text-foreground hover:border-foreground/30",
+                "transition-all duration-200 ease-out",
+                "hover:scale-110 active:scale-95",
+                // Semi-circle rounding: left sidebar rounds right, right sidebar rounds left
+                // Remove border on flat edge for seamless look
+                side === "left" ? "rounded-r-full border-l-0 pl-0.5" : "rounded-l-full border-r-0 pr-0.5",
+                // Focus states for accessibility
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                // Ensure it's above everything
+                "z-50",
+            )}
         >
-            {side === "left" ? <PanelLeft className="h-6 w-6" /> : <PanelRight className="h-6 w-6" />}
-            <span className="sr-only">Toggle Sidebar</span>
-        </Button>
+            <Icon className="h-4 w-4" />
+        </button>
+    )
+}
+
+/**
+ * LeftSidebarEdgeToggle - Toggle that sits ON the sidebar's right edge when expanded.
+ * Only visible when sidebar is open. Positioned relative to sidebar container.
+ */
+function LeftSidebarEdgeToggle() {
+    const { state, toggleSidebar, openMobile, isMobile } = useSidebar()
+    const isCollapsed = state === "collapsed"
+    const isOpen = isMobile ? openMobile : !isCollapsed
+
+    // Only render when sidebar is open
+    if (!isOpen) return null
+
+    return (
+        <div className="absolute inset-y-0 right-0 pointer-events-none z-50">
+            <div className="relative h-full pointer-events-auto">
+                <SidebarToggleButton side="left" isOpen={true} onClick={toggleSidebar} />
+            </div>
+        </div>
+    )
+}
+
+/**
+ * RightSidebarEdgeToggle - Toggle that sits ON the sidebar's left edge when expanded.
+ * Only visible when sidebar is open. Positioned relative to sidebar container.
+ */
+function RightSidebarEdgeToggle() {
+    const { state, toggleSidebar, openMobile, isMobile } = useSidebar()
+    const isCollapsed = state === "collapsed"
+    const isOpen = isMobile ? openMobile : !isCollapsed
+
+    // Only render when sidebar is open
+    if (!isOpen) return null
+
+    return (
+        <div className="absolute inset-y-0 left-0 pointer-events-none z-50">
+            <div className="relative h-full pointer-events-auto">
+                <SidebarToggleButton side="right" isOpen={true} onClick={toggleSidebar} />
+            </div>
+        </div>
+    )
+}
+
+/**
+ * CanvasEdgeToggle - Toggle that appears at the canvas edge when sidebar is collapsed.
+ * Positioned at the edge of the canvas area to allow reopening collapsed sidebars.
+ */
+function CanvasEdgeToggle({ side }: { side: "left" | "right" }) {
+    const { state, toggleSidebar, openMobile, isMobile } = useSidebar()
+    const isCollapsed = state === "collapsed"
+    const isOpen = isMobile ? openMobile : !isCollapsed
+
+    // Only render when sidebar is collapsed
+    if (isOpen) return null
+
+    return (
+        <div 
+            className={cn(
+                "absolute inset-y-0 z-50 pointer-events-none",
+                side === "left" ? "left-0" : "right-0"
+            )}
+        >
+            <div className="relative h-full pointer-events-auto">
+                <SidebarToggleButton side={side} isOpen={false} onClick={toggleSidebar} />
+            </div>
+        </div>
     )
 }
 
@@ -89,27 +194,20 @@ export function StudioLayout({
                 <Sidebar
                     side="left"
                     collapsible="offcanvas"
-                    className="!absolute !h-full border-r border-border/50 bg-transparent"
+                    className="!absolute !h-full border-r border-border/50 z-40"
                     data-testid="studio-sidebar-panel"
                 >
                     <SidebarContent className="h-full min-h-0 overflow-hidden">
                         {sidebar}
                     </SidebarContent>
-                    <SidebarRail className="group/rail !flex">
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-background shadow-sm border opacity-100 md:opacity-0 md:group-hover/rail:opacity-100 transition-all">
-                                <ChevronLeft className="h-3 w-3" />
-                            </div>
-                        </div>
-                    </SidebarRail>
+                    {/* Toggle straddling sidebar's right edge - only visible when open */}
+                    <LeftSidebarEdgeToggle />
                 </Sidebar>
 
                 <SidebarInset className="h-full min-h-0 min-w-0 flex-1 overflow-hidden relative">
-                    {/* Left Mobile Trigger - Top Left */}
-                    <div className="absolute top-2 left-2 z-50 md:hidden">
-                        <MobileMenuButton side="left" className="bg-background/80 backdrop-blur-sm border shadow-sm rounded-md" />
-                    </div>
-
+                    {/* Left sidebar toggle - shown when left sidebar is collapsed */}
+                    <CanvasEdgeToggle side="left" />
+                    
                     {/* Right Sidebar Provider (Nested) */}
                     <SidebarProvider
                         open={showGallery && !!gallery}
@@ -125,13 +223,9 @@ export function StudioLayout({
                         }
                     >
                         <SidebarInset className="h-full min-h-0 min-w-0 flex-1 overflow-hidden relative">
-                            {/* Right Mobile Trigger - Top Right (only if gallery enabled) */}
-                            {gallery && (
-                                <div className="absolute top-2 right-2 z-50 md:hidden">
-                                    <MobileMenuButton side="right" className="bg-background/80 backdrop-blur-sm border shadow-sm rounded-md" />
-                                </div>
-                            )}
-
+                            {/* Right sidebar toggle - shown when right sidebar is collapsed */}
+                            {gallery && <CanvasEdgeToggle side="right" />}
+                            
                             <div className="h-full w-full" data-testid="studio-canvas-panel">
                                 {canvas}
                             </div>
@@ -147,13 +241,8 @@ export function StudioLayout({
                                 <SidebarContent className="h-full min-h-0 overflow-hidden">
                                     {gallery}
                                 </SidebarContent>
-                                <SidebarRail className="group/rail !flex">
-                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-background shadow-sm border opacity-100 md:opacity-0 md:group-hover/rail:opacity-100 transition-all">
-                                            <ChevronRight className="h-3 w-3" />
-                                        </div>
-                                    </div>
-                                </SidebarRail>
+                                {/* Toggle straddling sidebar's left edge - only visible when open */}
+                                <RightSidebarEdgeToggle />
                             </Sidebar>
                         )}
                     </SidebarProvider>

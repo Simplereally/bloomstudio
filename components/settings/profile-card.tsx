@@ -89,14 +89,14 @@ export function ProfileCard() {
                                     name="username"
                                     defaultValue={user.username ?? ""}
                                     key={user.username}
-                                    className="bg-background/50 border-border/60 focus:border-primary/50 transition-all duration-200 h-11 pl-4 pr-10"
+                                    className="bg-background/50 border-border/60 focus:border-primary/50 transition-all duration-200 h-11 pl-10 pr-4"
                                     placeholder="your_handle"
                                     required
                                     minLength={3}
                                     maxLength={30}
                                     pattern="^[a-zA-Z0-9_]+$"
                                 />
-                                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/50 group-hover:text-primary/50 transition-colors">
+                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50 group-hover:text-primary/50 transition-colors">
                                     <AtSign className="w-4 h-4" />
                                 </div>
                             </div>
