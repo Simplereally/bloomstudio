@@ -387,7 +387,9 @@ export const ImageGallery = React.memo(function ImageGallery({
             {/* Anchored Navigation Zone */}
             {onToggleSelectionMode && (
               <>
-                <Separator orientation="vertical" className={cn("mx-1", isMobile ? "h-8" : "h-6")} />
+                {isMobile && (
+                  <Separator orientation="vertical" className="mx-1 bg-white w-px h-6" />
+                )}
 
                 <Button
                   variant={selectionMode ? "default" : "outline"}

@@ -212,7 +212,7 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
                               unoptimized={thumbnailUrl.startsWith('http')}
                               className={cn(
                                 "w-auto h-auto object-contain select-none transition-all duration-500",
-                                isZoomed ? "" : "max-w-[100vw] max-h-[100vh]",
+                                isZoomed ? "" : "max-w-[calc(100vw-2rem)] max-h-[calc(100vh-6rem)] md:max-w-[calc(100vw-6rem)] md:max-h-[calc(100vh-8rem)]",
                                 // Show thumbnail immediately, blur it, fade out when full-res is ready
                                 !isThumbnailLoaded ? "opacity-0" : "opacity-100",
                                 isFullResLoaded ? "opacity-0 pointer-events-none absolute inset-0" : "blur-[2px]"
@@ -236,7 +236,7 @@ export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageL
                             unoptimized={(fullResUrl || displayImage.url).startsWith('http')}
                             className={cn(
                               "w-auto h-auto object-contain select-none transition-opacity duration-500",
-                              isZoomed ? "" : "max-w-[100vw] max-h-[100vh]",
+                              isZoomed ? "" : "max-w-[calc(100vw-2rem)] max-h-[calc(100vh-6rem)] md:max-w-[calc(100vw-6rem)] md:max-h-[calc(100vh-8rem)]",
                               // When no separate thumbnail, behave like before (fade in)
                               // When separate thumbnail exists, position behind and fade in
                               hasSeparateThumbnail
