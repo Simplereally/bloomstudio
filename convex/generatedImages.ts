@@ -100,29 +100,37 @@ type PublicFeedImage = {
 
 /**
  * Helper to map enriched images to optimized public feed format.
- * Reduces bandwidth by using thumbnails and excluding unused fields.
+ * Reduces bandwidth by using video previews for feed cards and excluding unused fields.
+ * 
+ * For videos: Uses compressed previewUrl (~480px width) instead of full-size video.
+ * For images: Uses full-size url (thumbnailUrl is too small for 360px+ feed cards).
  */
 function toPublicFeedImages(images: EnrichedImage[]): PublicFeedImage[] {
-    return images.map(img => ({
-        _id: img._id,
-        _creationTime: img._creationTime,
-        // Use full-size image for proper display quality at feed card dimensions
-        // Note: thumbnailUrl is too small (~150px) for feed cards (360px+ width)
-        url: img.url,
-        // Same as url - kept for API consistency
-        originalUrl: img.url,
-        visibility: img.visibility,
-        createdAt: img.createdAt,
-        model: img.model,
-        prompt: img.prompt,
-        width: img.width,
-        height: img.height,
-        seed: img.seed,
-        contentType: img.contentType,
-        ownerName: img.ownerName,
-        ownerPictureUrl: img.ownerPictureUrl,
-        isSensitive: !!img.isSensitive, // Convert null/undefined to false for client boolean (default safe)
-    }))
+    return images.map(img => {
+        // For videos, prefer previewUrl (smaller file) if available
+        // Fall back to full URL if no preview was generated
+        const isVideo = img.contentType?.startsWith("video/")
+        const feedUrl = isVideo && img.previewUrl ? img.previewUrl : img.url
+
+        return {
+            _id: img._id,
+            _creationTime: img._creationTime,
+            url: feedUrl,
+            // Always keep original URL for lightbox/download
+            originalUrl: img.url,
+            visibility: img.visibility,
+            createdAt: img.createdAt,
+            model: img.model,
+            prompt: img.prompt,
+            width: img.width,
+            height: img.height,
+            seed: img.seed,
+            contentType: img.contentType,
+            ownerName: img.ownerName,
+            ownerPictureUrl: img.ownerPictureUrl,
+            isSensitive: !!img.isSensitive, // Convert null/undefined to false for client boolean (default safe)
+        }
+    })
 }
 
 

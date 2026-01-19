@@ -77,6 +77,12 @@ export default defineSchema({
         /** Full public URL to the thumbnail */
         thumbnailUrl: v.optional(v.string()),
 
+        /** R2 object key for video preview (scaled/compressed for feeds) */
+        previewR2Key: v.optional(v.string()),
+
+        /** Full public URL to the video preview */
+        previewUrl: v.optional(v.string()),
+
         /** Generated identifier */
         filename: v.string(),
 

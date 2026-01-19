@@ -5,7 +5,7 @@
  * Images are generated with configurable intervals using Convex scheduled functions.
  * 
  * BYOP (Bring Your Own Pollen) Architecture:
- * - Client obtains API key from PollenAuth context (stored in localStorage)
+ * - Client obtains API key from PollenAuth context (fetched from encrypted Convex storage)
  * - startBatchJob: Receives API key, creates batch record (with key), schedules first item
  * - processBatchItem (batchProcessor.ts): Reads API key from batch record, generates images
  * - storeGeneratedImage: Stores image metadata in Convex
@@ -182,6 +182,8 @@ export const storeGeneratedImage = internalMutation({
         url: v.string(),
         thumbnailR2Key: v.optional(v.string()),
         thumbnailUrl: v.optional(v.string()),
+        previewR2Key: v.optional(v.string()),
+        previewUrl: v.optional(v.string()),
         prompt: v.string(),
         width: v.number(),
         height: v.number(),
@@ -205,6 +207,8 @@ export const storeGeneratedImage = internalMutation({
             url: args.url,
             thumbnailR2Key: args.thumbnailR2Key,
             thumbnailUrl: args.thumbnailUrl,
+            previewR2Key: args.previewR2Key,
+            previewUrl: args.previewUrl,
             filename: `img_${now}_${Math.random().toString(36).substring(2, 9)}`,
             contentType: args.contentType,
             sizeBytes: args.sizeBytes,

@@ -24,6 +24,7 @@ export {
 export {
     generateR2Key,
     generateThumbnailKey,
+    generatePreviewKey,
     uploadToR2,
     generateAndUploadThumbnail,
     uploadMediaWithThumbnail,

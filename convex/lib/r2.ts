@@ -12,6 +12,7 @@ import { NodeHttpHandler } from "@smithy/node-http-handler"
 import { Agent as HttpsAgent } from "https"
 import crypto from "crypto"
 import { extractVideoThumbnail } from "./videoThumbnail"
+import { generateVideoPreview, shouldGeneratePreview } from "./videoPreview"
 
 // ============================================================
 // S3 Client (cached for connection reuse)
@@ -168,6 +169,16 @@ export function generateThumbnailKey(originalKey: string): string {
 }
 
 /**
+ * Generate a preview R2 key from an original key
+ * 
+ * @param originalKey - Original media R2 key
+ * @returns Preview key with "previews/" prefix instead of "generated/"
+ */
+export function generatePreviewKey(originalKey: string): string {
+    return originalKey.replace(/^generated\//, "previews/")
+}
+
+/**
  * Generate and upload a thumbnail version of an image or video
  * 
  * For images: Creates a 128x128 center-cropped JPEG at 80% quality (~3-5KB typical size).
@@ -238,12 +249,14 @@ export async function generateAndUploadThumbnail(
 // Parallel Upload with Thumbnail
 // ============================================================
 
-/** Result of parallel media upload with thumbnail */
+/** Result of parallel media upload with thumbnail and preview */
 export interface MediaUploadResult {
     /** Main media upload result */
     media: R2UploadResult
     /** Thumbnail upload result (null if generation/upload failed) */
     thumbnail: R2UploadResult | null
+    /** Video preview upload result (null for images or if generation failed) */
+    preview: R2UploadResult | null
 }
 
 /**
@@ -270,36 +283,48 @@ export async function uploadMediaWithThumbnail(
     const isVideo = contentType.startsWith("video/")
 
     if (isVideo) {
-        // For videos: run upload and thumbnail extraction in parallel
+        // For videos: run upload, thumbnail extraction, and preview generation in parallel
+        const generatePreview = shouldGeneratePreview(buffer.length)
         
-        const [mediaResult, thumbnailBuffer] = await Promise.all([
+        const [mediaResult, thumbnailBuffer, previewResult] = await Promise.all([
             uploadToR2(buffer, r2Key, contentType),
             extractVideoThumbnail(buffer),
+            // Only generate preview for larger videos (>5MB)
+            generatePreview ? generateVideoPreview(buffer) : Promise.resolve(null),
         ])
-
 
         console.log(`[Upload] Video uploaded: ${mediaResult.url}`)
 
-        // Now upload thumbnail (if extraction succeeded)
-        let thumbnailResult: R2UploadResult | null = null
+        // Upload thumbnail (if extraction succeeded)
+        let thumbnailUploadResult: R2UploadResult | null = null
         if (thumbnailBuffer) {
             const thumbnailKey = generateThumbnailKey(r2Key)
-            thumbnailResult = await uploadToR2(thumbnailBuffer, thumbnailKey, "image/jpeg")
-
-            console.log(`[Upload] Thumbnail uploaded: ${thumbnailResult.url}`)
+            thumbnailUploadResult = await uploadToR2(thumbnailBuffer, thumbnailKey, "image/jpeg")
+            console.log(`[Upload] Thumbnail uploaded: ${thumbnailUploadResult.url}`)
         } else {
             console.log("[Upload] Thumbnail extraction failed, skipping upload")
         }
 
+        // Upload preview (if generation succeeded)
+        let previewUploadResult: R2UploadResult | null = null
+        if (previewResult?.buffer) {
+            const previewKey = generatePreviewKey(r2Key)
+            previewUploadResult = await uploadToR2(previewResult.buffer, previewKey, "video/mp4")
+            console.log(`[Upload] Preview uploaded: ${previewUploadResult.url} (${previewResult.compressionRatio.toFixed(1)}% reduction)`)
+        } else if (generatePreview) {
+            console.log("[Upload] Preview generation failed, skipping upload")
+        } else {
+            console.log(`[Upload] Video too small for preview (${(buffer.length / 1024 / 1024).toFixed(2)}MB < 5MB threshold)`)
+        }
 
-        return { media: mediaResult, thumbnail: thumbnailResult }
+        return { media: mediaResult, thumbnail: thumbnailUploadResult, preview: previewUploadResult }
     } else {
-        // For images: sequential is fine (jimp is fast)
+        // For images: sequential is fine (jimp is fast), no preview needed
         
         const mediaResult = await uploadToR2(buffer, r2Key, contentType)
         
         const thumbnailResult = await generateAndUploadThumbnail(buffer, r2Key, contentType)
         
-        return { media: mediaResult, thumbnail: thumbnailResult }
+        return { media: mediaResult, thumbnail: thumbnailResult, preview: null }
     }
 }

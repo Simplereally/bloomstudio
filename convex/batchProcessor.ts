@@ -22,6 +22,7 @@ import {
     classifyApiError,
     generateR2Key,
     generateThumbnailKey,
+    generatePreviewKey,
     uploadMediaWithThumbnail,
     fetchWithRetry,
     type RetryConfig,
@@ -195,7 +196,7 @@ export const processBatchItem = internalAction({
             const r2Key = generateR2Key(batchJob.ownerId, contentType)
             console.log(`${logger} Uploading to R2: ${r2Key}`)
 
-            const { media: uploadResult, thumbnail: thumbnailResult } = await uploadMediaWithThumbnail(
+            const { media: uploadResult, thumbnail: thumbnailResult, preview: previewResult } = await uploadMediaWithThumbnail(
                 imageBuffer,
                 r2Key,
                 contentType
@@ -205,6 +206,9 @@ export const processBatchItem = internalAction({
             if (thumbnailResult) {
                 console.log(`${logger} Thumbnail complete: ${thumbnailResult.url} (${thumbnailResult.sizeBytes} bytes)`)
             }
+            if (previewResult) {
+                console.log(`${logger} Preview complete: ${previewResult.url} (${previewResult.sizeBytes} bytes)`)
+            }
 
             // Store the image in Convex database
             const imageId = await ctx.runMutation(internal.batchGeneration.storeGeneratedImage, {
@@ -213,6 +217,8 @@ export const processBatchItem = internalAction({
                 url: uploadResult.url,
                 thumbnailR2Key: thumbnailResult?.url ? generateThumbnailKey(r2Key) : undefined,
                 thumbnailUrl: thumbnailResult?.url,
+                previewR2Key: previewResult?.url ? generatePreviewKey(r2Key) : undefined,
+                previewUrl: previewResult?.url,
                 prompt: batchJob.generationParams.prompt,
                 width: batchJob.generationParams.width ?? 1024,
                 height: batchJob.generationParams.height ?? 1024,

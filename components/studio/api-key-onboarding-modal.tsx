@@ -49,7 +49,8 @@ export function ApiKeyOnboardingModal({
   const shouldShowPreviewButton = process.env.NODE_ENV !== "production";
 
   // BYOP auth state - single source of truth for connection status
-  const { isAuthorized, isLoading: isByopLoading } = usePollenAuth();
+  // needsReconnect is used to defer to GlobalReconnectModal when key is invalid
+  const { isAuthorized, isLoading: isByopLoading, needsReconnect } = usePollenAuth();
 
   // Controlled mode: forceOpen prop overrides internal state
   const isControlled = forceOpen !== undefined;
@@ -78,6 +79,13 @@ export function ApiKeyOnboardingModal({
       return;
     }
 
+    // If needsReconnect is true, defer to GlobalReconnectModal instead
+    // This prevents showing two overlapping modals
+    if (needsReconnect) {
+      setIsOpenInternal(false);
+      return;
+    }
+
     // Show modal if not authorized, hide if authorized (and on setup page)
     if (!isAuthorized) {
       setIsOpenInternal(true);
@@ -91,6 +99,7 @@ export function ApiKeyOnboardingModal({
     page,
     isAuthorized,
     isByopLoading,
+    needsReconnect,
   ]);
 
   const handleClose = React.useCallback(() => {

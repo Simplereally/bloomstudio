@@ -163,21 +163,17 @@ export function PollenAuthProvider({ children }: PollenAuthProviderProps) {
   /**
    * Sets the needsReconnect flag.
    * Call with `true` when a 401 error is received, `false` after reconnection.
+   *
+   * Note: This does NOT delete the API key. The key remains in Convex until:
+   * 1. User explicitly calls deauthorize()
+   * 2. User completes a new OAuth flow (which replaces the old key)
+   *
+   * This prevents valid keys from being deleted due to transient 401 errors
+   * (rate limits, temporary auth issues, etc.).
    */
-  const setNeedsReconnect = useCallback(
-    (value: boolean) => {
-      setNeedsReconnectState(value);
-
-      // If setting needsReconnect to true, also clear the stored auth
-      // since the key is no longer valid
-      if (value) {
-        removeApiKey().catch((err) => {
-          console.error("[PollenAuth] Failed to remove invalid key:", err);
-        });
-      }
-    },
-    [removeApiKey],
-  );
+  const setNeedsReconnect = useCallback((value: boolean) => {
+    setNeedsReconnectState(value);
+  }, []);
 
   // Memoize context value to prevent unnecessary re-renders
   const contextValue = useMemo<PollenAuthContextValue>(
