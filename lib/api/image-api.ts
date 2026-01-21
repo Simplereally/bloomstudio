@@ -13,6 +13,7 @@ import {
     PollinationsApiError,
     isPollinationsApiError,
 } from "@/lib/errors"
+import { API_CONFIG } from "@/lib/config/api.config"
 import { PollinationsAPI } from "@/lib/pollinations-api"
 import {
     GeneratedImageSchema,
@@ -78,6 +79,16 @@ export async function generateImage(
 }
 
 /**
+ * Returns true when the URL points at the Pollinations API origin.
+ * R2/public URLs should skip auth headers to avoid CORS/preflight failures.
+ */
+function shouldUsePollinationsHeaders(imageUrl: string): boolean {
+    const { origin } = new URL(imageUrl)
+    const pollinationsOrigin = new URL(API_CONFIG.baseUrl).origin
+    return origin === pollinationsOrigin
+}
+
+/**
  * Downloads an image as a blob.
  *
  * @param imageUrl - URL of the image to download
@@ -85,10 +96,15 @@ export async function generateImage(
  */
 export async function downloadImage(imageUrl: string): Promise<Blob> {
     try {
-        // Try with auth headers first
-        const response = await fetch(imageUrl, {
-            headers: PollinationsAPI.getHeaders(),
-        })
+        const headers = shouldUsePollinationsHeaders(imageUrl)
+            ? PollinationsAPI.getHeaders()
+            : undefined
+
+        // Only attach auth headers for Pollinations API URLs to avoid CORS errors on R2.
+        const response = await fetch(
+            imageUrl,
+            headers ? { headers } : undefined
+        )
 
         if (response.ok) {
             return response.blob()
