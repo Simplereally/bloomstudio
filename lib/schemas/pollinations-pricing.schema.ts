@@ -154,6 +154,34 @@ export const IMAGE_MODEL_PRICING: Record<string, ModelPricingDefinition> = {
     },
 
     /**
+     * FLUX.2 Klein 4B - Distilled efficiency
+     * 1 pollen = 150 images
+     */
+    klein: {
+        modelId: "klein",
+        type: "image",
+        approximatePerPollen: 150,
+        supportsReferenceImage: true,
+        imagePricing: {
+            perImage: 0.008,
+        },
+    },
+
+    /**
+     * FLUX.2 Klein 9B - High fidelity
+     * 1 pollen = 85 images
+     */
+    "klein-large": {
+        modelId: "klein-large",
+        type: "image",
+        approximatePerPollen: 85,
+        supportsReferenceImage: true,
+        imagePricing: {
+            perImage: 0.012,
+        },
+    },
+
+    /**
      * Z-Image Turbo - Fast with upscaling
      * Very efficient: 5000 images per pollen
      */

@@ -43,6 +43,10 @@ describe("pollinations-pricing.schema", () => {
       // Flux is 0.0002 per image
       const cost = estimateImageCost("flux", 10);
       expect(cost).toBe(0.0002 * 10);
+
+      // Klein is 0.008 per image
+      const costKlein = estimateImageCost("klein", 10);
+      expect(costKlein).toBe(0.008 * 10);
     });
 
     it("should calculate cost for token-based model (rough estimate)", () => {

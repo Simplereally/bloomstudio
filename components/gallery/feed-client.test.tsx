@@ -335,7 +335,7 @@ describe("FeedClient", () => {
     it("does not call load more when already loading", async () => {
       // Make the server action slow
       mockLoadPublicFeedPage.mockImplementation(
-        () => new Promise<PaginatedFeedResult>((resolve) => setTimeout(() => resolve(mockSecondPage), 100))
+        () => new Promise<PaginatedFeedResult>((resolve) => setTimeout(() => resolve(mockSecondPage), 500))
       );
 
       const user = userEvent.setup();

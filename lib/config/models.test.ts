@@ -30,6 +30,8 @@ describe("Model Registry", () => {
                 "nanobanana",
                 "seedream-pro",
                 "nanobanana-pro",
+                "klein",
+                "klein-large",
             ]
 
             for (const modelId of expectedImageModels) {
@@ -61,6 +63,8 @@ describe("Model Registry", () => {
             expect(MODEL_REGISTRY["seedance-pro"].displayName).toBe("Seedance Pro")
             expect(MODEL_REGISTRY["seedance"].displayName).toBe("Seedance")
             expect(MODEL_REGISTRY["veo"].displayName).toBe("Veo 3.1")
+            expect(MODEL_REGISTRY["klein"].displayName).toBe("FLUX.2 Klein 4B")
+            expect(MODEL_REGISTRY["klein-large"].displayName).toBe("FLUX.2 Klein 9B")
         })
 
         it("should have valid constraints for all models", () => {
@@ -150,11 +154,11 @@ describe("Model Registry", () => {
 
     describe("Model Lists", () => {
         it("should have all model IDs", () => {
-            expect(ALL_MODEL_IDS.length).toBe(13)
+            expect(ALL_MODEL_IDS.length).toBe(15)
         })
 
         it("should have correct image model IDs", () => {
-            expect(IMAGE_MODEL_IDS.length).toBe(10)
+            expect(IMAGE_MODEL_IDS.length).toBe(12)
             expect(IMAGE_MODEL_IDS).toContain("zimage")
             expect(IMAGE_MODEL_IDS).toContain("gptimage")
             expect(IMAGE_MODEL_IDS).toContain("flux")
@@ -321,6 +325,31 @@ describe("Model Constraints", () => {
                 expect(ratio.width % step).toBe(0)
                 expect(ratio.height % step).toBe(0)
             }
+        })
+    })
+
+    describe("Klein", () => {
+        it("should have Infinity pixel limit (backend handled)", () => {
+            const klein = getModel("klein")
+            const kleinLarge = getModel("klein-large")
+            
+            expect(klein).toBeDefined()
+            if (klein) {
+                expect(klein.constraints.maxPixels).toBe(Infinity)
+                expect(klein.constraints.step).toBe(16)
+                expect(klein.constraints.minDimension).toBe(16)
+                expect(klein.constraints.maxDimension).toBe(8192)
+            }
+
+            expect(kleinLarge).toBeDefined()
+            if (kleinLarge) {
+                expect(kleinLarge.constraints.maxPixels).toBe(Infinity)
+            }
+        })
+
+        it("should support reference images", () => {
+            const klein = getModel("klein")
+            expect(klein?.supportsReferenceImage).toBe(true)
         })
     })
 })

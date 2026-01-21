@@ -22,7 +22,6 @@ vi.mock("@/hooks/mutations/use-delete-image", () => ({
 // Mock Next.js Image
 vi.mock("next/image", () => ({
     default: ({ src, alt, ...props }: React.ImgHTMLAttributes<HTMLImageElement> & { fill?: boolean }) => {
-        // eslint-disable-next-line @next/next/no-img-element
         return <img src={src} alt={alt} {...props} />
     },
 

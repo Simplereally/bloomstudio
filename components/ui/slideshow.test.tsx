@@ -4,7 +4,7 @@ import { Slideshow } from "./slideshow";
 
 // Mock NextImage
 vi.mock("next/image", () => ({
-    default: (props: any) => <img data-testid="next-image" {...props} />
+    default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => <img data-testid="next-image" alt="" {...props} />
 }));
 
 // Mock hook

@@ -24,7 +24,6 @@ vi.mock("sonner", () => ({
 // Mock next/image
 vi.mock("next/image", () => ({
   default: ({ src, alt, ...props }: ImageProps) => (
-    // eslint-disable-next-line @next/next/no-img-element
     <img src={typeof src === "string" ? src : "default" in src ? src.default.src : src.src} alt={alt} {...props} />
   ),
 }));
