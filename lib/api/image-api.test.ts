@@ -19,6 +19,12 @@ vi.mock("@/lib/pollinations-api", () => ({
     },
 }))
 
+vi.mock("@/lib/config/api.config", () => ({
+    API_CONFIG: {
+        baseUrl: "https://gen.pollinations.ai",
+    },
+}))
+
 const mockFetch = vi.fn()
 
 describe("image-api", () => {
@@ -169,19 +175,35 @@ describe("image-api", () => {
                 blob: async () => mockBlob,
             })
 
-            const result = await downloadImage("https://example.com/img.png")
+            const pollinationsUrl = "https://gen.pollinations.ai/image/test.png"
+            const result = await downloadImage(pollinationsUrl)
 
             expect(result).toBe(mockBlob)
             expect(mockFetch).toHaveBeenCalledWith(
-                "https://example.com/img.png",
+                pollinationsUrl,
                 expect.objectContaining({
                     headers: { "Authorization": "Bearer test-token" },
                 })
             )
         })
 
+        it("skips auth headers for non-pollinations URLs", async () => {
+            const mockBlob = new Blob(["data"], { type: "image/png" })
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                blob: async () => mockBlob,
+            })
+
+            const result = await downloadImage("https://example.com/img.png")
+
+            expect(result).toBe(mockBlob)
+            expect(mockFetch).toHaveBeenCalledWith("https://example.com/img.png", undefined)
+        })
+
         it("falls back to no-header fetch on initial failure", async () => {
             const mockBlob = new Blob(["data"], { type: "image/png" })
+            const pollinationsUrl = "https://gen.pollinations.ai/image/test.png"
             
             // First call fails (e.g. 403 Forbidden with headers)
             mockFetch.mockResolvedValueOnce({
@@ -196,7 +218,7 @@ describe("image-api", () => {
                 blob: async () => mockBlob,
             })
 
-            const result = await downloadImage("https://example.com/img.png")
+            const result = await downloadImage(pollinationsUrl)
 
             expect(result).toBe(mockBlob)
             // Verify both calls were made
@@ -204,7 +226,7 @@ describe("image-api", () => {
             // First with headers
             expect(mockFetch).toHaveBeenNthCalledWith(
                 1,
-                "https://example.com/img.png",
+                pollinationsUrl,
                 expect.objectContaining({
                     headers: { "Authorization": "Bearer test-token" },
                 })
@@ -212,7 +234,7 @@ describe("image-api", () => {
             // Second without headers (undefined or empty options)
             expect(mockFetch).toHaveBeenNthCalledWith(
                 2,
-                "https://example.com/img.png"
+                pollinationsUrl
             )
         })
 
