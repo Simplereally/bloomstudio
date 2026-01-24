@@ -1,0 +1,54 @@
+{
+    "$schema": "https://raw.githubusercontent.com/code-yeongyu/oh-my-opencode/master/assets/oh-my-opencode.schema.json",
+    "google_auth": false,
+    "agents": {
+        "Sisyphus": {
+            "model": "google/antigravity-claude-opus-4-5-thinking-max"
+        },
+        "librarian": {
+            "model": "google/antigravity-gemini-3-flash-high"
+        },
+        "explore": {
+            "model": "google/antigravity-gemini-3-flash-high"
+        },
+        "oracle": {
+            "model": "google/antigravity-claude-sonnet-4-5-thinking-max"
+        },
+        "prometheus": {
+            "model": "google/antigravity-claude-opus-4-5-thinking-max"
+        },
+        "Planner-Sisyphus": {
+            "model": "google/antigravity-claude-opus-4-5-thinking-max"
+        },
+        "metis": {
+            "model": "google/antigravity-claude-sonnet-4-5-thinking-max"
+        },
+        "momus": {
+            "model": "google/antigravity-gemini-3-pro-high"
+        },
+        "frontend-ui-ux-engineer": {
+            "model": "google/antigravity-gemini-3-pro-high"
+        },
+        "document-writer": {
+            "model": "google/antigravity-gemini-3-flash-high"
+        },
+        "multimodal-looker": {
+            "model": "google/antigravity-gemini-3-flash-high"
+        }
+    },
+    "lsp": {
+        "typescript-language-server": {
+            "command": [
+                "typescript-language-server",
+                "--stdio"
+            ],
+            "extensions": [
+                ".ts",
+                ".tsx",
+                ".js",
+                ".jsx"
+            ],
+            "priority": 10
+        }
+    }
+}
