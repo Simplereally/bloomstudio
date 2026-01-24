@@ -1,193 +1,181 @@
-"use client"
+"use client";
 
+import { useAction } from "convex/react";
+import { ArrowRight, Images, Loader2, Palette, RefreshCw } from "lucide-react";
+import * as React from "react";
+import { toast } from "sonner";
 /**
  * Upgrade Modal
  *
  * An elegant modal that appears when a user's trial has expired.
  * Provides a refined upgrade flow to the Pro subscription.
  */
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
-import { api } from "@/convex/_generated/api"
-import { STRIPE_CONFIG, isStripeConfigured } from "@/lib/config/stripe"
-import { useAction } from "convex/react"
-import {
-    ArrowRight,
-    Images,
-    Loader2,
-    Palette,
-    RefreshCw,
-} from "lucide-react"
-import * as React from "react"
-import { toast } from "sonner"
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import { api } from "@/convex/_generated/api";
 
 interface UpgradeModalProps {
-    /** Whether the modal is open */
-    isOpen: boolean
-    /** Callback when modal is closed */
-    onClose: () => void
+	/** Whether the modal is open */
+	isOpen: boolean;
+	/** Callback when modal is closed */
+	onClose: () => void;
 }
 
 const proFeatures = [
-    { icon: Images, label: "180", description: "Nano Banana Pro images/month" },
-    { icon: Palette, label: "10+", description: "AI models included" },
-    { icon: RefreshCw, label: "Daily", description: "quota refresh" },
-]
+	{ icon: Images, label: "180", description: "Nano Banana Pro images/month" },
+	{ icon: Palette, label: "10+", description: "AI models included" },
+	{ icon: RefreshCw, label: "Daily", description: "quota refresh" },
+];
 
 /**
  * Modal dialog for upgrading to Pro subscription.
  * Displayed when trial limits are reached or user explicitly requests upgrade.
  */
 export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
-    const [isLoading, setIsLoading] = React.useState(false)
-    const createCheckout = useAction(api.stripe.createSubscriptionCheckout)
+	const [isLoading, setIsLoading] = React.useState(false);
+	const createCheckout = useAction(api.stripe.createSubscriptionCheckout);
 
-    const handleUpgrade = async () => {
-        // Check Stripe configuration
-        if (!isStripeConfigured()) {
-            console.error("Stripe configuration missing: NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID not set")
-            toast.error("Payment unavailable", {
-                description: "Please try again later or contact support.",
-            })
-            return
-        }
+	const handleUpgrade = async () => {
+		setIsLoading(true);
 
-        setIsLoading(true)
+		try {
+			const { url } = await createCheckout({
+				planType: "monthly",
+				successUrl: `${window.location.origin}/studio?upgraded=true`,
+				cancelUrl: `${window.location.origin}/pricing?canceled=true`,
+			});
 
-        try {
-            const { url } = await createCheckout({
-                priceId: STRIPE_CONFIG.prices.proMonthly,
-                isAnnual: false,
-                successUrl: `${window.location.origin}/studio?upgraded=true`,
-                cancelUrl: `${window.location.origin}/pricing?canceled=true`,
-            })
+			// Redirect to Stripe Checkout
+			if (url) {
+				window.location.href = url;
+			} else {
+				throw new Error("No checkout URL returned");
+			}
+		} catch (error) {
+			console.error("Checkout error:", error);
+			toast.error("Checkout failed", {
+				description: "Please try again later or contact support.",
+			});
+			setIsLoading(false);
+		}
+	};
 
-            // Redirect to Stripe Checkout
-            if (url) {
-                window.location.href = url
-            } else {
-                throw new Error("No checkout URL returned")
-            }
-        } catch (error) {
-            console.error("Checkout error:", error)
-            toast.error("Checkout failed", {
-                description: "Please try again later or contact support.",
-            })
-            setIsLoading(false)
-        }
-    }
+	return (
+		<Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+			<DialogContent className="sm:max-w-md p-0 overflow-hidden border border-border/50 bg-card shadow-2xl flex flex-col gap-0 max-h-[calc(100vh-4rem)]">
+				{/* Subtle accent line at top */}
+				<div className="absolute top-0 left-0 right-0 h-1 w-full bg-gradient-to-r from-transparent via-primary/60 to-transparent z-10" />
 
-    return (
-        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="sm:max-w-md p-0 overflow-hidden border border-border/50 bg-card shadow-2xl flex flex-col gap-0 max-h-[calc(100vh-4rem)]">
-                {/* Subtle accent line at top */}
-                <div className="absolute top-0 left-0 right-0 h-1 w-full bg-gradient-to-r from-transparent via-primary/60 to-transparent z-10" />
+				{/* Header - Fixed at top */}
+				<div className="flex-shrink-0 px-6 pt-6 pb-2">
+					<DialogHeader className="space-y-2">
+						<p className="text-[10px] font-medium tracking-widest uppercase text-primary/80">
+							Trial Ended
+						</p>
+						<DialogTitle className="text-xl font-semibold tracking-tight text-foreground">
+							Continue Creating
+						</DialogTitle>
+						<DialogDescription className="text-sm text-muted-foreground">
+							Unlock unlimited creative potential with Pro.
+						</DialogDescription>
+					</DialogHeader>
+				</div>
 
-                {/* Header - Fixed at top */}
-                <div className="flex-shrink-0 px-6 pt-6 pb-2">
-                    <DialogHeader className="space-y-2">
-                        <p className="text-[10px] font-medium tracking-widest uppercase text-primary/80">
-                            Trial Ended
-                        </p>
-                        <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">
-                            Continue Creating
-                        </DialogTitle>
-                        <DialogDescription className="text-sm text-muted-foreground">
-                            Unlock unlimited creative potential with Pro.
-                        </DialogDescription>
-                    </DialogHeader>
-                </div>
+				{/* Body - Scrollable */}
+				<div className="flex-1 overflow-y-auto px-6 pb-4">
+					{/* Feature grid */}
+					<div className="mt-2 grid grid-cols-3 gap-2">
+						{proFeatures.map((feature) => {
+							const Icon = feature.icon;
+							return (
+								<div
+									key={feature.label}
+									className="flex flex-col items-center text-center py-2.5 px-2 rounded-lg bg-muted/30 border border-border/30"
+								>
+									<Icon
+										className="w-4 h-4 text-primary/70 mb-1.5"
+										strokeWidth={1.5}
+									/>
+									<p className="text-base font-semibold text-foreground tabular-nums leading-none">
+										{feature.label}
+									</p>
+									<p className="text-[11px] text-muted-foreground mt-1">
+										{feature.description}
+									</p>
+								</div>
+							);
+						})}
+					</div>
 
-                {/* Body - Scrollable */}
-                <div className="flex-1 overflow-y-auto px-6 pb-4">
-                    {/* Feature grid */}
-                    <div className="mt-2 grid grid-cols-3 gap-2">
-                        {proFeatures.map((feature) => {
-                            const Icon = feature.icon
-                            return (
-                                <div
-                                    key={feature.label}
-                                    className="flex flex-col items-center text-center py-2.5 px-2 rounded-lg bg-muted/30 border border-border/30"
-                                >
-                                    <Icon className="w-4 h-4 text-primary/70 mb-1.5" strokeWidth={1.5} />
-                                    <p className="text-base font-semibold text-foreground tabular-nums leading-none">
-                                        {feature.label}
-                                    </p>
-                                    <p className="text-[11px] text-muted-foreground mt-1">
-                                        {feature.description}
-                                    </p>
-                                </div>
-                            )
-                        })}
-                    </div>
+					{/* Pricing */}
+					<div className="mt-4 text-center">
+						<div className="flex items-baseline justify-center gap-1">
+							<span className="text-3xl font-semibold tracking-tight text-green-600">
+								$3
+							</span>
+							<span className="text-sm text-muted-foreground">/month</span>
+						</div>
+						<p className="mt-1.5 text-xs text-muted-foreground">
+							Go to{" "}
+							<a href="/pricing" className="text-primary hover:underline">
+								Pricing
+							</a>{" "}
+							to see how we offer more value than competitors.
+						</p>
+					</div>
 
-                    {/* Pricing */}
-                    <div className="mt-4 text-center">
-                        <div className="flex items-baseline justify-center gap-1">
-                            <span className="text-3xl font-semibold tracking-tight text-green-600">$3</span>
-                            <span className="text-sm text-muted-foreground">/month</span>
-                        </div>
-                        <p className="mt-1.5 text-xs text-muted-foreground">
-                            Go to {" "}
-                            <a href="/pricing" className="text-primary hover:underline">
-                                Pricing
-                            </a>
-                            {" "}to see how we offer more value than competitors.
-                        </p>
-                    </div>
+					{/* CTA */}
+					<div className="mt-4 space-y-2">
+						<Button
+							onClick={handleUpgrade}
+							disabled={isLoading}
+							className="w-full h-10 font-medium transition-all duration-200"
+							size="default"
+						>
+							{isLoading ? (
+								<>
+									<Loader2 className="w-4 h-4 mr-2 animate-spin" />
+									Redirecting...
+								</>
+							) : (
+								<>
+									Upgrade to Pro
+									<ArrowRight className="w-4 h-4 ml-2" />
+								</>
+							)}
+						</Button>
 
-                    {/* CTA */}
-                    <div className="mt-4 space-y-2">
-                        <Button
-                            onClick={handleUpgrade}
-                            disabled={isLoading}
-                            className="w-full h-10 font-medium transition-all duration-200"
-                            size="default"
-                        >
-                            {isLoading ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    Redirecting...
-                                </>
-                            ) : (
-                                <>
-                                    Upgrade to Pro
-                                    <ArrowRight className="w-4 h-4 ml-2" />
-                                </>
-                            )}
-                        </Button>
+						<button
+							onClick={onClose}
+							disabled={isLoading}
+							className="w-full py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+						>
+							Not now
+						</button>
+					</div>
+				</div>
 
-                        <button
-                            onClick={onClose}
-                            disabled={isLoading}
-                            className="w-full py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-                        >
-                            Not now
-                        </button>
-                    </div>
-                </div>
-
-                {/* Footer - Fixed at bottom */}
-                <div className="flex-shrink-0 px-6 py-3 bg-muted/20 border-t border-border/30">
-                    <p className="text-center text-xs text-muted-foreground">
-                        Cancel anytime · Powered by{" "}
-                        <a
-                            href="https://stripe.com"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[#635BFF] hover:underline font-medium"
-                        >
-                            Stripe
-                        </a>
-                    </p>
-                </div>
-            </DialogContent>
-        </Dialog>
-    )
+				{/* Footer - Fixed at bottom */}
+				<div className="flex-shrink-0 px-6 py-3 bg-muted/20 border-t border-border/30">
+					<p className="text-center text-xs text-muted-foreground">
+						Cancel anytime · Powered by{" "}
+						<a
+							href="https://stripe.com"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="text-[#635BFF] hover:underline font-medium"
+						>
+							Stripe
+						</a>
+					</p>
+				</div>
+			</DialogContent>
+		</Dialog>
+	);
 }

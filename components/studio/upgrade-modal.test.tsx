@@ -1,152 +1,160 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { UpgradeModal } from "./upgrade-modal";
 import { toast } from "sonner";
-
-import { isStripeConfigured } from "@/lib/config/stripe";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { UpgradeModal } from "./upgrade-modal";
 
 // Mock dependencies
 const mockCreateCheckout = vi.fn();
 
 vi.mock("convex/react", () => ({
-  useAction: () => mockCreateCheckout,
+	useAction: () => mockCreateCheckout,
 }));
 
 vi.mock("@/convex/_generated/api", () => ({
-  api: {
-    stripe: {
-      createSubscriptionCheckout: "createSubscriptionCheckout",
-    },
-  },
+	api: {
+		stripe: {
+			createSubscriptionCheckout: "createSubscriptionCheckout",
+		},
+	},
 }));
 
 vi.mock("sonner", () => ({
-  toast: {
-    error: vi.fn(),
-  },
-}));
-
-// Mock Stripe config
-vi.mock("@/lib/config/stripe", () => ({
-  STRIPE_CONFIG: {
-    prices: {
-      proMonthly: "price_123",
-    },
-  },
-  isStripeConfigured: vi.fn(() => true),
+	toast: {
+		error: vi.fn(),
+	},
 }));
 
 // Mock window.location
 const originalLocation = window.location;
 
 describe("UpgradeModal", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.mocked(isStripeConfigured).mockReturnValue(true);
-    
-    // Reset window.location mock
-    Object.defineProperty(window, "location", {
-      writable: true,
-      value: { ...originalLocation, href: "", origin: "http://localhost:3000" },
-    });
-  });
+	beforeEach(() => {
+		vi.clearAllMocks();
 
-  it("does not render when closed", () => {
-    render(<UpgradeModal isOpen={false} onClose={vi.fn()} />);
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-  });
+		// Reset window.location mock
+		Object.defineProperty(window, "location", {
+			writable: true,
+			value: { ...originalLocation, href: "", origin: "http://localhost:3000" },
+		});
+	});
 
-  it("renders when open", () => {
-    render(<UpgradeModal isOpen={true} onClose={vi.fn()} />);
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByText("Trial Ended")).toBeInTheDocument();
-    expect(screen.getByText("Continue Creating")).toBeInTheDocument();
-  });
+	it("does not render when closed", () => {
+		render(<UpgradeModal isOpen={false} onClose={vi.fn()} />);
+		expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+	});
 
-  it("displays pro features", () => {
-    render(<UpgradeModal isOpen={true} onClose={vi.fn()} />);
-    expect(screen.getByText("180")).toBeInTheDocument();
-    expect(screen.getByText("Nano Banana Pro images/month")).toBeInTheDocument();
-    expect(screen.getByText("10+")).toBeInTheDocument();
-    expect(screen.getByText("AI models included")).toBeInTheDocument();
-    expect(screen.getByText("Daily")).toBeInTheDocument();
-  });
+	it("renders when open", () => {
+		render(<UpgradeModal isOpen={true} onClose={vi.fn()} />);
+		expect(screen.getByRole("dialog")).toBeInTheDocument();
+		expect(screen.getByText("Trial Ended")).toBeInTheDocument();
+		expect(screen.getByText("Continue Creating")).toBeInTheDocument();
+	});
 
-  it("displays correct pricing", () => {
-    render(<UpgradeModal isOpen={true} onClose={vi.fn()} />);
-    expect(screen.getByText("$3")).toBeInTheDocument();
-    expect(screen.getByText("/month")).toBeInTheDocument();
-  });
+	it("displays pro features", () => {
+		render(<UpgradeModal isOpen={true} onClose={vi.fn()} />);
+		expect(screen.getByText("180")).toBeInTheDocument();
+		expect(
+			screen.getByText("Nano Banana Pro images/month"),
+		).toBeInTheDocument();
+		expect(screen.getByText("10+")).toBeInTheDocument();
+		expect(screen.getByText("AI models included")).toBeInTheDocument();
+		expect(screen.getByText("Daily")).toBeInTheDocument();
+	});
 
-  it("calls onClose when 'Not now' is clicked", async () => {
-    const onClose = vi.fn();
-    const user = userEvent.setup();
-    render(<UpgradeModal isOpen={true} onClose={onClose} />);
+	it("displays correct pricing", () => {
+		render(<UpgradeModal isOpen={true} onClose={vi.fn()} />);
+		expect(screen.getByText("$3")).toBeInTheDocument();
+		expect(screen.getByText("/month")).toBeInTheDocument();
+	});
 
-    await user.click(screen.getByRole("button", { name: /not now/i }));
-    expect(onClose).toHaveBeenCalled();
-  });
+	it("calls onClose when 'Not now' is clicked", async () => {
+		const onClose = vi.fn();
+		const user = userEvent.setup();
+		render(<UpgradeModal isOpen={true} onClose={onClose} />);
 
-  it("initiates checkout on upgrade click", async () => {
-    const user = userEvent.setup();
-    mockCreateCheckout.mockResolvedValue({ url: "https://stripe.com/checkout" });
-    
-    render(<UpgradeModal isOpen={true} onClose={vi.fn()} />);
+		await user.click(screen.getByRole("button", { name: /not now/i }));
+		expect(onClose).toHaveBeenCalled();
+	});
 
-    await user.click(screen.getByRole("button", { name: /upgrade to pro/i }));
+	it("initiates checkout on upgrade click", async () => {
+		const user = userEvent.setup();
+		mockCreateCheckout.mockResolvedValue({
+			url: "https://stripe.com/checkout",
+		});
 
-    expect(mockCreateCheckout).toHaveBeenCalledWith({
-      priceId: "price_123",
-      isAnnual: false,
-      successUrl: "http://localhost:3000/studio?upgraded=true",
-      cancelUrl: "http://localhost:3000/pricing?canceled=true",
-    });
+		render(<UpgradeModal isOpen={true} onClose={vi.fn()} />);
 
-    await waitFor(() => {
-      expect(window.location.href).toBe("https://stripe.com/checkout");
-    });
-  });
+		await user.click(screen.getByRole("button", { name: /upgrade to pro/i }));
 
-  it("handles checkout loading state", async () => {
-    const user = userEvent.setup();
-    mockCreateCheckout.mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve({ url: "https://stripe.com" }), 100)));
-    
-    render(<UpgradeModal isOpen={true} onClose={vi.fn()} />);
+		expect(mockCreateCheckout).toHaveBeenCalledWith({
+			planType: "monthly",
+			successUrl: "http://localhost:3000/studio?upgraded=true",
+			cancelUrl: "http://localhost:3000/pricing?canceled=true",
+		});
 
-    const button = screen.getByRole("button", { name: /upgrade to pro/i });
-    await user.click(button);
+		await waitFor(() => {
+			expect(window.location.href).toBe("https://stripe.com/checkout");
+		});
+	});
 
-    expect(await screen.findByText(/redirecting/i)).toBeInTheDocument();
-    expect(button).toBeDisabled();
-  });
+	it("handles checkout loading state", async () => {
+		const user = userEvent.setup();
+		mockCreateCheckout.mockImplementation(
+			() =>
+				new Promise((resolve) =>
+					setTimeout(() => resolve({ url: "https://stripe.com" }), 100),
+				),
+		);
 
-  it("handles empty checkout URL", async () => {
-    const user = userEvent.setup();
-    mockCreateCheckout.mockResolvedValue({ url: null });
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		render(<UpgradeModal isOpen={true} onClose={vi.fn()} />);
 
-    render(<UpgradeModal isOpen={true} onClose={vi.fn()} />);
+		const button = screen.getByRole("button", { name: /upgrade to pro/i });
+		await user.click(button);
 
-    await user.click(screen.getByRole("button", { name: /upgrade to pro/i }));
+		expect(await screen.findByText(/redirecting/i)).toBeInTheDocument();
+		expect(button).toBeDisabled();
+	});
 
-    await waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalledWith("Checkout error:", expect.any(Error));
-      expect(toast.error).toHaveBeenCalledWith("Checkout failed", expect.any(Object));
-    });
-  });
+	it("handles empty checkout URL", async () => {
+		const user = userEvent.setup();
+		mockCreateCheckout.mockResolvedValue({ url: null });
+		const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-  it("checks stripe configuration before checkout", async () => {
-    vi.mocked(isStripeConfigured).mockReturnValue(false);
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		render(<UpgradeModal isOpen={true} onClose={vi.fn()} />);
 
-    const user = userEvent.setup();
-    render(<UpgradeModal isOpen={true} onClose={vi.fn()} />);
+		await user.click(screen.getByRole("button", { name: /upgrade to pro/i }));
 
-    await user.click(screen.getByRole("button", { name: /upgrade to pro/i }));
+		await waitFor(() => {
+			expect(consoleSpy).toHaveBeenCalledWith(
+				"Checkout error:",
+				expect.any(Error),
+			);
+			expect(toast.error).toHaveBeenCalledWith(
+				"Checkout failed",
+				expect.any(Object),
+			);
+		});
+	});
 
-    expect(mockCreateCheckout).not.toHaveBeenCalled();
-    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Stripe configuration missing"));
-    expect(toast.error).toHaveBeenCalledWith("Payment unavailable", expect.any(Object));
-  });
+	it("handles checkout API error", async () => {
+		const user = userEvent.setup();
+		mockCreateCheckout.mockRejectedValue(new Error("Network error"));
+		const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+		render(<UpgradeModal isOpen={true} onClose={vi.fn()} />);
+
+		await user.click(screen.getByRole("button", { name: /upgrade to pro/i }));
+
+		await waitFor(() => {
+			expect(consoleSpy).toHaveBeenCalledWith(
+				"Checkout error:",
+				expect.any(Error),
+			);
+			expect(toast.error).toHaveBeenCalledWith(
+				"Checkout failed",
+				expect.any(Object),
+			);
+		});
+	});
 });
