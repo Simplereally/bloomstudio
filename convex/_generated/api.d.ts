@@ -28,6 +28,7 @@ import type * as lib_providerHealth from "../lib/providerHealth.js";
 import type * as lib_providerHealthFunctions from "../lib/providerHealthFunctions.js";
 import type * as lib_r2 from "../lib/r2.js";
 import type * as lib_retry from "../lib/retry.js";
+import type * as lib_stripeHelpers from "../lib/stripeHelpers.js";
 import type * as lib_subscription from "../lib/subscription.js";
 import type * as lib_videoPreview from "../lib/videoPreview.js";
 import type * as lib_videoThumbnail from "../lib/videoThumbnail.js";
@@ -75,6 +76,7 @@ declare const fullApi: ApiFromModules<{
   "lib/providerHealthFunctions": typeof lib_providerHealthFunctions;
   "lib/r2": typeof lib_r2;
   "lib/retry": typeof lib_retry;
+  "lib/stripeHelpers": typeof lib_stripeHelpers;
   "lib/subscription": typeof lib_subscription;
   "lib/videoPreview": typeof lib_videoPreview;
   "lib/videoThumbnail": typeof lib_videoThumbnail;
