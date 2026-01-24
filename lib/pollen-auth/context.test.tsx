@@ -247,8 +247,9 @@ describe("pollen-auth/context", () => {
 
       await user.click(screen.getByTestId("setNeedsReconnect"));
 
-      // Should remove the invalid key from server
-      expect(mockRemoveApiKey).toHaveBeenCalled();
+      // Should NOT remove the invalid key from server (per context.tsx documentation)
+      // The key is preserved to handle transient 401s
+      expect(mockRemoveApiKey).not.toHaveBeenCalled();
     });
   });
 

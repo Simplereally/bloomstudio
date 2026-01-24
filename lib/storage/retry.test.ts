@@ -42,6 +42,9 @@ describe("retry.ts", () => {
                 initialDelayMs: 100 
             });
 
+            // Prevent unhandled rejection warning
+            promise.catch(() => {});
+
             // Fast-forward timers enough times
             await vi.advanceTimersByTimeAsync(100); // Wait 1st retry
             await vi.advanceTimersByTimeAsync(200); // Wait 2nd retry

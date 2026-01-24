@@ -134,7 +134,7 @@ vi.mock("@/components/ui/media-player", () => ({
     if (isVideo) {
       return <video src={url} aria-label={alt} data-testid="video-player" onLoadedMetadata={onLoadedMetadata} />;
     }
-    // eslint-disable-next-line @next/next/no-img-element
+     
     return <img src={url} alt={alt} onLoad={onLoad} data-testid="image-player" />;
   },
   isVideoContent: (contentType: string | undefined, url: string) => contentType?.startsWith("video/") || url?.match(/\.(mp4|webm|mov)$/i),
@@ -142,7 +142,7 @@ vi.mock("@/components/ui/media-player", () => ({
 
 // Mock Next.js Image - not used anymore but keep for compatibility if needed
 vi.mock("next/image", () => ({
-  // eslint-disable-next-line @next/next/no-img-element
+   
   default: ({ src, alt, ...props }: { src: string; alt: string; [key: string]: unknown }) => <img src={src} alt={alt} {...props} />,
 }));
 
