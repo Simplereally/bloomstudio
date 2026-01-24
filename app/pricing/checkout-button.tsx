@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button"
 import { useUser } from "@clerk/nextjs"
 import { useAction } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import { STRIPE_CONFIG, isStripeConfigured } from "@/lib/config/stripe"
 import { ArrowRight, Loader2 } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -54,22 +53,12 @@ export function CheckoutButton({ tierName, cta, highlighted, variant }: Checkout
             return
         }
 
-        // Check Stripe configuration
-        if (!isStripeConfigured()) {
-            console.error("Stripe configuration missing: NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID not set")
-            toast.error("Payment unavailable", {
-                description: "Please try again later or contact support.",
-            })
-            return
-        }
-
         // Pro tier - create Stripe checkout session via Convex
         setIsLoading(true)
 
         try {
             const { url } = await createCheckout({
-                priceId: STRIPE_CONFIG.prices.proMonthly,
-                isAnnual: false,
+                planType: "monthly",
                 successUrl: `${window.location.origin}/pricing?success=true`,
                 cancelUrl: `${window.location.origin}/pricing?canceled=true`,
             })
