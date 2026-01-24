@@ -286,6 +286,26 @@ export const IMAGE_MODEL_PRICING: Record<string, ModelPricingDefinition> = {
             imageOutputPerMillion: 120.0,
         },
     },
+
+    klein: {
+        modelId: "klein",
+        type: "image",
+        approximatePerPollen: 150,
+        supportsReferenceImage: true,
+        imagePricing: {
+            perImage: 0.008,
+        },
+    },
+
+    "klein-large": {
+        modelId: "klein-large",
+        type: "image",
+        approximatePerPollen: 85,
+        supportsReferenceImage: true,
+        imagePricing: {
+            perImage: 0.012,
+        },
+    },
 } as const;
 
 // ============================================================================
@@ -337,11 +357,22 @@ export const VIDEO_MODEL_PRICING: Record<string, ModelPricingDefinition> = {
     veo: {
         modelId: "veo",
         type: "video",
-        approximatePerPollen: 1, // ~1 video per pollen (highly variable based on duration)
+        approximatePerPollen: 1,
         supportsReferenceImage: true,
         isAlpha: true,
         videoPricing: {
             perSecond: 0.15,
+        },
+    },
+
+    wan: {
+        modelId: "wan",
+        type: "video",
+        approximatePerPollen: 5,
+        supportsReferenceImage: true,
+        isAlpha: true,
+        videoPricing: {
+            perSecond: 0.025,
         },
     },
 } as const;

@@ -30,6 +30,8 @@ describe("Model Registry", () => {
                 "nanobanana",
                 "seedream-pro",
                 "nanobanana-pro",
+                "klein",
+                "klein-large",
             ]
 
             for (const modelId of expectedImageModels) {
@@ -39,7 +41,7 @@ describe("Model Registry", () => {
         })
 
         it("should contain all expected video models", () => {
-            const expectedVideoModels = ["seedance-pro", "seedance", "veo"]
+            const expectedVideoModels = ["seedance-pro", "seedance", "veo", "wan"]
 
             for (const modelId of expectedVideoModels) {
                 expect(MODEL_REGISTRY[modelId]).toBeDefined()
@@ -61,6 +63,9 @@ describe("Model Registry", () => {
             expect(MODEL_REGISTRY["seedance-pro"].displayName).toBe("Seedance Pro")
             expect(MODEL_REGISTRY["seedance"].displayName).toBe("Seedance")
             expect(MODEL_REGISTRY["veo"].displayName).toBe("Veo 3.1")
+            expect(MODEL_REGISTRY["wan"].displayName).toBe("Wan 2.6")
+            expect(MODEL_REGISTRY["klein"].displayName).toBe("FLUX.2 Klein 4B")
+            expect(MODEL_REGISTRY["klein-large"].displayName).toBe("FLUX.2 Klein 9B")
         })
 
         it("should have valid constraints for all models", () => {
@@ -150,21 +155,23 @@ describe("Model Registry", () => {
 
     describe("Model Lists", () => {
         it("should have all model IDs", () => {
-            expect(ALL_MODEL_IDS.length).toBe(13)
+            expect(ALL_MODEL_IDS.length).toBe(16)
         })
 
         it("should have correct image model IDs", () => {
-            expect(IMAGE_MODEL_IDS.length).toBe(10)
+            expect(IMAGE_MODEL_IDS.length).toBe(12)
             expect(IMAGE_MODEL_IDS).toContain("zimage")
             expect(IMAGE_MODEL_IDS).toContain("gptimage")
             expect(IMAGE_MODEL_IDS).toContain("flux")
+            expect(IMAGE_MODEL_IDS).toContain("klein")
             expect(IMAGE_MODEL_IDS).not.toContain("veo")
         })
 
         it("should have correct video model IDs", () => {
-            expect(VIDEO_MODEL_IDS.length).toBe(3)
+            expect(VIDEO_MODEL_IDS.length).toBe(4)
             expect(VIDEO_MODEL_IDS).toContain("veo")
             expect(VIDEO_MODEL_IDS).toContain("seedance")
+            expect(VIDEO_MODEL_IDS).toContain("wan")
             expect(VIDEO_MODEL_IDS).not.toContain("zimage")
         })
     })
@@ -323,6 +330,24 @@ describe("Model Constraints", () => {
             }
         })
     })
+
+    describe("Klein (Flux.2)", () => {
+        it("should have 4MP pixel limit", () => {
+            const model = getModel("klein")!
+            expect(model.constraints.maxPixels).toBe(4_000_000)
+            expect(model.constraints.maxDimension).toBe(2560)
+        })
+
+        it("should have step 16", () => {
+            const model = getModel("klein-large")!
+            expect(model.constraints.step).toBe(16)
+        })
+
+        it("should support HD and 2K tiers", () => {
+            const model = getModel("klein")!
+            expect(model.constraints.supportedTiers).toEqual(["hd", "2k"])
+        })
+    })
 })
 
 describe("Aspect Ratio Presets", () => {
@@ -454,6 +479,21 @@ describe("Video Model Properties", () => {
             expect(model.durationConstraints).toBeDefined()
             expect(model.durationConstraints!.min).toBe(2)
             expect(model.durationConstraints!.max).toBe(10)
+        })
+    })
+
+    describe("Wan", () => {
+        it("should have duration constraints 2-15s", () => {
+            const model = getModel("wan")!
+            expect(model.durationConstraints?.min).toBe(2)
+            expect(model.durationConstraints?.max).toBe(15)
+            expect(model.durationConstraints?.defaultDuration).toBe(5)
+        })
+
+        it("should support audio and reference image", () => {
+            const model = getModel("wan")!
+            expect(model.supportsAudio).toBe(true)
+            expect(model.supportsReferenceImage).toBe(true)
         })
     })
 

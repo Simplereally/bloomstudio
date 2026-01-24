@@ -270,6 +270,46 @@ const NANOBANANA_ASPECT_RATIOS: readonly AspectRatioOption[] = (
 ).map(withAspectRatioTags);
 
 /**
+ * FLUX.2 Klein aspect ratios - Optimized for 4MP pixel budget
+ *
+ * BFL enforces:
+ * - max 4,000,000 pixels (4 MP) per image
+ * - width/height must be multiples of 16
+ * - minimum 64×64
+ * - step-distilled: fixed 4 inference steps (not user-adjustable)
+ *
+ * | Ratio | Width | Height | Pixels    |
+ * |-------|-------|--------|-----------|
+ * | 1:1   | 1984  | 1984   | 3,936,256 |
+ * | 16:9  | 2560  | 1440   | 3,686,400 |
+ * | 9:16  | 1440  | 2560   | 3,686,400 |
+ * | 4:3   | 2304  | 1728   | 3,981,312 |
+ * | 3:4   | 1728  | 2304   | 3,981,312 |
+ * | 3:2   | 2432  | 1600   | 3,891,200 |
+ * | 2:3   | 1600  | 2432   | 3,891,200 |
+ * | 4:5   | 1776  | 2224   | 3,950,624 |
+ * | 5:4   | 2224  | 1776   | 3,949,824 |
+ * | 21:9  | 2912  | 1248   | 3,634,176 |
+ * | 9:21  | 1248  | 2912   | 3,634,176 |
+ */
+const FLUX_KLEIN_ASPECT_RATIOS: readonly AspectRatioOption[] = (
+  [
+    { label: "Square", value: "1:1", width: 1984, height: 1984, icon: "square", category: "square" },
+    { label: "Landscape", value: "16:9", width: 2560, height: 1440, icon: "rectangle-horizontal", category: "landscape" },
+    { label: "Portrait", value: "9:16", width: 1440, height: 2560, icon: "rectangle-vertical", category: "portrait" },
+    { label: "Photo", value: "4:3", width: 2304, height: 1728, icon: "image", category: "landscape" },
+    { label: "Portrait Photo", value: "3:4", width: 1728, height: 2304, icon: "frame", category: "portrait" },
+    { label: "Photo Wide", value: "3:2", width: 2432, height: 1600, icon: "image", category: "landscape" },
+    { label: "Photo Tall", value: "2:3", width: 1600, height: 2432, icon: "frame", category: "portrait" },
+    { label: "Social", value: "4:5", width: 1776, height: 2224, icon: "smartphone", category: "portrait" },
+    { label: "Social Wide", value: "5:4", width: 2224, height: 1776, icon: "monitor", category: "landscape" },
+    { label: "Ultrawide", value: "21:9", width: 2912, height: 1248, icon: "monitor", category: "ultrawide" },
+    { label: "Ultra Tall", value: "9:21", width: 1248, height: 2912, icon: "smartphone", category: "ultrawide" },
+    { label: "Custom", value: "custom", width: 1024, height: 1024, icon: "sliders", category: "square" },
+  ] as const
+).map(withAspectRatioTags);
+
+/**
  * Nano Banana Pro aspect ratios - Uses tiered output dimensions (1K / 2K / 4K)
  *
  * Gemini 3 Pro Image Preview supports 3 output tiers with exact dimensions:
@@ -482,6 +522,58 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     modelPricing: IMAGE_MODEL_PRICING["flux"],
   },
 
+  klein: {
+    id: "klein",
+    displayName: "FLUX.2 Klein 4B",
+    type: "image",
+    icon: "zap",
+    logo: "/image-models/flux.svg",
+    description: "Step-distilled 4B model, ultra-fast 4-step generation, high-resolution up to 4MP",
+    constraints: {
+      maxPixels: 4_000_000,
+      minPixels: 4_096,
+      minDimension: 64,
+      maxDimension: 2560,
+      step: 16,
+      defaultDimensions: { width: 1024, height: 1024 },
+      dimensionsEnabled: true,
+      maxSeed: 2_147_483_647,
+      supportedTiers: ["hd", "2k"],
+      outputCertainty: "likely",
+      dimensionWarning: "Dimensions rounded to multiples of 16",
+    },
+    aspectRatios: FLUX_KLEIN_ASPECT_RATIOS,
+    supportsNegativePrompt: false,
+    supportsReferenceImage: true,
+    modelPricing: IMAGE_MODEL_PRICING["klein"],
+  },
+
+  "klein-large": {
+    id: "klein-large",
+    displayName: "FLUX.2 Klein 9B",
+    type: "image",
+    icon: "zap",
+    logo: "/image-models/flux.svg",
+    description: "Step-distilled 9B model, higher quality 4-step generation, up to 4MP resolution",
+    constraints: {
+      maxPixels: 4_000_000,
+      minPixels: 4_096,
+      minDimension: 64,
+      maxDimension: 2560,
+      step: 16,
+      defaultDimensions: { width: 1024, height: 1024 },
+      dimensionsEnabled: true,
+      maxSeed: 2_147_483_647,
+      supportedTiers: ["hd", "2k"],
+      outputCertainty: "likely",
+      dimensionWarning: "Dimensions rounded to multiples of 16",
+    },
+    aspectRatios: FLUX_KLEIN_ASPECT_RATIOS,
+    supportsNegativePrompt: false,
+    supportsReferenceImage: true,
+    modelPricing: IMAGE_MODEL_PRICING["klein-large"],
+  },
+
   "seedance-pro": {
     id: "seedance-pro",
     displayName: "Seedance Pro",
@@ -539,6 +631,36 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
       defaultDuration: 4,
     },
     modelPricing: VIDEO_MODEL_PRICING["veo"],
+  },
+
+  wan: {
+    id: "wan",
+    displayName: "Wan 2.6",
+    type: "video",
+    icon: "video",
+    logo: "/image-models/alibaba.svg",
+    description: "Image-to-video generation, flexible duration 2-15s, native audio support, resolution tiers",
+    constraints: {
+      maxPixels: Infinity,
+      minPixels: 0,
+      minDimension: 480,
+      maxDimension: 1920,
+      step: 16,
+      defaultDimensions: { width: 1280, height: 720 },
+      dimensionsEnabled: false,
+      maxSeed: 2_147_483_647,
+      supportedTiers: ["sd", "hd"],
+    },
+    aspectRatios: VIDEO_ASPECT_RATIOS,
+    supportsNegativePrompt: false,
+    supportsAudio: true,
+    supportsReferenceImage: true,
+    durationConstraints: {
+      min: 2,
+      max: 15,
+      defaultDuration: 5,
+    },
+    modelPricing: VIDEO_MODEL_PRICING["wan"],
   },
 
   // ========================================================================
