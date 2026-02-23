@@ -1,271 +1,316 @@
 {
+	"$schema": "https://opencode.ai/config.json",
     "plugin": [
         "oh-my-opencode",
-        "opencode-antigravity-auth@1.3.1"
+        "opencode-antigravity-auth@latest"
     ],
-    "provider": {
-        "google": {
-            "name": "Google",
-            "models": {
-                "antigravity-gemini-3-pro": {
-                    "name": "Gemini 3 Pro (Antigravity)",
-                    "limit": {
-                        "context": 1048576,
-                        "output": 65535
-                    },
-                    "modalities": {
-                        "input": [
-                            "text",
-                            "image",
-                            "pdf"
-                        ],
-                        "output": [
-                            "text"
-                        ]
-                    },
-                    "variants": {
-                        "low": {
-                            "thinkingLevel": "low"
-                        },
-                        "high": {
-                            "thinkingLevel": "high"
-                        }
-                    }
-                },
-                "antigravity-gemini-3-flash": {
-                    "name": "Gemini 3 Flash (Antigravity)",
-                    "limit": {
-                        "context": 1048576,
-                        "output": 65536
-                    },
-                    "modalities": {
-                        "input": [
-                            "text",
-                            "image",
-                            "pdf"
-                        ],
-                        "output": [
-                            "text"
-                        ]
-                    },
-                    "variants": {
-                        "minimal": {
-                            "thinkingLevel": "minimal"
-                        },
-                        "low": {
-                            "thinkingLevel": "low"
-                        },
-                        "medium": {
-                            "thinkingLevel": "medium"
-                        },
-                        "high": {
-                            "thinkingLevel": "high"
-                        }
-                    }
-                },
-                "antigravity-claude-sonnet-4-5": {
-                    "name": "Claude Sonnet 4.5 (Antigravity)",
-                    "limit": {
-                        "context": 200000,
-                        "output": 64000
-                    },
-                    "modalities": {
-                        "input": [
-                            "text",
-                            "image",
-                            "pdf"
-                        ],
-                        "output": [
-                            "text"
-                        ]
-                    }
-                },
-                "antigravity-claude-sonnet-4-5-thinking": {
-                    "name": "Claude Sonnet 4.5 Thinking (Antigravity)",
-                    "limit": {
-                        "context": 200000,
-                        "output": 64000
-                    },
-                    "modalities": {
-                        "input": [
-                            "text",
-                            "image",
-                            "pdf"
-                        ],
-                        "output": [
-                            "text"
-                        ]
-                    },
-                    "variants": {
-                        "low": {
-                            "thinkingConfig": {
-                                "thinkingBudget": 8192
-                            }
-                        },
-                        "max": {
-                            "thinkingConfig": {
-                                "thinkingBudget": 32768
-                            }
-                        }
-                    }
-                },
-                "antigravity-claude-sonnet-4-5-thinking-max": {
-                    "name": "Claude Sonnet 4.5 Thinking Max (Antigravity)",
-                    "limit": {
-                        "context": 200000,
-                        "output": 64000
-                    },
-                    "modalities": {
-                        "input": [
-                            "text",
-                            "image",
-                            "pdf"
-                        ],
-                        "output": [
-                            "text"
-                        ]
-                    },
-                    "variants": {
-                        "default": {
-                            "thinkingConfig": {
-                                "thinkingBudget": 32768
-                            }
-                        }
-                    }
-                },
-                "antigravity-claude-opus-4-5-thinking": {
-                    "name": "Claude Opus 4.5 Thinking (Antigravity)",
-                    "limit": {
-                        "context": 200000,
-                        "output": 64000
-                    },
-                    "modalities": {
-                        "input": [
-                            "text",
-                            "image",
-                            "pdf"
-                        ],
-                        "output": [
-                            "text"
-                        ]
-                    },
-                    "variants": {
-                        "low": {
-                            "thinkingConfig": {
-                                "thinkingBudget": 8192
-                            }
-                        },
-                        "max": {
-                            "thinkingConfig": {
-                                "thinkingBudget": 32768
-                            }
-                        }
-                    }
-                },
-                "antigravity-claude-opus-4-5-thinking-max": {
-                    "name": "Claude Opus 4.5 Thinking Max (Antigravity)",
-                    "limit": {
-                        "context": 200000,
-                        "output": 64000
-                    },
-                    "modalities": {
-                        "input": [
-                            "text",
-                            "image",
-                            "pdf"
-                        ],
-                        "output": [
-                            "text"
-                        ]
-                    },
-                    "variants": {
-                        "default": {
-                            "thinkingConfig": {
-                                "thinkingBudget": 32768
-                            }
-                        }
-                    }
-                },
-                "antigravity-gemini-3-pro-high": {
-                    "name": "Gemini 3 Pro High (Antigravity)",
-                    "limit": {
-                        "context": 1048576,
-                        "output": 65535
-                    },
-                    "modalities": {
-                        "input": [
-                            "text",
-                            "image",
-                            "pdf"
-                        ],
-                        "output": [
-                            "text"
-                        ]
-                    },
-                    "variants": {
-                        "default": {
-                            "thinkingLevel": "high"
-                        }
-                    }
-                },
-                "antigravity-gemini-3-flash-high": {
-                    "name": "Gemini 3 Flash High (Antigravity)",
-                    "limit": {
-                        "context": 1048576,
-                        "output": 65536
-                    },
-                    "modalities": {
-                        "input": [
-                            "text",
-                            "image",
-                            "pdf"
-                        ],
-                        "output": [
-                            "text"
-                        ]
-                    },
-                    "variants": {
-                        "default": {
-                            "thinkingLevel": "high"
-                        }
-                    }
-                },
-                "gemini-3-flash-preview": {
-                    "name": "Gemini 3 Flash Preview (Gemini CLI)",
-                    "limit": {
-                        "context": 1048576,
-                        "output": 65536
-                    },
-                    "modalities": {
-                        "input": [
-                            "text",
-                            "image",
-                            "pdf"
-                        ],
-                        "output": [
-                            "text"
-                        ]
-                    }
-                },
-                "gemini-3-pro-preview": {
-                    "name": "Gemini 3 Pro Preview (Gemini CLI)",
-                    "limit": {
-                        "context": 1048576,
-                        "output": 65535
-                    },
-                    "modalities": {
-                        "input": [
-                            "text",
-                            "image",
-                            "pdf"
-                        ],
-                        "output": [
-                            "text"
-                        ]
-                    }
-                }
+    "small_model": "google/antigravity-gemini-3-flash",
+  "permission": "allow",
+  "provider": {
+    "google": {
+      "models": {
+        "antigravity-gemini-3-pro": {
+          "name": "Gemini 3 Pro (Antigravity)",
+          "limit": {
+            "context": 1048576,
+            "output": 65535
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "variants": {
+            "low": {
+              "thinkingLevel": "low"
+            },
+            "high": {
+              "thinkingLevel": "high"
             }
+          }
+        },
+        "antigravity-gemini-3.1-pro": {
+          "name": "Gemini 3.1 Pro (Antigravity)",
+          "limit": {
+            "context": 1048576,
+            "output": 65535
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "variants": {
+            "low": {
+              "thinkingLevel": "low"
+            },
+            "high": {
+              "thinkingLevel": "high"
+            }
+          }
+        },
+        "antigravity-gemini-3-flash": {
+          "name": "Gemini 3 Flash (Antigravity)",
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "variants": {
+            "minimal": {
+              "thinkingLevel": "minimal"
+            },
+            "low": {
+              "thinkingLevel": "low"
+            },
+            "medium": {
+              "thinkingLevel": "medium"
+            },
+            "high": {
+              "thinkingLevel": "high"
+            }
+          }
+        },
+        "antigravity-claude-sonnet-4-6": {
+          "name": "Claude Sonnet 4.6 (Antigravity)",
+          "limit": {
+            "context": 200000,
+            "output": 64000
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "antigravity-claude-opus-4-6-thinking": {
+          "name": "Claude Opus 4.6 Thinking (Antigravity)",
+          "limit": {
+            "context": 200000,
+            "output": 64000
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "variants": {
+            "low": {
+              "thinkingConfig": {
+                "thinkingBudget": 8192
+              }
+            },
+            "max": {
+              "thinkingConfig": {
+                "thinkingBudget": 32768
+              }
+            }
+          }
+        },
+        "gemini-2.5-flash": {
+          "name": "Gemini 2.5 Flash (Gemini CLI)",
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "gemini-2.5-pro": {
+          "name": "Gemini 2.5 Pro (Gemini CLI)",
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "gemini-3-flash-preview": {
+          "name": "Gemini 3 Flash Preview (Gemini CLI)",
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "gemini-3-pro-preview": {
+          "name": "Gemini 3 Pro Preview (Gemini CLI)",
+          "limit": {
+            "context": 1048576,
+            "output": 65535
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "gemini-3.1-pro-preview": {
+          "name": "Gemini 3.1 Pro Preview (Gemini CLI)",
+          "limit": {
+            "context": 1048576,
+            "output": 65535
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "gemini-3.1-pro-preview-customtools": {
+          "name": "Gemini 3.1 Pro Preview Custom Tools (Gemini CLI)",
+          "limit": {
+            "context": 1048576,
+            "output": 65535
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          }
         }
+      }
+    }
+  },
+  "agent": {
+    "compaction": {
+      "model": "google/antigravity-gemini-3.1-pro",
+      "variant": "high",
+      "prompt": "You need to identify the key elements in the conversation thread so far so the developer can continue exactly where they left off, with key context of critical things so thhey don't have to do re-disocvery for things that were already talked about or actioned; you bring them up to speed quickly. Include A summary of the user prompt (extremely accurate to the original, but condense long ones). You're basically doing message thread analysis and then saying 'Hey you were interruped, here's all the relevant info for you and here is what you should do next'"
     },
-    "$schema": "https://opencode.ai/config.json"
+    "plan": {
+      "mode": "primary",
+      "prompt": "{file:C:/Users/User/.config/opencode/prompts/plan.txt}"
+    },
+    "build": {
+      "mode": "primary",
+      "prompt": "{file:C:/Users/User/.config/opencode/prompts/build.txt}"
+    },
+    "product-agent": {
+      "mode": "primary",
+      "prompt": "{file:C:/Users/User/.config/opencode/prompts/product-agent.txt}"
+    },
+    "general": {
+      "mode": "subagent",
+      "description": "A medium intelligence but fast agent for extremely simple no-brain general and extremely explicit work that you already know _exactly_ what to do but want it delegated. All information must be provided to this agent. Never rely on their intelligence or recommendations.",
+      "model": "google/antigravity-gemini-3-flash",
+      "variant": "high"
+    },
+    "explore": {
+      "mode": "subagent",
+      "description": "A medium intelligence but fast agent for rapid exploration; use to find files/folders/resources/methods/data flow etc. Never rely on their intelligence. Great for saving context in main thread, so never ask them to return entire file contents which is wasteful of context unless absolutely necessary.",
+      "model": "google/antigravity-gemini-3-flash",
+      "variant": "medium"
+    },
+    "orchestrator": {
+      "mode": "primary",
+      "model": "kimi-for-coding/k2p5",
+      "description": "Intelligent engineering orchestrator that decomposes complex tasks and delegates execution to subagents. Never performs implementation work directly.",
+      "prompt": "{file:C:/Users/User/.config/opencode/prompts/orchestrator.txt}",
+      "permission": {
+        "task": {
+          "*": "deny",
+          "developer": "allow",
+          "react-state-expert": "allow"
+        }
+      }
+    },
+    "opus-developer": {
+      "mode": "subagent",
+      "model": "github-copilot/claude-opus-4.6",
+	  "variant": "high",
+      "description": "The main developer agent capable of executing all development tasks from small bug fixes to complex architectural implementations. Autonomous, thorough, and committed to production-quality code.",
+      "prompt": "You are an elite developer. You engineer code with unparalleled skill who executes all implementation work delegated to you with tasteful, high quality code. From surgical bug fixes to complex architectural overhauls, you deliver flawless production-ready code with meticulous attention to detail.\n\nYou wield the full arsenal of development tools with mastery: reading and writing files, executing commands, searching codebases, and managing tasks. You work autonomously once assigned, making intelligent decisions, adhering to best practices, and maintaining the highest standards of code quality.\n\nYour code is clean, well-tested, and thoughtfully documented. You anticipate edge cases, optimize for maintainability, and never leave work unfinished. When you encounter blockers, you escalate clearly; when you succeed, you demonstrate completion with evidence.\n\nYou are the craftsperson who transforms architectural vision into reality. Call upon skils when appropriate to ensure high fidelity implementation."
+    },
+	"codex-developer": {
+      "mode": "subagent",
+      "model": "github-copilot/gpt-5.3-codex",
+	  "variant": "xhigh",
+      "description": "The main developer agent capable of executing all development tasks from small bug fixes to complex architectural implementations. Autonomous, thorough, and committed to production-quality code.",
+      "prompt": "You are an elite developer. You engineer code with unparalleled skill who executes all implementation work delegated to you with tasteful, high quality code. From surgical bug fixes to complex architectural overhauls, you deliver flawless production-ready code with meticulous attention to detail.\n\nYou wield the full arsenal of development tools with mastery: reading and writing files, executing commands, searching codebases, and managing tasks. You work autonomously once assigned, making intelligent decisions, adhering to best practices, and maintaining the highest standards of code quality.\n\nYour code is clean, well-tested, and thoughtfully documented. You anticipate edge cases, optimize for maintainability, and never leave work unfinished. When you encounter blockers, you escalate clearly; when you succeed, you demonstrate completion with evidence.\n\nYou are the craftsperson who transforms architectural vision into reality. Call upon skils when appropriate to ensure high fidelity implementation."
+    }
+  },
+  "experimental": {
+    "disable_paste_summary": true
+  },
+  "mcp": {
+    "playwright": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@playwright/mcp@latest"
+      ],
+      "enabled": false
+    }
+  }
 }

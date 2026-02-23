@@ -1,18 +1,26 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Mock AWS S3 Client
-const mockSend = vi.fn();
-const mockS3Client = vi.fn(() => ({
-  send: mockSend,
-}));
+vi.mock("@aws-sdk/client-s3", () => {
+  const mockSend = vi.fn();
+  const S3Client = vi.fn(function() {
+    return { send: mockSend };
+  });
+  // Attach mockSend to S3Client so we can access it in tests
+  (S3Client as any).mockSend = mockSend;
 
-vi.mock("@aws-sdk/client-s3", () => ({
-  S3Client: mockS3Client,
-  PutObjectCommand: vi.fn((args) => ({ ...args, commandType: "PutObject" })),
-  DeleteObjectCommand: vi.fn((args) => ({ ...args, commandType: "DeleteObject" })),
-  DeleteObjectsCommand: vi.fn((args) => ({ ...args, commandType: "DeleteObjects" })),
-  HeadObjectCommand: vi.fn((args) => ({ ...args, commandType: "HeadObject" })),
-}));
+  return {
+    S3Client,
+    PutObjectCommand: vi.fn(function(args) { return { ...args, commandType: "PutObject" }; }),
+    DeleteObjectCommand: vi.fn(function(args) { return { ...args, commandType: "DeleteObject" }; }),
+    DeleteObjectsCommand: vi.fn(function(args) { return { ...args, commandType: "DeleteObjects" }; }),
+    HeadObjectCommand: vi.fn(function(args) { return { ...args, commandType: "HeadObject" }; }),
+  };
+});
+
+import { S3Client } from "@aws-sdk/client-s3";
+const mockS3Client = S3Client as unknown as ReturnType<typeof vi.fn>;
+const mockSend = (S3Client as any).mockSend;
 
 // Mock process.env
 const originalEnv = process.env;
@@ -26,13 +34,18 @@ vi.mock("./retry", () => ({
 // Mock crypto
 vi.mock("crypto", async (importOriginal) => {
     const actual = await importOriginal<any>();
-    return {
+    const mockCrypto = {
         ...actual,
         randomUUID: vi.fn().mockReturnValue("mock-uuid"),
         createHash: vi.fn(() => ({
             update: vi.fn().mockReturnThis(),
             digest: vi.fn().mockReturnValue("mock-user-hash"),
         })),
+    };
+    
+    return {
+        ...actual,
+        default: mockCrypto,
     };
 });
 

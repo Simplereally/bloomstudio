@@ -23,6 +23,13 @@ export interface UseImageModelsOptions {
      * @default "image"
      */
     type?: "image" | "video" | "all"
+    /**
+     * Include legacy models in the returned list.
+     * Legacy models are no longer available for new generations
+     * but are kept for historical data display.
+     * @default false
+     */
+    includeLegacy?: boolean
 }
 
 /**
@@ -82,7 +89,7 @@ export interface UseImageModelsReturn {
 export function useImageModels(
     options: UseImageModelsOptions = {}
 ): UseImageModelsReturn {
-    const { type = "image" } = options
+    const { type = "image", includeLegacy = false } = options
 
     // Memoize the model list to prevent unnecessary re-renders
     // Sort alphabetically by displayName, with image models first then video models
@@ -101,11 +108,19 @@ export function useImageModels(
         }
 
         if (type === "all") {
-            return [...allModels].sort(sortModels)
+            const filtered = includeLegacy
+                ? allModels
+                : allModels.filter(model => !model.isLegacy)
+            return [...filtered].sort(sortModels)
         }
 
-        return allModels.filter(model => model.type === type).sort(sortModels)
-    }, [type])
+        const filtered = allModels.filter(model => {
+            const matchesType = model.type === type
+            const matchesLegacy = includeLegacy || !model.isLegacy
+            return matchesType && matchesLegacy
+        })
+        return filtered.sort(sortModels)
+    }, [type, includeLegacy])
 
     // Memoize the getModel function
     const getModel = useMemo(

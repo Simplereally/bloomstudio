@@ -36,8 +36,8 @@ export const pricingTiers: PricingTier[] = [
         name: "Pro",
         description: "Access to every feature and model",
         poweredBy: {
-            name: "Nano Banana Pro",
-            logo: "/image-models/google.svg",
+            name: "Flux Schnell",
+            logo: "/image-models/flux.svg",
         },
         price: 3,
         icon: Crown,
@@ -46,9 +46,9 @@ export const pricingTiers: PricingTier[] = [
         cta: "Upgrade to Pro",
         ctaVariant: "default",
         features: [
-            "180 Nano Banana Pro images/month",
+            "180 high-quality images/month",
             "Daily resets",
-            "13+ AI models included",
+            "6 AI models included (Flux, GPT Image, Z-Image, Klein, Seedance)",
             "Advanced prompt enhancement",
             "Custom prompt library",
             "1,000 image batch queue",
@@ -79,7 +79,7 @@ export const pricingFaqs = [
     {
         question: "How does the free plan work?",
         answer:
-            "Sign up and get 180 Nano Banana Pro images every month for free. Your quota resets daily (approx. 6 images/day). No credit card required.",
+            "Sign up and get 180 high-quality images every month for free. Your quota resets daily (approx. 6 images/day). No credit card required.",
     },
     {
         question: "What happens if I need more images?",
@@ -90,7 +90,7 @@ export const pricingFaqs = [
         question: "What AI models are included?",
         answer: (
             <span>
-                We offer 13+ cutting-edge and popular models including Flux, GPT-4 Image, Seedream, and more. Both Free and Pro users get access to all models.{" "}
+                We offer 6 high-quality AI models including Flux Schnell, GPT Image, Z-Image Turbo, FLUX.2 Klein, and Seedance. Both Free and Pro users get access to all active models.{" "}
                 <Link href="/#models" className="text-primary hover:underline font-medium">
                     View the full list of supported models here.
                 </Link>
@@ -128,7 +128,7 @@ export const featureComparison = [
         },
     },
     { feature: "Batch queue size", starter: "1,000", pro: "1,000", competitors: "10-20" },
-    { feature: "AI Models", starter: "13+", pro: "13+", competitors: "13+" },
+    { feature: "AI Models", starter: "6", pro: "6", competitors: "Varies" },
     { feature: "Prompt library", starter: true, pro: true, competitors: false },
     { feature: "Prompt enhancement", starter: true, pro: true, competitors: "Basic" },
     { feature: "Private gallery", starter: true, pro: true, competitors: "Varies" },

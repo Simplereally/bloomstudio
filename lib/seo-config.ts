@@ -118,7 +118,7 @@ export const SOLUTIONS: Solution[] = [
     shortTitle: "Images",
     slug: "ai-image-generator",
     description:
-      "Generate stunning high-resolution images from any prompt. Powered by a diverse library of world-class AI models like Nano Banana Pro, GPT Image 1.5, and Seedream 4.5.",
+      "Generate stunning high-resolution images from any prompt. Powered by a diverse library of world-class AI models like Flux Schnell, Z-Image Turbo, GPT Image, and FLUX.2 Klein.",
     heroSuffix: "images",
     heroImages: [
       "/solutions/ai-image-generator/hero-1.jpg",
@@ -164,7 +164,7 @@ export const SOLUTIONS: Solution[] = [
       {
         question: "Which model should I use?",
         answer:
-          "Each model has strengths. For example, Nano Banana Pro is great for detail, while GPT Image 1.5 is excellent for prompt adherence. You can try multiple models for the same prompt.",
+          "Each model has strengths. For example, Flux Schnell is great for fast generations and high volume, while GPT Image is excellent for prompt adherence. You can try multiple models for the same prompt.",
       },
       {
         question: "Do I have rights to the images?",
@@ -719,7 +719,7 @@ export const SOLUTIONS: Solution[] = [
       {
         question: "How realistic are the results?",
         answer:
-          "Our pro-tier models like Nano Banana Pro, GPT Image 1.5 and Seedream 4.5 are designed to produce imagery that is often indistinguishable from real photography.",
+          "Our models like GPT Image and FLUX.2 Klein are designed to produce imagery that is often indistinguishable from real photography.",
       },
       {
         question: "Can I use these for my website?",

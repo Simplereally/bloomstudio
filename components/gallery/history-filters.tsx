@@ -44,38 +44,24 @@ interface HistoryFiltersProps {
 const IMAGE_MODELS: ModelDefinition[] = Object.values(MODEL_REGISTRY).filter(
   (model): model is ModelDefinition => model.type === "image",
 );
-
 // Get all video models from the registry
 const VIDEO_MODELS: ModelDefinition[] = Object.values(MODEL_REGISTRY).filter(
   (model): model is ModelDefinition => model.type === "video",
 );
 
-/**
- * Legacy models that are no longer available for generation but may exist in user history.
- * These are shown separately in the filter dropdown so users can still filter by them.
- */
-const LEGACY_FILTER_MODELS: { id: string; displayName: string }[] = [
-  // Currently empty - 'flux' was moved back to MODEL_REGISTRY as an active model
-];
-
-/** Combined list of all filterable models (image + video + legacy), sorted alphabetically */
+/** Combined list of all filterable models (image + video), sorted alphabetically */
 const ALL_FILTERABLE_MODELS = [
   ...IMAGE_MODELS.map((m) => ({
     id: m.id,
     displayName: m.displayName,
-    isLegacy: false,
+    isLegacy: m.isLegacy ?? false,
     type: "image" as const,
   })),
   ...VIDEO_MODELS.map((m) => ({
     id: m.id,
     displayName: m.displayName,
-    isLegacy: false,
+    isLegacy: m.isLegacy ?? false,
     type: "video" as const,
-  })),
-  ...LEGACY_FILTER_MODELS.map((m) => ({
-    ...m,
-    isLegacy: true,
-    type: "image" as const,
   })),
 ].sort((a, b) =>
   a.displayName.localeCompare(b.displayName, undefined, { numeric: true }),
@@ -294,7 +280,7 @@ export function HistoryFiltersDropdown({
                     <CommandItem
                       key={model.id}
                       onSelect={() => handleModelToggle(model.id)}
-                      className="gap-2"
+                      className={cn("gap-2", model.isLegacy && "opacity-60")}
                     >
                       <Checkbox
                         checked={isSelected}

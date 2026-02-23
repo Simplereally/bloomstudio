@@ -30,6 +30,8 @@ describe("Model Registry", () => {
                 "nanobanana",
                 "seedream-pro",
                 "nanobanana-pro",
+                "klein",
+                "klein-large",
             ]
 
             for (const modelId of expectedImageModels) {
@@ -39,7 +41,7 @@ describe("Model Registry", () => {
         })
 
         it("should contain all expected video models", () => {
-            const expectedVideoModels = ["seedance-pro", "seedance", "veo"]
+            const expectedVideoModels = ["seedance-pro", "seedance", "veo", "wan"]
 
             for (const modelId of expectedVideoModels) {
                 expect(MODEL_REGISTRY[modelId]).toBeDefined()
@@ -61,6 +63,9 @@ describe("Model Registry", () => {
             expect(MODEL_REGISTRY["seedance-pro"].displayName).toBe("Seedance Pro")
             expect(MODEL_REGISTRY["seedance"].displayName).toBe("Seedance")
             expect(MODEL_REGISTRY["veo"].displayName).toBe("Veo 3.1")
+            expect(MODEL_REGISTRY["wan"].displayName).toBe("Wan 2.6")
+            expect(MODEL_REGISTRY["klein"].displayName).toBe("FLUX.2 Klein 4B")
+            expect(MODEL_REGISTRY["klein-large"].displayName).toBe("FLUX.2 Klein 9B")
         })
 
         it("should have valid constraints for all models", () => {
@@ -150,21 +155,23 @@ describe("Model Registry", () => {
 
     describe("Model Lists", () => {
         it("should have all model IDs", () => {
-            expect(ALL_MODEL_IDS.length).toBe(13)
+            expect(ALL_MODEL_IDS.length).toBe(16)
         })
 
         it("should have correct image model IDs", () => {
-            expect(IMAGE_MODEL_IDS.length).toBe(10)
+            expect(IMAGE_MODEL_IDS.length).toBe(12)
             expect(IMAGE_MODEL_IDS).toContain("zimage")
             expect(IMAGE_MODEL_IDS).toContain("gptimage")
             expect(IMAGE_MODEL_IDS).toContain("flux")
+            expect(IMAGE_MODEL_IDS).toContain("klein")
             expect(IMAGE_MODEL_IDS).not.toContain("veo")
         })
 
         it("should have correct video model IDs", () => {
-            expect(VIDEO_MODEL_IDS.length).toBe(3)
+            expect(VIDEO_MODEL_IDS.length).toBe(4)
             expect(VIDEO_MODEL_IDS).toContain("veo")
             expect(VIDEO_MODEL_IDS).toContain("seedance")
+            expect(VIDEO_MODEL_IDS).toContain("wan")
             expect(VIDEO_MODEL_IDS).not.toContain("zimage")
         })
     })
@@ -323,6 +330,52 @@ describe("Model Constraints", () => {
             }
         })
     })
+
+    describe("Klein 4B (Flux.2)", () => {
+        it("should have 4MP pixel limit", () => {
+            const model = getModel("klein")!
+            expect(model.constraints.maxPixels).toBe(4_000_000)
+            expect(model.constraints.maxDimension).toBe(2560)
+        })
+
+        it("should have step 16", () => {
+            const model = getModel("klein")!
+            expect(model.constraints.step).toBe(16)
+        })
+
+        it("should support HD and 2K tiers", () => {
+            const model = getModel("klein")!
+            expect(model.constraints.supportedTiers).toEqual(["hd", "2k"])
+        })
+    })
+
+    describe("Klein 9B (klein-large)", () => {
+        it("should have 1MP pixel limit", () => {
+            const model = getModel("klein-large")!
+            expect(model.constraints.maxPixels).toBe(1_048_576)
+        })
+
+        it("should have step 16", () => {
+            const model = getModel("klein-large")!
+            expect(model.constraints.step).toBe(16)
+        })
+
+        it("should have 256px minimum dimension", () => {
+            const model = getModel("klein-large")!
+            expect(model.constraints.minDimension).toBe(256)
+            expect(model.constraints.minPixels).toBe(65_536) // 256×256
+        })
+
+        it("should support only SD and HD tiers due to 1MP cap", () => {
+            const model = getModel("klein-large")!
+            expect(model.constraints.supportedTiers).toEqual(["sd", "hd"])
+        })
+
+        it("should have default dimensions of 1024x1024", () => {
+            const model = getModel("klein-large")!
+            expect(model.constraints.defaultDimensions).toEqual({ width: 1024, height: 1024 })
+        })
+    })
 })
 
 describe("Aspect Ratio Presets", () => {
@@ -332,6 +385,34 @@ describe("Aspect Ratio Presets", () => {
             if (ratio.value !== "custom") {
                 const pixels = ratio.width * ratio.height
                 expect(pixels).toBeLessThan(1_048_577)
+            }
+        }
+    })
+
+    it("should have all Klein 9B presets under 1MP and aligned to step 16", () => {
+        const ratios = getModelAspectRatios("klein-large")!
+        for (const ratio of ratios) {
+            if (ratio.value !== "custom") {
+                const pixels = ratio.width * ratio.height
+                expect(pixels).toBeLessThanOrEqual(1_048_576)
+                expect(ratio.width % 16).toBe(0)
+                expect(ratio.height % 16).toBe(0)
+            }
+        }
+        // Verify default square is exactly 1024x1024
+        const square = ratios.find(r => r.value === "1:1")
+        expect(square?.width).toBe(1024)
+        expect(square?.height).toBe(1024)
+    })
+
+    it("should have all Klein 4B presets under 4MP and aligned to step 16", () => {
+        const ratios = getModelAspectRatios("klein")!
+        for (const ratio of ratios) {
+            if (ratio.value !== "custom") {
+                const pixels = ratio.width * ratio.height
+                expect(pixels).toBeLessThanOrEqual(4_000_000)
+                expect(ratio.width % 16).toBe(0)
+                expect(ratio.height % 16).toBe(0)
             }
         }
     })
@@ -454,6 +535,21 @@ describe("Video Model Properties", () => {
             expect(model.durationConstraints).toBeDefined()
             expect(model.durationConstraints!.min).toBe(2)
             expect(model.durationConstraints!.max).toBe(10)
+        })
+    })
+
+    describe("Wan", () => {
+        it("should have duration constraints 2-15s", () => {
+            const model = getModel("wan")!
+            expect(model.durationConstraints?.min).toBe(2)
+            expect(model.durationConstraints?.max).toBe(15)
+            expect(model.durationConstraints?.defaultDuration).toBe(5)
+        })
+
+        it("should support audio and reference image", () => {
+            const model = getModel("wan")!
+            expect(model.supportsAudio).toBe(true)
+            expect(model.supportsReferenceImage).toBe(true)
         })
     })
 

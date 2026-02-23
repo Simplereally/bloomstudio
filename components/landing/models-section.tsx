@@ -1,10 +1,10 @@
-import { MODEL_REGISTRY } from "@/lib/config/models";
+import { getActiveModels, type ModelDefinition } from "@/lib/config/models";
 import { cn } from "@/lib/utils";
 import { ImageIcon, Sparkles, Video } from "lucide-react";
 import Image from "next/image";
 import { ScrollReveal } from "./scroll-reveal";
 
-function ModelBadgeDetailed({ model }: { model: (typeof MODEL_REGISTRY)[keyof typeof MODEL_REGISTRY] }) {
+function ModelBadgeDetailed({ model }: { model: ModelDefinition }) {
   const isMonochrome = model.logo?.includes("openai.svg") || model.logo?.includes("flux.svg");
 
   return (
@@ -24,7 +24,7 @@ function ModelBadgeDetailed({ model }: { model: (typeof MODEL_REGISTRY)[keyof ty
 }
 
 export function ModelsSection() {
-  const allModels = Object.values(MODEL_REGISTRY);
+  const allModels = getActiveModels();
   const imageModels = allModels.filter((m) => m.type === "image").sort((a, b) => a.displayName.localeCompare(b.displayName));
   const videoModels = allModels.filter((m) => m.type === "video").sort((a, b) => a.displayName.localeCompare(b.displayName));
 

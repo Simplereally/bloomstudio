@@ -15,12 +15,14 @@ export const KnownImageModelSchema = z.enum([
   "nanobanana",
   "seedream-pro",
   "nanobanana-pro",
+  "klein",
+  "klein-large",
 ]);
 
 export const ImageModelSchema = z.union([KnownImageModelSchema, z.string()]);
 
 // Video models
-export const VideoModelSchema = z.enum(["veo", "seedance", "seedance-pro"]);
+export const VideoModelSchema = z.enum(["veo", "seedance", "seedance-pro", "wan"]);
 
 // Combined model schema
 export const GenerationModelSchema = z.union([ImageModelSchema, VideoModelSchema]);

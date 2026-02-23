@@ -280,7 +280,7 @@ describe("createStripeClient", () => {
         const client = createStripeClient("sk_test_12345")
 
         // Access internal config - this tests the configuration was applied
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         expect((client as any)._api.version).toBe("2025-12-15.clover")
     })
 })

@@ -23,7 +23,7 @@ export function HeroSection({
     title?: React.ReactNode
     description?: React.ReactNode
 } = {}) {
-    const featuredModelIds = ["gptimage-large", "seedream-pro", "nanobanana-pro", "seedance-pro", "veo"]
+    const featuredModelIds = ["flux", "zimage", "gptimage", "klein", "seedance"]
     const featuredModels = featuredModelIds.map((id) => MODEL_REGISTRY[id]).filter(Boolean)
 
     const imageModels = featuredModels.filter((m) => m.type === "image")

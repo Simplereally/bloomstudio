@@ -62,6 +62,13 @@ export interface ModelDefinition {
   readonly supportsReferenceImage?: boolean
   /** The pricing definition for this model */
   readonly modelPricing: ModelPricingDefinition
+  /**
+   * Whether this model is legacy (no longer available for new generation).
+   * Legacy models still exist in MODEL_REGISTRY for display name lookup,
+   * constraints, and historical data, but are excluded from generation selectors.
+   * @default false
+   */
+  readonly isLegacy?: boolean
 }
 
 // ============================================================================
@@ -270,6 +277,88 @@ const NANOBANANA_ASPECT_RATIOS: readonly AspectRatioOption[] = (
 ).map(withAspectRatioTags);
 
 /**
+ * FLUX.2 Klein 4B aspect ratios - Optimized for 4MP pixel budget
+ *
+ * BFL enforces:
+ * - max 4,000,000 pixels (4 MP) per image
+ * - width/height must be multiples of 16
+ * - minimum 64×64
+ * - step-distilled: fixed 4 inference steps (not user-adjustable)
+ *
+ * | Ratio | Width | Height | Pixels    |
+ * |-------|-------|--------|-----------|
+ * | 1:1   | 1984  | 1984   | 3,936,256 |
+ * | 16:9  | 2560  | 1440   | 3,686,400 |
+ * | 9:16  | 1440  | 2560   | 3,686,400 |
+ * | 4:3   | 2304  | 1728   | 3,981,312 |
+ * | 3:4   | 1728  | 2304   | 3,981,312 |
+ * | 3:2   | 2432  | 1600   | 3,891,200 |
+ * | 2:3   | 1600  | 2432   | 3,891,200 |
+ * | 4:5   | 1776  | 2224   | 3,950,624 |
+ * | 5:4   | 2224  | 1776   | 3,949,824 |
+ * | 21:9  | 2912  | 1248   | 3,634,176 |
+ * | 9:21  | 1248  | 2912   | 3,634,176 |
+ */
+const FLUX_KLEIN_4B_ASPECT_RATIOS: readonly AspectRatioOption[] = (
+  [
+    { label: "Square", value: "1:1", width: 1984, height: 1984, icon: "square", category: "square" },
+    { label: "Landscape", value: "16:9", width: 2560, height: 1440, icon: "rectangle-horizontal", category: "landscape" },
+    { label: "Portrait", value: "9:16", width: 1440, height: 2560, icon: "rectangle-vertical", category: "portrait" },
+    { label: "Photo", value: "4:3", width: 2304, height: 1728, icon: "image", category: "landscape" },
+    { label: "Portrait Photo", value: "3:4", width: 1728, height: 2304, icon: "frame", category: "portrait" },
+    { label: "Photo Wide", value: "3:2", width: 2432, height: 1600, icon: "image", category: "landscape" },
+    { label: "Photo Tall", value: "2:3", width: 1600, height: 2432, icon: "frame", category: "portrait" },
+    { label: "Social", value: "4:5", width: 1776, height: 2224, icon: "smartphone", category: "portrait" },
+    { label: "Social Wide", value: "5:4", width: 2224, height: 1776, icon: "monitor", category: "landscape" },
+    { label: "Ultrawide", value: "21:9", width: 2912, height: 1248, icon: "monitor", category: "ultrawide" },
+    { label: "Ultra Tall", value: "9:21", width: 1248, height: 2912, icon: "smartphone", category: "ultrawide" },
+    { label: "Custom", value: "custom", width: 1024, height: 1024, icon: "sliders", category: "square" },
+  ] as const
+).map(withAspectRatioTags);
+
+/**
+ * FLUX.2 Klein 9B (Klein Large) aspect ratios - Optimized for 1MP pixel budget
+ *
+ * Klein 9B API enforces:
+ * - max 1,048,576 pixels (1 MP) per image
+ * - width/height must be multiples of 16
+ * - minimum 256×256
+ * - step-distilled: fixed 4 inference steps (not user-adjustable)
+ * - guidance scale: default 4.0
+ * - max seed: 2,147,483,647
+ *
+ * | Ratio | Width | Height | Pixels    |
+ * |-------|-------|--------|-----------|
+ * | 1:1   | 1024  | 1024   | 1,048,576 |
+ * | 16:9  | 1360  | 768    | 1,044,480 |
+ * | 9:16  | 768   | 1360   | 1,044,480 |
+ * | 4:3   | 1184  | 880    | 1,041,920 |
+ * | 3:4   | 880   | 1184   | 1,041,920 |
+ * | 3:2   | 1248  | 832    | 1,038,336 |
+ * | 2:3   | 832   | 1248   | 1,038,336 |
+ * | 4:5   | 912   | 1136   | 1,036,032 |
+ * | 5:4   | 1136  | 912    | 1,036,032 |
+ * | 21:9  | 1552  | 672    | 1,042,944 |
+ * | 9:21  | 672   | 1552   | 1,042,944 |
+ */
+const FLUX_KLEIN_9B_ASPECT_RATIOS: readonly AspectRatioOption[] = (
+  [
+    { label: "Square", value: "1:1", width: 1024, height: 1024, icon: "square", category: "square" },
+    { label: "Landscape", value: "16:9", width: 1360, height: 768, icon: "rectangle-horizontal", category: "landscape" },
+    { label: "Portrait", value: "9:16", width: 768, height: 1360, icon: "rectangle-vertical", category: "portrait" },
+    { label: "Photo", value: "4:3", width: 1184, height: 880, icon: "image", category: "landscape" },
+    { label: "Portrait Photo", value: "3:4", width: 880, height: 1184, icon: "frame", category: "portrait" },
+    { label: "Photo Wide", value: "3:2", width: 1248, height: 832, icon: "image", category: "landscape" },
+    { label: "Photo Tall", value: "2:3", width: 832, height: 1248, icon: "frame", category: "portrait" },
+    { label: "Social", value: "4:5", width: 912, height: 1136, icon: "smartphone", category: "portrait" },
+    { label: "Social Wide", value: "5:4", width: 1136, height: 912, icon: "monitor", category: "landscape" },
+    { label: "Ultrawide", value: "21:9", width: 1552, height: 672, icon: "monitor", category: "ultrawide" },
+    { label: "Ultra Tall", value: "9:21", width: 672, height: 1552, icon: "smartphone", category: "ultrawide" },
+    { label: "Custom", value: "custom", width: 1024, height: 1024, icon: "sliders", category: "square" },
+  ] as const
+).map(withAspectRatioTags);
+
+/**
  * Nano Banana Pro aspect ratios - Uses tiered output dimensions (1K / 2K / 4K)
  *
  * Gemini 3 Pro Image Preview supports 3 output tiers with exact dimensions:
@@ -378,6 +467,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     supportsNegativePrompt: false,
     supportsReferenceImage: true,
     modelPricing: IMAGE_MODEL_PRICING["gptimage-large"],
+    isLegacy: true,
   },
 
   "seedream-pro": {
@@ -404,6 +494,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     supportsNegativePrompt: false,
     supportsReferenceImage: true,
     modelPricing: IMAGE_MODEL_PRICING["seedream-pro"],
+    isLegacy: true,
   },
 
   "nanobanana-pro": {
@@ -429,6 +520,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     supportsNegativePrompt: false,
     supportsReferenceImage: true,
     modelPricing: IMAGE_MODEL_PRICING["nanobanana-pro"],
+    isLegacy: true,
   },
 
   kontext: {
@@ -455,6 +547,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     supportsNegativePrompt: false,
     supportsReferenceImage: true,
     modelPricing: IMAGE_MODEL_PRICING["kontext"],
+    isLegacy: true,
   },
 
   flux: {
@@ -480,6 +573,58 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     aspectRatios: FLUX_SCHNELL_ASPECT_RATIOS,
     supportsNegativePrompt: true, // Supports negative prompts
     modelPricing: IMAGE_MODEL_PRICING["flux"],
+  },
+
+  klein: {
+    id: "klein",
+    displayName: "FLUX.2 Klein 4B",
+    type: "image",
+    icon: "zap",
+    logo: "/image-models/flux.svg",
+    description: "Step-distilled 4B model, ultra-fast 4-step generation, high-resolution up to 4MP",
+    constraints: {
+      maxPixels: 4_000_000,
+      minPixels: 4_096,
+      minDimension: 64,
+      maxDimension: 2560,
+      step: 16,
+      defaultDimensions: { width: 1024, height: 1024 },
+      dimensionsEnabled: true,
+      maxSeed: 2_147_483_647,
+      supportedTiers: ["hd", "2k"],
+      outputCertainty: "likely",
+      dimensionWarning: "Dimensions rounded to multiples of 16",
+    },
+    aspectRatios: FLUX_KLEIN_4B_ASPECT_RATIOS,
+    supportsNegativePrompt: false,
+    supportsReferenceImage: true,
+    modelPricing: IMAGE_MODEL_PRICING["klein"],
+  },
+
+  "klein-large": {
+    id: "klein-large",
+    displayName: "FLUX.2 Klein 9B",
+    type: "image",
+    icon: "zap",
+    logo: "/image-models/flux.svg",
+    description: "Step-distilled 9B model, higher quality 4-step generation, up to 1MP resolution",
+    constraints: {
+      maxPixels: 1_048_576, // 1 MP limit - API scales down if exceeded
+      minPixels: 65_536, // Minimum 256×256
+      minDimension: 256, // Minimum per-side dimension
+      maxDimension: 1600, // Max per-side (accounts for ultrawide ratios)
+      step: 16, // Dimensions must be multiples of 16
+      defaultDimensions: { width: 1024, height: 1024 },
+      dimensionsEnabled: true,
+      maxSeed: 2_147_483_647,
+      supportedTiers: ["sd", "hd"], // Limited to SD/HD due to 1MP cap
+      outputCertainty: "likely",
+      dimensionWarning: "Dimensions rounded to multiples of 16",
+    },
+    aspectRatios: FLUX_KLEIN_9B_ASPECT_RATIOS,
+    supportsNegativePrompt: false,
+    supportsReferenceImage: true,
+    modelPricing: IMAGE_MODEL_PRICING["klein-large"],
   },
 
   "seedance-pro": {
@@ -508,6 +653,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
       defaultDuration: 5,
     },
     modelPricing: VIDEO_MODEL_PRICING["seedance-pro"],
+    isLegacy: true,
   },
 
   veo: {
@@ -539,6 +685,38 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
       defaultDuration: 4,
     },
     modelPricing: VIDEO_MODEL_PRICING["veo"],
+    isLegacy: true,
+  },
+
+  wan: {
+    id: "wan",
+    displayName: "Wan 2.6",
+    type: "video",
+    icon: "video",
+    logo: "/image-models/alibaba.svg",
+    description: "Image-to-video generation, flexible duration 2-15s, native audio support, resolution tiers",
+    constraints: {
+      maxPixels: Infinity,
+      minPixels: 0,
+      minDimension: 480,
+      maxDimension: 1920,
+      step: 16,
+      defaultDimensions: { width: 1280, height: 720 },
+      dimensionsEnabled: false,
+      maxSeed: 2_147_483_647,
+      supportedTiers: ["sd", "hd"],
+    },
+    aspectRatios: VIDEO_ASPECT_RATIOS,
+    supportsNegativePrompt: false,
+    supportsAudio: true,
+    supportsReferenceImage: true,
+    durationConstraints: {
+      min: 2,
+      max: 15,
+      defaultDuration: 5,
+    },
+    modelPricing: VIDEO_MODEL_PRICING["wan"],
+    isLegacy: true,
   },
 
   // ========================================================================
@@ -592,6 +770,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     aspectRatios: SDXLTURBO_ASPECT_RATIOS,
     supportsNegativePrompt: false,
     modelPricing: IMAGE_MODEL_PRICING["turbo"],
+    isLegacy: true,
   },
 
   gptimage: {
@@ -644,6 +823,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     supportsNegativePrompt: false,
     supportsReferenceImage: true,
     modelPricing: IMAGE_MODEL_PRICING["seedream"],
+    isLegacy: true,
   },
 
   nanobanana: {
@@ -669,6 +849,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     supportsNegativePrompt: false,
     supportsReferenceImage: true,
     modelPricing: IMAGE_MODEL_PRICING["nanobanana"],
+    isLegacy: true,
   },
 
   seedance: {
@@ -762,3 +943,52 @@ export const IMAGE_MODEL_IDS = Object.values(MODEL_REGISTRY)
 export const VIDEO_MODEL_IDS = Object.values(MODEL_REGISTRY)
   .filter((m) => m.type === "video")
   .map((m) => m.id);
+
+// ============================================================================
+// Legacy Model Filtering
+// ============================================================================
+
+/**
+ * Check if a model is legacy (no longer available for new generation).
+ * Returns false if model not found.
+ */
+export function isModelLegacy(modelId: string): boolean {
+  return getModel(modelId)?.isLegacy ?? false;
+}
+
+/**
+ * Get all active (non-legacy) models.
+ */
+export function getActiveModels(): ModelDefinition[] {
+  return Object.values(MODEL_REGISTRY).filter((m) => !m.isLegacy);
+}
+
+/**
+ * Get all legacy models.
+ */
+export function getLegacyModels(): ModelDefinition[] {
+  return Object.values(MODEL_REGISTRY).filter((m) => m.isLegacy === true);
+}
+
+/**
+ * Get active image models only (non-legacy).
+ */
+export function getActiveImageModels(): ModelDefinition[] {
+  return Object.values(MODEL_REGISTRY).filter((m) => m.type === "image" && !m.isLegacy);
+}
+
+/**
+ * Get active video models only (non-legacy).
+ */
+export function getActiveVideoModels(): ModelDefinition[] {
+  return Object.values(MODEL_REGISTRY).filter((m) => m.type === "video" && !m.isLegacy);
+}
+
+/** Active (non-legacy) image model IDs */
+export const ACTIVE_IMAGE_MODEL_IDS = getActiveImageModels().map((m) => m.id);
+
+/** Active (non-legacy) video model IDs */
+export const ACTIVE_VIDEO_MODEL_IDS = getActiveVideoModels().map((m) => m.id);
+
+/** All legacy model IDs */
+export const LEGACY_MODEL_IDS = getLegacyModels().map((m) => m.id);

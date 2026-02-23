@@ -47,7 +47,7 @@ if (!global.PointerEvent) {
             this.isPrimary = params.isPrimary || false
         }
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     global.PointerEvent = PointerEvent as any
 }
 

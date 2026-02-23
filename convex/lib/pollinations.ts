@@ -14,7 +14,7 @@
 export const POLLINATIONS_BASE_URL = "https://gen.pollinations.ai"
 
 /** Video model IDs - these are the only models that support duration, aspectRatio, audio, and lastFrameImage */
-const VIDEO_MODELS = ["veo", "seedance", "seedance-pro"] as const
+const VIDEO_MODELS = ["veo", "seedance", "seedance-pro", "wan"] as const
 
 // ============================================================
 // Types

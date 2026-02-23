@@ -54,6 +54,7 @@ export const API_CONSTRAINTS = {
     veo: { min: 4, max: 8 },
     seedance: { min: 2, max: 10 },
     "seedance-pro": { min: 2, max: 10 },
+    wan: { min: 2, max: 15 },
   } satisfies Record<VideoModel, { min: number; max: number }>,
 } as const;
 

@@ -47,7 +47,7 @@ export default function PricingPage() {
         "@context": "https://schema.org",
         "@type": "Product",
         name: "Bloom Studio Pro",
-        description: "Professional AI image and video generation subscription. Includes 180 images/month, all models (Flux, Veo, etc), and private generations.",
+        description: "Professional AI image and video generation subscription. Includes 180 images/month, all active models (Flux, GPT Image, Z-Image, Klein, Seedance), and private generations.",
         image: "https://bloomstudio.fun/branding/bloom-studio_logo.png",
         offers: {
             "@type": "Offer",
@@ -121,26 +121,7 @@ export default function PricingPage() {
                                     </div>
 
                                     <div className="mb-6">
-                                        <p className="text-sm text-muted-foreground">
-                                            {tier.description.includes("Nano Banana Pro") ? (
-                                                <span className="flex items-center gap-1 flex-wrap">
-                                                    {tier.description.split("Nano Banana Pro")[0]}
-                                                    <span className="inline-flex items-center gap-1 font-semibold text-foreground/90">
-                                                        <Image
-                                                            src="/image-models/google.svg"
-                                                            alt="Gemini"
-                                                            width={12}
-                                                            height={12}
-                                                            className="opacity-80 contrast-125"
-                                                        />
-                                                        Nano Banana Pro
-                                                    </span>
-                                                    {tier.description.split("Nano Banana Pro")[1]}
-                                                </span>
-                                            ) : (
-                                                tier.description
-                                            )}
-                                        </p>
+                                        <p className="text-sm text-muted-foreground">{tier.description}</p>
                                         {tier.poweredBy && tier.name !== "Pro" && (
                                             <div className="flex items-center gap-1.5 mt-2.5 text-[10px] uppercase tracking-wider font-bold text-muted-foreground bg-muted/50 py-1 px-2 rounded-md border border-border/50 w-fit">
                                                 <Image
@@ -199,21 +180,6 @@ export default function PricingPage() {
                                                         <span className="flex items-center gap-1 font-medium text-foreground">
                                                             {feature}
                                                             <ArrowRight className="h-3.5 w-3.5 text-green-600" />
-                                                        </span>
-                                                    ) : feature.includes("Nano Banana Pro") ? (
-                                                        <span className="flex items-center gap-1 flex-wrap">
-                                                            {feature.split("Nano Banana Pro")[0]}
-                                                            <span className="inline-flex items-center gap-1 font-semibold text-foreground/90">
-                                                                <Image
-                                                                    src="/image-models/google.svg"
-                                                                    alt="Gemini"
-                                                                    width={12}
-                                                                    height={12}
-                                                                    className="opacity-80 contrast-125"
-                                                                />
-                                                                Nano Banana Pro
-                                                            </span>
-                                                            {feature.split("Nano Banana Pro")[1]}
                                                         </span>
                                                     ) : (
                                                         feature

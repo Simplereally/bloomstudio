@@ -57,11 +57,20 @@ export function useImageLightbox({ image, isOpen }: UseImageLightboxProps) {
   const [renderedSize, setRenderedSize] = React.useState({ width: 0, height: 0 })
 
   const scrollContainerRef = React.useRef<HTMLDivElement>(null)
+  const copyTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Drag-to-scroll state
   const [isDragging, setIsDragging] = React.useState(false)
   const dragStart = React.useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 })
   const hasDragged = React.useRef(false)
+
+  // Clean up all timers on unmount
+  React.useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current)
+    }
+  }, [])
 
   // Reset state when image changes
   React.useEffect(() => {
@@ -70,6 +79,10 @@ export function useImageLightbox({ image, isOpen }: UseImageLightboxProps) {
     hasDragged.current = false
     _setIsHovering(false)
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
+    if (copyTimeoutRef.current) {
+      clearTimeout(copyTimeoutRef.current)
+      setCopied(false)
+    }
   }, [image?.url, isOpen])
 
   const prompt = image?.prompt
@@ -78,7 +91,11 @@ export function useImageLightbox({ image, isOpen }: UseImageLightboxProps) {
     if (!prompt) return
     await navigator.clipboard.writeText(prompt)
     setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current)
+    copyTimeoutRef.current = setTimeout(() => {
+      setCopied(false)
+      copyTimeoutRef.current = null
+    }, 2000)
   }, [prompt])
 
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {

@@ -23,8 +23,8 @@
 
 ## Features
 
-- 🎨 **13+ AI Models** — Choose from Nano Banana Pro, GPT 1.5, Seedream, Veo 3.1, Seedance and more
-- ⚡ **Generous Limits** — 5000~ Z-image turbo generations per day
+- 🎨 **6 AI Models** — Choose from Flux Schnell, Z-Image Turbo, GPT Image, FLUX.2 Klein, and Seedance
+- ⚡ **Generous Limits** — Up to 900,000 Flux Schnell generations per month (180 high-quality images)
 - 📐 **Full Dimension Control** — Create logos, banners, or any custom image size
 - 💾 **Cloud History** — Access your generated images from any device
 - 🔐 **Secure Auth** — Powered by Clerk with SSO support

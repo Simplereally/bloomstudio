@@ -1,461 +1,643 @@
-"use client"
+"use client";
 
-import { PromptLibrary } from "@/components/studio/features/prompt-library"
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
-import { isVideoContent, MediaPlayer } from "@/components/ui/media-player"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import type { Id } from "@/convex/_generated/dataModel"
-import { useImageDetails } from "@/hooks/queries/use-image-history"
-import { useImageLightbox, type LightboxImage } from "@/hooks/use-image-lightbox"
-import { getModelDisplayName } from "@/lib/config/models"
-import { cn } from "@/lib/utils"
-import { useAuth } from "@clerk/nextjs"
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
-import { AnimatePresence, motion } from "framer-motion"
-import { BookmarkPlus, Check, Copy, Loader2, LogIn, ZoomIn } from "lucide-react"
-import Link from "next/link"
-import NextImage from "next/image"
-import * as React from "react"
+import { useAuth } from "@clerk/nextjs";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import * as React from "react";
+import { toast } from "sonner";
+import { PromptLibrary } from "@/components/studio/features/prompt-library";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import { isVideoContent, MediaPlayer } from "@/components/ui/media-player";
+import type { Id } from "@/convex/_generated/dataModel";
+import { useImageDetails } from "@/hooks/queries/use-image-history";
+import { useImageEdit } from "@/hooks/use-image-edit";
+import {
+	type LightboxImage,
+	useImageLightbox,
+} from "@/hooks/use-image-lightbox";
+import { getModelConstraints } from "@/lib/config/models";
+import type { GeneratedImage } from "@/lib/schemas/pollinations.schema";
+import {
+	EditImagePanel,
+	LightboxActions,
+	LightboxCompareView,
+	LightboxInfoOverlay,
+	LightboxMediaDisplay,
+	LightboxVersionStrip,
+	type SourceImageDisplayInfo,
+} from "./lightbox";
 
-export type { LightboxImage }
+export type { LightboxImage };
 
 interface ImageLightboxProps {
-  image: LightboxImage | null
-  isOpen: boolean
-  onClose: () => void
-  /** Optional callback when a prompt is inserted from the library (used to update prompt input) */
-  onInsertPrompt?: (content: string) => void
+	image: LightboxImage | null;
+	isOpen: boolean;
+	onClose: () => void;
+	/** Optional callback when a prompt is inserted from the library (used to update prompt input) */
+	onInsertPrompt?: (content: string) => void;
 }
 
-export function ImageLightbox({ image, isOpen, onClose, onInsertPrompt }: ImageLightboxProps) {
-  // Fetch full image details if we only have thumbnail data (no prompt)
-  // This happens when opening from gallery which now returns lightweight data
-  const imageId = image?._id as Id<"generatedImages"> | undefined
-  const needsFullData = image && !image.prompt && imageId
-  const fullImageData = useImageDetails(needsFullData ? imageId : null)
+export function ImageLightbox({
+	image,
+	isOpen,
+	onClose,
+	onInsertPrompt,
+}: ImageLightboxProps) {
+	// Fetch full image details if we only have thumbnail data (no prompt)
+	// This happens when opening from gallery which now returns lightweight data
+	const imageId = image?._id as Id<"generatedImages"> | undefined;
+	const needsFullData = image && !image.prompt && imageId;
+	const fullImageData = useImageDetails(needsFullData ? imageId : null);
 
-  // Merge thumbnail data with full data when available
-  const displayImage: LightboxImage | null = image ? {
-    ...image,
-    // Use full data if available, otherwise fall back to what we have
-    url: fullImageData?.url ?? image.url,
-    prompt: fullImageData?.prompt ?? image.prompt ?? "",
-    model: fullImageData?.model ?? image.model,
-    width: fullImageData?.width ?? image.width,
-    height: fullImageData?.height ?? image.height,
-    seed: fullImageData?.seed ?? image.seed,
-    contentType: fullImageData?.contentType ?? image.contentType,
-    params: image.params ?? (fullImageData ? {
-      model: fullImageData.model,
-      width: fullImageData.width,
-      height: fullImageData.height,
-      seed: fullImageData.seed,
-    } : undefined),
-  } : null
+	// Merge thumbnail data with full data when available
+	const displayImage: LightboxImage | null = React.useMemo(() => {
+		if (!image) return null;
 
-  const isVideo = displayImage ? isVideoContent(displayImage.contentType, displayImage.url) : false
+		return {
+			...image,
+			// Use full data if available, otherwise fall back to what we have
+			url: fullImageData?.url ?? image.url,
+			prompt: fullImageData?.prompt ?? image.prompt ?? "",
+			model: fullImageData?.model ?? image.model,
+			width: fullImageData?.width ?? image.width,
+			height: fullImageData?.height ?? image.height,
+			seed: fullImageData?.seed ?? image.seed,
+			contentType: fullImageData?.contentType ?? image.contentType,
+			params:
+				image.params ??
+				(fullImageData
+					? {
+							model: fullImageData.model,
+							width: fullImageData.width,
+							height: fullImageData.height,
+							seed: fullImageData.seed,
+						}
+					: undefined),
+		};
+	}, [image, fullImageData]);
 
-  const isLoadingDetails = needsFullData && fullImageData === undefined
+	const isVideo = displayImage
+		? isVideoContent(displayImage.contentType, displayImage.url)
+		: false;
 
-  const {
-    copied,
-    isZoomed,
-    naturalSize,
-    isDragging,
-    scrollContainerRef,
-    canZoom,
-    handleCopyPrompt,
-    handleImageLoad,
-    toggleZoom,
-    handleMouseDown,
-    handleMouseMove,
-    handleMouseUp,
-    handleMouseLeave,
-    hasDragged: hasDraggedRef,
-    isHovering,
-    setIsHovering
-  } = useImageLightbox({ image: displayImage, isOpen })
+	const isLoadingDetails = !!needsFullData && fullImageData === undefined;
 
-  // Auth state for gating features
-  const { isSignedIn } = useAuth()
+	const [editChain, setEditChain] = React.useState<LightboxImage[]>([]);
+	const [selectedVersionIndex, setSelectedVersionIndex] = React.useState(0);
 
-  // Prompt library state for saving prompts
-  const [libraryOpen, setLibraryOpen] = React.useState(false)
-  const [saveContent, setSaveContent] = React.useState<string | undefined>(undefined)
+	// Track which image is the source for an edit (from pane click)
+	const [editSourceImage, setEditSourceImage] =
+		React.useState<LightboxImage | null>(null);
 
-  // Track loading states for thumbnail-to-full-res crossfade
-  const [isThumbnailLoaded, setIsThumbnailLoaded] = React.useState(false)
-  const [isFullResLoaded, setIsFullResLoaded] = React.useState(false)
+	// Track which label the source image had (for display in edit panel)
+	const [editSourceLabel, setEditSourceLabel] = React.useState<string>("");
 
-  // Determine URLs for progressive loading
-  // If originalUrl exists and differs from url, we have a thumbnail/full-res pair
-  const thumbnailUrl = displayImage?.url
-  const fullResUrl = displayImage?.originalUrl || displayImage?.url
-  const hasSeparateThumbnail = displayImage?.originalUrl && displayImage.originalUrl !== displayImage.url
+	const versions = React.useMemo(() => {
+		if (!displayImage) return [] as LightboxImage[];
+		return [displayImage, ...editChain];
+	}, [displayImage, editChain]);
 
-  // Reset loading states when image changes
-  React.useEffect(() => {
-    setIsThumbnailLoaded(false)
-    setIsFullResLoaded(false)
-  }, [displayImage?.url, displayImage?.originalUrl])
+	const hasEdits = editChain.length > 0;
+	const selectedImage = versions[selectedVersionIndex] ?? displayImage;
+	const activeImage = selectedImage ?? displayImage;
+	const imageSessionKey =
+		image?._id ?? image?.id ?? image?.originalUrl ?? image?.url ?? null;
 
-  return (
-    <>
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent
-          className="!fixed !inset-0 !flex !items-center !justify-center !border-none !bg-transparent !p-0 !shadow-none !w-screen !h-screen !max-w-none !translate-x-0 !translate-y-0 !outline-none !duration-75"
-          showCloseButton={false}
-          onOpenAutoFocus={(e) => e.preventDefault()}
-        >
-          <VisuallyHidden>
-            <DialogTitle>Fullscreen Preview</DialogTitle>
-            <DialogDescription>
-              Previewing image: {displayImage?.prompt}
-            </DialogDescription>
-          </VisuallyHidden>
+	// Zoom state for single-image mode (updated via callback from LightboxMediaDisplay)
+	const [singleModeZoomed, setSingleModeZoomed] = React.useState(false);
+	const resetEditSessionState = React.useCallback(() => {
+		setEditChain([]);
+		setSelectedVersionIndex(0);
+		setSingleModeZoomed(false);
+		setEditSourceImage(null);
+		setEditSourceLabel("");
+	}, []);
 
-          {displayImage && (
-            <div
-              className="w-full h-full bg-black/80 backdrop-blur-md cursor-default flex items-center justify-center animate-in fade-in duration-150"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                onClose()
-              }}
-              onPointerDown={(e) => e.stopPropagation()}
-            >
-              {/* Scrollable container for zoomed view, centered flex for non-zoomed */}
-              <div
-                ref={scrollContainerRef}
-                className={cn(
-                  "w-full h-full",
-                  isZoomed
-                    ? cn(
-                      "overflow-auto flex",
-                      isDragging ? "cursor-grabbing" : "cursor-grab"
-                    )
-                    : "flex items-center justify-center overflow-hidden"
-                )}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseLeave}
-              onClick={(e) => {
-                  if (hasDraggedRef.current) {
-                    hasDraggedRef.current = false
-                    return
-                  }
-                  if (e.target === e.currentTarget) {
-                    onClose()
-                  }
-                }}
-              >
-                {/* Unified Content Layer - only render when we have details */}
-                {!isLoadingDetails && (
-                  <React.Fragment>
-                    {isVideo ? (
-                      <div
-                        className="relative"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div
-                          className="relative shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-sm group/video z-10"
-                          onMouseEnter={() => setIsHovering(true)}
-                          onMouseLeave={() => setIsHovering(false)}
-                        >
-                          <MediaPlayer
-                            url={displayImage.url}
-                            alt={displayImage.prompt || "Generated video"}
-                            contentType={displayImage.contentType}
-                            controls={true}
-                            autoPlay={true}
-                            loop={true}
-                            muted={false}
-                            className="w-auto h-auto max-w-[100vw] max-h-[100vh] object-contain select-none"
-                            draggable={false}
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      /* Image: Progressive loading with thumbnail blur-up crossfade */
-                      <div
-                        className="relative"
-                        style={isZoomed ? {
-                          width: naturalSize.width,
-                          height: naturalSize.height,
-                          flexShrink: 0,
-                          margin: 'auto'
-                        } : undefined}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div
-                          className={cn(
-                            "relative shadow-[0_0_50px_rgba(0,0,0,0.5)] group/image z-10",
-                            !isZoomed && "rounded-sm",
-                            !canZoom ? "cursor-default" : !isZoomed && "cursor-zoom-in"
-                          )}
-                          onClick={toggleZoom}
-                          onMouseEnter={() => setIsHovering(true)}
-                          onMouseLeave={() => setIsHovering(false)}
-                        >
-                          {/* Thumbnail layer - shows immediately with blur when we have separate thumbnail */}
-                          {hasSeparateThumbnail && thumbnailUrl && (
-                            <NextImage
-                              src={thumbnailUrl}
-                              alt={displayImage.prompt || "Generated image"}
-                              onLoad={() => setIsThumbnailLoaded(true)}
-                              draggable={false}
-                              width={displayImage.width || displayImage.params?.width || 1000}
-                              height={displayImage.height || displayImage.params?.height || 1000}
-                              priority
-                              unoptimized={thumbnailUrl.startsWith('http')}
-                              className={cn(
-                                "w-auto h-auto object-contain select-none transition-all duration-500",
-                                isZoomed ? "" : "max-w-[calc(100vw-2rem)] max-h-[calc(100vh-6rem)] md:max-w-[calc(100vw-6rem)] md:max-h-[calc(100vh-8rem)]",
-                                // Show thumbnail immediately, blur it, fade out when full-res is ready
-                                !isThumbnailLoaded ? "opacity-0" : "opacity-100",
-                                isFullResLoaded ? "opacity-0 pointer-events-none absolute inset-0" : "blur-[2px]"
-                              )}
-                            />
-                          )}
+	React.useEffect(() => {
+		// Reset local-only edit state whenever the opened image changes.
+		resetEditSessionState();
+	}, [imageSessionKey, resetEditSessionState]);
 
-                          {/* Full resolution layer - loads in background, crossfades in when ready */}
-                          <NextImage
-                            src={fullResUrl || displayImage.url}
-                            alt={displayImage.prompt || "Generated image"}
-                            onLoad={(e) => {
-                              handleImageLoad(e as unknown as React.SyntheticEvent<HTMLImageElement>)
-                              setIsFullResLoaded(true)
-                            }}
-                            draggable={false}
-                            decoding="sync"
-                            width={displayImage.width || displayImage.params?.width || 1000}
-                            height={displayImage.height || displayImage.params?.height || 1000}
-                            priority={true}
-                            unoptimized={(fullResUrl || displayImage.url).startsWith('http')}
-                            className={cn(
-                              "w-auto h-auto object-contain select-none transition-opacity duration-500",
-                              isZoomed ? "" : "max-w-[calc(100vw-2rem)] max-h-[calc(100vh-6rem)] md:max-w-[calc(100vw-6rem)] md:max-h-[calc(100vh-8rem)]",
-                              // When no separate thumbnail, behave like before (fade in)
-                              // When separate thumbnail exists, position behind and fade in
-                              hasSeparateThumbnail
-                                ? (isFullResLoaded ? "opacity-100" : "opacity-0")
-                                : (!isFullResLoaded ? "opacity-0" : "opacity-100")
-                            )}
-                          />
-                        </div>
+	React.useEffect(() => {
+		if (!isOpen) {
+			resetEditSessionState();
+		}
+	}, [isOpen, resetEditSessionState]);
 
-                        {/* Zoom indicator - only show if zoomable and not zoomed */}
-                        {canZoom && !isZoomed && (isThumbnailLoaded || isFullResLoaded) && (
-                          <div
-                            className="absolute top-4 right-4 z-10 opacity-0 group-hover/image:opacity-100 transition-opacity pointer-events-none"
-                          >
-                            <div className="bg-black/40 backdrop-blur-md rounded-full p-2 border border-white/10 text-white/70">
-                              <ZoomIn className="w-5 h-5" />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </React.Fragment>
-                )}
+	const { copied, handleCopyPrompt, isHovering, setIsHovering } =
+		useImageLightbox({ image: selectedImage, isOpen });
 
-                {/* Loading spinner - show when no thumbnail loaded yet */}
-                {(isLoadingDetails || (!isVideo && !isThumbnailLoaded && !isFullResLoaded)) && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-                    <Loader2 className="w-10 h-10 animate-spin text-white/50" />
-                  </div>
-                )}
-              </div>
+	// Use the appropriate zoom state based on view mode
+	// In comparison mode, each pane manages its own zoom, so we use false for parent
+	const isZoomed = hasEdits ? false : singleModeZoomed;
 
-              {/* 
-                Bottom Hover Zone - invisible area to trigger overlay visibility.
-                NOTE: This height (h-[15vh] min-h-[150px]) must match the effective height of the Info Overlay below to ensure consistent hover behavior.
-              */}
-              {!isZoomed && (
-                <div
-                  className="absolute bottom-0 inset-x-0 h-[15vh] min-h-[150px] z-[5] cursor-default"
-                  onMouseEnter={() => setIsHovering(true)}
-                  onMouseLeave={() => setIsHovering(false)}
-                  onClick={onClose}
-                />
-              )}
+	// Auth state for gating features
+	const { isSignedIn } = useAuth();
 
-              {/* 
-                Info overlay - outside the scrolling content.
-                NOTE: The effective height of this overlay should match the Bottom Hover Zone height (h-[15vh] min-h-[150px]) defined above.
-              */}
-              <AnimatePresence>
-                {!isZoomed && isHovering && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    transition={{ duration: 0.125, ease: "easeOut" }}
-                    className="absolute bottom-0 inset-x-0 p-6 pt-8 bg-gradient-to-t from-black/70 via-black/60 to-transparent pointer-events-none z-20"
-                  >
-                    <div
-                      onMouseEnter={() => setIsHovering(true)}
-                      onMouseLeave={() => setIsHovering(false)}
-                      className="flex items-end justify-between gap-8 pointer-events-auto max-w-[1400px] mx-auto w-full px-4 md:px-6"
-                    >
-                      <div className="flex flex-col gap-3 max-w-3xl">
-                        {isLoadingDetails ? (
-                          <div className="flex items-center gap-2 text-white/60">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            <span className="text-sm">Loading details...</span>
-                          </div>
-                        ) : (
-                          <>
-                            <p className="text-white text-sm md:text-base font-medium leading-relaxed line-clamp-2 antialiased drop-shadow-sm">
-                              {displayImage.prompt}
-                            </p>
+	const canEditImage = !isVideo && !!selectedImage?.url;
+	const {
+		isEditPanelOpen,
+		openEditPanel,
+		closeEditPanel,
+		editPrompt,
+		setEditPrompt,
+		selectedModel,
+		setSelectedModel,
+		isGenerating,
+		submitEdit,
+		reset: resetEdit,
+		editModels,
+		canSubmit,
+		// New aspect ratio and resolution state
+		selectedAspectRatio,
+		setSelectedAspectRatio,
+		selectedResolutionTier,
+		setSelectedResolutionTier,
+		outputWidth,
+		outputHeight,
+		sourceFormatInfo,
+		availableAspectRatios,
+		initializeFromSource,
+	} = useImageEdit({
+		onSuccess: (newImage: GeneratedImage) => {
+			setEditChain((prev) => {
+				const thumbnail = newImage.thumbnailUrl ?? newImage.url;
+				const nextVersion: LightboxImage = {
+					url: thumbnail,
+					originalUrl: newImage.url,
+					prompt: newImage.prompt,
+					model: newImage.params.model,
+					width: newImage.params.width,
+					height: newImage.params.height,
+					seed: newImage.params.seed,
+					params: {
+						model: newImage.params.model,
+						width: newImage.params.width,
+						height: newImage.params.height,
+						seed: newImage.params.seed,
+					},
+					id: newImage.id,
+					_id: newImage._id,
+					contentType: newImage.contentType,
+				};
 
-                            <div className="flex flex-wrap items-center gap-2">
-                              {(displayImage.params?.model || displayImage.model) && (
-                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 border border-white/10 text-white/90 backdrop-blur-md transition-colors shadow-sm">
-                                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                                  <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest">{getModelDisplayName(displayImage.params?.model || displayImage.model || "") || displayImage.params?.model || displayImage.model || "Unknown"}</span>
-                                </div>
-                              )}
-                              {(displayImage.params?.width || displayImage.width) && (
-                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 border border-white/10 text-white/90 text-[10px] md:text-xs font-medium backdrop-blur-md transition-colors shadow-sm">
-                                  <span className="text-white/40">Size</span>
-                                  <span className="font-mono">
-                                    {displayImage.params?.width || displayImage.width}×{displayImage.params?.height || displayImage.height}
-                                  </span>
-                                </div>
-                              )}
-                              {(displayImage.params?.seed || displayImage.seed) && (displayImage.params?.seed !== -1 && displayImage.seed !== -1) && (
-                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 border border-white/10 text-white/90 text-[10px] md:text-xs font-medium backdrop-blur-md transition-colors shadow-sm">
-                                  <span className="text-white/40">Seed</span>
-                                  <span className="font-mono">{displayImage.params?.seed || displayImage.seed}</span>
-                                </div>
-                              )}
-                            </div>
-                          </>
-                        )}
-                      </div>
+				const next = [...prev, nextVersion];
+				setSelectedVersionIndex(next.length);
+				return next;
+			});
+			setEditSourceImage(null);
+			setEditSourceLabel("");
+			toast.success("Edit generated");
+		},
+		onError: (error) => {
+			toast.error(error.message || "Failed to generate edit");
+		},
+	});
 
-                      {/* Action buttons */}
-                      <div className="flex items-center gap-2">
-                        {/* Save to Library Button - auth-gated with sign-in prompt */}
-                        {isSignedIn ? (
-                          <Tooltip delayDuration={200}>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-10 w-10 mb-1 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-md transition-all shrink-0 hover:scale-105 active:scale-95 shadow-lg"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  if (displayImage.prompt) {
-                                    setSaveContent(displayImage.prompt)
-                                    setLibraryOpen(true)
-                                  }
-                                }}
-                                disabled={isLoadingDetails || !displayImage.prompt}
-                              >
-                                <BookmarkPlus className="h-5 w-5" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="z-[100]">
-                              <p className="font-medium">Save to Library</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        ) : (
-                          <Tooltip delayDuration={200}>
-                            <TooltipTrigger asChild>
-                              <Link href="/sign-in" onClick={(e) => e.stopPropagation()}>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-10 w-10 mb-1 rounded-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white border border-white/10 backdrop-blur-md transition-all shrink-0 hover:scale-105 active:scale-95 shadow-lg"
-                                >
-                                  <BookmarkPlus className="h-5 w-5" />
-                                </Button>
-                              </Link>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="z-[100]">
-                              <div className="flex items-center gap-2">
-                                <LogIn className="h-3.5 w-3.5" />
-                                <p className="font-medium">Sign in to save prompts</p>
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
+	// Get model constraints for the selected model
+	const modelConstraints = React.useMemo(
+		() => getModelConstraints(selectedModel),
+		[selectedModel],
+	);
 
-                        {/* Copy Prompt Button - auth-gated with sign-in prompt */}
-                        {isSignedIn ? (
-                          <Tooltip delayDuration={200}>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-10 w-10 mb-1 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-md transition-all shrink-0 hover:scale-105 active:scale-95 shadow-lg"
-                                onClick={handleCopyPrompt}
-                                disabled={isLoadingDetails || !displayImage.prompt}
-                              >
-                                {copied ? (
-                                  <Check className="h-5 w-5 text-green-400" />
-                                ) : (
-                                  <Copy className="h-5 w-5" />
-                                )}
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="z-[100]">
-                              <p className="font-medium">{copied ? "Copied!" : "Copy prompt"}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        ) : (
-                          <Tooltip delayDuration={200}>
-                            <TooltipTrigger asChild>
-                              <Link href="/sign-in" onClick={(e) => e.stopPropagation()}>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-10 w-10 mb-1 rounded-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white border border-white/10 backdrop-blur-md transition-all shrink-0 hover:scale-105 active:scale-95 shadow-lg"
-                                >
-                                  <Copy className="h-5 w-5" />
-                                </Button>
-                              </Link>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="z-[100]">
-                              <div className="flex items-center gap-2">
-                                <LogIn className="h-3.5 w-3.5" />
-                                <p className="font-medium">Sign in to copy prompts</p>
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
+	// Prompt library state for saving prompts
+	const [libraryOpen, setLibraryOpen] = React.useState(false);
+	const [saveContent, setSaveContent] = React.useState<string | undefined>(
+		undefined,
+	);
 
-        </DialogContent>
-      </Dialog>
+	// Confirmation dialog state for closing with unsaved edits
+	const [showCloseConfirm, setShowCloseConfirm] = React.useState(false);
 
-      {/* Prompt Library Modal - rendered as independent sibling so lightbox persists */}
-      <PromptLibrary
-        isOpen={libraryOpen}
-        onClose={() => {
-          setLibraryOpen(false)
-          setSaveContent(undefined)
-        }}
-        promptType="positive"
-        onInsert={(content) => {
-          // Call the external handler to insert the prompt into the textarea
-          onInsertPrompt?.(content)
-          setLibraryOpen(false)
-        }}
-        initialSaveContent={saveContent}
-        onInsertComplete={onClose}
-      />
-    </>
-  )
+	/** Handle close attempt - shows confirmation if there are edits */
+	const handleCloseAttempt = React.useCallback(() => {
+		if (hasEdits) {
+			setShowCloseConfirm(true);
+		} else {
+			onClose();
+		}
+	}, [hasEdits, onClose]);
+
+	const handleDialogOpenChange = React.useCallback(
+		(open: boolean) => {
+			if (!open) {
+				handleCloseAttempt();
+			}
+		},
+		[handleCloseAttempt],
+	);
+
+	/** Confirm close - actually closes the lightbox */
+	const handleConfirmClose = React.useCallback(() => {
+		setShowCloseConfirm(false);
+		onClose();
+	}, [onClose]);
+
+	// ==========================================
+	// Pane action handlers (used in compare mode)
+	// ==========================================
+
+	/** Called when Edit is clicked on a pane - stores the source image and opens edit panel */
+	const handlePaneEdit = React.useCallback(
+		(sourceImage: LightboxImage) => {
+			setEditSourceImage(sourceImage);
+
+			// Determine which label this image had
+			const isOriginal =
+				sourceImage.url === displayImage?.url &&
+				sourceImage.originalUrl === displayImage?.originalUrl;
+			setEditSourceLabel(isOriginal ? "Original" : "Current");
+
+			// Initialize aspect ratio and resolution from source dimensions
+			const width = sourceImage.width ?? sourceImage.params?.width ?? 1024;
+			const height = sourceImage.height ?? sourceImage.params?.height ?? 1024;
+
+			initializeFromSource({
+				url: sourceImage.originalUrl || sourceImage.url,
+				width,
+				height,
+				label: isOriginal ? "Original" : "Current",
+			});
+
+			openEditPanel();
+		},
+		[displayImage, initializeFromSource, openEditPanel],
+	);
+
+	/** Called when Edit is clicked in single image mode */
+	const handleSingleImageEdit = React.useCallback(() => {
+		if (!activeImage) return;
+
+		// Initialize from the active image dimensions
+		const width = activeImage.width ?? activeImage.params?.width ?? 1024;
+		const height = activeImage.height ?? activeImage.params?.height ?? 1024;
+
+		initializeFromSource({
+			url: activeImage.originalUrl || activeImage.url,
+			width,
+			height,
+		});
+
+		openEditPanel();
+	}, [activeImage, initializeFromSource, openEditPanel]);
+
+	/** Called when Save to Library is clicked on a pane */
+	const handlePaneSaveToLibrary = React.useCallback((prompt: string) => {
+		if (prompt) {
+			setSaveContent(prompt);
+			setLibraryOpen(true);
+		}
+	}, []);
+
+	/** Noop: each pane handles clipboard copy + feedback internally */
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	const handlePaneCopyPrompt = React.useCallback((_prompt: string) => {
+		// Intentional no-op — pane already copies to clipboard and manages its own feedback
+	}, []);
+
+	/** Submit edit using the tracked source image (or fall back to activeImage) */
+	const handleSubmitEdit = React.useCallback(() => {
+		const sourceImage = editSourceImage ?? activeImage;
+		if (!sourceImage) return;
+		const sourceUrl = sourceImage.originalUrl || sourceImage.url;
+		if (sourceUrl) {
+			submitEdit(sourceUrl);
+		}
+	}, [editSourceImage, activeImage, submitEdit]);
+
+	/** Close edit panel and clear source tracking */
+	const handleCloseEditPanel = React.useCallback(() => {
+		closeEditPanel();
+		setEditSourceImage(null);
+		setEditSourceLabel("");
+	}, [closeEditPanel]);
+
+	// Build source image display info for the edit panel
+	const sourceImageDisplayInfo: SourceImageDisplayInfo | undefined =
+		React.useMemo(() => {
+			const source = editSourceImage || activeImage;
+			if (!source) return undefined;
+
+			return {
+				url: source.originalUrl || source.url,
+				thumbnailUrl: source.url,
+				label: editSourceLabel || undefined,
+				formatInfo: sourceFormatInfo,
+			};
+		}, [editSourceImage, activeImage, editSourceLabel, sourceFormatInfo]);
+
+	// Render function for the docked edit panel (used in compare mode)
+	const renderDockedEditPanel = React.useCallback(() => {
+		return (
+			<EditImagePanel
+				isOpen={isEditPanelOpen}
+				onClose={handleCloseEditPanel}
+				editPrompt={editPrompt}
+				onEditPromptChange={setEditPrompt}
+				selectedModel={selectedModel}
+				onModelChange={setSelectedModel}
+				models={editModels.map((m) => ({
+					id: m.id,
+					displayName: m.displayName,
+					logo: m.logo,
+					description: m.description,
+				}))}
+				isGenerating={isGenerating}
+				canSubmit={canSubmit}
+				onSubmit={handleSubmitEdit}
+				sourceImage={sourceImageDisplayInfo}
+				selectedAspectRatio={selectedAspectRatio}
+				onAspectRatioChange={setSelectedAspectRatio}
+				availableAspectRatios={availableAspectRatios}
+				selectedResolutionTier={selectedResolutionTier}
+				onResolutionTierChange={setSelectedResolutionTier}
+				modelConstraints={modelConstraints}
+				outputWidth={outputWidth}
+				outputHeight={outputHeight}
+				isDocked
+			/>
+		);
+	}, [
+		isEditPanelOpen,
+		handleCloseEditPanel,
+		editPrompt,
+		setEditPrompt,
+		selectedModel,
+		setSelectedModel,
+		editModels,
+		isGenerating,
+		canSubmit,
+		handleSubmitEdit,
+		sourceImageDisplayInfo,
+		selectedAspectRatio,
+		setSelectedAspectRatio,
+		availableAspectRatios,
+		selectedResolutionTier,
+		setSelectedResolutionTier,
+		modelConstraints,
+		outputWidth,
+		outputHeight,
+	]);
+
+	return (
+		<>
+			<Dialog open={isOpen} onOpenChange={handleDialogOpenChange}>
+				<DialogContent
+					className="!fixed !inset-0 !flex !items-center !justify-center !border-none !bg-transparent !p-0 !shadow-none !w-screen !h-screen !max-w-none !translate-x-0 !translate-y-0 !outline-none !duration-75"
+					showCloseButton={false}
+					onOpenAutoFocus={(e) => e.preventDefault()}
+				>
+					<VisuallyHidden>
+						<DialogTitle>Fullscreen Preview</DialogTitle>
+						<DialogDescription>
+							Previewing image: {displayImage?.prompt}
+						</DialogDescription>
+					</VisuallyHidden>
+
+					{displayImage && activeImage && (
+						<div className="w-full h-full bg-black/80 backdrop-blur-md cursor-default flex items-center justify-center animate-in fade-in duration-150">
+							<div className="relative w-full h-full">
+								{isVideo ? (
+									<div className="relative w-full h-full flex items-center justify-center p-4">
+										<button
+											type="button"
+											aria-label="Close lightbox"
+											className="absolute inset-0 cursor-default"
+											onClick={handleCloseAttempt}
+											onMouseEnter={() => setIsHovering(true)}
+											onMouseLeave={() => setIsHovering(false)}
+											onFocus={() => setIsHovering(true)}
+											onBlur={() => setIsHovering(false)}
+										/>
+										<div className="relative shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-sm group/video z-10">
+											<MediaPlayer
+												url={displayImage.url}
+												alt={displayImage.prompt || "Generated video"}
+												contentType={displayImage.contentType}
+												controls={true}
+												autoPlay={true}
+												loop={true}
+												muted={false}
+												className="w-auto h-auto max-w-full max-h-full object-contain select-none"
+												draggable={false}
+											/>
+										</div>
+									</div>
+								) : hasEdits ? (
+									<div
+										className="w-full h-full transition-all duration-300 pb-36 md:pb-40"
+									>
+										<LightboxCompareView
+											key={imageSessionKey ?? displayImage.url}
+											baseImage={displayImage}
+											selectedImage={activeImage}
+											isSignedIn={!!isSignedIn}
+											canEdit={canEditImage}
+											isGenerating={isGenerating}
+											onEdit={handlePaneEdit}
+											onSaveToLibrary={handlePaneSaveToLibrary}
+											onCopyPrompt={handlePaneCopyPrompt}
+											onBackdropClick={handleCloseAttempt}
+											isEditPanelOpen={isEditPanelOpen}
+											renderEditPanel={renderDockedEditPanel}
+										/>
+									</div>
+								) : (
+									<LightboxMediaDisplay
+										image={activeImage}
+										isOpen={isOpen}
+										isLoadingDetails={isLoadingDetails}
+										isGenerating={isGenerating}
+										onHoverChange={setIsHovering}
+										onBackdropClick={handleCloseAttempt}
+										onZoomChange={setSingleModeZoomed}
+									/>
+								)}
+
+								{/* Bottom hover zone to trigger overlay (only in single mode) */}
+								{!hasEdits && !isZoomed && (
+									<button
+										type="button"
+										aria-hidden="true"
+										tabIndex={-1}
+										className="absolute bottom-0 inset-x-0 h-[15vh] min-h-[150px] z-[5] cursor-default"
+										onMouseEnter={() => setIsHovering(true)}
+										onMouseLeave={() => setIsHovering(false)}
+										onClick={(e) => e.preventDefault()}
+									/>
+								)}
+
+								{/* Global info overlay - only shown in single image mode */}
+								{/* In comparison mode, each pane has its own overlay */}
+								{!hasEdits && (
+									<LightboxInfoOverlay
+										image={activeImage}
+										isLoadingDetails={isLoadingDetails}
+										isVisible={!isZoomed && isHovering}
+										onHoverChange={setIsHovering}
+										footer={
+											<LightboxVersionStrip
+												versions={versions}
+												selectedIndex={selectedVersionIndex}
+												onSelect={(index) => {
+													setSelectedVersionIndex(index);
+													resetEdit();
+												}}
+											/>
+										}
+									>
+										<LightboxActions
+											isSignedIn={!!isSignedIn}
+											isLoadingDetails={isLoadingDetails}
+											hasPrompt={!!activeImage.prompt}
+											copied={copied}
+											onCopyPrompt={handleCopyPrompt}
+											onOpenSaveToLibrary={() => {
+												if (activeImage.prompt) {
+													setSaveContent(activeImage.prompt);
+													setLibraryOpen(true);
+												}
+											}}
+											onOpenEdit={handleSingleImageEdit}
+											canEdit={canEditImage}
+										/>
+									</LightboxInfoOverlay>
+								)}
+
+								{/* Version strip for comparison mode - shown at bottom separately */}
+								{hasEdits && (
+									<div className="absolute bottom-0 inset-x-0 z-20 pb-6 pt-12 px-4 bg-gradient-to-t from-black/90 via-black/50 to-transparent pointer-events-none">
+										<div className="pointer-events-auto max-w-[1400px] mx-auto w-full">
+											<LightboxVersionStrip
+												versions={versions}
+												selectedIndex={selectedVersionIndex}
+												onSelect={(index) => {
+													setSelectedVersionIndex(index);
+													resetEdit();
+												}}
+											/>
+										</div>
+									</div>
+								)}
+
+								{/* Edit panel for single image mode (overlay) and mobile compare mode */}
+								{/* On desktop compare mode, the panel is rendered docked inside LightboxCompareView */}
+								{!hasEdits && (
+									<EditImagePanel
+										isOpen={isEditPanelOpen}
+										onClose={handleCloseEditPanel}
+										editPrompt={editPrompt}
+										onEditPromptChange={setEditPrompt}
+										selectedModel={selectedModel}
+										onModelChange={setSelectedModel}
+										models={editModels.map((m) => ({
+											id: m.id,
+											displayName: m.displayName,
+											logo: m.logo,
+											description: m.description,
+										}))}
+										isGenerating={isGenerating}
+										canSubmit={canSubmit}
+										onSubmit={handleSubmitEdit}
+										sourceImage={sourceImageDisplayInfo}
+										selectedAspectRatio={selectedAspectRatio}
+										onAspectRatioChange={setSelectedAspectRatio}
+										availableAspectRatios={availableAspectRatios}
+										selectedResolutionTier={selectedResolutionTier}
+										onResolutionTierChange={setSelectedResolutionTier}
+										modelConstraints={modelConstraints}
+										outputWidth={outputWidth}
+										outputHeight={outputHeight}
+									/>
+								)}
+
+								{/* Mobile edit panel for compare mode (bottom sheet overlay) */}
+								{hasEdits && (
+									<div className="md:hidden">
+										<EditImagePanel
+											isOpen={isEditPanelOpen}
+											onClose={handleCloseEditPanel}
+											editPrompt={editPrompt}
+											onEditPromptChange={setEditPrompt}
+											selectedModel={selectedModel}
+											onModelChange={setSelectedModel}
+											models={editModels.map((m) => ({
+												id: m.id,
+												displayName: m.displayName,
+												logo: m.logo,
+												description: m.description,
+											}))}
+											isGenerating={isGenerating}
+											canSubmit={canSubmit}
+											onSubmit={handleSubmitEdit}
+											sourceImage={sourceImageDisplayInfo}
+											selectedAspectRatio={selectedAspectRatio}
+											onAspectRatioChange={setSelectedAspectRatio}
+											availableAspectRatios={availableAspectRatios}
+											selectedResolutionTier={selectedResolutionTier}
+											onResolutionTierChange={setSelectedResolutionTier}
+											modelConstraints={modelConstraints}
+											outputWidth={outputWidth}
+											outputHeight={outputHeight}
+										/>
+									</div>
+								)}
+							</div>
+						</div>
+					)}
+				</DialogContent>
+			</Dialog>
+
+			{/* Prompt Library Modal - rendered as independent sibling so lightbox persists */}
+			<PromptLibrary
+				isOpen={libraryOpen}
+				onClose={() => {
+					setLibraryOpen(false);
+					setSaveContent(undefined);
+				}}
+				promptType="positive"
+				onInsert={(content) => {
+					// Call the external handler to insert the prompt into the textarea
+					onInsertPrompt?.(content);
+					setLibraryOpen(false);
+				}}
+				initialSaveContent={saveContent}
+				onInsertComplete={onClose}
+			/>
+
+			{/* Confirmation dialog for closing with edits */}
+			<AlertDialog open={showCloseConfirm} onOpenChange={setShowCloseConfirm}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Leave editing session?</AlertDialogTitle>
+						<AlertDialogDescription>
+							You have edited versions of this image. The comparison view will
+							no longer be available once you close. Your generated images are
+							already saved to your gallery.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Continue Editing</AlertDialogCancel>
+						<AlertDialogAction onClick={handleConfirmClose}>
+							Close Preview
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+		</>
+	);
 }
