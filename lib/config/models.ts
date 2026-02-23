@@ -95,37 +95,42 @@ function withAspectRatioTags(ratio: AspectRatioOption): AspectRatioOption {
 }
 
 /**
- * Flux Schnell aspect ratios - Optimized for 768px max dimension
+ * Flux Schnell aspect ratios - Optimized for 1MP pixel budget
  *
- * Pollinations enforces:
- * - max 589,824 pixels (768×768 cap)
- * - width/height must be multiples of 8
- * - (width × height) must be divisible by 65,536
+ * Flux Schnell constraints:
+ * - max 1,048,576 pixels (1 MP) per image
+ * - width/height must be multiples of 16
+ * - minimum 256×256
+ * - max seed: 2,147,483,647
  *
  * | Ratio | Width | Height | Pixels    |
  * |-------|-------|--------|-----------|
- * | 1:1   | 768   | 768    | 589,824   |
- * | 16:9  | 768   | 432    | 331,776   |
- * | 9:16  | 432   | 768    | 331,776   |
- * | 4:3   | 768   | 576    | 442,368   |
- * | 3:4   | 576   | 768    | 442,368   |
- * | 3:2   | 768   | 512    | 393,216   |
- * | 2:3   | 512   | 768    | 393,216   |
- * | 21:9  | 768   | 328    | 251,904   |
- * | 9:21  | 328   | 768    | 251,904   |
+ * | 1:1   | 1024  | 1024   | 1,048,576 |
+ * | 16:9  | 1360  | 768    | 1,044,480 |
+ * | 9:16  | 768   | 1360   | 1,044,480 |
+ * | 4:3   | 1184  | 880    | 1,041,920 |
+ * | 3:4   | 880   | 1184   | 1,041,920 |
+ * | 3:2   | 1248  | 832    | 1,038,336 |
+ * | 2:3   | 832   | 1248   | 1,038,336 |
+ * | 4:5   | 912   | 1136   | 1,036,032 |
+ * | 5:4   | 1136  | 912    | 1,036,032 |
+ * | 21:9  | 1552  | 672    | 1,042,944 |
+ * | 9:21  | 672   | 1552   | 1,042,944 |
  */
 const FLUX_SCHNELL_ASPECT_RATIOS: readonly AspectRatioOption[] = (
   [
-    { label: "Square", value: "1:1", width: 768, height: 768, icon: "square", category: "square" },
-    { label: "Landscape", value: "16:9", width: 768, height: 432, icon: "rectangle-horizontal", category: "landscape" },
-    { label: "Portrait", value: "9:16", width: 432, height: 768, icon: "rectangle-vertical", category: "portrait" },
-    { label: "Photo", value: "4:3", width: 768, height: 576, icon: "image", category: "landscape" },
-    { label: "Portrait Photo", value: "3:4", width: 576, height: 768, icon: "frame", category: "portrait" },
-    { label: "Photo Wide", value: "3:2", width: 768, height: 512, icon: "image", category: "landscape" },
-    { label: "Photo Tall", value: "2:3", width: 512, height: 768, icon: "frame", category: "portrait" },
-    { label: "Ultrawide", value: "21:9", width: 768, height: 328, icon: "monitor", category: "ultrawide" },
-    { label: "Ultra Tall", value: "9:21", width: 328, height: 768, icon: "smartphone", category: "ultrawide" },
-    { label: "Custom", value: "custom", width: 768, height: 768, icon: "sliders", category: "square" },
+    { label: "Square", value: "1:1", width: 1024, height: 1024, icon: "square", category: "square" },
+    { label: "Landscape", value: "16:9", width: 1360, height: 768, icon: "rectangle-horizontal", category: "landscape" },
+    { label: "Portrait", value: "9:16", width: 768, height: 1360, icon: "rectangle-vertical", category: "portrait" },
+    { label: "Photo", value: "4:3", width: 1184, height: 880, icon: "image", category: "landscape" },
+    { label: "Portrait Photo", value: "3:4", width: 880, height: 1184, icon: "frame", category: "portrait" },
+    { label: "Photo Wide", value: "3:2", width: 1248, height: 832, icon: "image", category: "landscape" },
+    { label: "Photo Tall", value: "2:3", width: 832, height: 1248, icon: "frame", category: "portrait" },
+    { label: "Social", value: "4:5", width: 912, height: 1136, icon: "smartphone", category: "portrait" },
+    { label: "Social Wide", value: "5:4", width: 1136, height: 912, icon: "monitor", category: "landscape" },
+    { label: "Ultrawide", value: "21:9", width: 1552, height: 672, icon: "monitor", category: "ultrawide" },
+    { label: "Ultra Tall", value: "9:21", width: 672, height: 1552, icon: "smartphone", category: "ultrawide" },
+    { label: "Custom", value: "custom", width: 1024, height: 1024, icon: "sliders", category: "square" },
   ] as const
 ).map(withAspectRatioTags);
 
@@ -570,7 +575,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
       outputCertainty: "likely",
       dimensionWarning: "Dimensions rounded to multiples of 16",
     },
-    aspectRatios: FLUX_KLEIN_9B_ASPECT_RATIOS,
+    aspectRatios: FLUX_SCHNELL_ASPECT_RATIOS,
     supportsNegativePrompt: true, // Supports negative prompts
     modelPricing: IMAGE_MODEL_PRICING["flux"],
   },
