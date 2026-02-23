@@ -56,6 +56,17 @@ const TURBO_CONSTRAINTS: ModelConstraints = {
     supportedTiers: ["sd"],
 }
 
+const KLEIN_9B_CONSTRAINTS: ModelConstraints = {
+    maxPixels: 1_048_576, // 1MP - slightly above HD tier target (1.0MP = 1,000,000)
+    minPixels: 65_536,
+    minDimension: 256,
+    maxDimension: 1600,
+    step: 16,
+    defaultDimensions: { width: 1024, height: 1024 },
+    dimensionsEnabled: true,
+    supportedTiers: ["sd", "hd"],
+}
+
 describe("Resolution Tier Configuration", () => {
     describe("RESOLUTION_TIERS", () => {
         it("should have all expected tiers", () => {
@@ -150,6 +161,32 @@ describe("calculateDimensionsForTier", () => {
         )
         expect(dims.width % KONTEXT_CONSTRAINTS.step).toBe(0)
         expect(dims.height % KONTEXT_CONSTRAINTS.step).toBe(0)
+    })
+
+    it("should use model maxPixels when within 10% of tier target (Klein 9B HD 1:1 = 1024x1024)", () => {
+        // Klein 9B has maxPixels of 1,048,576 (1.048576MP), which is within 10% of HD tier (1.0MP)
+        // So HD tier should use the model's maxPixels for fuller resolution
+        const dims = calculateDimensionsForTier(
+            { widthRatio: 1, heightRatio: 1 },
+            "hd",
+            KLEIN_9B_CONSTRAINTS
+        )
+        // Should be 1024x1024 (1,048,576 pixels), not 1008x1008 (1,016,064 pixels)
+        expect(dims.width).toBe(1024)
+        expect(dims.height).toBe(1024)
+        expect(dims.width * dims.height).toBe(1_048_576)
+    })
+
+    it("should use tier target when model maxPixels is significantly higher", () => {
+        // Seedream has maxPixels of 16MP, way above HD tier (1.0MP)
+        // So HD tier should use the tier target, not model maxPixels
+        const dims = calculateDimensionsForTier(
+            { widthRatio: 1, heightRatio: 1 },
+            "hd",
+            SEEDREAM_CONSTRAINTS
+        )
+        // Should be ~1000x1000 (tier target), not 4096x4096 (model max)
+        expect(dims.width * dims.height).toBeLessThanOrEqual(1_100_000)
     })
 })
 

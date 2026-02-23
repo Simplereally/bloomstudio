@@ -94,7 +94,12 @@ export function calculateDimensionsForTier(
     const aspectRatio = ratio.widthRatio / ratio.heightRatio
 
     // Determine target pixels based on tier, capped at model's max
-    const targetPixels = Math.min(tierConfig.targetMegapixels * 1_000_000, constraints.maxPixels)
+    // If model's maxPixels is within 10% above the tier target, use maxPixels instead
+    // This ensures models like Klein 9B (1.048MP) get full resolution at HD tier (1.0MP)
+    const tierTarget = tierConfig.targetMegapixels * 1_000_000
+    const targetPixels = (constraints.maxPixels > tierTarget && constraints.maxPixels <= tierTarget * 1.1)
+        ? constraints.maxPixels
+        : Math.min(tierTarget, constraints.maxPixels)
 
     // Calculate base dimensions from target pixels
     // height = sqrt(pixels / aspectRatio), width = height * aspectRatio
