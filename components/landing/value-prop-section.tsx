@@ -40,7 +40,7 @@ export function ValuePropSection() {
               <div className="h-full p-6 rounded-2xl bg-gradient-to-br from-white/5 via-card/80 to-purple-500/5 border border-white/10">
                 <h3 className="font-bold text-foreground mb-2">All Models Included</h3>
                 <p className="text-sm text-muted-foreground">
-                  Every premium model is included: Nano Banana Pro, Veo3.1, Seedance, Seedream Pro — no extras to unlock.
+                  Every active model is included: Flux Schnell, Z-Image Turbo, GPT Image, FLUX.2 Klein, and Seedance — no extras to unlock.
                 </p>
               </div>
             </ScrollReveal>

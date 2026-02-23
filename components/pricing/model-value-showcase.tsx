@@ -6,6 +6,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import { Video, Image as ImageIcon } from "lucide-react"
+import { isModelLegacy } from "@/lib/config/models"
 
 /**
  * Model Value Showcase — Premium Editorial Redesign
@@ -32,103 +33,54 @@ const MODEL_VALUE_DATA: ModelValueData[] = [
         id: "flux",
         displayName: "Flux Schnell",
         logo: "/image-models/flux.svg",
-        monthlyQuota: 150_000,
+        monthlyQuota: 900_000,
         type: "image",
     },
     {
         id: "zimage",
         displayName: "Z-Image Turbo",
         logo: "/image-models/alibaba.svg",
-        monthlyQuota: 150_000,
+        monthlyQuota: 900_000,
         nsfw: true,
         type: "image",
     },
     {
-        id: "turbo",
-        displayName: "SDXL Turbo",
-        logo: "/image-models/stability.svg",
-        monthlyQuota: 99_000,
+        id: "klein",
+        displayName: "FLUX.2 Klein 4B",
+        logo: "/image-models/flux.svg",
+        monthlyQuota: 27_000,
+        type: "image",
+    },
+    {
+        id: "klein-large",
+        displayName: "FLUX.2 Klein 9B",
+        logo: "/image-models/flux.svg",
+        monthlyQuota: 15_300,
         type: "image",
     },
     {
         id: "gptimage",
         displayName: "GPT Image 1.0",
         logo: "/image-models/openai.svg",
-        monthlyQuota: 2_100,
+        monthlyQuota: 12_600,
         type: "image",
-    },
-    {
-        id: "nanobanana",
-        displayName: "Nano Banana",
-        logo: "/image-models/google.svg",
-        monthlyQuota: 750,
-        type: "image",
-    },
-    {
-        id: "seedream",
-        displayName: "Seedream 4.0",
-        logo: "/image-models/bytedance.svg",
-        monthlyQuota: 1_050,
-        type: "image",
-    },
-    {
-        id: "seedream-pro",
-        displayName: "Seedream 4.5 Pro",
-        logo: "/image-models/bytedance.svg",
-        monthlyQuota: 750,
-        type: "image",
-    },
-    {
-        id: "seedance-pro",
-        displayName: "Seedance Pro",
-        logo: "/image-models/bytedance.svg",
-        monthlyQuota: 300,
-        type: "video",
     },
     {
         id: "seedance",
         displayName: "Seedance",
         logo: "/image-models/bytedance.svg",
-        monthlyQuota: 180,
+        monthlyQuota: 1_080,
         type: "video",
-    },
-    {
-        id: "veo",
-        displayName: "Veo 3.1",
-        logo: "/image-models/google.svg",
-        monthlyQuota: 30,
-        type: "video",
-    },
-    {
-        id: "kontext",
-        displayName: "Flux Kontext",
-        logo: "/image-models/flux.svg",
-        monthlyQuota: 750,
-        type: "image",
-    },
-    {
-        id: "gptimage-large",
-        displayName: "GPT Image 1.5",
-        logo: "/image-models/openai.svg",
-        monthlyQuota: 600,
-        type: "image",
-    },
-    {
-        id: "nanobanana-pro",
-        displayName: "Nano Banana Pro",
-        logo: "/image-models/google.svg",
-        monthlyQuota: 180,
-        type: "image",
     },
 ]
 
-// Sort alphabetically by displayName initially
-const ORDERED_MODEL_DATA = [...MODEL_VALUE_DATA].sort((a, b) => a.displayName.localeCompare(b.displayName))
-
+// Filter out legacy models and sort alphabetically by displayName
+const ACTIVE_MODEL_DATA = MODEL_VALUE_DATA.filter((m) => !isModelLegacy(m.id))
+const ORDERED_MODEL_DATA = [...ACTIVE_MODEL_DATA].sort((a, b) => a.displayName.localeCompare(b.displayName))
 // Separate into tiers for visual hierarchy
 const FAST_MODELS = ORDERED_MODEL_DATA.filter((m) => m.monthlyQuota >= 99_000)
-const STANDARD_MODELS = ORDERED_MODEL_DATA.filter((m) => m.monthlyQuota >= 500 && m.monthlyQuota < 99_000)
-const PREMIUM_MODELS = ORDERED_MODEL_DATA.filter((m) => m.monthlyQuota < 500)
+const STANDARD_MODELS = ORDERED_MODEL_DATA.filter((m) => m.monthlyQuota >= 2_000 && m.monthlyQuota < 99_000)
+const PREMIUM_MODELS = ORDERED_MODEL_DATA.filter((m) => m.monthlyQuota < 2_000)
 
 function AnimatedNumber({ value, delay = 0 }: { value: number; delay?: number }) {
     const [displayValue, setDisplayValue] = useState(0)

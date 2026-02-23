@@ -55,9 +55,9 @@ describe("UpgradeModal", () => {
 		render(<UpgradeModal isOpen={true} onClose={vi.fn()} />);
 		expect(screen.getByText("180")).toBeInTheDocument();
 		expect(
-			screen.getByText("Nano Banana Pro images/month"),
+			screen.getByText("high-quality images/month"),
 		).toBeInTheDocument();
-		expect(screen.getByText("10+")).toBeInTheDocument();
+		expect(screen.getByText("6")).toBeInTheDocument();
 		expect(screen.getByText("AI models included")).toBeInTheDocument();
 		expect(screen.getByText("Daily")).toBeInTheDocument();
 	});

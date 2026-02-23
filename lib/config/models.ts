@@ -62,6 +62,13 @@ export interface ModelDefinition {
   readonly supportsReferenceImage?: boolean
   /** The pricing definition for this model */
   readonly modelPricing: ModelPricingDefinition
+  /**
+   * Whether this model is legacy (no longer available for new generation).
+   * Legacy models still exist in MODEL_REGISTRY for display name lookup,
+   * constraints, and historical data, but are excluded from generation selectors.
+   * @default false
+   */
+  readonly isLegacy?: boolean
 }
 
 // ============================================================================
@@ -418,6 +425,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     supportsNegativePrompt: false,
     supportsReferenceImage: true,
     modelPricing: IMAGE_MODEL_PRICING["gptimage-large"],
+    isLegacy: true,
   },
 
   "seedream-pro": {
@@ -444,6 +452,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     supportsNegativePrompt: false,
     supportsReferenceImage: true,
     modelPricing: IMAGE_MODEL_PRICING["seedream-pro"],
+    isLegacy: true,
   },
 
   "nanobanana-pro": {
@@ -469,6 +478,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     supportsNegativePrompt: false,
     supportsReferenceImage: true,
     modelPricing: IMAGE_MODEL_PRICING["nanobanana-pro"],
+    isLegacy: true,
   },
 
   kontext: {
@@ -495,6 +505,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     supportsNegativePrompt: false,
     supportsReferenceImage: true,
     modelPricing: IMAGE_MODEL_PRICING["kontext"],
+    isLegacy: true,
   },
 
   flux: {
@@ -600,6 +611,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
       defaultDuration: 5,
     },
     modelPricing: VIDEO_MODEL_PRICING["seedance-pro"],
+    isLegacy: true,
   },
 
   veo: {
@@ -631,6 +643,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
       defaultDuration: 4,
     },
     modelPricing: VIDEO_MODEL_PRICING["veo"],
+    isLegacy: true,
   },
 
   wan: {
@@ -661,6 +674,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
       defaultDuration: 5,
     },
     modelPricing: VIDEO_MODEL_PRICING["wan"],
+    isLegacy: true,
   },
 
   // ========================================================================
@@ -714,6 +728,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     aspectRatios: SDXLTURBO_ASPECT_RATIOS,
     supportsNegativePrompt: false,
     modelPricing: IMAGE_MODEL_PRICING["turbo"],
+    isLegacy: true,
   },
 
   gptimage: {
@@ -766,6 +781,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     supportsNegativePrompt: false,
     supportsReferenceImage: true,
     modelPricing: IMAGE_MODEL_PRICING["seedream"],
+    isLegacy: true,
   },
 
   nanobanana: {
@@ -791,6 +807,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     supportsNegativePrompt: false,
     supportsReferenceImage: true,
     modelPricing: IMAGE_MODEL_PRICING["nanobanana"],
+    isLegacy: true,
   },
 
   seedance: {
@@ -884,3 +901,52 @@ export const IMAGE_MODEL_IDS = Object.values(MODEL_REGISTRY)
 export const VIDEO_MODEL_IDS = Object.values(MODEL_REGISTRY)
   .filter((m) => m.type === "video")
   .map((m) => m.id);
+
+// ============================================================================
+// Legacy Model Filtering
+// ============================================================================
+
+/**
+ * Check if a model is legacy (no longer available for new generation).
+ * Returns false if model not found.
+ */
+export function isModelLegacy(modelId: string): boolean {
+  return getModel(modelId)?.isLegacy ?? false;
+}
+
+/**
+ * Get all active (non-legacy) models.
+ */
+export function getActiveModels(): ModelDefinition[] {
+  return Object.values(MODEL_REGISTRY).filter((m) => !m.isLegacy);
+}
+
+/**
+ * Get all legacy models.
+ */
+export function getLegacyModels(): ModelDefinition[] {
+  return Object.values(MODEL_REGISTRY).filter((m) => m.isLegacy === true);
+}
+
+/**
+ * Get active image models only (non-legacy).
+ */
+export function getActiveImageModels(): ModelDefinition[] {
+  return Object.values(MODEL_REGISTRY).filter((m) => m.type === "image" && !m.isLegacy);
+}
+
+/**
+ * Get active video models only (non-legacy).
+ */
+export function getActiveVideoModels(): ModelDefinition[] {
+  return Object.values(MODEL_REGISTRY).filter((m) => m.type === "video" && !m.isLegacy);
+}
+
+/** Active (non-legacy) image model IDs */
+export const ACTIVE_IMAGE_MODEL_IDS = getActiveImageModels().map((m) => m.id);
+
+/** Active (non-legacy) video model IDs */
+export const ACTIVE_VIDEO_MODEL_IDS = getActiveVideoModels().map((m) => m.id);
+
+/** All legacy model IDs */
+export const LEGACY_MODEL_IDS = getLegacyModels().map((m) => m.id);

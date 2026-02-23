@@ -28,8 +28,8 @@ interface UpgradeModalProps {
 }
 
 const proFeatures = [
-	{ icon: Images, label: "180", description: "Nano Banana Pro images/month" },
-	{ icon: Palette, label: "10+", description: "AI models included" },
+	{ icon: Images, label: "180", description: "high-quality images/month" },
+	{ icon: Palette, label: "6", description: "AI models included" },
 	{ icon: RefreshCw, label: "Daily", description: "quota refresh" },
 ];
 

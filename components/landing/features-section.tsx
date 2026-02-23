@@ -29,8 +29,8 @@ export function FeaturesSection() {
           <ScrollReveal delay={100}>
             <FeatureCard
               icon={Layers}
-              title="13+ AI Models"
-              description="Access GPT-4 Image, Flux Kontext, Seedream 4.5, Nano Banana Pro, and more. All models included in every plan."
+              title="6 AI Models"
+              description="Access Flux Schnell, Z-Image Turbo, GPT Image, FLUX.2 Klein, and Seedance. All models included in every plan."
             />
           </ScrollReveal>
           <ScrollReveal delay={200}>
@@ -44,14 +44,14 @@ export function FeaturesSection() {
             <FeatureCard
               icon={ImageIcon}
               title="High Resolution"
-              description="4K support with Seedream 4.5 Pro. Create print-ready artwork and detailed visuals."
+              description="Up to 4MP with FLUX.2 Klein and high-res with GPT Image. Create detailed visuals for any use case."
             />
           </ScrollReveal>
           <ScrollReveal delay={400}>
             <FeatureCard
               icon={Video}
               title="AI Video"
-              description="Transform still images into dynamic videos with Veo 3.1 and Seedance. Motion is the future."
+              description="Transform still images into dynamic videos with Seedance. Create motion from your images."
             />
           </ScrollReveal>
           <ScrollReveal delay={500}>
