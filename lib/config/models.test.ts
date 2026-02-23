@@ -331,7 +331,7 @@ describe("Model Constraints", () => {
         })
     })
 
-    describe("Klein (Flux.2)", () => {
+    describe("Klein 4B (Flux.2)", () => {
         it("should have 4MP pixel limit", () => {
             const model = getModel("klein")!
             expect(model.constraints.maxPixels).toBe(4_000_000)
@@ -339,13 +339,41 @@ describe("Model Constraints", () => {
         })
 
         it("should have step 16", () => {
-            const model = getModel("klein-large")!
+            const model = getModel("klein")!
             expect(model.constraints.step).toBe(16)
         })
 
         it("should support HD and 2K tiers", () => {
             const model = getModel("klein")!
             expect(model.constraints.supportedTiers).toEqual(["hd", "2k"])
+        })
+    })
+
+    describe("Klein 9B (klein-large)", () => {
+        it("should have 1MP pixel limit", () => {
+            const model = getModel("klein-large")!
+            expect(model.constraints.maxPixels).toBe(1_048_576)
+        })
+
+        it("should have step 16", () => {
+            const model = getModel("klein-large")!
+            expect(model.constraints.step).toBe(16)
+        })
+
+        it("should have 256px minimum dimension", () => {
+            const model = getModel("klein-large")!
+            expect(model.constraints.minDimension).toBe(256)
+            expect(model.constraints.minPixels).toBe(65_536) // 256×256
+        })
+
+        it("should support only SD and HD tiers due to 1MP cap", () => {
+            const model = getModel("klein-large")!
+            expect(model.constraints.supportedTiers).toEqual(["sd", "hd"])
+        })
+
+        it("should have default dimensions of 1024x1024", () => {
+            const model = getModel("klein-large")!
+            expect(model.constraints.defaultDimensions).toEqual({ width: 1024, height: 1024 })
         })
     })
 })
@@ -357,6 +385,34 @@ describe("Aspect Ratio Presets", () => {
             if (ratio.value !== "custom") {
                 const pixels = ratio.width * ratio.height
                 expect(pixels).toBeLessThan(1_048_577)
+            }
+        }
+    })
+
+    it("should have all Klein 9B presets under 1MP and aligned to step 16", () => {
+        const ratios = getModelAspectRatios("klein-large")!
+        for (const ratio of ratios) {
+            if (ratio.value !== "custom") {
+                const pixels = ratio.width * ratio.height
+                expect(pixels).toBeLessThanOrEqual(1_048_576)
+                expect(ratio.width % 16).toBe(0)
+                expect(ratio.height % 16).toBe(0)
+            }
+        }
+        // Verify default square is exactly 1024x1024
+        const square = ratios.find(r => r.value === "1:1")
+        expect(square?.width).toBe(1024)
+        expect(square?.height).toBe(1024)
+    })
+
+    it("should have all Klein 4B presets under 4MP and aligned to step 16", () => {
+        const ratios = getModelAspectRatios("klein")!
+        for (const ratio of ratios) {
+            if (ratio.value !== "custom") {
+                const pixels = ratio.width * ratio.height
+                expect(pixels).toBeLessThanOrEqual(4_000_000)
+                expect(ratio.width % 16).toBe(0)
+                expect(ratio.height % 16).toBe(0)
             }
         }
     })

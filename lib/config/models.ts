@@ -277,7 +277,7 @@ const NANOBANANA_ASPECT_RATIOS: readonly AspectRatioOption[] = (
 ).map(withAspectRatioTags);
 
 /**
- * FLUX.2 Klein aspect ratios - Optimized for 4MP pixel budget
+ * FLUX.2 Klein 4B aspect ratios - Optimized for 4MP pixel budget
  *
  * BFL enforces:
  * - max 4,000,000 pixels (4 MP) per image
@@ -299,7 +299,7 @@ const NANOBANANA_ASPECT_RATIOS: readonly AspectRatioOption[] = (
  * | 21:9  | 2912  | 1248   | 3,634,176 |
  * | 9:21  | 1248  | 2912   | 3,634,176 |
  */
-const FLUX_KLEIN_ASPECT_RATIOS: readonly AspectRatioOption[] = (
+const FLUX_KLEIN_4B_ASPECT_RATIOS: readonly AspectRatioOption[] = (
   [
     { label: "Square", value: "1:1", width: 1984, height: 1984, icon: "square", category: "square" },
     { label: "Landscape", value: "16:9", width: 2560, height: 1440, icon: "rectangle-horizontal", category: "landscape" },
@@ -312,6 +312,48 @@ const FLUX_KLEIN_ASPECT_RATIOS: readonly AspectRatioOption[] = (
     { label: "Social Wide", value: "5:4", width: 2224, height: 1776, icon: "monitor", category: "landscape" },
     { label: "Ultrawide", value: "21:9", width: 2912, height: 1248, icon: "monitor", category: "ultrawide" },
     { label: "Ultra Tall", value: "9:21", width: 1248, height: 2912, icon: "smartphone", category: "ultrawide" },
+    { label: "Custom", value: "custom", width: 1024, height: 1024, icon: "sliders", category: "square" },
+  ] as const
+).map(withAspectRatioTags);
+
+/**
+ * FLUX.2 Klein 9B (Klein Large) aspect ratios - Optimized for 1MP pixel budget
+ *
+ * Klein 9B API enforces:
+ * - max 1,048,576 pixels (1 MP) per image
+ * - width/height must be multiples of 16
+ * - minimum 256×256
+ * - step-distilled: fixed 4 inference steps (not user-adjustable)
+ * - guidance scale: default 4.0
+ * - max seed: 2,147,483,647
+ *
+ * | Ratio | Width | Height | Pixels    |
+ * |-------|-------|--------|-----------|
+ * | 1:1   | 1024  | 1024   | 1,048,576 |
+ * | 16:9  | 1360  | 768    | 1,044,480 |
+ * | 9:16  | 768   | 1360   | 1,044,480 |
+ * | 4:3   | 1184  | 880    | 1,041,920 |
+ * | 3:4   | 880   | 1184   | 1,041,920 |
+ * | 3:2   | 1248  | 832    | 1,038,336 |
+ * | 2:3   | 832   | 1248   | 1,038,336 |
+ * | 4:5   | 912   | 1136   | 1,036,032 |
+ * | 5:4   | 1136  | 912    | 1,036,032 |
+ * | 21:9  | 1552  | 672    | 1,042,944 |
+ * | 9:21  | 672   | 1552   | 1,042,944 |
+ */
+const FLUX_KLEIN_9B_ASPECT_RATIOS: readonly AspectRatioOption[] = (
+  [
+    { label: "Square", value: "1:1", width: 1024, height: 1024, icon: "square", category: "square" },
+    { label: "Landscape", value: "16:9", width: 1360, height: 768, icon: "rectangle-horizontal", category: "landscape" },
+    { label: "Portrait", value: "9:16", width: 768, height: 1360, icon: "rectangle-vertical", category: "portrait" },
+    { label: "Photo", value: "4:3", width: 1184, height: 880, icon: "image", category: "landscape" },
+    { label: "Portrait Photo", value: "3:4", width: 880, height: 1184, icon: "frame", category: "portrait" },
+    { label: "Photo Wide", value: "3:2", width: 1248, height: 832, icon: "image", category: "landscape" },
+    { label: "Photo Tall", value: "2:3", width: 832, height: 1248, icon: "frame", category: "portrait" },
+    { label: "Social", value: "4:5", width: 912, height: 1136, icon: "smartphone", category: "portrait" },
+    { label: "Social Wide", value: "5:4", width: 1136, height: 912, icon: "monitor", category: "landscape" },
+    { label: "Ultrawide", value: "21:9", width: 1552, height: 672, icon: "monitor", category: "ultrawide" },
+    { label: "Ultra Tall", value: "9:21", width: 672, height: 1552, icon: "smartphone", category: "ultrawide" },
     { label: "Custom", value: "custom", width: 1024, height: 1024, icon: "sliders", category: "square" },
   ] as const
 ).map(withAspectRatioTags);
@@ -553,7 +595,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
       outputCertainty: "likely",
       dimensionWarning: "Dimensions rounded to multiples of 16",
     },
-    aspectRatios: FLUX_KLEIN_ASPECT_RATIOS,
+    aspectRatios: FLUX_KLEIN_4B_ASPECT_RATIOS,
     supportsNegativePrompt: false,
     supportsReferenceImage: true,
     modelPricing: IMAGE_MODEL_PRICING["klein"],
@@ -565,21 +607,21 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     type: "image",
     icon: "zap",
     logo: "/image-models/flux.svg",
-    description: "Step-distilled 9B model, higher quality 4-step generation, up to 4MP resolution",
+    description: "Step-distilled 9B model, higher quality 4-step generation, up to 1MP resolution",
     constraints: {
-      maxPixels: 4_000_000,
-      minPixels: 4_096,
-      minDimension: 64,
-      maxDimension: 2560,
-      step: 16,
+      maxPixels: 1_048_576, // 1 MP limit - API scales down if exceeded
+      minPixels: 65_536, // Minimum 256×256
+      minDimension: 256, // Minimum per-side dimension
+      maxDimension: 1600, // Max per-side (accounts for ultrawide ratios)
+      step: 16, // Dimensions must be multiples of 16
       defaultDimensions: { width: 1024, height: 1024 },
       dimensionsEnabled: true,
       maxSeed: 2_147_483_647,
-      supportedTiers: ["hd", "2k"],
+      supportedTiers: ["sd", "hd"], // Limited to SD/HD due to 1MP cap
       outputCertainty: "likely",
       dimensionWarning: "Dimensions rounded to multiples of 16",
     },
-    aspectRatios: FLUX_KLEIN_ASPECT_RATIOS,
+    aspectRatios: FLUX_KLEIN_9B_ASPECT_RATIOS,
     supportsNegativePrompt: false,
     supportsReferenceImage: true,
     modelPricing: IMAGE_MODEL_PRICING["klein-large"],
