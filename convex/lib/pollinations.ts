@@ -64,9 +64,9 @@ export function buildPollinationsUrl(params: PollinationsUrlParams): string {
     const encodedPrompt = encodeURIComponent(params.prompt)
     const queryParams = new URLSearchParams()
 
-    if (params.negativePrompt?.trim()) {
-        queryParams.append("negative_prompt", params.negativePrompt.trim())
-    }
+    // Always include negative_prompt (even if empty) to work around Pollinations bug
+    // where missing param gets converted to literal string "undefined"
+    queryParams.append("negative_prompt", params.negativePrompt?.trim() ?? "")
     if (params.model) {
         queryParams.append("model", params.model)
     }
