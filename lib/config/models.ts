@@ -558,19 +558,19 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     logo: "/image-models/flux.svg",
     description: "Rapid ideation, strong prompt following, clean high-detail renders",
     constraints: {
-      maxPixels: 589_824, // 768×768 cap from Pollinations backend
-      minPixels: 65_536, // Minimum 256×256 (area divisible by 65,536)
-      minDimension: 64, // Minimum per-side (will snap to nearest valid)
-      maxDimension: 768, // Max per-side dimension
-      step: 8, // Dimensions must be multiples of 8
-      defaultDimensions: { width: 768, height: 768 },
+      maxPixels: 1_048_576, // 1 MP limit - matches Klein 9B
+      minPixels: 65_536, // Minimum 256×256
+      minDimension: 256, // Minimum per-side dimension
+      maxDimension: 1600, // Max per-side (accounts for ultrawide ratios)
+      step: 16, // Dimensions must be multiples of 16
+      defaultDimensions: { width: 1024, height: 1024 },
       dimensionsEnabled: true,
       maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
-      supportedTiers: ["sd"], // Limited to SD tier (768px max)
-      outputCertainty: "variable",
-      dimensionWarning: "Output may be adjusted by gateway to fit constraints",
+      supportedTiers: ["sd", "hd"], // SD/HD due to 1MP cap
+      outputCertainty: "likely",
+      dimensionWarning: "Dimensions rounded to multiples of 16",
     },
-    aspectRatios: FLUX_SCHNELL_ASPECT_RATIOS,
+    aspectRatios: FLUX_KLEIN_9B_ASPECT_RATIOS,
     supportsNegativePrompt: true, // Supports negative prompts
     modelPricing: IMAGE_MODEL_PRICING["flux"],
   },

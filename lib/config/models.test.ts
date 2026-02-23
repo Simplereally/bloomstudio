@@ -294,15 +294,15 @@ describe("Model Constraints", () => {
     })
 
     describe("Flux Schnell", () => {
-        it("should have 589,824 pixel limit (768x768 cap)", () => {
+        it("should have 1MP pixel limit (matches Klein 9B)", () => {
             const model = getModel("flux")!
-            expect(model.constraints.maxPixels).toBe(589_824)
-            expect(model.constraints.maxDimension).toBe(768)
+            expect(model.constraints.maxPixels).toBe(1_048_576)
+            expect(model.constraints.maxDimension).toBe(1600)
         })
 
-        it("should have step 8 for dimension alignment", () => {
+        it("should have step 16 for dimension alignment", () => {
             const model = getModel("flux")!
-            expect(model.constraints.step).toBe(8)
+            expect(model.constraints.step).toBe(16)
         })
 
         it("should support negative prompts", () => {
@@ -310,21 +310,21 @@ describe("Model Constraints", () => {
             expect(model.supportsNegativePrompt).toBe(true)
         })
 
-        it("should only support SD and HD tiers", () => {
+        it("should support SD and HD tiers", () => {
             const model = getModel("flux")!
-            expect(model.constraints.supportedTiers).toEqual(["sd"])
+            expect(model.constraints.supportedTiers).toEqual(["sd", "hd"])
         })
 
-        it("should have all presets under 589,824 pixel limit and step-aligned to 8", () => {
+        it("should have all presets under 1MP pixel limit and step-aligned to 16", () => {
             const ratios = getModelAspectRatios("flux")!
-            const step = 8
-            const maxPixels = 589_824
+            const step = 16
+            const maxPixels = 1_048_576
 
             for (const ratio of ratios) {
                 const pixels = ratio.width * ratio.height
                 // All presets should be at or under the limit
                 expect(pixels).toBeLessThanOrEqual(maxPixels)
-                // All dimensions should be aligned to step 8
+                // All dimensions should be aligned to step 16
                 expect(ratio.width % step).toBe(0)
                 expect(ratio.height % step).toBe(0)
             }
@@ -480,13 +480,17 @@ describe("Aspect Ratio Presets", () => {
         expect(ultrawide?.height).toBe(672)
     })
 
-    it("should have Flux Schnell presets within 768px limit", () => {
+    it("should have Flux Schnell presets under 1MP and aligned to step 16", () => {
         const ratios = getModelAspectRatios("flux")!
         expect(ratios).not.toBeNull()
         expect(ratios.length).toBeGreaterThan(0)
         for (const ratio of ratios) {
-            expect(ratio.width).toBeLessThanOrEqual(768)
-            expect(ratio.height).toBeLessThanOrEqual(768)
+            if (ratio.value !== "custom") {
+                const pixels = ratio.width * ratio.height
+                expect(pixels).toBeLessThanOrEqual(1_048_576)
+                expect(ratio.width % 16).toBe(0)
+                expect(ratio.height % 16).toBe(0)
+            }
         }
     })
 })
