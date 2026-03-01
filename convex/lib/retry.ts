@@ -152,7 +152,7 @@ export async function fetchWithRetry(
             const isRetryable = shouldRetry(response.status, errorText)
             
             if (!isRetryable) {
-                console.log(`${logger} Non-retryable error (${response.status}), not retrying`)
+                console.error(`${logger} Non-retryable error (${response.status}), not retrying. Response body:\n${displayError}`)
                 return {
                     success: false,
                     error: lastError,
@@ -165,25 +165,27 @@ export async function fetchWithRetry(
             // Retryable error - check if we have retries left
             if (attempt < config.maxRetries) {
                 const delay = calculateBackoffDelay(attempt, config.baseDelayMs, config.maxDelayMs)
-                console.log(`${logger} Attempt ${attempt + 1}/${config.maxRetries + 1} failed (${response.status}), retrying in ${Math.round(delay)}ms...`)
+                console.error(`${logger} Attempt ${attempt + 1}/${config.maxRetries + 1} failed (${response.status}), retrying in ${Math.round(delay)}ms. Response body:\n${displayError}`)
                 await sleep(delay)
             }
             
         } catch (error) {
             // Network error or other exception
-            lastError = error instanceof Error ? error.message : "Unknown error"
+            const errorMessage = error instanceof Error ? error.message : "Unknown error"
+            const errorStack = error instanceof Error ? error.stack : undefined
+            lastError = errorMessage
             
             // Network errors are generally retryable
             if (attempt < config.maxRetries) {
                 const delay = calculateBackoffDelay(attempt, config.baseDelayMs, config.maxDelayMs)
-                console.log(`${logger} Attempt ${attempt + 1}/${config.maxRetries + 1} failed (network error), retrying in ${Math.round(delay)}ms...`)
+                console.error(`${logger} Attempt ${attempt + 1}/${config.maxRetries + 1} failed (network error), retrying in ${Math.round(delay)}ms. Error: ${errorMessage}${errorStack ? `\nStack: ${errorStack}` : ""}`)
                 await sleep(delay)
             }
         }
     }
     
     // All retries exhausted
-    console.log(`${logger} All ${config.maxRetries + 1} attempts failed`)
+    console.error(`${logger} All ${config.maxRetries + 1} attempts failed. Last error: ${lastError ?? `Request failed with status ${lastStatus}`}`)
     return {
         success: false,
         error: lastError ?? `Request failed with status ${lastStatus}`,
