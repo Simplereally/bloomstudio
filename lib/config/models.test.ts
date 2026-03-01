@@ -711,9 +711,10 @@ describe("Video Model Properties", () => {
 
         it("should have approximatePerPollen consistent with perSecond pricing at default duration", () => {
             const model = getModel("grok-video")!
-            const perSecond = model.modelPricing.videoPricing?.perSecond!
+            const perSecond = model.modelPricing.videoPricing?.perSecond
+            expect(perSecond).toBeDefined()
             const defaultDuration = model.durationConstraints!.defaultDuration
-            const costPerVideo = perSecond * defaultDuration
+            const costPerVideo = perSecond! * defaultDuration
             const expectedEfficiency = 1 / costPerVideo
             expect(model.modelPricing.approximatePerPollen).toBe(expectedEfficiency)
         })
