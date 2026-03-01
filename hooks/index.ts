@@ -50,6 +50,7 @@ export {
   RANDOM_SEED,
   generateRandomSeed,
   isRandomSeedMode,
+  modelSupportsSeed,
   useRandomSeed,
 } from "./use-random-seed";
 export type { UseRandomSeedReturn } from "./use-random-seed";

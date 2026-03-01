@@ -55,7 +55,7 @@ export const API_CONSTRAINTS = {
     seedance: { min: 2, max: 10 },
     "seedance-pro": { min: 2, max: 10 },
     wan: { min: 2, max: 15 },
-    "grok-video": { min: 2, max: 10 },
+    "grok-video": { min: 1, max: 10 },
   } satisfies Record<VideoModel, { min: number; max: number }>,
 } as const;
 

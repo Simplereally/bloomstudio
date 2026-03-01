@@ -475,7 +475,9 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
       step: 1,
       defaultDimensions: { width: 1024, height: 1024 },
       dimensionsEnabled: false,
-      maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
+      // Seed not supported: api.airforce buildRequestBody only sends model, prompt, n, size.
+      // See: image.pollinations.ai/src/models/airforceModel.ts lines 139-208
+      supportsSeed: false,
       supportedTiers: ["hd"],
       outputCertainty: "exact",
       dimensionWarning: "Dimensions are fixed for this model",
@@ -500,7 +502,9 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
       step: 1,
       defaultDimensions: { width: 1024, height: 1024 },
       dimensionsEnabled: false,
-      maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
+      // Seed not supported: api.airforce buildRequestBody only sends model, prompt, n, size.
+      // See: image.pollinations.ai/src/models/airforceModel.ts lines 139-208
+      supportsSeed: false,
       supportedTiers: ["hd"],
       outputCertainty: "exact",
       dimensionWarning: "Dimensions are fixed for this model",
@@ -788,6 +792,16 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     isLegacy: true,
   },
 
+  /**
+   * grok-video — xAI video generation via api.airforce
+   *
+   * Backend behavior (image.pollinations.ai/src/models/airforceModel.ts):
+   * - Aspect ratio remapping: 16:9 → 3:2, 9:16 → 2:3 before sending to api.airforce
+   *   (api.airforce's grok-imagine-video doesn't support 16:9/9:16 directly)
+   * - Duration is NOT sent to api.airforce — it's only used for billing/tracking.
+   *   Actual video duration is determined by api.airforce, not user input.
+   * - Seed is NOT forwarded to api.airforce (same as imagen-4/grok-imagine).
+   */
   "grok-video": {
     id: "grok-video",
     displayName: "Grok Video",
@@ -803,14 +817,17 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
       step: 1,
       defaultDimensions: { width: 1280, height: 720 },
       dimensionsEnabled: false,
-      maxSeed: 2_147_483_647,
+      // Seed not supported: api.airforce buildRequestBody doesn't include seed.
+      supportsSeed: false,
       supportedTiers: ["sd", "hd"],
     },
     aspectRatios: VIDEO_ASPECT_RATIOS,
     supportsNegativePrompt: false,
     supportsReferenceImage: true,
     durationConstraints: {
-      min: 2,
+      // Gateway validates min: 1 (enter.pollinations.ai/src/schemas/image.ts line 107).
+      // Duration is approximate — not enforced by api.airforce backend.
+      min: 1,
       max: 10,
       defaultDuration: 5,
     },

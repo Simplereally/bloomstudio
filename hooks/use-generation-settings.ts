@@ -80,6 +80,8 @@ export interface UseGenerationSettingsReturn {
     generateSeed: () => number
     isRandomMode: (seed: number) => boolean
     refreshSeedIfNeeded: () => void
+    /** Whether the current model supports deterministic seed-based reproduction */
+    supportsSeed: boolean
 
     // Options state
     options: GenerationOptions
@@ -139,7 +141,7 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
     // ========================================
     const [seed, setSeed] = React.useState(-1)
     const [seedLocked, setSeedLocked] = React.useState(false)
-    const { generateSeed, isRandomMode } = useRandomSeed(model)
+    const { generateSeed, isRandomMode, supportsSeed } = useRandomSeed(model)
 
     // ========================================
     // Options State
@@ -391,6 +393,7 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
         generateSeed,
         isRandomMode,
         refreshSeedIfNeeded,
+        supportsSeed,
 
         // Options state
         options,

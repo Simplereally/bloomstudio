@@ -79,6 +79,13 @@ export interface ModelConstraints {
   readonly dimensionsEnabled: boolean
   /** Maximum seed value for this model (optional - defaults to API_CONSTRAINTS.seed.max) */
   readonly maxSeed?: number
+  /**
+   * Whether this model supports deterministic seed-based reproduction.
+   * When false, the seed parameter is accepted by the API gateway but silently
+   * ignored by the backend — output is always non-deterministic.
+   * @default true
+   */
+  readonly supportsSeed?: boolean
   /** Maximum aspect ratio allowed (max(w/h, h/w) must be <= this value) (optional) */
   readonly maxAspectRatio?: number
   /** Supported resolution tiers for this model */

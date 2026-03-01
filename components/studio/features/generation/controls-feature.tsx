@@ -132,6 +132,7 @@ function ControlsFeatureView({
             onSeedChange={generationSettings.setSeed}
             seedLocked={generationSettings.seedLocked}
             onSeedLockedChange={generationSettings.setSeedLocked}
+            supportsSeed={generationSettings.supportsSeed}
 
             // Options
             options={generationSettings.options}

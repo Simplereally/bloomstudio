@@ -7,10 +7,15 @@
  * The seed range varies by model - some models (like Seedream) use int32 max,
  * while others can handle larger JavaScript safe integers.
  *
+ * Models with `supportsSeed: false` (e.g. imagen-4, grok-imagine, grok-video) do not
+ * support deterministic seed-based reproduction — the seed parameter is accepted by
+ * the API gateway but silently ignored by the backend.
+ *
  * @see ModelConstraints.maxSeed in types/pollinations.ts
+ * @see ModelConstraints.supportsSeed in types/pollinations.ts
  */
 
-import { getModelConstraints } from "@/lib/config/models"
+import { getModel, getModelConstraints } from "@/lib/config/models"
 import * as React from "react"
 
 /**
@@ -31,21 +36,36 @@ export interface UseRandomSeedReturn {
 
     /** Maximum valid seed value for the current model */
     MAX_SEED: number
+
+    /** Whether this model supports deterministic seed-based reproduction */
+    supportsSeed: boolean
 }
 
 /** Sentinel value indicating random seed mode */
 const RANDOM_SEED_VALUE = -1
 
 /**
+ * Check if a model supports deterministic seed-based reproduction.
+ * Returns false for models where the backend silently ignores the seed parameter.
+ */
+export function modelSupportsSeed(modelId: string): boolean {
+    const model = getModel(modelId)
+    // Default to true for backward compatibility — only explicit `false` disables
+    return model?.constraints.supportsSeed !== false
+}
+
+/**
  * Get the maximum seed value for a specific model.
  * Throws if modelId is not found in the registry.
+ * Returns API_CONSTRAINTS.seed.max (2_147_483_647) as fallback when maxSeed is not set.
  */
 export function getMaxSeedForModel(modelId: string): number {
     const constraints = getModelConstraints(modelId)
-    if (!constraints?.maxSeed) {
-        throw new Error(`Model "${modelId}" not found or missing maxSeed constraint`)
+    if (!constraints) {
+        throw new Error(`Model "${modelId}" not found in registry`)
     }
-    return constraints.maxSeed
+    // Fallback to int32 max if maxSeed not explicitly set
+    return constraints.maxSeed ?? 2_147_483_647
 }
 
 /**
@@ -55,10 +75,10 @@ export function getMaxSeedForModel(modelId: string): number {
  *
  * @example
  * ```tsx
- * const { generateSeed, isRandomMode, RANDOM_SEED, MAX_SEED } = useRandomSeed('seedream')
+ * const { generateSeed, isRandomMode, RANDOM_SEED, MAX_SEED, supportsSeed } = useRandomSeed('seedream')
  *
  * // MAX_SEED will be 2147483647 for Seedream models
- * // Check if seed is in random mode
+ * // supportsSeed will be true for Seedream, false for imagen-4
  * if (isRandomMode(seed)) {
  *     const newSeed = generateSeed()
  *     console.log('Using random seed:', newSeed)
@@ -67,6 +87,7 @@ export function getMaxSeedForModel(modelId: string): number {
  */
 export function useRandomSeed(modelId: string): UseRandomSeedReturn {
     const maxSeed = React.useMemo(() => getMaxSeedForModel(modelId), [modelId])
+    const seedSupported = React.useMemo(() => modelSupportsSeed(modelId), [modelId])
 
     const generateSeed = React.useCallback((): number => {
         // Generate a random integer between 0 and maxSeed (inclusive)
@@ -83,6 +104,7 @@ export function useRandomSeed(modelId: string): UseRandomSeedReturn {
         RANDOM_SEED: RANDOM_SEED_VALUE,
         MIN_SEED: 0,
         MAX_SEED: maxSeed,
+        supportsSeed: seedSupported,
     }
 }
 

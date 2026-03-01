@@ -81,6 +81,8 @@ export interface ControlsViewProps {
   onSeedChange: (seed: number) => void;
   seedLocked: boolean;
   onSeedLockedChange: (locked: boolean) => void;
+  /** Whether the current model supports deterministic seed-based reproduction */
+  supportsSeed?: boolean;
 
   // Options props
   options: GenerationOptions;
@@ -142,6 +144,7 @@ export const ControlsView = React.memo(function ControlsView({
   onSeedChange,
   seedLocked,
   onSeedLockedChange,
+  supportsSeed = true,
 
   // Options
   options,
@@ -380,7 +383,8 @@ export const ControlsView = React.memo(function ControlsView({
         </CollapsibleSection>
       )}
 
-      {/* Seed */}
+      {/* Seed - hidden for models that don't support deterministic seed (e.g. imagen-4, grok-imagine, grok-video) */}
+      {supportsSeed && (
       <CollapsibleSection
         title="Seed"
         icon={<Dice6 className="h-3.5 w-3.5" />}
@@ -396,6 +400,7 @@ export const ControlsView = React.memo(function ControlsView({
           hideHeader
         />
       </CollapsibleSection>
+      )}
 
       {/* Options */}
       <CollapsibleSection
