@@ -359,7 +359,7 @@ export const ControlsView = React.memo(function ControlsView({
       )}
 
       {/* Reference Image */}
-      {selectedModelData?.supportsReferenceImage && (
+      {selectedModelData?.supportsReferenceImage && !isVideoModel && (
         <CollapsibleSection
           title="Reference"
           icon={<ImageIcon className="h-3.5 w-3.5" />}
