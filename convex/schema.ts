@@ -50,6 +50,12 @@ export default defineSchema({
                 v.literal("allow")
             )
         ),
+        /**
+         * Default value for the "Private Mode" toggle in the studio.
+         * When true, new generations default to private (unlisted) visibility.
+         * Defaults to false if not set.
+         */
+        defaultPrivate: v.optional(v.boolean()),
     })
         .index("by_clerk_id", ["clerkId"])
         .index("by_email", ["email"])

@@ -349,3 +349,46 @@ export const getSensitiveContentPreference = query({
     return user?.contentFilterPreference ?? "blur";
   },
 });
+
+/**
+ * Get the user's default private mode preference.
+ */
+export const getDefaultPrivate = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return false;
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    return user?.defaultPrivate ?? false;
+  },
+});
+
+/**
+ * Update the user's default private mode preference.
+ */
+export const updateDefaultPrivate = mutation({
+  args: {
+    defaultPrivate: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!user) throw new Error("User not found");
+
+    await ctx.db.patch(user._id, {
+      defaultPrivate: args.defaultPrivate,
+      updatedAt: Date.now(),
+    });
+  },
+});

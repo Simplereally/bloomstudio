@@ -40,6 +40,8 @@ import type {
     ModelConstraints,
     ResolutionTier,
 } from "@/types/pollinations"
+import { api } from "@/convex/_generated/api"
+import { useQuery } from "convex/react"
 import * as React from "react"
 
 /**
@@ -119,6 +121,11 @@ export interface UseGenerationSettingsReturn {
  */
 export function useGenerationSettings(): UseGenerationSettingsReturn {
     // ========================================
+    // Account-Level Default Private Preference
+    // ========================================
+    const defaultPrivate = useQuery(api.users.getDefaultPrivate)
+
+    // ========================================
     // Model State
     // ========================================
     const [model, setModel] = React.useState<ImageModel>("zimage")
@@ -151,6 +158,16 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
         private: false,
         safe: false,
     })
+
+    // Sync private toggle default from account settings (once loaded).
+    // Only applies on initial load — user can still toggle freely per session.
+    const hasAppliedDefault = React.useRef(false)
+    React.useEffect(() => {
+        if (defaultPrivate !== undefined && !hasAppliedDefault.current) {
+            hasAppliedDefault.current = true
+            setOptions(prev => ({ ...prev, private: defaultPrivate }))
+        }
+    }, [defaultPrivate])
 
     // ========================================
     // Reference Image State

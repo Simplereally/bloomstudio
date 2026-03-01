@@ -161,9 +161,25 @@ export const create = mutation({
             throw new Error("Not authenticated")
         }
 
-        // Analyze prompt for NSFW content
-        const promptAnalysis = analyzePromptForNSFW(args.prompt)
-        console.log(`[Prompt Analysis] Score: ${promptAnalysis.confidence}, Sensitive: ${promptAnalysis.isSensitive}, Terms: ${promptAnalysis.matchedTerms.join(", ")}`)
+        // Private images (unlisted) bypass NSFW detection entirely.
+        // They are never shown in public feeds, so content analysis is unnecessary.
+        const isPrivate = (args.visibility ?? "public") === "unlisted"
+
+        let isSensitive: boolean | null = false
+        let sensitiveSource: "prompt_analysis" | undefined = undefined
+        let sensitiveConfidence = 0
+
+        if (!isPrivate) {
+            // Analyze prompt for NSFW content (public images only)
+            const promptAnalysis = analyzePromptForNSFW(args.prompt)
+            console.log(`[Prompt Analysis] Score: ${promptAnalysis.confidence}, Sensitive: ${promptAnalysis.isSensitive}, Terms: ${promptAnalysis.matchedTerms.join(", ")}`)
+
+            isSensitive = promptAnalysis.confidence >= 0.9 ? true : null
+            sensitiveSource = promptAnalysis.confidence >= 0.9 ? "prompt_analysis" : undefined
+            sensitiveConfidence = promptAnalysis.confidence
+        } else {
+            console.log(`[Prompt Analysis] Skipped — private image`)
+        }
 
         const imageId = await ctx.db.insert("generatedImages", {
             ownerId: identity.subject,
@@ -183,14 +199,10 @@ export const create = mutation({
             model: args.model,
             seed: args.seed,
             createdAt: Date.now(),
-            // Initial sensitive content tagging based on prompt
-            // Tri-state logic: true=NSFW, false=Safe, null=Pending/Unknown
-            // If explicit (>= 0.9), mark Sensitive.
-            // If any less, mark Pending (null) to run Phase 3 Prompt Inference.
-            isSensitive: promptAnalysis.confidence >= 0.9 ? true : null,
 
-            sensitiveSource: promptAnalysis.confidence >= 0.9 ? "prompt_analysis" : undefined,
-            sensitiveConfidence: promptAnalysis.confidence,
+            isSensitive,
+            sensitiveSource,
+            sensitiveConfidence,
         })
 
         // Store heavy details in side table (P0 Optimization)
@@ -199,9 +211,9 @@ export const create = mutation({
             generationParams: args.generationParams,
         })
 
-        // Schedule async Prompt Inference (Phase 3) if prompt was not explicitly flagged
-        // This ensures "Gate 2" runs on everything that isn't already caught by Gate 1.
-        if (promptAnalysis.confidence < 0.9) {
+        // Schedule async Prompt Inference (Phase 3) only for public images
+        // that were not explicitly flagged by Gate 1.
+        if (!isPrivate && sensitiveConfidence < 0.9) {
             await ctx.scheduler.runAfter(0, internal.promptInference.analyzePromptImage, {
                 imageId,
                 prompt: args.prompt,
