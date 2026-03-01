@@ -15,18 +15,19 @@ export class PollinationsAPI {
   private static readonly BASE_URL = API_CONFIG.baseUrl
 
   /**
-   * Builds the image generation URL with all parameters.
-   * Uses the new /image/{prompt} path structure.
+   * Builds shared query parameters common to both image and video endpoints.
+   * Encodes model, dimensions, seed, quality, guidance scale, boolean flags, and reference images.
    */
-  static buildImageUrl(params: ResolvedImageGenerationParams): string {
-    const { prompt, negativePrompt, ...options } = params
-    const encodedPrompt = encodeURIComponent(prompt)
-
+  private static buildCommonQueryParams(
+    options: Omit<ResolvedImageGenerationParams, "prompt" | "negativePrompt"> & {
+      negativePrompt?: string
+    }
+  ): URLSearchParams {
     const queryParams = new URLSearchParams()
 
     // Negative prompt
-    if (negativePrompt?.trim()) {
-      queryParams.append("negative_prompt", negativePrompt.trim())
+    if (options.negativePrompt?.trim()) {
+      queryParams.append("negative_prompt", options.negativePrompt.trim())
     }
 
     // Model - always include (upstream API requires explicit model selection)
@@ -63,43 +64,63 @@ export class PollinationsAPI {
     if (options.safe !== API_DEFAULTS.safe) queryParams.append("safe", "true")
     if (options.private !== API_DEFAULTS.private) queryParams.append("private", "true")
 
-    // Reference image(s) for image-to-image
+    // Reference image(s) for image-to-image / video-to-video
     if (options.image) {
       queryParams.append("image", options.image)
     }
 
-    // Note: API key is sent via Authorization header in getHeaders(), not in URL
+    return queryParams
+  }
+
+  /**
+   * Constructs a full endpoint URL from a path segment, encoded prompt, and query params.
+   */
+  private static buildEndpointUrl(
+    endpoint: "image" | "video",
+    encodedPrompt: string,
+    queryParams: URLSearchParams
+  ): string {
     const query = queryParams.toString()
-    return `${this.BASE_URL}/image/${encodedPrompt}${query ? `?${query}` : ""}`
+    return `${this.BASE_URL}/${endpoint}/${encodedPrompt}${query ? `?${query}` : ""}`
+  }
+
+  /**
+   * Builds the image generation URL with all parameters.
+   * Uses the /image/{prompt} path structure.
+   */
+  static buildImageUrl(params: ResolvedImageGenerationParams): string {
+    const { prompt, negativePrompt, ...options } = params
+    const encodedPrompt = encodeURIComponent(prompt)
+    const queryParams = this.buildCommonQueryParams({ ...options, negativePrompt })
+
+    // Note: API key is sent via Authorization header in getHeaders(), not in URL
+    return this.buildEndpointUrl("image", encodedPrompt, queryParams)
   }
 
   /**
    * Builds video generation URL with video-specific parameters.
+   * Uses the /video/{prompt} path structure (separate from the image endpoint).
    */
   static buildVideoUrl(params: ResolvedVideoGenerationParams): string {
-    const { duration, aspectRatio, audio, ...imageParams } = params
-    const baseUrl = this.buildImageUrl(
-      imageParams as ResolvedImageGenerationParams
-    )
+    const { prompt, negativePrompt, duration, aspectRatio, audio, lastFrameImage, ...options } = params
+    const encodedPrompt = encodeURIComponent(prompt)
+    const queryParams = this.buildCommonQueryParams({ ...options, negativePrompt })
 
-    const additionalParams = new URLSearchParams()
-
+    // Video-specific parameters
     if (duration !== undefined) {
-      additionalParams.append("duration", duration.toString())
+      queryParams.append("duration", duration.toString())
     }
     if (aspectRatio) {
-      additionalParams.append("aspectRatio", aspectRatio)
+      queryParams.append("aspectRatio", aspectRatio)
     }
     if (audio) {
-      additionalParams.append("audio", "true")
+      queryParams.append("audio", "true")
+    }
+    if (lastFrameImage) {
+      queryParams.append("lastFrameImage", lastFrameImage)
     }
 
-    const additional = additionalParams.toString()
-    if (!additional) return baseUrl
-
-    return baseUrl.includes("?")
-      ? `${baseUrl}&${additional}`
-      : `${baseUrl}?${additional}`
+    return this.buildEndpointUrl("video", encodedPrompt, queryParams)
   }
 
   /**

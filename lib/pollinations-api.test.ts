@@ -259,6 +259,25 @@ describe("PollinationsAPI", () => {
     })
 
     describe("buildVideoUrl", () => {
+        it("uses /video/ endpoint, not /image/", () => {
+            const url = PollinationsAPI.buildVideoUrl({
+                prompt: "test video",
+                model: "veo",
+                width: 1024,
+                height: 1024,
+                enhance: false,
+                quality: "medium",
+                private: false,
+                nologo: false,
+                nofeed: false,
+                safe: false,
+                transparent: false,
+                audio: false,
+            })
+            expect(url).toContain("https://gen.pollinations.ai/video/")
+            expect(url).not.toContain("/image/")
+        })
+
         it("builds video URL with duration", () => {
             const url = PollinationsAPI.buildVideoUrl({
                 prompt: "test video",
@@ -275,6 +294,7 @@ describe("PollinationsAPI", () => {
                 audio: false,
                 duration: 5,
             })
+            expect(url).toContain("/video/")
             expect(url).toContain("duration=5")
             expect(url).toContain("model=veo")
         })
@@ -295,6 +315,7 @@ describe("PollinationsAPI", () => {
                 audio: false,
                 aspectRatio: "16:9",
             })
+            expect(url).toContain("/video/")
             expect(url).toContain("aspectRatio=16%3A9")
         })
 
@@ -313,7 +334,56 @@ describe("PollinationsAPI", () => {
                 transparent: false,
                 audio: true,
             })
+            expect(url).toContain("/video/")
             expect(url).toContain("audio=true")
+        })
+
+        it("encodes prompt correctly in video URL", () => {
+            const url = PollinationsAPI.buildVideoUrl({
+                prompt: "a flying car & spaceship",
+                model: "veo",
+                width: 1024,
+                height: 1024,
+                enhance: false,
+                quality: "medium",
+                private: false,
+                nologo: false,
+                nofeed: false,
+                safe: false,
+                transparent: false,
+                audio: false,
+            })
+            expect(url).toContain("/video/a%20flying%20car%20%26%20spaceship")
+        })
+
+        it("includes common params (seed, enhance, etc.) in video URL", () => {
+            const url = PollinationsAPI.buildVideoUrl({
+                prompt: "test",
+                model: "seedance",
+                width: 512,
+                height: 768,
+                seed: 42,
+                enhance: true,
+                quality: "high",
+                private: true,
+                nologo: true,
+                nofeed: true,
+                safe: true,
+                transparent: false,
+                audio: false,
+                duration: 8,
+            })
+            expect(url).toContain("/video/")
+            expect(url).toContain("model=seedance")
+            expect(url).toContain("width=512")
+            expect(url).toContain("height=768")
+            expect(url).toContain("seed=42")
+            expect(url).toContain("enhance=true")
+            expect(url).toContain("private=true")
+            expect(url).toContain("nologo=true")
+            expect(url).toContain("nofeed=true")
+            expect(url).toContain("safe=true")
+            expect(url).toContain("duration=8")
         })
     })
 
