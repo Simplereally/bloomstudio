@@ -147,10 +147,21 @@ export async function extractVideoThumbnail(
                         reject(err)
                     })
                 )
-                .on("end", () => settle(() => resolve(Buffer.concat(chunks))))
 
-            command.pipe()
+            // Resolve based on the pipe stream's lifecycle, not ffmpeg's process "end".
+            // The ffmpeg "end" event fires when the process exits, but the pipe stream
+            // may still have buffered data to flush — causing "Output stream closed" errors.
+            const stream = command.pipe()
+            stream
                 .on("data", (chunk: Buffer) => chunks.push(chunk))
+                .on("end", () => settle(() => resolve(Buffer.concat(chunks))))
+                .on("error", (err: Error) =>
+                    settle(() => {
+                        console.error(`${logger} pipe stream error:`, err.message)
+                        command.kill("SIGKILL")
+                        reject(err)
+                    })
+                )
         })
 
 
