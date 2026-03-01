@@ -749,8 +749,29 @@ export const getFollowingFeed = query({
 })
 
 /**
+ * Check whether an image needs NSFW analysis when transitioning to public.
+ *
+ * Private images bypass NSFW detection at generation time (isSensitive=false,
+ * sensitiveSource=undefined). When making them public, we must run the full
+ * analysis pipeline before they appear in public feeds.
+ *
+ * Returns true if the image was never analyzed (generated as private and
+ * no subsequent analysis has been performed).
+ */
+function needsNsfwAnalysis(image: Doc<"generatedImages">): boolean {
+    // Image was never run through any analysis gate — sensitiveSource is unset
+    // AND the confidence is 0 (the default for skipped private images).
+    // Images that were analyzed and found safe will have a sensitiveSource set.
+    return !image.sensitiveSource && (image.sensitiveConfidence === 0 || image.sensitiveConfidence === undefined)
+}
+
+/**
  * Update the visibility of a generated image.
  * Only the owner can change visibility.
+ *
+ * When transitioning from unlisted (private) → public, triggers NSFW detection
+ * for images that were never analyzed. The image's isSensitive is set to null
+ * (pending) so it won't appear in public feeds until analysis completes.
  */
 export const setVisibility = mutation({
     args: {
@@ -772,9 +793,43 @@ export const setVisibility = mutation({
             throw new Error("Not authorized to modify this image")
         }
 
-        await ctx.db.patch(args.imageId, {
-            visibility: args.visibility,
-        })
+        // Detect private → public transition for unanalyzed images
+        const isGoingPublic = image.visibility === "unlisted" && args.visibility === "public"
+        const requiresAnalysis = isGoingPublic && needsNsfwAnalysis(image)
+
+        if (requiresAnalysis) {
+            // Run synchronous prompt keyword analysis (Gate 1)
+            const promptAnalysis = analyzePromptForNSFW(image.prompt)
+            console.log(`[Visibility] Private→Public NSFW check for ${args.imageId}: score=${promptAnalysis.confidence}, sensitive=${promptAnalysis.isSensitive}, terms=[${promptAnalysis.matchedTerms.join(", ")}]`)
+
+            if (promptAnalysis.confidence >= 0.9) {
+                // Gate 1 high-confidence: mark as sensitive immediately
+                await ctx.db.patch(args.imageId, {
+                    visibility: args.visibility,
+                    isSensitive: true,
+                    sensitiveSource: "prompt_analysis",
+                    sensitiveConfidence: promptAnalysis.confidence,
+                })
+            } else {
+                // Set to pending (null) so image is hidden from public feeds
+                // until async analysis (Gate 2/3) completes
+                await ctx.db.patch(args.imageId, {
+                    visibility: args.visibility,
+                    isSensitive: null,
+                    sensitiveConfidence: promptAnalysis.confidence,
+                })
+
+                // Schedule async prompt inference (Gate 2), which may escalate to vision (Gate 3)
+                await ctx.scheduler.runAfter(0, internal.promptInference.analyzePromptImage, {
+                    imageId: args.imageId,
+                    prompt: image.prompt,
+                })
+            }
+        } else {
+            await ctx.db.patch(args.imageId, {
+                visibility: args.visibility,
+            })
+        }
 
         return { success: true }
     },
@@ -784,6 +839,9 @@ export const setVisibility = mutation({
  * Bulk update visibility for multiple images.
  * Only the owner can change visibility of their images.
  * Returns the count of successfully updated images.
+ *
+ * When transitioning from unlisted → public, triggers NSFW detection for
+ * images that were never analyzed (same logic as setVisibility).
  *
  * @param imageIds - Array of image IDs to update (max 100 to avoid Convex limits)
  */
@@ -817,6 +875,8 @@ export const setBulkVisibility = mutation({
         let successCount = 0
         const errors: string[] = []
 
+        // Collect images that need async NSFW analysis (scheduled after all patches)
+        const imagesToAnalyze: { imageId: typeof args.imageIds[number]; prompt: string }[] = []
 
         await Promise.all(
             args.imageIds.map(async (imageId) => {
@@ -832,9 +892,34 @@ export const setBulkVisibility = mutation({
                         return
                     }
 
-                    await ctx.db.patch(imageId, {
-                        visibility: args.visibility,
-                    })
+                    // Detect private → public transition for unanalyzed images
+                    const isGoingPublic = image.visibility === "unlisted" && args.visibility === "public"
+                    const requiresAnalysis = isGoingPublic && needsNsfwAnalysis(image)
+
+                    if (requiresAnalysis) {
+                        const promptAnalysis = analyzePromptForNSFW(image.prompt)
+                        console.log(`[Visibility] Bulk private→public NSFW check for ${imageId}: score=${promptAnalysis.confidence}, sensitive=${promptAnalysis.isSensitive}`)
+
+                        if (promptAnalysis.confidence >= 0.9) {
+                            await ctx.db.patch(imageId, {
+                                visibility: args.visibility,
+                                isSensitive: true,
+                                sensitiveSource: "prompt_analysis",
+                                sensitiveConfidence: promptAnalysis.confidence,
+                            })
+                        } else {
+                            await ctx.db.patch(imageId, {
+                                visibility: args.visibility,
+                                isSensitive: null,
+                                sensitiveConfidence: promptAnalysis.confidence,
+                            })
+                            imagesToAnalyze.push({ imageId, prompt: image.prompt })
+                        }
+                    } else {
+                        await ctx.db.patch(imageId, {
+                            visibility: args.visibility,
+                        })
+                    }
                     successCount++
                 } catch (error) {
                     const errorMessage = error instanceof Error ? error.message : "Unknown error"
@@ -842,6 +927,14 @@ export const setBulkVisibility = mutation({
                 }
             })
         )
+
+        // Schedule async NSFW analysis for all images that need it
+        for (const { imageId, prompt } of imagesToAnalyze) {
+            await ctx.scheduler.runAfter(0, internal.promptInference.analyzePromptImage, {
+                imageId,
+                prompt,
+            })
+        }
 
         return {
             success: successCount > 0,

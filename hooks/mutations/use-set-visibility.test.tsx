@@ -66,7 +66,21 @@ describe("useSetVisibility", () => {
             });
 
             expect(mockSetVisibility).toHaveBeenCalledWith({ imageId: "id1", visibility: "public" });
-            expect(toast.success).toHaveBeenCalledWith("Image marked as public");
+            expect(toast.success).toHaveBeenCalledWith("Image set to public", {
+                description: "Content review in progress — it will appear in the public feed shortly.",
+            });
+            expect(invalidateVisibilityChange).toHaveBeenCalled();
+        });
+
+        it("should call mutation and toast for unlisted", async () => {
+            const { result } = renderHook(() => useSetImageVisibility(), { wrapper });
+
+            await act(async () => {
+                await result.current.mutateAsync({ imageId: "id1" as any, visibility: "unlisted" });
+            });
+
+            expect(mockSetVisibility).toHaveBeenCalledWith({ imageId: "id1", visibility: "unlisted" });
+            expect(toast.success).toHaveBeenCalledWith("Image marked as private");
             expect(invalidateVisibilityChange).toHaveBeenCalled();
         });
 

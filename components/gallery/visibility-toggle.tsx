@@ -16,6 +16,10 @@ interface VisibilityToggleProps {
 /**
  * Button component to toggle the visibility of a generated image.
  * Updates Convex database and provides visual feedback.
+ *
+ * When transitioning from unlisted → public, the backend triggers NSFW
+ * detection for images that were never analyzed. The toast message
+ * informs the user that a content review is in progress.
  */
 export function VisibilityToggle({ imageId, currentVisibility }: VisibilityToggleProps) {
     const setVisibility = useMutation(api.generatedImages.setVisibility)
@@ -27,10 +31,18 @@ export function VisibilityToggle({ imageId, currentVisibility }: VisibilityToggl
 
         setIsUpdating(true)
         const newVisibility = currentVisibility === "public" ? "unlisted" : "public"
+        const isGoingPublic = currentVisibility === "unlisted" && newVisibility === "public"
 
         try {
             await setVisibility({ imageId, visibility: newVisibility })
-            toast.success(`Image is now ${newVisibility}`)
+
+            if (isGoingPublic) {
+                toast.success("Image set to public", {
+                    description: "Content review in progress — it will appear in the public feed shortly.",
+                })
+            } else {
+                toast.success("Image is now unlisted")
+            }
         } catch (error) {
             console.error("Failed to update visibility:", error)
             toast.error("Failed to update visibility")

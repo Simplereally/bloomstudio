@@ -46,7 +46,7 @@ describe("VisibilityToggle", () => {
         expect(screen.getByTitle("Make public")).toBeInTheDocument()
     })
 
-    it("calls mutation and shows toast on toggle", async () => {
+    it("calls mutation and shows toast on toggle (unlisted → public)", async () => {
         mockSetVisibility.mockResolvedValue({ success: true })
 
         render(<VisibilityToggle imageId={imageId} currentVisibility="unlisted" />)
@@ -59,7 +59,25 @@ describe("VisibilityToggle", () => {
                 imageId,
                 visibility: "public",
             })
-            expect(toast.success).toHaveBeenCalledWith("Image is now public")
+            expect(toast.success).toHaveBeenCalledWith("Image set to public", {
+                description: "Content review in progress — it will appear in the public feed shortly.",
+            })
+        })
+    })
+
+    it("calls mutation and shows toast on toggle (public → unlisted)", async () => {
+        mockSetVisibility.mockResolvedValue({ success: true })
+
+        render(<VisibilityToggle imageId={imageId} currentVisibility="public" />)
+
+        fireEvent.click(screen.getByRole("button"))
+
+        await waitFor(() => {
+            expect(mockSetVisibility).toHaveBeenCalledWith({
+                imageId,
+                visibility: "unlisted",
+            })
+            expect(toast.success).toHaveBeenCalledWith("Image is now unlisted")
         })
     })
 

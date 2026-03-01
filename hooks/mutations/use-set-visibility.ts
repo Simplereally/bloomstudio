@@ -27,8 +27,13 @@ export function useSetImageVisibility() {
             return await setVisibility({ imageId, visibility })
         },
         onSuccess: async (_result, { visibility }) => {
-            const label = visibility === "public" ? "public" : "private"
-            toast.success(`Image marked as ${label}`)
+            if (visibility === "public") {
+                toast.success("Image set to public", {
+                    description: "Content review in progress — it will appear in the public feed shortly.",
+                })
+            } else {
+                toast.success("Image marked as private")
+            }
 
             // Invalidate client-side TanStack Query caches
             queryClient.invalidateQueries({ queryKey: ["image-history"] })
