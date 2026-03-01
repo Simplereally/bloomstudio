@@ -264,7 +264,11 @@ export function StudioShell({
           enhance: generationSettings.options.enhance,
           private: generationSettings.options.private,
           safe: generationSettings.options.safe,
-          image: generationSettings.referenceImage,
+          // For video models, use the first frame as the reference image (image-to-video);
+          // for image models, use the standard reference image (image-to-image).
+          image: generationSettings.isVideoModel
+            ? generationSettings.videoReferenceImages.firstFrame
+            : generationSettings.referenceImage,
           // Video-specific parameters
           duration: generationSettings.videoSettings.duration,
           audio: generationSettings.videoSettings.audio,
@@ -284,7 +288,7 @@ export function StudioShell({
 
     function isVideoModel(model: string): model is VideoModel {
       return (
-        model === "veo" || model === "seedance" || model === "seedance-pro"
+        model === "veo" || model === "seedance" || model === "seedance-pro" || model === "wan" || model === "grok-video"
       );
     }
 
@@ -298,7 +302,11 @@ export function StudioShell({
       enhance: generationSettings.options.enhance,
       private: generationSettings.options.private,
       safe: generationSettings.options.safe,
-      image: generationSettings.referenceImage,
+      // For video models, use the first frame as the reference image (image-to-video);
+      // for image models, use the standard reference image (image-to-image).
+      image: generationSettings.isVideoModel
+        ? generationSettings.videoReferenceImages.firstFrame
+        : generationSettings.referenceImage,
     };
 
     if (isVideoModel(generationSettings.model)) {

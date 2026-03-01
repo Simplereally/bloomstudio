@@ -56,6 +56,7 @@ describe("pollinations.schema", () => {
       expect(VideoModelSchema.parse("veo")).toBe("veo");
       expect(VideoModelSchema.parse("seedance")).toBe("seedance");
       expect(VideoModelSchema.parse("seedance-pro")).toBe("seedance-pro");
+      expect(VideoModelSchema.parse("grok-video")).toBe("grok-video");
     });
 
     it("rejects invalid video models", () => {

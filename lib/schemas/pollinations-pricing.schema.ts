@@ -306,6 +306,34 @@ export const IMAGE_MODEL_PRICING: Record<string, ModelPricingDefinition> = {
             perImage: 0.012,
         },
     },
+
+    /**
+     * Imagen 4 - Google's latest image generation via api.airforce
+     * Good efficiency: ~400 images per pollen
+     */
+    "imagen-4": {
+        modelId: "imagen-4",
+        type: "image",
+        approximatePerPollen: 400,
+        supportsReferenceImage: false,
+        imagePricing: {
+            perImage: 0.0025, // completionImageTokens from API
+        },
+    },
+
+    /**
+     * Grok Imagine - xAI image generation via api.airforce
+     * Good efficiency: ~400 images per pollen
+     */
+    "grok-imagine": {
+        modelId: "grok-imagine",
+        type: "image",
+        approximatePerPollen: 400,
+        supportsReferenceImage: false,
+        imagePricing: {
+            perImage: 0.0025, // completionImageTokens from API
+        },
+    },
 } as const;
 
 // ============================================================================
@@ -373,6 +401,23 @@ export const VIDEO_MODEL_PRICING: Record<string, ModelPricingDefinition> = {
         isAlpha: true,
         videoPricing: {
             perSecond: 0.025,
+        },
+    },
+
+    /**
+     * Grok Video - xAI video generation via api.airforce
+     * Per-second pricing, alpha status
+     * Provider: api.airforce
+     * Output: video/mp4 via SSE with response_format: "url"
+     */
+    "grok-video": {
+        modelId: "grok-video",
+        type: "video",
+        approximatePerPollen: 80, // 1 / (0.0025 * 5) = 80 videos per pollen at default 5s duration
+        supportsReferenceImage: true,
+        isAlpha: true,
+        videoPricing: {
+            perSecond: 0.0025,
         },
     },
 } as const;

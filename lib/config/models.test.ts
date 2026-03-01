@@ -32,6 +32,8 @@ describe("Model Registry", () => {
                 "nanobanana-pro",
                 "klein",
                 "klein-large",
+                "imagen-4",
+                "grok-imagine",
             ]
 
             for (const modelId of expectedImageModels) {
@@ -41,7 +43,7 @@ describe("Model Registry", () => {
         })
 
         it("should contain all expected video models", () => {
-            const expectedVideoModels = ["seedance-pro", "seedance", "veo", "wan"]
+            const expectedVideoModels = ["seedance-pro", "seedance", "veo", "wan", "grok-video"]
 
             for (const modelId of expectedVideoModels) {
                 expect(MODEL_REGISTRY[modelId]).toBeDefined()
@@ -66,6 +68,9 @@ describe("Model Registry", () => {
             expect(MODEL_REGISTRY["wan"].displayName).toBe("Wan 2.6")
             expect(MODEL_REGISTRY["klein"].displayName).toBe("FLUX.2 Klein 4B")
             expect(MODEL_REGISTRY["klein-large"].displayName).toBe("FLUX.2 Klein 9B")
+            expect(MODEL_REGISTRY["imagen-4"].displayName).toBe("Imagen 4")
+            expect(MODEL_REGISTRY["grok-imagine"].displayName).toBe("Grok Imagine")
+            expect(MODEL_REGISTRY["grok-video"].displayName).toBe("Grok Video")
         })
 
         it("should have valid constraints for all models", () => {
@@ -155,23 +160,26 @@ describe("Model Registry", () => {
 
     describe("Model Lists", () => {
         it("should have all model IDs", () => {
-            expect(ALL_MODEL_IDS.length).toBe(16)
+            expect(ALL_MODEL_IDS.length).toBe(19)
         })
 
         it("should have correct image model IDs", () => {
-            expect(IMAGE_MODEL_IDS.length).toBe(12)
+            expect(IMAGE_MODEL_IDS.length).toBe(14)
             expect(IMAGE_MODEL_IDS).toContain("zimage")
             expect(IMAGE_MODEL_IDS).toContain("gptimage")
             expect(IMAGE_MODEL_IDS).toContain("flux")
             expect(IMAGE_MODEL_IDS).toContain("klein")
+            expect(IMAGE_MODEL_IDS).toContain("imagen-4")
+            expect(IMAGE_MODEL_IDS).toContain("grok-imagine")
             expect(IMAGE_MODEL_IDS).not.toContain("veo")
         })
 
         it("should have correct video model IDs", () => {
-            expect(VIDEO_MODEL_IDS.length).toBe(4)
+            expect(VIDEO_MODEL_IDS.length).toBe(5)
             expect(VIDEO_MODEL_IDS).toContain("veo")
             expect(VIDEO_MODEL_IDS).toContain("seedance")
             expect(VIDEO_MODEL_IDS).toContain("wan")
+            expect(VIDEO_MODEL_IDS).toContain("grok-video")
             expect(VIDEO_MODEL_IDS).not.toContain("zimage")
         })
     })
@@ -376,6 +384,64 @@ describe("Model Constraints", () => {
             expect(model.constraints.defaultDimensions).toEqual({ width: 1024, height: 1024 })
         })
     })
+
+    describe("Imagen 4", () => {
+        it("should have fixed dimensions (DALL-E 3 standard)", () => {
+            const model = getModel("imagen-4")!
+            expect(model.constraints.dimensionsEnabled).toBe(false)
+            expect(model.constraints.outputCertainty).toBe("exact")
+            expect(model.constraints.minDimension).toBe(1024)
+            expect(model.constraints.maxDimension).toBe(1792)
+            expect(model.constraints.defaultDimensions).toEqual({ width: 1024, height: 1024 })
+        })
+
+        it("should not support negative prompts or reference images", () => {
+            const model = getModel("imagen-4")!
+            expect(model.supportsNegativePrompt).toBe(false)
+            expect(model.supportsReferenceImage).toBeUndefined()
+        })
+
+        it("should have correct provider metadata", () => {
+            const model = getModel("imagen-4")!
+            expect(model.icon).toBe("sparkles")
+            expect(model.logo).toBe("/image-models/google.svg")
+            expect(model.isLegacy).toBeUndefined()
+        })
+
+        it("should only support HD tier", () => {
+            const model = getModel("imagen-4")!
+            expect(model.constraints.supportedTiers).toEqual(["hd"])
+        })
+    })
+
+    describe("Grok Imagine", () => {
+        it("should have fixed dimensions (DALL-E 3 standard)", () => {
+            const model = getModel("grok-imagine")!
+            expect(model.constraints.dimensionsEnabled).toBe(false)
+            expect(model.constraints.outputCertainty).toBe("exact")
+            expect(model.constraints.minDimension).toBe(1024)
+            expect(model.constraints.maxDimension).toBe(1792)
+            expect(model.constraints.defaultDimensions).toEqual({ width: 1024, height: 1024 })
+        })
+
+        it("should not support negative prompts or reference images", () => {
+            const model = getModel("grok-imagine")!
+            expect(model.supportsNegativePrompt).toBe(false)
+            expect(model.supportsReferenceImage).toBeUndefined()
+        })
+
+        it("should have correct provider metadata", () => {
+            const model = getModel("grok-imagine")!
+            expect(model.icon).toBe("sparkles")
+            expect(model.logo).toBe("/image-models/xai.svg")
+            expect(model.isLegacy).toBeUndefined()
+        })
+
+        it("should only support HD tier", () => {
+            const model = getModel("grok-imagine")!
+            expect(model.constraints.supportedTiers).toEqual(["hd"])
+        })
+    })
 })
 
 describe("Aspect Ratio Presets", () => {
@@ -493,6 +559,48 @@ describe("Aspect Ratio Presets", () => {
             }
         }
     })
+
+    it("should have Imagen 4 limited to 3 presets (no custom) with DALL-E 3 standard dimensions", () => {
+        const ratios = getModelAspectRatios("imagen-4")!
+        expect(ratios.length).toBe(3)
+        expect(ratios.every(r => r.value !== "custom")).toBe(true)
+
+        const square = ratios.find(r => r.value === "1:1")
+        expect(square?.width).toBe(1024)
+        expect(square?.height).toBe(1024)
+
+        const landscape = ratios.find(r => r.value === "16:9")
+        expect(landscape?.width).toBe(1792)
+        expect(landscape?.height).toBe(1024)
+
+        const portrait = ratios.find(r => r.value === "9:16")
+        expect(portrait?.width).toBe(1024)
+        expect(portrait?.height).toBe(1792)
+    })
+
+    it("should have Grok Imagine limited to 3 presets (no custom) with DALL-E 3 standard dimensions", () => {
+        const ratios = getModelAspectRatios("grok-imagine")!
+        expect(ratios.length).toBe(3)
+        expect(ratios.every(r => r.value !== "custom")).toBe(true)
+
+        const square = ratios.find(r => r.value === "1:1")
+        expect(square?.width).toBe(1024)
+        expect(square?.height).toBe(1024)
+
+        const landscape = ratios.find(r => r.value === "16:9")
+        expect(landscape?.width).toBe(1792)
+        expect(landscape?.height).toBe(1024)
+
+        const portrait = ratios.find(r => r.value === "9:16")
+        expect(portrait?.width).toBe(1024)
+        expect(portrait?.height).toBe(1792)
+    })
+
+    it("should have Imagen 4 and Grok Imagine share identical aspect ratios", () => {
+        const imagenRatios = getModelAspectRatios("imagen-4")!
+        const grokRatios = getModelAspectRatios("grok-imagine")!
+        expect(imagenRatios).toEqual(grokRatios)
+    })
 })
 
 describe("Video Model Properties", () => {
@@ -557,16 +665,80 @@ describe("Video Model Properties", () => {
         })
     })
 
+    describe("Grok Video", () => {
+        it("should have correct duration constraints (5s default, 10s max)", () => {
+            const model = getModel("grok-video")!
+            expect(model.durationConstraints).toBeDefined()
+            expect(model.durationConstraints!.min).toBe(2)
+            expect(model.durationConstraints!.max).toBe(10)
+            expect(model.durationConstraints!.defaultDuration).toBe(5)
+            expect(model.durationConstraints!.fixedOptions).toBeUndefined()
+        })
+
+        it("should support reference image (image-to-video)", () => {
+            const model = getModel("grok-video")!
+            expect(model.supportsReferenceImage).toBe(true)
+        })
+
+        it("should not support audio", () => {
+            const model = getModel("grok-video")!
+            expect(model.supportsAudio).toBeUndefined()
+        })
+
+        it("should have correct provider metadata", () => {
+            const model = getModel("grok-video")!
+            expect(model.icon).toBe("video")
+            expect(model.logo).toBe("/image-models/xai.svg")
+            expect(model.isLegacy).toBeUndefined()
+        })
+
+        it("should have video constraints with 720p default", () => {
+            const model = getModel("grok-video")!
+            expect(model.constraints.dimensionsEnabled).toBe(false)
+            expect(model.constraints.defaultDimensions).toEqual({ width: 1280, height: 720 })
+            expect(model.constraints.minDimension).toBe(480)
+            expect(model.constraints.maxDimension).toBe(1920)
+            expect(model.constraints.supportedTiers).toEqual(["sd", "hd"])
+        })
+
+        it("should have per-second video pricing at $0.0025/s", () => {
+            const model = getModel("grok-video")!
+            expect(model.modelPricing.type).toBe("video")
+            expect(model.modelPricing.videoPricing?.perSecond).toBe(0.0025)
+            expect(model.modelPricing.isAlpha).toBe(true)
+            expect(model.modelPricing.supportsReferenceImage).toBe(true)
+        })
+
+        it("should have approximatePerPollen consistent with perSecond pricing at default duration", () => {
+            const model = getModel("grok-video")!
+            const perSecond = model.modelPricing.videoPricing?.perSecond!
+            const defaultDuration = model.durationConstraints!.defaultDuration
+            const costPerVideo = perSecond * defaultDuration
+            const expectedEfficiency = 1 / costPerVideo
+            expect(model.modelPricing.approximatePerPollen).toBe(expectedEfficiency)
+        })
+
+        it("should have only 16:9 and 9:16 aspect ratios (like other video models)", () => {
+            const ratios = getModelAspectRatios("grok-video")!
+            expect(ratios.length).toBe(2)
+            expect(ratios.map(r => r.value)).toEqual(["16:9", "9:16"])
+        })
+    })
+
     describe("Video aspect ratios", () => {
         it("should only support 16:9 and 9:16 for video models", () => {
             const veoRatios = getModelAspectRatios("veo")!
             const seedanceRatios = getModelAspectRatios("seedance")!
+            const grokVideoRatios = getModelAspectRatios("grok-video")!
 
             expect(veoRatios.length).toBe(2)
             expect(veoRatios.map(r => r.value)).toEqual(["16:9", "9:16"])
 
             expect(seedanceRatios.length).toBe(2)
             expect(seedanceRatios.map(r => r.value)).toEqual(["16:9", "9:16"])
+
+            expect(grokVideoRatios.length).toBe(2)
+            expect(grokVideoRatios.map(r => r.value)).toEqual(["16:9", "9:16"])
         })
     })
 })

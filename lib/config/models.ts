@@ -174,14 +174,26 @@ const GPTIMAGE_ASPECT_RATIOS: readonly AspectRatioOption[] = (
   ] as const
 ).map(withAspectRatioTags);
 
-/** GPT 1.5 fixed aspect ratios (no custom allowed) */
-const GPTIMAGE_LARGE_ASPECT_RATIOS: readonly AspectRatioOption[] = (
+/**
+ * DALL-E 3 standard aspect ratios (used by Imagen 4, Grok Imagine)
+ *
+ * These models support exactly 3 fixed resolutions following the DALL-E 3 standard:
+ * - 1024×1024 (1:1 Square)
+ * - 1792×1024 (16:9 Landscape — note: 1920×1080 is remapped to this)
+ * - 1024×1792 (9:16 Portrait)
+ *
+ * No custom dimensions allowed.
+ */
+const DALLE3_STANDARD_ASPECT_RATIOS: readonly AspectRatioOption[] = (
   [
     { label: "Square", value: "1:1", width: 1024, height: 1024, icon: "square", category: "square" },
     { label: "Landscape", value: "16:9", width: 1792, height: 1024, icon: "rectangle-horizontal", category: "landscape" },
     { label: "Portrait", value: "9:16", width: 1024, height: 1792, icon: "rectangle-vertical", category: "portrait" },
   ] as const
 ).map(withAspectRatioTags);
+
+/** GPT 1.5 uses the same DALL-E 3 standard aspect ratios (1024², 1792×1024, 1024×1792) */
+const GPTIMAGE_LARGE_ASPECT_RATIOS = DALLE3_STANDARD_ASPECT_RATIOS;
 
 /**
  * Z-Image Turbo aspect ratios - Uses HD standard dimensions within SPAN upscaler limit
@@ -448,6 +460,56 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
   // Featured / High-Performance Models
   // ========================================================================
 
+  "imagen-4": {
+    id: "imagen-4",
+    displayName: "Imagen 4",
+    type: "image",
+    icon: "sparkles",
+    logo: "/image-models/google.svg",
+    description: "Google's latest image generation, high-fidelity photorealistic renders",
+    constraints: {
+      maxPixels: Infinity,
+      minPixels: 0,
+      minDimension: 1024,
+      maxDimension: 1792,
+      step: 1,
+      defaultDimensions: { width: 1024, height: 1024 },
+      dimensionsEnabled: false,
+      maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
+      supportedTiers: ["hd"],
+      outputCertainty: "exact",
+      dimensionWarning: "Dimensions are fixed for this model",
+    },
+    aspectRatios: DALLE3_STANDARD_ASPECT_RATIOS,
+    supportsNegativePrompt: false,
+    modelPricing: IMAGE_MODEL_PRICING["imagen-4"],
+  },
+
+  "grok-imagine": {
+    id: "grok-imagine",
+    displayName: "Grok Imagine",
+    type: "image",
+    icon: "sparkles",
+    logo: "/image-models/xai.svg",
+    description: "xAI image generation, creative and expressive visual outputs",
+    constraints: {
+      maxPixels: Infinity,
+      minPixels: 0,
+      minDimension: 1024,
+      maxDimension: 1792,
+      step: 1,
+      defaultDimensions: { width: 1024, height: 1024 },
+      dimensionsEnabled: false,
+      maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
+      supportedTiers: ["hd"],
+      outputCertainty: "exact",
+      dimensionWarning: "Dimensions are fixed for this model",
+    },
+    aspectRatios: DALLE3_STANDARD_ASPECT_RATIOS,
+    supportsNegativePrompt: false,
+    modelPricing: IMAGE_MODEL_PRICING["grok-imagine"],
+  },
+
   "gptimage-large": {
     id: "gptimage-large",
     displayName: "GPT 1.5",
@@ -652,6 +714,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     },
     aspectRatios: VIDEO_ASPECT_RATIOS,
     supportsNegativePrompt: false,
+    supportsReferenceImage: true,
     durationConstraints: {
       min: 2,
       max: 10,
@@ -667,7 +730,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     type: "video",
     icon: "video",
     logo: "/image-models/google.svg",
-    description: "Reference-guided generation, character/product consistency across shots, native audio, “ingredients” style control, social-ready storytelling",
+    description: "Reference-guided generation, character/product consistency across shots, native audio, \u201Cingredients\u201D style control, social-ready storytelling",
     constraints: {
       maxPixels: Infinity,
       minPixels: 0,
@@ -683,6 +746,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     supportsNegativePrompt: false,
     supportsAudio: true,
     supportsInterpolation: true,
+    supportsReferenceImage: true,
     durationConstraints: {
       min: 4,
       max: 8,
@@ -722,6 +786,35 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     },
     modelPricing: VIDEO_MODEL_PRICING["wan"],
     isLegacy: true,
+  },
+
+  "grok-video": {
+    id: "grok-video",
+    displayName: "Grok Video",
+    type: "video",
+    icon: "video",
+    logo: "/image-models/xai.svg",
+    description: "xAI video generation, text and image-to-video, fixed resolution tiers up to 1080p",
+    constraints: {
+      maxPixels: Infinity,
+      minPixels: 0,
+      minDimension: 480,
+      maxDimension: 1920,
+      step: 1,
+      defaultDimensions: { width: 1280, height: 720 },
+      dimensionsEnabled: false,
+      maxSeed: 2_147_483_647,
+      supportedTiers: ["sd", "hd"],
+    },
+    aspectRatios: VIDEO_ASPECT_RATIOS,
+    supportsNegativePrompt: false,
+    supportsReferenceImage: true,
+    durationConstraints: {
+      min: 2,
+      max: 10,
+      defaultDuration: 5,
+    },
+    modelPricing: VIDEO_MODEL_PRICING["grok-video"],
   },
 
   // ========================================================================
@@ -877,6 +970,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     },
     aspectRatios: VIDEO_ASPECT_RATIOS,
     supportsNegativePrompt: false,
+    supportsReferenceImage: true,
     durationConstraints: {
       min: 2,
       max: 10,

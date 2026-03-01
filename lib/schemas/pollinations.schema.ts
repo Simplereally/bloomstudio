@@ -17,12 +17,14 @@ export const KnownImageModelSchema = z.enum([
   "nanobanana-pro",
   "klein",
   "klein-large",
+  "imagen-4",
+  "grok-imagine",
 ]);
 
 export const ImageModelSchema = z.union([KnownImageModelSchema, z.string()]);
 
 // Video models
-export const VideoModelSchema = z.enum(["veo", "seedance", "seedance-pro", "wan"]);
+export const VideoModelSchema = z.enum(["veo", "seedance", "seedance-pro", "wan", "grok-video"]);
 
 // Combined model schema
 export const GenerationModelSchema = z.union([ImageModelSchema, VideoModelSchema]);
@@ -54,7 +56,7 @@ export const ImageGenerationParamsSchema = z.object({
 // Video generation extends image with video-specific params
 export const VideoGenerationParamsSchema = ImageGenerationParamsSchema.extend({
   model: VideoModelSchema,
-  duration: z.number().int().min(2).max(10).optional(),
+  duration: z.number().int().min(1).max(15).optional(),
   aspectRatio: VideoAspectRatioSchema.optional(),
   audio: z.boolean().optional().default(false), // veo only
   lastFrameImage: z.string().optional(), // Last frame image URL for interpolation (veo only)

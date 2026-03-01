@@ -70,6 +70,15 @@ describe("pollinations-pricing.schema", () => {
       expect(cost).toBe(0.15 * 5);
     });
 
+    it("should calculate cost for grok-video at $0.0025/s", () => {
+      // grok-video is 0.0025 per second
+      const cost5s = estimateVideoCost("grok-video", 5);
+      expect(cost5s).toBe(0.0025 * 5); // $0.0125 for 5s
+
+      const cost10s = estimateVideoCost("grok-video", 10);
+      expect(cost10s).toBe(0.0025 * 10); // $0.025 for 10s
+    });
+
     it("should calculate cost for token-based video model", () => {
       // seedance-pro: approx 10 per pollen -> 1/10 per video roughly
       const cost = estimateVideoCost("seedance-pro", 5);
@@ -125,6 +134,7 @@ describe("pollinations-pricing.schema", () => {
   describe("isModelAlpha", () => {
     it("should return true for alpha models", () => {
       expect(isModelAlpha("veo")).toBe(true);
+      expect(isModelAlpha("grok-video")).toBe(true);
     });
 
     it("should return false for stable models", () => {
