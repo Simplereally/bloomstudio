@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { LAST_UPDATED, TERMS_LAST_UPDATED } from "./constants";
+import { LAST_UPDATED, TERMS_LAST_UPDATED, MAX_PROMPT_LENGTH } from "./constants";
 
 describe("constants", () => {
   describe("LAST_UPDATED", () => {
@@ -31,6 +31,17 @@ describe("constants", () => {
     it("follows expected date format", () => {
       // Should be in format like "January 11, 2026"
       expect(TERMS_LAST_UPDATED).toMatch(/^[A-Z][a-z]+ \d{1,2}, \d{4}$/);
+    });
+  });
+
+  describe("MAX_PROMPT_LENGTH", () => {
+    it("is 4000", () => {
+      expect(MAX_PROMPT_LENGTH).toBe(4000);
+    });
+
+    it("is a positive integer", () => {
+      expect(Number.isInteger(MAX_PROMPT_LENGTH)).toBe(true);
+      expect(MAX_PROMPT_LENGTH).toBeGreaterThan(0);
     });
   });
 });

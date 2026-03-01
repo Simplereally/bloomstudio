@@ -86,7 +86,7 @@ describe("PromptView", () => {
     it("renders PromptHeaderControls with correct maxLength", () => {
         render(<PromptView {...defaultProps} />)
 
-        expect(screen.getByTestId("max-length")).toHaveTextContent("2000")
+        expect(screen.getByTestId("max-length")).toHaveTextContent("4000")
     })
 
     it("shows hasHistory true when history exists", () => {

@@ -22,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { PromptLibrary, PromptLibraryButton, SavePromptButton } from "@/components/studio/features/prompt-library";
 import { usePromptInput } from "@/hooks/use-prompt-input";
+import { MAX_PROMPT_LENGTH } from "@/lib/constants";
 import { ChevronDown, History, Lightbulb, Wand2, X } from "lucide-react";
 import * as React from "react";
 
@@ -83,7 +84,7 @@ export interface PromptSectionAPI {
 }
 
 export function PromptSection({
-  maxLength = 2000,
+  maxLength = MAX_PROMPT_LENGTH,
   isGenerating = false,
   showNegativePrompt = true,
   promptHistory = [],

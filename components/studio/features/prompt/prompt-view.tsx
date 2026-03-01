@@ -21,6 +21,7 @@ import {
     type PromptSectionAPI,
 } from "@/components/studio"
 import { Separator } from "@/components/ui/separator"
+import { MAX_PROMPT_LENGTH } from "@/lib/constants"
 import { Wand2 } from "lucide-react"
 import * as React from "react"
 
@@ -78,7 +79,7 @@ export const PromptView = React.memo(function PromptView({
             forceMount
             rightContent={
                 <PromptHeaderControls
-                    maxLength={2000}
+                    maxLength={MAX_PROMPT_LENGTH}
                     hasHistory={promptHistory.length > 0}
                     promptSectionRef={apiRef}
                 />

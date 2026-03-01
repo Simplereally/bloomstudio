@@ -30,7 +30,7 @@ describe("PromptHeaderControls", () => {
     }
 
     const defaultProps = {
-        maxLength: 2000,
+        maxLength: 4000,
         hasHistory: true,
         promptSectionRef: mockRef,
     }
@@ -95,7 +95,7 @@ describe("PromptHeaderControls", () => {
 
         // Wait for initial render
         await waitFor(() => {
-            expect(screen.getByTestId("prompt-header-character-count")).toHaveTextContent("0/2000")
+            expect(screen.getByTestId("prompt-header-character-count")).toHaveTextContent("0/4000")
         })
 
         // Simulate typing
@@ -110,14 +110,14 @@ describe("PromptHeaderControls", () => {
         }
 
         await waitFor(() => {
-            expect(screen.getByTestId("prompt-header-character-count")).toHaveTextContent("5/2000")
+            expect(screen.getByTestId("prompt-header-character-count")).toHaveTextContent("5/4000")
         })
     })
 
     it("applies destructive class when near character limit", async () => {
         if (mockPromptInput) {
-            // Set value to 1900 chars (above 90% of 2000)
-            mockPromptInput.value = "x".repeat(1900)
+            // Set value to 3700 chars (above 90% of 4000)
+            mockPromptInput.value = "x".repeat(3700)
         }
 
         renderWithTooltip(<PromptHeaderControls {...defaultProps} />)
