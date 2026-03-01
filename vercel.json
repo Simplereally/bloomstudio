@@ -3,7 +3,7 @@
   "buildCommand": "npx convex deploy --cmd 'bun run build'",
   "git": {
     "deploymentEnabled": {
-      "main": true,
+      "main": false,
       "release": true
     }
   },
