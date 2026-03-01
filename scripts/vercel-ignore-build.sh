@@ -19,8 +19,12 @@ if [[ "$VERCEL_ENV" == "production" ]]; then
   fi
 fi
 
-# Preview deployments: Allow main and feature branches
+# Preview deployments: Block main branch, allow feature branches
 if [[ "$VERCEL_ENV" == "preview" ]]; then
+  if [[ "$VERCEL_GIT_COMMIT_REF" == "main" ]]; then
+    echo "❌ Preview build blocked: 'main' branch merges should not trigger preview builds"
+    exit 0
+  fi
   echo "✅ Preview build allowed for branch: $VERCEL_GIT_COMMIT_REF"
   exit 1
 fi
