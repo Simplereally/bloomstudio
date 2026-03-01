@@ -121,7 +121,7 @@ export function ContentPreferenceCard() {
                                 </Label>
                                 <p className="text-sm text-muted-foreground leading-relaxed">
                                     New generations will default to private (unlisted). Private images skip content analysis and
-                                    won't appear in the public gallery. You can still toggle per-generation in the Studio.
+                                    won&apos;t appear in the public gallery. You can still toggle per-generation in the Studio.
                                 </p>
                             </div>
 

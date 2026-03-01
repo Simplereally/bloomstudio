@@ -91,8 +91,7 @@ describe("ContentPreferenceCard", () => {
     defaultPrivate?: boolean | undefined;
   }) {
     vi.mocked(useQuery).mockImplementation(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (queryRef: any, ..._args: any[]) => {
+      (queryRef: unknown, ..._args: unknown[]) => {
         if (queryRef === SENSITIVE_PREF_QUERY) return values.preference;
         if (queryRef === DEFAULT_PRIVATE_QUERY) return values.defaultPrivate;
         return undefined;
@@ -105,8 +104,7 @@ describe("ContentPreferenceCard", () => {
 
     // Discriminate mutations by reference
     vi.mocked(useMutation).mockImplementation(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (mutationRef: any) => {
+      (mutationRef: unknown) => {
         if (mutationRef === UPDATE_SENSITIVE_PREF_MUTATION) {
           return createMockPreferenceMutation();
         }
