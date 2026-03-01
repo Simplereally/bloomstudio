@@ -255,19 +255,37 @@ describe("pollinations.schema", () => {
     });
 
     it("validates duration range", () => {
+      // duration: 1 is valid (min is 1)
+      const validMin = VideoGenerationParamsSchema.safeParse({
+        prompt: "test",
+        model: "veo",
+        duration: 1,
+      });
+      expect(validMin.success).toBe(true);
+
+      // duration: 10 is valid (max is 10)
+      const validMax = VideoGenerationParamsSchema.safeParse({
+        prompt: "test",
+        model: "veo",
+        duration: 10,
+      });
+      expect(validMax.success).toBe(true);
+
+      // duration: 0 should be below minimum
       expect(() =>
         VideoGenerationParamsSchema.parse({
           prompt: "test",
           model: "veo",
-          duration: 1, // Below min of 2
+          duration: 0,
         })
       ).toThrow();
 
+      // duration: 11 should be above maximum
       expect(() =>
         VideoGenerationParamsSchema.parse({
           prompt: "test",
           model: "veo",
-          duration: 15, // Above max of 10
+          duration: 11,
         })
       ).toThrow();
     });

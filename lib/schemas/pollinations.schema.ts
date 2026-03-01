@@ -56,7 +56,7 @@ export const ImageGenerationParamsSchema = z.object({
 // Video generation extends image with video-specific params
 export const VideoGenerationParamsSchema = ImageGenerationParamsSchema.extend({
   model: VideoModelSchema,
-  duration: z.number().int().min(1).max(15).optional(),
+  duration: z.number().int().min(1).max(10).optional(),
   aspectRatio: VideoAspectRatioSchema.optional(),
   audio: z.boolean().optional().default(false), // veo only
   lastFrameImage: z.string().optional(), // Last frame image URL for interpolation (veo only)

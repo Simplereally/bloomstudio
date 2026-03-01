@@ -46,12 +46,14 @@ const RANDOM_SEED_VALUE = -1
 
 /**
  * Check if a model supports deterministic seed-based reproduction.
- * Returns false for models where the backend silently ignores the seed parameter.
+ * Returns false for models where the backend silently ignores the seed parameter,
+ * or for unknown models not found in the registry.
  */
 export function modelSupportsSeed(modelId: string): boolean {
     const model = getModel(modelId)
+    if (!model) return false
     // Default to true for backward compatibility — only explicit `false` disables
-    return model?.constraints.supportsSeed !== false
+    return model.constraints.supportsSeed !== false
 }
 
 /**

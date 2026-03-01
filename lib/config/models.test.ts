@@ -669,7 +669,7 @@ describe("Video Model Properties", () => {
         it("should have correct duration constraints (5s default, 10s max)", () => {
             const model = getModel("grok-video")!
             expect(model.durationConstraints).toBeDefined()
-            expect(model.durationConstraints!.min).toBe(2)
+            expect(model.durationConstraints!.min).toBe(1)
             expect(model.durationConstraints!.max).toBe(10)
             expect(model.durationConstraints!.defaultDuration).toBe(5)
             expect(model.durationConstraints!.fixedOptions).toBeUndefined()

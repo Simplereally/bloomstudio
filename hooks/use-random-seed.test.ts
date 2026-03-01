@@ -10,6 +10,7 @@ import {
     generateRandomSeed,
     getMaxSeedForModel,
     isRandomSeedMode,
+    modelSupportsSeed,
     RANDOM_SEED,
     useRandomSeed,
 } from "./use-random-seed"
@@ -24,6 +25,7 @@ describe("useRandomSeed", () => {
             expect(result.current).toHaveProperty("RANDOM_SEED")
             expect(result.current).toHaveProperty("MIN_SEED")
             expect(result.current).toHaveProperty("MAX_SEED")
+            expect(result.current).toHaveProperty("supportsSeed")
         })
 
         it("generateSeed returns a valid integer", () => {
@@ -80,6 +82,33 @@ describe("useRandomSeed", () => {
 
             expect(result.current.MAX_SEED).toBe(2147483647)
         })
+
+        it("supportsSeed is true for models with seed support", () => {
+            const { result } = renderHook(() => useRandomSeed("zimage"))
+            expect(result.current.supportsSeed).toBe(true)
+        })
+    })
+
+    describe("hook with models that do not support seed", () => {
+        it("supportsSeed is false for imagen-4", () => {
+            const { result } = renderHook(() => useRandomSeed("imagen-4"))
+            expect(result.current.supportsSeed).toBe(false)
+        })
+
+        it("supportsSeed is false for grok-imagine", () => {
+            const { result } = renderHook(() => useRandomSeed("grok-imagine"))
+            expect(result.current.supportsSeed).toBe(false)
+        })
+
+        it("supportsSeed is false for grok-video", () => {
+            const { result } = renderHook(() => useRandomSeed("grok-video"))
+            expect(result.current.supportsSeed).toBe(false)
+        })
+
+        it("still returns a valid maxSeed fallback for models without maxSeed", () => {
+            const { result } = renderHook(() => useRandomSeed("imagen-4"))
+            expect(result.current.MAX_SEED).toBe(2147483647)
+        })
     })
 
     describe("getMaxSeedForModel utility", () => {
@@ -88,10 +117,33 @@ describe("useRandomSeed", () => {
             expect(getMaxSeedForModel("seedream")).toBe(2147483647)
         })
 
+        it("returns fallback int32 max for models without explicit maxSeed", () => {
+            // imagen-4 no longer has maxSeed set, should fallback to int32 max
+            expect(getMaxSeedForModel("imagen-4")).toBe(2147483647)
+        })
+
         it("throws for unknown model", () => {
             expect(() => getMaxSeedForModel("unknown-model")).toThrow(
-                'Model "unknown-model" not found or missing maxSeed constraint'
+                'Model "unknown-model" not found in registry'
             )
+        })
+    })
+
+    describe("modelSupportsSeed utility", () => {
+        it("returns true for models with seed support", () => {
+            expect(modelSupportsSeed("zimage")).toBe(true)
+            expect(modelSupportsSeed("flux")).toBe(true)
+            expect(modelSupportsSeed("seedream")).toBe(true)
+        })
+
+        it("returns false for models without seed support", () => {
+            expect(modelSupportsSeed("imagen-4")).toBe(false)
+            expect(modelSupportsSeed("grok-imagine")).toBe(false)
+            expect(modelSupportsSeed("grok-video")).toBe(false)
+        })
+
+        it("returns false for unknown models", () => {
+            expect(modelSupportsSeed("unknown-model")).toBe(false)
         })
     })
 

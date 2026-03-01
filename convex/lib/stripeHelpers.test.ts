@@ -281,7 +281,7 @@ describe("createStripeClient", () => {
 
         // Access internal config - this tests the configuration was applied
          
-        expect((client as any)._api.version).toBe("2025-12-15.clover")
+        expect((client as any)._api.version).toBe("2026-02-25.clover")
     })
 })
 
