@@ -116,6 +116,92 @@ export function buildPollinationsUrl(params: PollinationsUrlParams): string {
 // ============================================================
 
 /**
+ * A pattern that identifies a non-retryable error in an API response body.
+ *
+ * These override HTTP status classification — even if the status code is 500
+ * (normally retryable), a matching body pattern marks the error as terminal.
+ *
+ * This handles cases where upstream providers (e.g. api.airforce) wrap
+ * client-level errors (400, 422) in server-level status codes (500).
+ */
+interface NonRetryableErrorPattern {
+    /** Substring or RegExp to match against the error response body */
+    readonly pattern: string | RegExp
+    /** Machine-readable reason for logging / metrics */
+    readonly reason: string
+}
+
+/**
+ * Registry of error body patterns that should NEVER be retried,
+ * regardless of the HTTP status code.
+ *
+ * Add new entries here when a provider is known to surface permanent
+ * failures behind retryable status codes.
+ *
+ * Order matters: first match wins.
+ */
+export const NON_RETRYABLE_ERROR_PATTERNS: readonly NonRetryableErrorPattern[] = [
+    // api.airforce wraps upstream 4xx errors in a 500 response.
+    // e.g. "Provider error (400 Bad Request)" — the request itself is invalid.
+    {
+        pattern: /Provider error \(4\d{2}\b/,
+        reason: "provider_client_error",
+    },
+    // Content policy / safety rejections from upstream providers
+    {
+        pattern: /content policy/i,
+        reason: "content_policy_violation",
+    },
+    // Model not found / unsupported at the provider level
+    {
+        pattern: /model.*not found/i,
+        reason: "provider_model_not_found",
+    },
+]
+
+/**
+ * Check if an error body matches any known non-retryable provider pattern.
+ *
+ * Searches both the raw text and, if the body is JSON, common nested
+ * message fields (message, error, detail).
+ *
+ * @param errorText - Raw error response body
+ * @returns Matching classification, or null if no pattern matched
+ */
+export function matchNonRetryablePattern(errorText: string): ErrorClassification | null {
+    // Collect candidate strings to match against
+    const candidates: string[] = [errorText]
+
+    try {
+        const parsed: unknown = JSON.parse(errorText)
+        if (typeof parsed === "object" && parsed !== null) {
+            const obj = parsed as Record<string, unknown>
+            for (const key of ["message", "error", "detail"] as const) {
+                if (typeof obj[key] === "string") {
+                    candidates.push(obj[key])
+                }
+            }
+        }
+    } catch {
+        // Not JSON — that's fine, we still have the raw text
+    }
+
+    for (const { pattern, reason } of NON_RETRYABLE_ERROR_PATTERNS) {
+        for (const candidate of candidates) {
+            const matches =
+                typeof pattern === "string"
+                    ? candidate.includes(pattern)
+                    : pattern.test(candidate)
+            if (matches) {
+                return { isRetryable: false, reason }
+            }
+        }
+    }
+
+    return null
+}
+
+/**
  * Classify an HTTP response status code to determine if it's retryable.
  * 
  * Retryable errors:
@@ -200,17 +286,29 @@ export function isFluxModelUnavailable(errorText: string): boolean {
 /**
  * Classify an error based on HTTP status and response body.
  * Combines status code classification with content-based checks.
+ *
+ * Evaluation order (first match wins):
+ * 1. Known transient body patterns (e.g. Flux unavailability) → retryable
+ * 2. Known non-retryable body patterns (e.g. provider 4xx wrapped in 500) → terminal
+ * 3. HTTP status code heuristic → depends on code
  * 
  * @param status - HTTP status code
  * @param errorText - Error response body text
  * @returns Error classification with retryable flag and reason
  */
 export function classifyApiError(status: number, errorText: string): ErrorClassification {
-    // Check for known transient errors in the response body
+    // 1. Check for known transient errors in the response body (retryable overrides)
     if (isFluxModelUnavailable(errorText)) {
         return { isRetryable: true, reason: "model_unavailable" }
     }
 
-    // Fall back to HTTP status classification
+    // 2. Check for known non-retryable provider errors in the response body
+    //    These take priority over HTTP status (e.g. a 500 wrapping a provider 400)
+    const nonRetryableMatch = matchNonRetryablePattern(errorText)
+    if (nonRetryableMatch !== null) {
+        return nonRetryableMatch
+    }
+
+    // 3. Fall back to HTTP status classification
     return classifyHttpError(status)
 }

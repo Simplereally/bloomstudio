@@ -16,6 +16,8 @@ export {
     classifyHttpError,
     classifyApiError,
     isFluxModelUnavailable,
+    matchNonRetryablePattern,
+    NON_RETRYABLE_ERROR_PATTERNS,
     type PollinationsUrlParams,
     type ErrorClassification,
 } from "./pollinations"
