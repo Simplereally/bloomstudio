@@ -1,21 +1,21 @@
 import { ScrollReveal } from "./scroll-reveal";
-import { CompetitorComparison } from "./competitor-comparison";
+import { CapabilitiesShowcase } from "./competitor-comparison";
 
 export function ValuePropSection() {
   return (
-    <section id="compare" className="py-24 xl:py-28 2xl:py-32 3xl:py-40 4xl:py-48 5xl:py-56 relative">
+    <section id="capabilities" className="py-24 xl:py-28 2xl:py-32 3xl:py-40 4xl:py-48 5xl:py-56 relative">
       <div className="container mx-auto px-6">
         <div className="max-w-[1172px] mx-auto">
           <ScrollReveal>
             <div className="text-center mb-12 3xl:mb-16 4xl:mb-20">
-              <h2 className="text-4xl sm:text-5xl font-bold text-foreground mb-4">Why pay more elsewhere?</h2>
-              <p className="text-lg text-muted-foreground">A simple comparison that speaks for itself.</p>
+              <h2 className="text-4xl sm:text-5xl font-bold text-foreground mb-4">Built for serious creators</h2>
+              <p className="text-lg text-muted-foreground">Generous limits, all models included, one flat price.</p>
             </div>
           </ScrollReveal>
 
-          {/* Competitor comparison table */}
+          {/* Capabilities showcase */}
           <div className="mb-12">
-            <CompetitorComparison />
+            <CapabilitiesShowcase />
           </div>
 
           {/* Feature highlights */}
@@ -24,7 +24,7 @@ export function ValuePropSection() {
               <div className="h-full p-6 rounded-2xl bg-gradient-to-br from-white/5 via-card/80 to-purple-500/5 border border-white/10">
                 <h3 className="font-bold text-foreground mb-2">Daily Resets</h3>
                 <p className="text-sm text-muted-foreground">
-                  Your quota resets every 24 hours. Never lose unused generations like with monthly-reset competitors.
+                  Your quota resets every 24 hours. Start fresh each day with your full allowance — no waiting until the end of the month.
                 </p>
               </div>
             </ScrollReveal>
@@ -32,7 +32,7 @@ export function ValuePropSection() {
               <div className="h-full p-6 rounded-2xl bg-gradient-to-br from-white/5 via-card/80 to-purple-500/5 border border-white/10">
                 <h3 className="font-bold text-foreground mb-2">1,000 Image Batch Queue</h3>
                 <p className="text-sm text-muted-foreground">
-                  Queue up massive batches while competitors limit you to 4-8 images at a time.
+                  Queue up massive batches and let them process while you focus on your next idea. Up to 1,000 generations in one go.
                 </p>
               </div>
             </ScrollReveal>
@@ -40,13 +40,13 @@ export function ValuePropSection() {
               <div className="h-full p-6 rounded-2xl bg-gradient-to-br from-white/5 via-card/80 to-purple-500/5 border border-white/10">
                 <h3 className="font-bold text-foreground mb-2">All Models Included</h3>
                 <p className="text-sm text-muted-foreground">
-                  Every active model is included: Flux Schnell, Z-Image Turbo, GPT Image, FLUX.2 Klein, and Seedance — no extras to unlock.
+                  Every active model is included: Imagen 4, Grok Imagine, Grok Video, Flux Schnell, GPT Image, Z-Image, Klein, Seedance — no extras to unlock.
                 </p>
               </div>
             </ScrollReveal>
             <ScrollReveal delay={600}>
               <div className="h-full p-6 rounded-2xl bg-gradient-to-br from-white/5 via-card/80 to-purple-500/5 border border-white/10">
-                <h3 className="font-bold text-foreground mb-2">NSFW Enabled 🤭</h3>
+                <h3 className="font-bold text-foreground mb-2">NSFW Enabled</h3>
                 <p className="text-sm text-muted-foreground">
                   Creative freedom without arbitrary restrictions on models that support it. Generate what you imagine.
                 </p>

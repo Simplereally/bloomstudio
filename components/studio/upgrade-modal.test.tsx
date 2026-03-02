@@ -57,7 +57,7 @@ describe("UpgradeModal", () => {
 		expect(
 			screen.getByText("high-quality images/month"),
 		).toBeInTheDocument();
-		expect(screen.getByText("6")).toBeInTheDocument();
+		expect(screen.getByText("9")).toBeInTheDocument();
 		expect(screen.getByText("AI models included")).toBeInTheDocument();
 		expect(screen.getByText("Daily")).toBeInTheDocument();
 	});

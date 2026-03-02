@@ -82,7 +82,7 @@ export const ModelSelector = React.memo(function ModelSelector({
     const renderModelButton = (model: ModelDefinition, isCards: boolean) => {
         const Icon = getModelIcon(model)
         const isSelected = selectedModel === model.id
-        const isMonochrome = model.logo?.includes("openai.svg") || model.logo?.includes("flux.svg")
+        const isMonochrome = model.logo?.includes("openai.svg") || model.logo?.includes("flux.svg") || model.logo?.includes("xai.svg")
 
         if (isCards) {
             return (

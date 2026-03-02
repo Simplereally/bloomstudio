@@ -21,12 +21,12 @@ export const faqs = [
     {
         question: "What AI models are included?",
         answer:
-            "We offer 10+ cutting-edge and popular models including Flux, GPT-4 Image, Seedream, and more. Both trial and Pro users get access to all models.",
+            "We offer 9 high-quality AI models including Imagen 4, Grok Imagine, Flux Schnell, GPT Image, Z-Image Turbo, FLUX.2 Klein 4B & 9B, Grok Video, and Seedance. Both trial and Pro users get access to all models.",
     },
     {
-        question: "Why is this so much cheaper than competitors?",
+        question: "Why is this so affordable?",
         answer:
-            "We built Bloomstudio to make AI image generation accessible to everyone. By keeping our infrastructure lean and focusing on what matters, we pass the savings to you.",
+            "We built Bloom Studio to make AI image generation accessible to everyone. By keeping our infrastructure lean and focusing on what matters, we pass the savings to you.",
     },
     {
         question: "Can I cancel anytime?",

@@ -4,6 +4,16 @@
 
 # .agent — Development Guidelines
 
+## Package Manager
+
+Use Bun exclusively. Never use npm, npx, or yarn.
+
+Install: `bun install`
+Run: `bun run <script>`
+Execute: `bunx <pkg>`
+Test: `bun test`
+Add: `bun add <pkg>`
+
 ## Stack
 - Next.js (App Router, latest stable patch)
 - React 19

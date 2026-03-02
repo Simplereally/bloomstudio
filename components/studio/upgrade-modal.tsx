@@ -29,7 +29,7 @@ interface UpgradeModalProps {
 
 const proFeatures = [
 	{ icon: Images, label: "180", description: "high-quality images/month" },
-	{ icon: Palette, label: "6", description: "AI models included" },
+	{ icon: Palette, label: "9", description: "AI models included" },
 	{ icon: RefreshCw, label: "Daily", description: "quota refresh" },
 ];
 
@@ -126,7 +126,7 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
 							<a href="/pricing" className="text-primary hover:underline">
 								Pricing
 							</a>{" "}
-							to see how we offer more value than competitors.
+							to see everything included in Pro.
 						</p>
 					</div>
 

@@ -59,6 +59,13 @@ const MODEL_VALUE_DATA: ModelValueData[] = [
         type: "image",
     },
     {
+        id: "grok-imagine",
+        displayName: "Grok Imagine",
+        logo: "/image-models/xai.svg",
+        monthlyQuota: 72_000,
+        type: "image",
+    },
+    {
         id: "gptimage",
         displayName: "GPT Image 1.0",
         logo: "/image-models/openai.svg",
@@ -70,6 +77,13 @@ const MODEL_VALUE_DATA: ModelValueData[] = [
         displayName: "Seedance",
         logo: "/image-models/bytedance.svg",
         monthlyQuota: 1_080,
+        type: "video",
+    },
+    {
+        id: "grok-video",
+        displayName: "Grok Video",
+        logo: "/image-models/xai.svg",
+        monthlyQuota: 14_400,
         type: "video",
     },
 ]
@@ -125,7 +139,7 @@ function AnimatedNumber({ value, delay = 0 }: { value: number; delay?: number })
 }
 
 function ModelRow({ model, index }: { model: ModelValueData; index: number }) {
-    const isMonochrome = model.logo.includes("openai.svg") || model.logo.includes("flux.svg")
+    const isMonochrome = model.logo.includes("openai.svg") || model.logo.includes("flux.svg") || model.logo.includes("xai.svg")
 
     return (
         <motion.div

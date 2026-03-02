@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -134,6 +135,9 @@ export function ApiKeyOnboardingModal({
       >
         <DialogHeader>
           <DialogTitle className="sr-only">Connect to Pollinations</DialogTitle>
+          <DialogDescription className="sr-only">
+            One-click setup to connect your Pollinations account for free image generation.
+          </DialogDescription>
         </DialogHeader>
         {/* Subtle accent line at top */}
         <div className="absolute top-0 left-0 right-0 h-1 w-full bg-gradient-to-r from-transparent via-primary/60 to-transparent z-10" />

@@ -1,8 +1,8 @@
-import { Building2, Crown, Sparkles, type LucideIcon } from "lucide-react"
+import { Crown, Sparkles, type LucideIcon } from "lucide-react"
 import Link from "next/link"
 
 
-export type TierName = "Starter" | "Pro" | "Competitors"
+export type TierName = "Starter" | "Pro"
 
 export interface PricingTier {
     name: TierName
@@ -48,29 +48,12 @@ export const pricingTiers: PricingTier[] = [
         features: [
             "180 high-quality images/month",
             "Daily resets",
-            "6 AI models included (Flux, GPT Image, Z-Image, Klein, Seedance)",
+            "9 AI models included (Flux, GPT Image, Z-Image, Klein, Grok Imagine, Grok Video, and more)",
             "Advanced prompt enhancement",
             "Custom prompt library",
             "1,000 image batch queue",
             "Private generations",
             "NSFW Generations (on supported models)",
-        ],
-    },
-    {
-        name: "Competitors",
-        description: "Long queue times. Expensive. Slow.",
-        price: null,
-        icon: Building2,
-        highlighted: false,
-        cta: "See the comparison table",
-        ctaVariant: "outline",
-        features: [
-            "Queue times, even after you've paid them",
-            "Credit-based system designed to take more money from you",
-            "Expensive Tiers to just do what you want to do",
-            "Can't queue more than 5 images on most plans",
-            "Lack of private generations",
-            "NSFW generations blocked",
         ],
     },
 ]
@@ -90,7 +73,7 @@ export const pricingFaqs = [
         question: "What AI models are included?",
         answer: (
             <span>
-                We offer 6 high-quality AI models including Flux Schnell, GPT Image, Z-Image Turbo, FLUX.2 Klein, and Seedance. Both Free and Pro users get access to all active models.{" "}
+                We offer 9 high-quality AI models including Flux Schnell, GPT Image, Z-Image Turbo, FLUX.2 Klein, Imagen 4, Grok Imagine, Grok Video, and Seedance. Both Free and Pro users get access to all active models.{" "}
                 <Link href="/#models" className="text-primary hover:underline font-medium">
                     View the full list of supported models here.
                 </Link>
@@ -98,9 +81,9 @@ export const pricingFaqs = [
         ),
     },
     {
-        question: "Why is this so much cheaper than competitors?",
+        question: "Why is this so affordable?",
         answer:
-            "We built Bloomstudio to make AI image generation accessible to everyone. By keeping our infrastructure lean and focusing on what matters, we pass the savings to you.",
+            "We built Bloom Studio to make AI image generation accessible to everyone. By keeping our infrastructure lean and focusing on what matters, we pass the savings to you.",
     },
     {
         question: "Can I cancel anytime?",
@@ -110,15 +93,14 @@ export const pricingFaqs = [
 ]
 
 export const featureComparison = [
-    { feature: "Monthly images", starter: "180", pro: "180", competitors: "60 (at 140 tokens)" },
-    { feature: "Monthly cost", starter: "$0", pro: "$3", competitors: "$12 / $30 / $60" },
-    { feature: "Credit system", starter: "Simple daily reset", pro: "Simple daily reset", competitors: "Designed to take money" },
-    { feature: "Queue priority", starter: "Zero artificial delays", pro: "Zero artificial delays", competitors: "Paid queue tiers" },
+    { feature: "Monthly images", starter: "180", pro: "180" },
+    { feature: "Monthly cost", starter: "$0", pro: "$3" },
+    { feature: "Quota system", starter: "Simple daily reset", pro: "Simple daily reset" },
+    { feature: "Queue priority", starter: "Zero artificial delays", pro: "Zero artificial delays" },
     {
         feature: "Simultaneous creation",
         starter: "10 generations/sec",
         pro: "10 generations/sec",
-        competitors: "4-8 (on high tiers)",
         details: {
             title: "Simultaneous creation",
             description: "We host zero artificial queues. The moment you click generate, your request is fired directly to the model.",
@@ -127,10 +109,10 @@ export const featureComparison = [
             footer: "Zero throttle. No gatekeeping.",
         },
     },
-    { feature: "Batch queue size", starter: "1,000", pro: "1,000", competitors: "10-20" },
-    { feature: "AI Models", starter: "6", pro: "6", competitors: "Varies" },
-    { feature: "Prompt library", starter: true, pro: true, competitors: false },
-    { feature: "Prompt enhancement", starter: true, pro: true, competitors: "Basic" },
-    { feature: "Private gallery", starter: true, pro: true, competitors: "Varies" },
-    { feature: "NSFW Generations (on supported models)", starter: true, pro: true, competitors: false },
+    { feature: "Batch queue size", starter: "1,000", pro: "1,000" },
+    { feature: "AI Models", starter: "9", pro: "9" },
+    { feature: "Prompt library", starter: true, pro: true },
+    { feature: "Prompt enhancement", starter: true, pro: true },
+    { feature: "Private gallery", starter: false, pro: true },
+    { feature: "NSFW Generations (on supported models)", starter: false, pro: true },
 ] as const

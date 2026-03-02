@@ -56,28 +56,28 @@ export function Header() {
 
     return (
         <header className="sticky top-0 z-[40] w-full border-b border-border/40 bg-background/60 backdrop-blur-xl supports-[backdrop-filter]:bg-background/40">
-            <div className="grid h-14 w-full grid-cols-[1fr_auto_1fr] items-center gap-4 px-4">
-                {/* Left Side: Logo - Start Aligned */}
-                <div className="justify-self-start">
+            <div className="flex h-14 w-full items-center justify-between px-4">
+                {/* Left Side: Logo */}
+                <div className="flex items-center flex-shrink-0">
                     <Link href="/" className="flex items-center gap-2">
                         <Image
                             src="/icon.png"
                             alt="Bloom Studio Logo"
                             width={28}
                             height={28}
-                            className="h-7 w-7"
+                            className="h-7 w-7 flex-shrink-0"
                             priority
                         />
-                        <span className="text-2xl font-bold text-primary font-brand tracking-tight -skew-x-6 whitespace-nowrap">
+                        <span className="text-xl sm:text-2xl font-bold text-primary font-brand tracking-tight -skew-x-6 whitespace-nowrap">
                             Bloom Studio
                         </span>
                     </Link>
                 </div>
 
-                {/* Center: Desktop Navigation - Pill Style - Center Aligned */}
-                <div className="justify-self-center">
+                {/* Center: Desktop Navigation - Pill Style */}
+                <div className="hidden lg:flex items-center justify-center flex-1 px-4 min-w-0">
                     {showAuthUI && isSignedIn && (
-                        <nav className="hidden lg:flex items-center p-1 rounded-full bg-muted/30 border border-border/50 shadow-inner backdrop-blur-md">
+                        <nav className="flex items-center p-1 rounded-full bg-muted/30 border border-border/50 shadow-inner backdrop-blur-md">
                             {navItems.map((item) => {
                                 const isActive = pathname.startsWith(item.href)
                                 const Icon = item.icon
@@ -85,14 +85,14 @@ export function Header() {
                                     <Link key={item.href} href={item.href}>
                                         <div
                                             className={cn(
-                                                "relative px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-300 flex items-center gap-2",
+                                                "relative px-3 xl:px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-300 flex items-center gap-2 whitespace-nowrap",
                                                 isActive
                                                     ? "text-primary transition-all duration-300"
                                                     : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
                                             )}
                                         >
-                                            <Icon className={cn("h-4 w-4", isActive ? "text-primary" : "text-muted-foreground")} />
-                                            {item.label}
+                                            <Icon className={cn("h-4 w-4 flex-shrink-0", isActive ? "text-primary" : "text-muted-foreground")} />
+                                            <span className="hidden xl:inline">{item.label}</span>
                                             {isActive && (
                                                 <span
                                                     className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-[2px] w-[80%]"
@@ -109,8 +109,8 @@ export function Header() {
                     )}
                 </div>
 
-                {/* Right Side: Settings & Auth - End Aligned */}
-                <div className="justify-self-end flex items-center gap-3">
+                {/* Right Side: Settings & Auth */}
+                <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
                     <div className="flex items-center gap-1.5 p-1 rounded-full bg-muted/30 border border-border/50">
                         {/* Test Modals - Dev Only */}
                         {isLocalDev && (
@@ -217,7 +217,7 @@ export function Header() {
 
                     {showAuthUI && !isSignedIn && (
                         <Link href="/sign-in">
-                            <Button variant="outline" size="sm" className="rounded-full border-border hover:bg-accent">
+                            <Button variant="outline" size="sm" className="rounded-full border-border hover:bg-accent whitespace-nowrap">
                                 Sign In
                             </Button>
                         </Link>

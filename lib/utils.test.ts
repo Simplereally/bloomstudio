@@ -4,7 +4,7 @@
  * Tests the core utility functions used throughout the application.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { cn, isLocalhost } from "./utils";
 
 describe("cn (className utility)", () => {
@@ -105,77 +105,68 @@ describe("cn (className utility)", () => {
 describe("isLocalhost", () => {
   const originalWindow = globalThis.window;
 
+  function stubWindow(value: unknown) {
+    Object.defineProperty(globalThis, "window", {
+      value,
+      writable: true,
+      configurable: true,
+    });
+  }
+
   beforeEach(() => {
     // Reset window mock before each test
-    vi.stubGlobal("window", undefined);
+    stubWindow(undefined);
   });
 
   afterEach(() => {
     // Restore original window
-    vi.unstubAllGlobals();
-    if (originalWindow) {
-      globalThis.window = originalWindow;
-    }
+    stubWindow(originalWindow);
   });
 
   describe("server-side rendering (no window)", () => {
     it("returns false when window is undefined", () => {
-      vi.stubGlobal("window", undefined);
+      stubWindow(undefined);
       expect(isLocalhost()).toBe(false);
     });
   });
 
   describe("client-side with localhost", () => {
     it('returns true for "localhost"', () => {
-      vi.stubGlobal("window", {
-        location: { hostname: "localhost" },
-      });
+      stubWindow({ location: { hostname: "localhost" } });
       expect(isLocalhost()).toBe(true);
     });
 
     it('returns true for "127.0.0.1"', () => {
-      vi.stubGlobal("window", {
-        location: { hostname: "127.0.0.1" },
-      });
+      stubWindow({ location: { hostname: "127.0.0.1" } });
       expect(isLocalhost()).toBe(true);
     });
   });
 
   describe("client-side with production domains", () => {
     it("returns false for production domain", () => {
-      vi.stubGlobal("window", {
-        location: { hostname: "example.com" },
-      });
+      stubWindow({ location: { hostname: "example.com" } });
       expect(isLocalhost()).toBe(false);
     });
 
     it("returns false for subdomain", () => {
-      vi.stubGlobal("window", {
-        location: { hostname: "app.example.com" },
-      });
+      stubWindow({ location: { hostname: "app.example.com" } });
       expect(isLocalhost()).toBe(false);
     });
 
     it("returns false for vercel preview domains", () => {
-      vi.stubGlobal("window", {
-        location: { hostname: "my-app-123.vercel.app" },
-      });
+      stubWindow({ location: { hostname: "my-app-123.vercel.app" } });
       expect(isLocalhost()).toBe(false);
     });
   });
 
   describe("edge cases", () => {
     it('returns false for "localhost.com" (not localhost)', () => {
-      vi.stubGlobal("window", {
-        location: { hostname: "localhost.com" },
-      });
+      stubWindow({ location: { hostname: "localhost.com" } });
       expect(isLocalhost()).toBe(false);
     });
 
     it('returns false for "local.host"', () => {
-      vi.stubGlobal("window", {
-        location: { hostname: "local.host" },
-      });
+      stubWindow({ location: { hostname: "local.host" } });
       expect(isLocalhost()).toBe(false);
     });
   });

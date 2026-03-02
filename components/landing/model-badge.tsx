@@ -4,7 +4,7 @@ import { Sparkles } from "lucide-react";
 import Image from "next/image";
 
 export function ModelBadge({ model }: { model: (typeof MODEL_REGISTRY)[string] }) {
-  const isMonochrome = model.logo?.includes("openai.svg") || model.logo?.includes("flux.svg");
+  const isMonochrome = model.logo?.includes("openai.svg") || model.logo?.includes("flux.svg") || model.logo?.includes("xai.svg");
 
   return (
     <div className="group relative flex items-center gap-3 p-2 px-4 rounded-xl bg-white/[0.03] border border-white/5 transition-all duration-300 overflow-hidden hover:border-primary/50 hover:bg-white/[0.06]">

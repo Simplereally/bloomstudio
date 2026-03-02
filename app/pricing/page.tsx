@@ -1,7 +1,7 @@
 import { Metadata } from "next"
 import { JsonLd } from "@/components/seo/json-ld"
 import type { Product, WithContext } from "schema-dts"
-import { CompetitorComparison } from "@/components/landing/competitor-comparison"
+import { CapabilitiesShowcase } from "@/components/landing/competitor-comparison"
 import { LandingHeader } from "@/components/landing/landing-header"
 import { Footer } from "@/components/layout/footer"
 import { Badge } from "@/components/ui/badge"
@@ -12,7 +12,7 @@ import {
     AccordionItem,
     AccordionTrigger,
 } from "@/components/ui/accordion"
-import { ArrowRight, Check, HelpCircle, X } from "lucide-react"
+import { ArrowRight, Check, HelpCircle } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { Suspense } from "react"
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     },
     openGraph: {
         title: "Pricing | Bloom Studio",
-        description: "Unbeatable value. 180 images/mo for $3. Compare vs Leonardo.ai.",
+        description: "Unbeatable value. All AI models included for $3/month. No credits, no tiers, no tricks.",
         url: "/pricing",
     },
 }
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
 /**
  * Pricing Page - Server Component with SSR-rendered content
  *
- * All static content (tiers, features, FAQs, comparison tables) is rendered
+ * All static content (tiers, features, FAQs, capabilities) is rendered
  * server-side for optimal SEO. Only the checkout buttons and toast handling
  * are client components.
  */
@@ -47,7 +47,7 @@ export default function PricingPage() {
         "@context": "https://schema.org",
         "@type": "Product",
         name: "Bloom Studio Pro",
-        description: "Professional AI image and video generation subscription. Includes 180 images/month, all active models (Flux, GPT Image, Z-Image, Klein, Seedance), and private generations.",
+        description: "Professional AI image and video generation subscription. Includes 180 images/month, all active models (Flux, GPT Image, Z-Image, Klein, Imagen 4, Grok Imagine, Grok Video, Seedance), and private generations.",
         image: "https://bloomstudio.fun/branding/bloom-studio_logo.png",
         offers: {
             "@type": "Offer",
@@ -84,7 +84,7 @@ export default function PricingPage() {
 
                 {/* Pricing Cards Section - Static SSR with Client checkout buttons */}
                 <section className="container mx-auto px-6 pb-16 md:pb-20 lg:pb-24 xl:pb-28 2xl:pb-32 text-center">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
                         {pricingTiers.map((tier) => {
                             const Icon = tier.icon
 
@@ -93,9 +93,7 @@ export default function PricingPage() {
                                     key={tier.name}
                                     className={`relative rounded-2xl p-8 text-left transition-all duration-300 ${tier.highlighted
                                         ? "bg-gradient-to-b from-primary/10 via-card to-card border-2 border-primary/50 shadow-xl shadow-primary/10 scale-[1.02]"
-                                        : tier.name === "Starter"
-                                            ? "bg-gradient-to-b from-green-600/5 via-card/80 to-card border border-green-600/20 shadow-lg shadow-green-900/5 hover:border-green-600/40"
-                                            : "bg-card/40 backdrop-blur-[2px] border border-border/50 hover:border-primary/20 opacity-90"
+                                        : "bg-gradient-to-b from-green-600/5 via-card/80 to-card border border-green-600/20 shadow-lg shadow-green-900/5 hover:border-green-600/40"
                                         }`}
                                 >
                                     {tier.badge && (
@@ -109,11 +107,11 @@ export default function PricingPage() {
 
                                     <div className="flex items-center gap-3 mb-4">
                                         <div
-                                            className={`flex h-10 w-10 items-center justify-center rounded-xl ${tier.highlighted ? "bg-primary/20" : tier.name === "Starter" ? "bg-green-600/10" : "bg-muted"
+                                            className={`flex h-10 w-10 items-center justify-center rounded-xl ${tier.highlighted ? "bg-primary/20" : "bg-green-600/10"
                                                 }`}
                                         >
                                             <Icon
-                                                className={`h-5 w-5 ${tier.highlighted ? "text-primary" : tier.name === "Starter" ? "text-green-700" : "text-muted-foreground"
+                                                className={`h-5 w-5 ${tier.highlighted ? "text-primary" : "text-green-700"
                                                     }`}
                                             />
                                         </div>
@@ -137,12 +135,7 @@ export default function PricingPage() {
                                     </div>
 
                                     <div className="mb-6">
-                                        {tier.name === "Competitors" ? (
-                                            <div className="flex items-baseline gap-1">
-                                                <span className="text-3xl font-bold text-foreground">$20–$100</span>
-                                                <span className="text-muted-foreground">/month</span>
-                                            </div>
-                                        ) : tier.price !== null ? (
+                                        {tier.price !== null ? (
                                             tier.price === 0 ? (
                                                 <div className="flex items-baseline gap-1">
                                                     <span className="text-4xl font-bold text-foreground">Free</span>
@@ -167,14 +160,10 @@ export default function PricingPage() {
                                         variant={tier.ctaVariant}
                                     />
 
-                                    <ul className={`space-y-3 ${tier.name === "Competitors" ? "mt-0" : ""}`}>
+                                    <ul className="space-y-3">
                                         {tier.features.map((feature, i) => (
                                             <li key={i} className="flex items-start gap-3 text-sm">
-                                                {tier.name === "Competitors" ? (
-                                                    <X className="h-4 w-4 mt-0.5 shrink-0 text-red-500" />
-                                                ) : (
-                                                    <Check className={`h-4 w-4 mt-0.5 shrink-0 ${tier.name === "Starter" || tier.name === "Pro" ? "text-green-600" : "text-primary"}`} />
-                                                )}
+                                                <Check className={`h-4 w-4 mt-0.5 shrink-0 ${tier.name === "Starter" || tier.name === "Pro" ? "text-green-600" : "text-primary"}`} />
                                                 <span className="text-muted-foreground">
                                                     {feature.includes("24 hours of everything in Pro") ? (
                                                         <span className="flex items-center gap-1 font-medium text-foreground">
@@ -197,10 +186,10 @@ export default function PricingPage() {
                 {/* Model Value Showcase - Visualize monthly quotas across all models */}
                 <ModelValueShowcase />
 
-                {/* Competitor Comparison - Static SSR */}
+                {/* Capabilities Showcase - Static SSR */}
                 <section className="container mx-auto px-6 py-16 md:py-20 lg:py-24 xl:py-28 2xl:py-32">
                     <div className="max-w-[1172px] mx-auto">
-                        <CompetitorComparison />
+                        <CapabilitiesShowcase />
                     </div>
                 </section>
 
@@ -211,7 +200,7 @@ export default function PricingPage() {
                         <p className="text-muted-foreground">See exactly what you get with each plan</p>
                     </div>
 
-                    <div className="max-w-4xl mx-auto overflow-x-auto">
+                    <div className="max-w-3xl mx-auto overflow-x-auto">
                         <table className="w-full">
                             <thead>
                                 <tr className="border-b border-border">
@@ -226,12 +215,6 @@ export default function PricingPage() {
                                         <div className="flex flex-col items-center">
                                             <span>Pro</span>
                                             <span className="text-[10px] text-primary/60 font-bold uppercase tracking-widest mt-0.5">$3/mo</span>
-                                        </div>
-                                    </th>
-                                    <th className="text-center py-4 px-4 text-sm font-medium text-muted-foreground">
-                                        <div className="flex flex-col items-center">
-                                            <span>Competitors</span>
-                                            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-0.5">Varies</span>
                                         </div>
                                     </th>
                                 </tr>
@@ -253,11 +236,11 @@ export default function PricingPage() {
                                                 )}
                                             </div>
                                         </td>
-                                        {(["starter", "pro", "competitors"] as const).map((tier) => (
+                                        {(["starter", "pro"] as const).map((tier) => (
                                             <td key={tier} className="py-4 px-4 text-center">
                                                 {typeof row[tier] === "boolean" ? (
                                                     row[tier] ? (
-                                                        <Check className={`h-4 w-4 mx-auto ${tier === "starter" || tier === "pro" ? "text-green-600" : "text-primary"}`} />
+                                                        <Check className="h-4 w-4 mx-auto text-green-600" />
                                                     ) : (
                                                         <span className="text-muted-foreground">—</span>
                                                     )

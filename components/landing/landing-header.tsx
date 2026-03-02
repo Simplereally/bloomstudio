@@ -11,7 +11,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
 
-const LANDING_SECTIONS = ["hero", "showcase", "compare", "features", "models", "community", "get-started"];
+const LANDING_SECTIONS = ["hero", "showcase", "capabilities", "features", "models", "community", "get-started"];
 
 /**
  * Custom hook to detect scroll position for header shrinking effect
@@ -112,18 +112,18 @@ export function LandingHeader() {
               </span>
             </Link>
             <Link
-              href={pathname === "/" ? "#compare" : "/#compare"}
-              onClick={(e) => handleNavClick(e, pathname === "/" ? "#compare" : "/#compare")}
+              href={pathname === "/" ? "#capabilities" : "/#capabilities"}
+              onClick={(e) => handleNavClick(e, pathname === "/" ? "#capabilities" : "/#capabilities")}
               className="group"
             >
               <span className={cn(
                 "relative inline-flex items-center text-sm font-medium transition-colors cursor-pointer py-2",
-                activeSection === "compare" ? "text-primary" : "text-foreground/70 hover:text-foreground"
+                activeSection === "capabilities" ? "text-primary" : "text-foreground/70 hover:text-foreground"
               )}>
-                Compare
+                Capabilities
                 <span className={cn(
                   "absolute bottom-1 left-0 h-px transition-all duration-300 ease-out",
-                  activeSection === "compare" ? "w-full bg-primary/60" : "w-0 bg-foreground/40 group-hover:w-full"
+                  activeSection === "capabilities" ? "w-full bg-primary/60" : "w-0 bg-foreground/40 group-hover:w-full"
                 )} />
               </span>
             </Link>
@@ -282,17 +282,17 @@ export function LandingHeader() {
               </Button>
             </Link>
             <Link
-              href={pathname === "/" ? "#compare" : "/#compare"}
+              href={pathname === "/" ? "#capabilities" : "/#capabilities"}
               onClick={(e) => {
                 setMobileMenuOpen(false);
-                handleNavClick(e, pathname === "/" ? "#compare" : "/#compare");
+                handleNavClick(e, pathname === "/" ? "#capabilities" : "/#capabilities");
               }}
             >
               <Button
                 variant="ghost"
-                className={cn("w-full justify-start text-lg", activeSection === "compare" && "text-primary bg-white/5")}
+                className={cn("w-full justify-start text-lg", activeSection === "capabilities" && "text-primary bg-white/5")}
               >
-                Compare
+                Capabilities
               </Button>
             </Link>
             <Link

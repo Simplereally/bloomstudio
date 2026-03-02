@@ -5,11 +5,20 @@ import { RESOURCES, SOLUTIONS } from "@/lib/seo-config"
 import { Button } from "../ui/button"
 import { cn } from "@/lib/utils"
 
+/** Popular models highlighted in the footer. Ordered by traffic priority. */
+const FOOTER_MODELS = [
+    { slug: "flux-schnell", label: "Flux Schnell" },
+    { slug: "gpt-image", label: "GPT Image" },
+    { slug: "imagen-4", label: "Imagen 4" },
+    { slug: "seedance", label: "Seedance" },
+    { slug: "grok-video", label: "Grok Video" },
+] as const
+
 export function Footer() {
     return (
         <footer className="border-t border-white/5 bg-black/40 backdrop-blur-xl mt-auto">
             <div className="container mx-auto px-6 py-12 md:py-20">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 mb-12">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-8 md:gap-12 mb-12">
                     <div className="col-span-2 md:col-span-1">
                         <Link href="/" className="flex items-center gap-2 mb-6">
                             <span className="text-2xl font-bold text-primary font-brand tracking-tight -skew-x-6">
@@ -37,6 +46,30 @@ export function Footer() {
                                     </Link>
                                 </li>
                             ))}
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h3 className="font-bold text-lg mb-6 text-foreground">Models</h3>
+                        <ul className="space-y-4">
+                            {FOOTER_MODELS.map((model) => (
+                                <li key={model.slug}>
+                                    <Link
+                                        href={`/models/${model.slug}/create`}
+                                        className="text-muted-foreground hover:text-primary transition-colors text-sm"
+                                    >
+                                        {model.label}
+                                    </Link>
+                                </li>
+                            ))}
+                            <li>
+                                <Link
+                                    href="/models"
+                                    className="text-muted-foreground hover:text-primary transition-colors text-sm font-medium"
+                                >
+                                    View all models →
+                                </Link>
+                            </li>
                         </ul>
                     </div>
 

@@ -202,7 +202,7 @@ export const ControlsView = React.memo(function ControlsView({
                 height={14}
                 className={cn(
                   "shrink-0",
-                  (selectedModelData.logo.includes("openai.svg") || selectedModelData.logo.includes("flux.svg")) && "dark:invert"
+                  (selectedModelData.logo.includes("openai.svg") || selectedModelData.logo.includes("flux.svg") || selectedModelData.logo.includes("xai.svg")) && "dark:invert"
                 )}
               />
             ) : (

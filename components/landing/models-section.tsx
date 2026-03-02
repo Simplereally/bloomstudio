@@ -5,7 +5,7 @@ import Image from "next/image";
 import { ScrollReveal } from "./scroll-reveal";
 
 function ModelBadgeDetailed({ model }: { model: ModelDefinition }) {
-  const isMonochrome = model.logo?.includes("openai.svg") || model.logo?.includes("flux.svg");
+  const isMonochrome = model.logo?.includes("openai.svg") || model.logo?.includes("flux.svg") || model.logo?.includes("xai.svg");
 
   return (
     <div className="group relative flex items-center gap-3 p-3 px-4 rounded-xl bg-white/[0.06] border border-white/10 transition-all duration-300">

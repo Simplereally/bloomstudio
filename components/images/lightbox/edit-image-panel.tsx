@@ -328,7 +328,8 @@ export function EditImagePanel({
 							const isSelected = selectedModel === model.id;
 							const isMonochrome =
 								model.logo?.includes("openai.svg") ||
-								model.logo?.includes("flux.svg");
+								model.logo?.includes("flux.svg") ||
+								model.logo?.includes("xai.svg");
 
 							return (
 								<Tooltip key={model.id}>

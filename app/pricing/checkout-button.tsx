@@ -38,12 +38,6 @@ export function CheckoutButton({ tierName, cta, highlighted, variant }: Checkout
             return
         }
 
-        if (tierName === "Competitors") {
-            const el = document.getElementById("comparison-table")
-            el?.scrollIntoView({ behavior: "smooth" })
-            return
-        }
-
         // Require sign-in for checkout
         if (!isSignedIn) {
             toast.error("Please sign in first", {
@@ -76,21 +70,6 @@ export function CheckoutButton({ tierName, cta, highlighted, variant }: Checkout
         } finally {
             setIsLoading(false)
         }
-    }
-
-    // Scroll to comparison for competitors
-    if (tierName === "Competitors") {
-        return (
-            <Button
-                className="w-full mb-8"
-                variant="outline"
-                size="lg"
-                onClick={handleCheckout}
-            >
-                {cta}
-                <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-        )
     }
 
     return (
