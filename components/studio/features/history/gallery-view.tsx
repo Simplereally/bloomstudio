@@ -12,21 +12,8 @@
 
 import { PersistentImageGallery } from "@/components/studio"
 import type { ThumbnailData } from "@/components/studio/gallery/image-gallery"
+import type { PaginatedGalleryResult } from "@/components/studio/gallery/types"
 import * as React from "react"
-
-// Type for the paginated result from server cache
-type PaginatedGalleryResult = {
-    page: Array<{
-        _id: string
-        _creationTime: number
-        url: string
-        visibility?: "public" | "unlisted"
-        model?: string
-        contentType?: string
-    }>
-    isDone: boolean
-    continueCursor: string
-}
 
 export interface GalleryViewProps {
     /** Currently active image ID (for highlighting) */
@@ -37,6 +24,8 @@ export interface GalleryViewProps {
     thumbnailSize?: "sm" | "md" | "lg"
     /** Server-cached initial page (reduces Convex bandwidth on initial load) */
     initialPage?: PaginatedGalleryResult
+    /** Callback fired whenever the gallery's stable image list changes */
+    onImagesLoaded?: (images: ThumbnailData[]) => void
 }
 
 export const GalleryView = React.memo(function GalleryView({
@@ -44,6 +33,7 @@ export const GalleryView = React.memo(function GalleryView({
     onSelectImage,
     thumbnailSize = "md",
     initialPage,
+    onImagesLoaded,
 }: GalleryViewProps) {
     return (
         <div className="h-full min-h-0 flex flex-col bg-card/50 backdrop-blur-sm border-l border-border/50">
@@ -52,6 +42,7 @@ export const GalleryView = React.memo(function GalleryView({
                 onSelectImage={onSelectImage}
                 thumbnailSize={thumbnailSize}
                 initialPage={initialPage}
+                onImagesLoaded={onImagesLoaded}
             />
         </div>
     )

@@ -1,11 +1,10 @@
-import { describe, it, expect, vi } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { OptionsPanel, GenerationOptions } from "./options-panel"
 
 describe("OptionsPanel", () => {
     const defaultOptions: GenerationOptions = {
-        enhance: false,
         private: false,
         safe: false,
     }
@@ -27,26 +26,8 @@ describe("OptionsPanel", () => {
 
     it("renders options instantly", () => {
         render(<OptionsPanel {...defaultProps} />)
-        expect(screen.getByTestId("option-enhance")).toBeInTheDocument()
         expect(screen.getByTestId("option-private")).toBeInTheDocument()
         expect(screen.getByTestId("option-safe")).toBeInTheDocument()
-    })
-
-    it("calls onOptionsChange when enhance is toggled", async () => {
-        const onOptionsChange = vi.fn()
-        render(
-            <OptionsPanel
-                {...defaultProps}
-                onOptionsChange={onOptionsChange}
-            />
-        )
-
-        await userEvent.click(screen.getByTestId("switch-enhance"))
-        expect(onOptionsChange).toHaveBeenCalledWith({
-            enhance: true,
-            private: false,
-            safe: false,
-        })
     })
 
     it("calls onOptionsChange when private is toggled", async () => {
@@ -60,7 +41,6 @@ describe("OptionsPanel", () => {
 
         await userEvent.click(screen.getByTestId("switch-private"))
         expect(onOptionsChange).toHaveBeenCalledWith({
-            enhance: false,
             private: true,
             safe: false,
         })
@@ -77,7 +57,6 @@ describe("OptionsPanel", () => {
 
         await userEvent.click(screen.getByTestId("switch-safe"))
         expect(onOptionsChange).toHaveBeenCalledWith({
-            enhance: false,
             private: false,
             safe: true,
         })
@@ -87,11 +66,10 @@ describe("OptionsPanel", () => {
         render(
             <OptionsPanel
                 {...defaultProps}
-                options={{ enhance: true, private: false, safe: true }}
+                options={{ private: false, safe: true }}
             />
         )
 
-        expect(screen.getByTestId("switch-enhance")).toHaveAttribute("data-state", "checked")
         expect(screen.getByTestId("switch-private")).toHaveAttribute("data-state", "unchecked")
         expect(screen.getByTestId("switch-safe")).toHaveAttribute("data-state", "checked")
     })
@@ -100,5 +78,26 @@ describe("OptionsPanel", () => {
         render(<OptionsPanel {...defaultProps} className="custom-class" />)
 
         expect(screen.getByTestId("options-panel")).toHaveClass("custom-class")
+    })
+
+    it("disables switches when disabled is true", () => {
+        render(<OptionsPanel {...defaultProps} disabled={true} />)
+
+        expect(screen.getByTestId("switch-private")).toBeDisabled()
+        expect(screen.getByTestId("switch-safe")).toBeDisabled()
+    })
+
+    it("does not fire onOptionsChange when disabled switch is clicked", async () => {
+        const onOptionsChange = vi.fn()
+        render(
+            <OptionsPanel
+                {...defaultProps}
+                onOptionsChange={onOptionsChange}
+                disabled={true}
+            />
+        )
+
+        await userEvent.click(screen.getByTestId("switch-private"))
+        expect(onOptionsChange).not.toHaveBeenCalled()
     })
 })

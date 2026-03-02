@@ -63,6 +63,12 @@ export interface ModelDefinition {
   /** The pricing definition for this model */
   readonly modelPricing: ModelPricingDefinition
   /**
+   * Whether this model supports unrestricted (NSFW / 18+) content generation.
+   * Used across the UI to show 18+ badges and "No Guardrails" indicators.
+   * @default false
+   */
+  readonly isUnrestricted?: boolean
+  /**
    * Whether this model is legacy (no longer available for new generation).
    * Legacy models still exist in MODEL_REGISTRY for display name lookup,
    * constraints, and historical data, but are excluded from generation selectors.
@@ -494,6 +500,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     icon: "sparkles",
     logo: "/image-models/xai.svg",
     description: "xAI image generation, creative and expressive visual outputs",
+    isUnrestricted: true,
     constraints: {
       maxPixels: Infinity,
       minPixels: 0,
@@ -628,6 +635,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     icon: "zap",
     logo: "/image-models/flux.svg",
     description: "Rapid ideation, strong prompt following, clean high-detail renders",
+    isUnrestricted: true,
     constraints: {
       maxPixels: 1_048_576, // 1 MP limit - matches Klein 9B
       minPixels: 65_536, // Minimum 256×256
@@ -809,6 +817,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     icon: "video",
     logo: "/image-models/xai.svg",
     description: "xAI video generation, text and image-to-video, fixed resolution tiers up to 1080p",
+    isUnrestricted: true,
     constraints: {
       maxPixels: Infinity,
       minPixels: 0,
@@ -845,6 +854,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     icon: "zap",
     logo: "/image-models/alibaba.svg",
     description: "Super fast, Photorealistic people, products, posters",
+    isUnrestricted: true,
     constraints: {
       maxPixels: 2_359_296, // SPAN upscaler limit: 768×768 base × 2 = 1536×1536 max
       minPixels: 0,
@@ -998,6 +1008,21 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
 } as const;
 
 // ============================================================================
+// Logo Helpers
+// ============================================================================
+
+/** SVG logos that are solid black and need CSS inversion in dark mode */
+const MONOCHROME_LOGO_FRAGMENTS = ["openai.svg", "flux.svg", "xai.svg"] as const;
+
+/**
+ * Returns true if the given logo path requires CSS `invert` in dark mode.
+ * Centralised check — prevents every consumer from hard-coding file-name lists.
+ */
+export function isMonochromeLogo(logoPath: string): boolean {
+  return MONOCHROME_LOGO_FRAGMENTS.some((frag) => logoPath.includes(frag));
+}
+
+// ============================================================================
 // Accessors
 // ============================================================================
 
@@ -1108,3 +1133,27 @@ export const ACTIVE_VIDEO_MODEL_IDS = getActiveVideoModels().map((m) => m.id);
 
 /** All legacy model IDs */
 export const LEGACY_MODEL_IDS = getLegacyModels().map((m) => m.id);
+
+// ============================================================================
+// Unrestricted (NSFW) Model Helpers
+// ============================================================================
+
+/**
+ * Check if a model supports unrestricted (NSFW / 18+) content generation.
+ * Returns false if model not found.
+ */
+export function isModelUnrestricted(modelId: string): boolean {
+  return getModel(modelId)?.isUnrestricted ?? false;
+}
+
+/**
+ * Get all unrestricted (NSFW) models.
+ */
+export function getUnrestrictedModels(): ModelDefinition[] {
+  return Object.values(MODEL_REGISTRY).filter((m) => m.isUnrestricted === true);
+}
+
+/** All unrestricted (NSFW) model IDs — derived from the registry at module load */
+export const UNRESTRICTED_MODEL_IDS: ReadonlySet<string> = new Set(
+  getUnrestrictedModels().map((m) => m.id)
+);

@@ -24,7 +24,6 @@ vi.mock("sonner", () => ({
 // Mock next/image
 vi.mock("next/image", () => ({
   default: ({ src, alt, ...props }: ImageProps) => (
-     
     <img src={typeof src === "string" ? src : "default" in src ? src.default.src : src.src} alt={alt} {...props} />
   ),
 }));
@@ -40,6 +39,27 @@ vi.mock("@/hooks/mutations/use-upload-reference", () => ({
 
 vi.mock("@/hooks/mutations/use-delete-image", () => ({
   useDeleteReferenceImage: vi.fn(),
+}));
+
+// Mock the browser modal
+vi.mock("./reference-images-browser-modal", () => ({
+  ReferenceImagesBrowserModal: ({ open, onSelect, onOpenChange, allowVideo }: { 
+    open: boolean; 
+    onSelect: (url: string) => void;
+    onOpenChange: (open: boolean) => void;
+    allowVideo?: boolean;
+  }) => (
+    open ? (
+      <div data-testid="browser-modal" data-allow-video={allowVideo ? "true" : "false"}>
+        <button onClick={() => onSelect("https://example.com/selected-from-modal.jpg")} data-testid="modal-select-button">
+          Select Image
+        </button>
+        <button onClick={() => onOpenChange(false)} data-testid="modal-close-button">
+          Close
+        </button>
+      </div>
+    ) : null
+  ),
 }));
 
 describe("ReferenceImagePicker", () => {
@@ -134,5 +154,58 @@ describe("ReferenceImagePicker", () => {
 
     expect(toast.error).toHaveBeenCalledWith("File is too large. Maximum size is 10MB.");
     expect(mockOnSelect).not.toHaveBeenCalled();
+  });
+
+  describe("browse library button", () => {
+    it("renders Browse Library button", () => {
+      render(<ReferenceImagePicker onSelect={mockOnSelect} />);
+      expect(screen.getByTestId("browse-references-button")).toBeInTheDocument();
+      expect(screen.getByText("Browse Library")).toBeInTheDocument();
+    });
+
+    it("opens browser modal when Browse Library is clicked", () => {
+      render(<ReferenceImagePicker onSelect={mockOnSelect} />);
+      const browseButton = screen.getByTestId("browse-references-button");
+      fireEvent.click(browseButton);
+      expect(screen.getByTestId("browser-modal")).toBeInTheDocument();
+    });
+
+    it("passes allowVideo=false to the modal", () => {
+      render(<ReferenceImagePicker onSelect={mockOnSelect} />);
+      fireEvent.click(screen.getByTestId("browse-references-button"));
+      const modal = screen.getByTestId("browser-modal");
+      expect(modal).toHaveAttribute("data-allow-video", "false");
+    });
+
+    it("calls onSelect when image is selected from modal", () => {
+      render(<ReferenceImagePicker onSelect={mockOnSelect} />);
+      fireEvent.click(screen.getByTestId("browse-references-button"));
+      fireEvent.click(screen.getByTestId("modal-select-button"));
+      expect(mockOnSelect).toHaveBeenCalledWith("https://example.com/selected-from-modal.jpg");
+    });
+
+    it("closes modal after selecting from modal", () => {
+      render(<ReferenceImagePicker onSelect={mockOnSelect} />);
+      fireEvent.click(screen.getByTestId("browse-references-button"));
+      expect(screen.getByTestId("browser-modal")).toBeInTheDocument();
+      
+      fireEvent.click(screen.getByTestId("modal-select-button"));
+      expect(screen.queryByTestId("browser-modal")).not.toBeInTheDocument();
+    });
+
+    it("closes modal when close button is clicked", () => {
+      render(<ReferenceImagePicker onSelect={mockOnSelect} />);
+      fireEvent.click(screen.getByTestId("browse-references-button"));
+      expect(screen.getByTestId("browser-modal")).toBeInTheDocument();
+      
+      fireEvent.click(screen.getByTestId("modal-close-button"));
+      expect(screen.queryByTestId("browser-modal")).not.toBeInTheDocument();
+    });
+
+    it("is disabled when picker is disabled", () => {
+      render(<ReferenceImagePicker onSelect={mockOnSelect} disabled={true} />);
+      const browseButton = screen.getByTestId("browse-references-button");
+      expect(browseButton).toBeDisabled();
+    });
   });
 });

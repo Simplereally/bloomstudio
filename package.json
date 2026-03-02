@@ -11,7 +11,8 @@
     "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "bun:test": "echo 'Error: Use bun run test instead of bun test' && exit 1"
   },
   "dependencies": {
     "@ai-sdk/cerebras": "^2.0.34",

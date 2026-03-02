@@ -1,27 +1,19 @@
 "use client"
 
 /**
- * OptionsPanel - Collapsible advanced options section
- * Follows SRP: Only manages generation options toggles
+ * OptionsPanel - Generation options toggles (private mode, safety filter)
  */
 
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
+import { cn } from "@/lib/utils"
 import * as React from "react"
-// Tooltip components available for future enhancement
-// import {
-//     Tooltip,
-//     TooltipContent,
-//     TooltipTrigger,
-// } from "@/components/ui/tooltip"
 import {
     Lock,
     Shield,
-    Sparkles,
 } from "lucide-react"
 
 export interface GenerationOptions {
-    enhance: boolean
     private: boolean
     safe: boolean
 }
@@ -58,12 +50,20 @@ function OptionItem({
 }: OptionItemProps) {
     return (
         <div
-            className={`flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-muted transition-colors ${disabled ? "opacity-50" : ""}`}
+            className={cn(
+                "flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-muted transition-colors",
+                disabled && "opacity-50",
+            )}
             data-testid={`option-${id}`}
         >
             <div className="flex items-center gap-3">
                 <div
-                    className={`flex items-center justify-center w-7 h-7 rounded-md ${checked ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}
+                    className={cn(
+                        "flex items-center justify-center w-7 h-7 rounded-md",
+                        checked
+                            ? "bg-primary/15 text-primary"
+                            : "bg-muted text-muted-foreground",
+                    )}
                 >
                     {icon}
                 </div>
@@ -102,19 +102,9 @@ export const OptionsPanel = React.memo(function OptionsPanel({
 
     return (
         <div 
-            className={`divide-y divide-border/50 ${className || ""}`}
+            className={cn("divide-y divide-border/50", className)}
             data-testid="options-panel"
         >
-            <OptionItem
-                id="enhance"
-                label="AI Enhancement"
-                description="Improve prompt quality automatically"
-                icon={<Sparkles className="h-3.5 w-3.5" />}
-                checked={options.enhance}
-                onCheckedChange={(checked) => handleOptionChange("enhance", checked)}
-                disabled={disabled}
-            />
-
             <OptionItem
                 id="private"
                 label="Private Mode"

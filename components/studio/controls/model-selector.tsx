@@ -8,7 +8,7 @@
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { RichTooltipContent, Tooltip, TooltipTrigger } from "@/components/ui/rich-tooltip"
-import type { ModelDefinition } from "@/lib/config/models"
+import { type ModelDefinition, isMonochromeLogo } from "@/lib/config/models"
 import { cn } from "@/lib/utils"
 import {
     Camera,
@@ -82,7 +82,7 @@ export const ModelSelector = React.memo(function ModelSelector({
     const renderModelButton = (model: ModelDefinition, isCards: boolean) => {
         const Icon = getModelIcon(model)
         const isSelected = selectedModel === model.id
-        const isMonochrome = model.logo?.includes("openai.svg") || model.logo?.includes("flux.svg") || model.logo?.includes("xai.svg")
+        const isMonochrome = model.logo ? isMonochromeLogo(model.logo) : false
 
         if (isCards) {
             return (

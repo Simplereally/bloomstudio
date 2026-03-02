@@ -1,24 +1,25 @@
-import { getActiveModels, type ModelDefinition } from "@/lib/config/models";
+import { getActiveModels, isMonochromeLogo, type ModelDefinition } from "@/lib/config/models";
 import { cn } from "@/lib/utils";
 import { ImageIcon, Sparkles, Video } from "lucide-react";
 import Image from "next/image";
+import { NsfwBadge } from "./nsfw-badge";
 import { ScrollReveal } from "./scroll-reveal";
 
 function ModelBadgeDetailed({ model }: { model: ModelDefinition }) {
-  const isMonochrome = model.logo?.includes("openai.svg") || model.logo?.includes("flux.svg") || model.logo?.includes("xai.svg");
-
   return (
     <div className="group relative flex items-center gap-3 p-3 px-4 rounded-xl bg-white/[0.06] border border-white/10 transition-all duration-300">
       {model.logo ? (
-        <div className="relative w-6 h-6 opacity-100 flex-shrink-0">
-          <Image src={model.logo} alt={`${model.displayName} logo`} fill className={cn("object-contain", isMonochrome && "dark:invert")} />
+        <div className="relative w-6 h-6 flex-shrink-0">
+          <Image src={model.logo} alt={`${model.displayName} logo`} fill sizes="24px" className={cn("object-contain", isMonochromeLogo(model.logo) && "dark:invert")} />
         </div>
       ) : (
         <Sparkles className="h-5 w-5 text-primary flex-shrink-0" />
       )}
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <span className="text-[14px] font-bold font-brand text-foreground uppercase tracking-tight truncate block">{model.displayName}</span>
       </div>
+
+      {model.isUnrestricted && <NsfwBadge />}
     </div>
   );
 }
@@ -36,9 +37,9 @@ export function ModelsSection() {
      *   with content vertically centered to prevent next section from "leaking"
      *   into view when navigating via anchor links
      */
-    <section id="models" className="pt-16 pb-24 xl:pt-20 xl:pb-28 2xl:pt-24 2xl:pb-32 3xl:py-40 4xl:py-48 5xl:py-56 3xl:min-h-[calc(100vh-4rem)] 4xl:min-h-[calc(100vh-4rem)] 5xl:min-h-[calc(100vh-4rem)] 3xl:flex 3xl:flex-col 3xl:justify-center relative overflow-hidden">
+    <section id="models" aria-label="Available AI models" className="pt-16 pb-24 xl:pt-20 xl:pb-28 2xl:pt-24 2xl:pb-32 3xl:py-40 4xl:py-48 5xl:py-56 3xl:min-h-[calc(100vh-4rem)] 4xl:min-h-[calc(100vh-4rem)] 5xl:min-h-[calc(100vh-4rem)] 3xl:flex 3xl:flex-col 3xl:justify-center relative overflow-hidden">
       {/* Background Decorations */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-primary/5 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-primary/5 blur-[120px] rounded-full pointer-events-none" aria-hidden="true" />
 
       <div className="container mx-auto px-6 relative z-10">
         <ScrollReveal>
@@ -55,7 +56,7 @@ export function ModelsSection() {
         <ScrollReveal delay={200}>
           <div className="max-w-[1100px] mx-auto relative group">
             {/* Box Glow */}
-            <div className="absolute inset-0 bg-primary/10 blur-[40px] rounded-[32px] pointer-events-none transition-colors duration-500" />
+            <div className="absolute inset-0 bg-primary/10 blur-[40px] rounded-[32px] pointer-events-none transition-colors duration-500" aria-hidden="true" />
 
             {/* Main Card */}
             <div className="relative rounded-[32px] bg-[#0A0A0A]/80 border border-white/10 shadow-2xl backdrop-blur-sm overflow-hidden p-6 md:p-10 3xl:p-14 4xl:p-16 pt-14 md:pt-10 3xl:pt-14 4xl:pt-16">
@@ -70,7 +71,7 @@ export function ModelsSection() {
                 {/* Image Models Column */}
                 <div className="space-y-6">
                   <div className="flex flex-col items-center text-center border-b border-white/5 pb-6">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 mb-3">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 mb-3" aria-hidden="true">
                       <ImageIcon className="h-5 w-5 text-primary" />
                     </div>
                     <div>
@@ -91,7 +92,7 @@ export function ModelsSection() {
                 {/* Video Models Column */}
                 <div className="space-y-6">
                   <div className="flex flex-col items-center text-center border-b border-white/5 pb-6">
-                    <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20 mb-3">
+                    <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20 mb-3" aria-hidden="true">
                       <Video className="h-5 w-5 text-purple-400" />
                     </div>
                     <div>

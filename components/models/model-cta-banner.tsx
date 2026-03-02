@@ -91,27 +91,30 @@ export function ModelCTABanner({ category, model }: ModelCTABannerProps) {
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link href="/studio">
-                  <Button
-                    size="lg"
-                    className="px-10 h-14 text-lg transition-all group"
-                  >
+                <Button
+                  asChild
+                  size="lg"
+                  className="px-10 h-14 text-lg transition-all group"
+                >
+                  <Link href="/studio">
                     <span className="relative opacity-90 group-hover:opacity-100 transition-opacity">
                       {primaryLabel}
                       <span className="absolute -bottom-1 left-0 w-0 h-px bg-primary-foreground/50 group-hover:w-full transition-all duration-300 ease-out" />
                     </span>
-                    <ArrowRight className="ml-2 h-5 w-5 opacity-70 group-hover:opacity-100 transition-all group-hover:translate-x-1" />
-                  </Button>
-                </Link>
-                <Link href="/pricing">
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="px-10 h-14 text-lg border-white/20 hover:bg-white/5"
-                  >
-                    Compare Plans
-                  </Button>
-                </Link>
+                    <ArrowRight
+                      className="ml-2 h-5 w-5 opacity-70 group-hover:opacity-100 transition-all group-hover:translate-x-1"
+                      aria-hidden="true"
+                    />
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  size="lg"
+                  variant="outline"
+                  className="px-10 h-14 text-lg border-white/20 hover:bg-white/5"
+                >
+                  <Link href="/pricing">Compare Plans</Link>
+                </Button>
               </div>
             </div>
           </div>

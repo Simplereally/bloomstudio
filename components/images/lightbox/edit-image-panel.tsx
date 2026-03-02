@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/rich-tooltip";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { isMonochromeLogo } from "@/lib/config/models";
 import {
 	formatImageFormatInfo,
 	type ImageFormatInfo,
@@ -326,10 +327,7 @@ export function EditImagePanel({
 					>
 						{models.map((model) => {
 							const isSelected = selectedModel === model.id;
-							const isMonochrome =
-								model.logo?.includes("openai.svg") ||
-								model.logo?.includes("flux.svg") ||
-								model.logo?.includes("xai.svg");
+							const isMonochrome = model.logo ? isMonochromeLogo(model.logo) : false;
 
 							return (
 								<Tooltip key={model.id}>

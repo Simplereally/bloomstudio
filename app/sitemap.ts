@@ -37,6 +37,34 @@ export default function sitemap(): MetadataRoute.Sitemap {
         },
     ]
 
+    // ── NSFW SEO Pages ──────────────────────────────────────────────────
+    const nsfwPages: MetadataRoute.Sitemap = [
+        {
+            url: `${baseUrl}/nsfw`,
+            lastModified: now,
+            changeFrequency: "weekly",
+            priority: 0.9,
+        },
+        {
+            url: `${baseUrl}/nsfw/images`,
+            lastModified: now,
+            changeFrequency: "weekly",
+            priority: 0.8,
+        },
+        {
+            url: `${baseUrl}/nsfw/videos`,
+            lastModified: now,
+            changeFrequency: "weekly",
+            priority: 0.8,
+        },
+        {
+            url: `${baseUrl}/nsfw/models`,
+            lastModified: now,
+            changeFrequency: "weekly",
+            priority: 0.8,
+        },
+    ]
+
     // ── Model SEO Pages ─────────────────────────────────────────────────
     // /models index
     const modelIndexPage: MetadataRoute.Sitemap[number] = {
@@ -71,6 +99,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
         ...staticPages,
         ...feedPages,
         ...solutions,
+        ...nsfwPages,
         modelIndexPage,
         ...modelPages,
     ]

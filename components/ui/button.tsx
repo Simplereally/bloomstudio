@@ -47,32 +47,39 @@ function Button({
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
   }) {
-  const Comp = asChild ? Slot : "button"
+  const sharedProps = {
+    "data-slot": "button" as const,
+    "data-variant": variant,
+    "data-size": size,
+    className: cn(buttonVariants({ variant, size, className })),
+    ...props,
+  }
+
+  // Radix Slot requires exactly one React element child.
+  // Any sibling expression — even `false` — breaks React.Children.only().
+  // Use an early return to guarantee Slot sees only {children}.
+  if (asChild) {
+    return <Slot {...sharedProps}>{children}</Slot>
+  }
 
   return (
-    <Comp
-      data-slot="button"
-      data-variant={variant}
-      data-size={size}
-      className={cn(buttonVariants({ variant, size, className }))}
-      {...props}
-    >
-      {/* Layer 1: Persistent hover glow - fades in and stays while hovering */}
+    <button {...sharedProps}>
       {variant === "default" && (
-        <span
-          className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/15 via-white/5 to-transparent opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300"
-          aria-hidden="true"
-        />
-      )}
-      {/* Layer 2: Sweep sheen - rapid diagonal animation on hover entry */}
-      {variant === "default" && (
-        <span
-          className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-full skew-x-[-15deg] group-hover/btn:animate-button-sheen"
-          aria-hidden="true"
-        />
+        <>
+          {/* Layer 1: Persistent hover glow - fades in and stays while hovering */}
+          <span
+            className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/15 via-white/5 to-transparent opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300"
+            aria-hidden="true"
+          />
+          {/* Layer 2: Sweep sheen - rapid diagonal animation on hover entry */}
+          <span
+            className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-full skew-x-[-15deg] group-hover/btn:animate-button-sheen"
+            aria-hidden="true"
+          />
+        </>
       )}
       {children}
-    </Comp>
+    </button>
   )
 }
 

@@ -21,24 +21,11 @@ import {
   type ImageGalleryProps,
   type ThumbnailData,
 } from "./image-gallery";
+import type { PaginatedGalleryResult } from "./types";
 
 const INITIAL_FILTER_STATE: HistoryFilterState = {
   selectedVisibility: [],
   selectedModels: [],
-};
-
-// Type for the paginated result from server cache
-type PaginatedGalleryResult = {
-  page: Array<{
-    _id: string;
-    _creationTime: number;
-    url: string;
-    visibility?: "public" | "unlisted";
-    model?: string;
-    contentType?: string;
-  }>;
-  isDone: boolean;
-  continueCursor: string;
 };
 
 /**
@@ -60,6 +47,8 @@ type PersistentImageGalleryProps = Omit<
 > & {
   /** Server-cached initial page (reduces Convex bandwidth on initial load) */
   initialPage?: PaginatedGalleryResult;
+  /** Callback fired whenever the stable mapped images array changes */
+  onImagesLoaded?: (images: ThumbnailData[]) => void;
 };
 
 /**
@@ -83,7 +72,7 @@ type PersistentImageGalleryProps = Omit<
  * Includes filter state management for visibility and model filtering.
  */
 export function PersistentImageGallery(props: PersistentImageGalleryProps) {
-  const { initialPage, ...restProps } = props;
+  const { initialPage, onImagesLoaded, ...restProps } = props;
 
   const { user, isLoaded: isUserLoaded } = useUser();
 
@@ -373,6 +362,19 @@ export function PersistentImageGallery(props: PersistentImageGalleryProps) {
     return stableImages;
   }, [results]);
 
+  // Notify parent when mapped images change.
+  // Store callback in a ref so that an unstable onImagesLoaded reference
+  // from a parent doesn't re-trigger the effect (which would cause a render loop
+  // if the parent sets state inside the callback and doesn't memoize it).
+  const onImagesLoadedRef = React.useRef(onImagesLoaded);
+  React.useEffect(() => {
+    onImagesLoadedRef.current = onImagesLoaded;
+  }, [onImagesLoaded]);
+
+  React.useEffect(() => {
+    onImagesLoadedRef.current?.(mappedImages);
+  }, [mappedImages]);
+
   // ========================================
   // Selection Handlers (stable callbacks)
   // ========================================
@@ -472,11 +474,6 @@ export function PersistentImageGallery(props: PersistentImageGalleryProps) {
     />
   ) : undefined;
 
-  // Memoize load more handler
-  const memoizedLoadMore = React.useCallback(() => {
-    handleLoadMore();
-  }, [handleLoadMore]);
-
   return (
     <ImageGallery
       {...restProps}
@@ -490,7 +487,7 @@ export function PersistentImageGallery(props: PersistentImageGalleryProps) {
       secondaryHeader={secondaryHeader}
       isLoading={isLoading}
       isExhausted={isExhausted}
-      onLoadMore={canLoadMore || isLoadingMore ? memoizedLoadMore : undefined}
+      onLoadMore={canLoadMore || isLoadingMore ? handleLoadMore : undefined}
       isLoadingMore={isLoadingMore}
       onMakeSelectedPublic={handleMakeSelectedPublic}
       onMakeSelectedPrivate={handleMakeSelectedPrivate}

@@ -56,9 +56,10 @@ vi.mock("@/components/studio/features/prompt", () => ({
 }))
 
 vi.mock("@/components/studio/features/generation", () => ({
-    ControlsFeature: ({ isGenerating }: { isGenerating: boolean }) => (
+    ControlsFeature: ({ isGenerating, historyImages }: { isGenerating: boolean; historyImages?: unknown[] }) => (
         <div data-testid="controls-feature">
             <span data-testid="controls-is-generating">{String(isGenerating)}</span>
+            <span data-testid="controls-history-images-count">{historyImages?.length ?? "none"}</span>
         </div>
     ),
     GenerationSettingsContext: {
@@ -79,10 +80,11 @@ vi.mock("@/components/studio/features/canvas", () => ({
 }))
 
 vi.mock("@/components/studio/features/history", () => ({
-    GalleryFeature: ({ activeImageId, thumbnailSize }: { activeImageId?: string; thumbnailSize?: string }) => (
+    GalleryFeature: ({ activeImageId, thumbnailSize, onImagesLoaded }: { activeImageId?: string; thumbnailSize?: string; onImagesLoaded?: (images: unknown[]) => void }) => (
         <div data-testid="gallery-feature">
             <span data-testid="gallery-active-id">{activeImageId || "none"}</span>
             <span data-testid="gallery-thumbnail-size">{thumbnailSize}</span>
+            <span data-testid="gallery-has-onimagesloaded">{String(typeof onImagesLoaded === "function")}</span>
         </div>
     ),
 }))
@@ -173,14 +175,21 @@ const mockGenerationSettings = {
     generateSeed: vi.fn(() => 12345),
     isRandomMode: vi.fn(() => true),
     refreshSeedIfNeeded: vi.fn(),
-    options: { enhance: false, private: false, safe: false },
+    supportsSeed: true,
+    options: { private: false, safe: false },
     setOptions: vi.fn(),
     referenceImage: undefined,
     setReferenceImage: vi.fn(),
+    isVideoModel: false,
     videoSettings: { duration: 5, audio: false },
     setVideoSettings: vi.fn(),
     videoReferenceImages: { firstFrame: undefined, lastFrame: undefined },
     setVideoReferenceImages: vi.fn(),
+    resolutionTier: "hd" as const,
+    setResolutionTier: vi.fn(),
+    handleResolutionTierChange: vi.fn(),
+    supportedTiers: ["hd"] as const,
+    constraints: undefined,
 }
 
 const mockBatchMode = {
@@ -191,7 +200,7 @@ const mockBatchMode = {
     isBatchActive: false,
     isBatchPaused: false,
     batchStatus: undefined,
-    batchProgress: { currentIndex: 0, totalCount: 0, completedCount: 0 },
+    batchProgress: { currentIndex: 0, totalCount: 0, completedCount: 0, inFlightCount: 0 },
     startBatchGeneration: vi.fn(),
     cancelBatchGeneration: vi.fn(),
     pauseBatchGeneration: vi.fn(),
@@ -426,6 +435,19 @@ describe("StudioShell", () => {
         render(<StudioShell {...defaultProps} />)
 
         expect(screen.getByTestId("gallery-thumbnail-size")).toHaveTextContent("md")
+    })
+
+    it("passes onImagesLoaded callback to GalleryFeature", () => {
+        render(<StudioShell {...defaultProps} />)
+
+        expect(screen.getByTestId("gallery-has-onimagesloaded")).toHaveTextContent("true")
+    })
+
+    it("passes historyImages to ControlsFeature (initially empty)", () => {
+        render(<StudioShell {...defaultProps} />)
+
+        // Before any gallery callback fires, historyImages is an empty array (initial useState)
+        expect(screen.getByTestId("controls-history-images-count")).toHaveTextContent("0")
     })
 
     it("triggers generation when generate button is clicked", async () => {

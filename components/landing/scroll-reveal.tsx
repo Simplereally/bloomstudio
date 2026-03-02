@@ -13,7 +13,7 @@
  */
 
 import { cn } from "@/lib/utils"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 interface ScrollRevealProps {
     children: React.ReactNode
@@ -34,6 +34,9 @@ export function ScrollReveal({ children, className, delay = 0, x = 0, instant = 
         // If instant, we're already visible - no need for observer
         if (instant) return
 
+        const el = ref.current
+        if (!el) return
+
         const observer = new IntersectionObserver(
             ([entry]) => {
                 if (entry.isIntersecting) {
@@ -44,10 +47,15 @@ export function ScrollReveal({ children, className, delay = 0, x = 0, instant = 
             { threshold: 0.1, rootMargin: "50px" }
         )
 
-        if (ref.current) observer.observe(ref.current)
+        observer.observe(el)
 
         return () => observer.disconnect()
     }, [instant])
+
+    const style = useMemo(() => ({
+        transitionDelay: `${delay}ms`,
+        transform: isVisible ? 'translate(0, 0)' : `translate(${x}px, 32px)`,
+    }), [delay, isVisible, x])
 
     return (
         <div
@@ -57,10 +65,7 @@ export function ScrollReveal({ children, className, delay = 0, x = 0, instant = 
                 isVisible ? "opacity-100" : "opacity-0",
                 className
             )}
-            style={{
-                transitionDelay: `${delay}ms`,
-                transform: isVisible ? 'translate(0, 0)' : `translate(${x}px, 32px)`
-            }}
+            style={style}
         >
             {children}
         </div>

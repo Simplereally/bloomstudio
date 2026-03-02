@@ -8,6 +8,7 @@ vi.mock("@/hooks/use-random-seed", () => ({
     useRandomSeed: vi.fn(() => ({
         generateSeed: vi.fn(() => 12345),
         isRandomMode: vi.fn((seed: number) => seed === -1),
+        supportsSeed: true,
     })),
 }))
 
@@ -27,7 +28,6 @@ describe("useGenerationSettings", () => {
         expect(result.current.seedLocked).toBe(false)
         expect(result.current.dimensionsLinked).toBe(false)
         expect(result.current.options).toEqual({
-            enhance: false,
             private: false,
             safe: false,
         })
@@ -113,14 +113,12 @@ describe("useGenerationSettings", () => {
 
         act(() => {
             result.current.setOptions({
-                enhance: true,
                 private: true,
                 safe: false,
             })
         })
 
         expect(result.current.options).toEqual({
-            enhance: true,
             private: true,
             safe: false,
         })

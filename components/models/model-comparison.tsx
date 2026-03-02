@@ -4,9 +4,10 @@ import { cn } from "@/lib/utils";
 import { ArrowRight, Check } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { MODEL_REGISTRY, type ModelDefinition } from "@/lib/config/models";
+import { getModel, isMonochromeLogo, type ModelDefinition } from "@/lib/config/models";
 import { getModelByModelId } from "@/lib/models/model-seo-slugs";
 import type { ModelSEOConfig } from "@/lib/models/types";
+import { getActiveModels } from "@/lib/config/models";
 
 // ============================================================================
 // Comparison Metric Extraction
@@ -101,17 +102,16 @@ export function ModelComparison({
   // Resolve comparison models
   const compareIds =
     compareModelIds ??
-    Object.values(MODEL_REGISTRY)
+    getActiveModels()
       .filter(
         (m) =>
           m.type === currentDef.type &&
-          m.id !== currentDef.id &&
-          !m.isLegacy
+          m.id !== currentDef.id
       )
       .map((m) => m.id);
 
   const compareModels = compareIds
-    .map((id) => MODEL_REGISTRY[id])
+    .map((id) => getModel(id))
     .filter((m): m is ModelDefinition => m !== undefined);
 
   // Current model first, then comparisons
@@ -170,7 +170,11 @@ export function ModelComparison({
                                     src={model.logo}
                                     alt={`${model.displayName} logo`}
                                     fill
-                                    className="object-contain dark:invert"
+                                    sizes="24px"
+                                    className={cn(
+                                      "object-contain",
+                                      isMonochromeLogo(model.logo) && "dark:invert"
+                                    )}
                                   />
                                 </div>
                               )}
@@ -259,22 +263,18 @@ export function ModelComparison({
                             )}
                           >
                             {isCurrent ? (
-                              <Link href="/studio">
-                                <Button size="sm" className="group">
+                              <Button asChild size="sm" className="group">
+                                <Link href="/studio">
                                   Try Now
-                                  <ArrowRight className="ml-1.5 h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
-                                </Button>
-                              </Link>
+                                  <ArrowRight className="ml-1.5 h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" aria-hidden="true" />
+                                </Link>
+                              </Button>
                             ) : (
-                              <Link href={`/models/${slug}/features`}>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="border-white/10 hover:bg-white/5 text-xs"
-                                >
+                              <Button asChild size="sm" variant="outline" className="border-white/10 hover:bg-white/5 text-xs">
+                                <Link href={`/models/${slug}/features`}>
                                   Learn More
-                                </Button>
-                              </Link>
+                                </Link>
+                              </Button>
                             )}
                           </td>
                         );
@@ -312,7 +312,11 @@ export function ModelComparison({
                           src={model.logo}
                           alt={`${model.displayName} logo`}
                           fill
-                          className="object-contain dark:invert"
+                          sizes="24px"
+                          className={cn(
+                            "object-contain",
+                            isMonochromeLogo(model.logo) && "dark:invert"
+                          )}
                         />
                       </div>
                     )}
@@ -366,25 +370,18 @@ export function ModelComparison({
 
                   {/* CTA */}
                   {isCurrent ? (
-                    <Link href="/studio" className="block">
-                      <Button size="sm" className="w-full group">
+                    <Button asChild size="sm" className="w-full group">
+                      <Link href="/studio">
                         Try {model.displayName}
-                        <ArrowRight className="ml-1.5 h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
-                      </Button>
-                    </Link>
+                        <ArrowRight className="ml-1.5 h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" aria-hidden="true" />
+                      </Link>
+                    </Button>
                   ) : (
-                    <Link
-                      href={`/models/${slug}/features`}
-                      className="block"
-                    >
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="w-full border-white/10 hover:bg-white/5"
-                      >
+                    <Button asChild size="sm" variant="outline" className="w-full border-white/10 hover:bg-white/5">
+                      <Link href={`/models/${slug}/features`}>
                         Learn More
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   )}
                 </div>
               </ScrollReveal>

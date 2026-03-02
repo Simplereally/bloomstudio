@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ScrollReveal } from "@/components/landing/scroll-reveal";
+import { NsfwBadge } from "@/components/landing/nsfw-badge";
+import { isMonochromeLogo } from "@/lib/config/models";
 import { cn } from "@/lib/utils";
 import type {
   ModelPageContent,
@@ -16,17 +18,6 @@ import Link from "next/link";
 interface ModelHeroProps {
   content: ModelPageContent;
   model: ModelSEOConfig;
-}
-
-// ============================================================================
-// Constants
-// ============================================================================
-
-/** SVG logos that are solid black and need inversion in dark mode */
-const MONOCHROME_LOGO_FRAGMENTS = ["openai.svg", "flux.svg", "xai.svg"];
-
-function isMonochromeLogo(logoPath: string): boolean {
-  return MONOCHROME_LOGO_FRAGMENTS.some((frag) => logoPath.includes(frag));
 }
 
 // ============================================================================
@@ -67,6 +58,7 @@ export function ModelHero({ content, model }: ModelHeroProps) {
                       src={modelDefinition.logo}
                       alt={`${provider.name} logo`}
                       fill
+                      sizes="20px"
                       className={cn(
                         "object-contain",
                         isMonochromeLogo(modelDefinition.logo) && "dark:invert",
@@ -85,6 +77,9 @@ export function ModelHero({ content, model }: ModelHeroProps) {
                 <span className="text-xs font-bold uppercase tracking-widest text-primary">
                   {model.displayName}
                 </span>
+                {modelDefinition.isUnrestricted && (
+                  <NsfwBadge className="-ml-1" />
+                )}
               </div>
             </div>
           </ScrollReveal>
@@ -113,22 +108,23 @@ export function ModelHero({ content, model }: ModelHeroProps) {
           {/* CTA group */}
           <ScrollReveal instant delay={320}>
             <div className="flex flex-col sm:flex-row gap-4 items-start">
-              <Link href={hero.ctaHref ?? "/studio"}>
-                <Button
-                  size="lg"
-                  className="px-10 h-14 text-lg transition-all group"
-                >
+              <Button
+                asChild
+                size="lg"
+                className="px-10 h-14 text-lg transition-all group"
+              >
+                <Link href={hero.ctaHref ?? "/studio"}>
                   <span className="relative opacity-90 group-hover:opacity-100 transition-opacity">
                     {hero.ctaText}
                     <span className="absolute -bottom-1 left-0 w-0 h-px bg-primary-foreground/50 group-hover:w-full transition-all duration-300 ease-out" />
                   </span>
-                  <ArrowRight className="ml-2 h-5 w-5 opacity-70 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-                </Button>
-              </Link>
+                  <ArrowRight className="ml-2 h-5 w-5 opacity-70 group-hover:opacity-100 group-hover:translate-x-1 transition-all" aria-hidden="true" />
+                </Link>
+              </Button>
               <Link href="/pricing" className="group flex items-center justify-center">
                 <span className="relative inline-flex items-center gap-2 text-lg font-medium text-foreground/80 hover:text-foreground transition-colors cursor-pointer py-4">
                   See Pricing
-                  <ArrowRight className="h-5 w-5 opacity-60 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                  <ArrowRight className="h-5 w-5 opacity-60 group-hover:opacity-100 group-hover:translate-x-1 transition-all" aria-hidden="true" />
                   <span className="absolute bottom-3 left-0 w-0 h-px bg-foreground/40 group-hover:w-[calc(100%-1.75rem)] transition-all duration-300 ease-out" />
                 </span>
               </Link>
@@ -139,11 +135,11 @@ export function ModelHero({ content, model }: ModelHeroProps) {
           <ScrollReveal instant delay={400}>
             <div className="mt-8 flex flex-wrap items-center gap-6 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
               <div className="flex items-center gap-2">
-                <Clock className="h-3 w-3 text-primary" />
+                <Clock className="h-3 w-3 text-primary" aria-hidden="true" />
                 <span>24-hour free trial</span>
               </div>
               <div className="flex items-center gap-2">
-                <Shield className="h-3 w-3 text-primary" />
+                <Shield className="h-3 w-3 text-primary" aria-hidden="true" />
                 <span>No credit card required</span>
               </div>
             </div>

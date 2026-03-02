@@ -1,3 +1,17 @@
+/** Shape of a server-cached paginated gallery page (used for hybrid caching strategy) */
+export type PaginatedGalleryResult = {
+  page: Array<{
+    _id: string;
+    _creationTime: number;
+    url: string;
+    visibility?: "public" | "unlisted";
+    model?: string;
+    contentType?: string;
+  }>;
+  isDone: boolean;
+  continueCursor: string;
+};
+
 export interface ThumbnailData {
   id: string;
   _id?: string;

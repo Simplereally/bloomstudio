@@ -7,7 +7,7 @@
  * - Dimensions
  * - Reference image
  * - Seed
- * - Options (enhance, private, safe)
+ * - Options (private, safe)
  * - Batch mode
  */
 

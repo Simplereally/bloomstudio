@@ -6,7 +6,8 @@ import Image from "next/image"
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import { Video, Image as ImageIcon } from "lucide-react"
-import { isModelLegacy } from "@/lib/config/models"
+import { isModelLegacy, isModelUnrestricted, isMonochromeLogo } from "@/lib/config/models"
+import { NsfwBadge } from "@/components/landing/nsfw-badge"
 
 /**
  * Model Value Showcase — Premium Editorial Redesign
@@ -25,7 +26,6 @@ interface ModelValueData {
     logo: string
     monthlyQuota: number
     type: "image" | "video"
-    nsfw?: boolean
 }
 
 const MODEL_VALUE_DATA: ModelValueData[] = [
@@ -41,7 +41,6 @@ const MODEL_VALUE_DATA: ModelValueData[] = [
         displayName: "Z-Image Turbo",
         logo: "/image-models/alibaba.svg",
         monthlyQuota: 900_000,
-        nsfw: true,
         type: "image",
     },
     {
@@ -139,8 +138,6 @@ function AnimatedNumber({ value, delay = 0 }: { value: number; delay?: number })
 }
 
 function ModelRow({ model, index }: { model: ModelValueData; index: number }) {
-    const isMonochrome = model.logo.includes("openai.svg") || model.logo.includes("flux.svg") || model.logo.includes("xai.svg")
-
     return (
         <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -153,11 +150,12 @@ function ModelRow({ model, index }: { model: ModelValueData; index: number }) {
             }}
             className="group relative"
         >
-            {model.nsfw && (
+            {isModelUnrestricted(model.id) && (
                 <div className="absolute top-0 -mt-1.5 left-1/2 -translate-x-1/2 z-20">
-                    <span className="inline-flex items-center px-3 py-1 rounded-b-md text-[9px] font-bold uppercase tracking-widest bg-pink-900/75 text-white leading-none whitespace-nowrap">
-                        nsfw supported
-                    </span>
+                    <NsfwBadge
+                        label="nsfw supported"
+                        className="px-3 py-1 rounded-b-md tracking-widest bg-pink-900/75 border-pink-900/75 text-white whitespace-nowrap"
+                    />
                 </div>
             )}
             <div
@@ -176,7 +174,7 @@ function ModelRow({ model, index }: { model: ModelValueData; index: number }) {
                         fill
                         className={cn(
                             "object-contain opacity-70 group-hover:opacity-100 transition-opacity",
-                            isMonochrome && "dark:invert"
+                            isMonochromeLogo(model.logo) && "dark:invert"
                         )}
                     />
                 </div>

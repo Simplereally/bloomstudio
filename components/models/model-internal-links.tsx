@@ -8,7 +8,7 @@ import {
   type ModelSEOConfig,
 } from "@/lib/models/types"
 import { MODEL_SEO_SLUGS, type ModelSlugEntry } from "@/lib/models/model-seo-slugs"
-import { MODEL_REGISTRY } from "@/lib/config/models"
+import { isMonochromeLogo, getModel } from "@/lib/config/models"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -37,7 +37,7 @@ function buildModelCategoryPath(
  * Falls back to the MODEL_REGISTRY logo if available.
  */
 function getLogoForEntry(entry: ModelSlugEntry): string | undefined {
-  return MODEL_REGISTRY[entry.modelId]?.logo
+  return getModel(entry.modelId)?.logo
 }
 
 /**
@@ -78,10 +78,7 @@ function ModelLinkCard({
   const logo = getLogoForEntry(entry)
   const providerName = getProviderName(entry)
 
-  const isMonochromeLogo =
-    logo?.includes("openai.svg") ||
-    logo?.includes("flux.svg") ||
-    logo?.includes("xai.svg")
+  const monoLogo = logo ? isMonochromeLogo(logo) : false
 
   return (
     <ScrollReveal delay={delay}>
@@ -105,7 +102,7 @@ function ModelLinkCard({
               height={40}
               className={cn(
                 "h-full w-full object-contain",
-                isMonochromeLogo && "dark:invert"
+                monoLogo && "dark:invert"
               )}
             />
           </div>

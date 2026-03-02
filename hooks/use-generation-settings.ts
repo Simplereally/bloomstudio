@@ -12,7 +12,7 @@
  * - Aspect ratio presets with custom dimension support
  * - Linked dimension changes (maintain aspect ratio)
  * - Seed management with random mode support
- * - Generation options (enhance, private, safe)
+ * - Generation options (private, safe)
  * - Reference image selection
  *
  * This hook follows the "Headless UI" pattern - pure logic with stable callbacks.
@@ -154,7 +154,6 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
     // Options State
     // ========================================
     const [options, setOptions] = React.useState<GenerationOptions>({
-        enhance: false,
         private: false,
         safe: false,
     })

@@ -9,7 +9,7 @@
  * - Dimension controls
  * - Reference image picker
  * - Seed control
- * - Options panel (enhance, private, safe)
+ * - Options panel (private, safe)
  * - Batch mode panel
  *
  * This is a "leaf" component - it receives all data via props and has no internal logic.
@@ -33,8 +33,9 @@ import {
   type VideoReferenceImages,
 } from "@/components/studio";
 import type { BatchModeSettings } from "@/components/studio/batch";
+import type { ThumbnailData } from "@/components/studio/gallery/types";
 import { Button } from "@/components/ui/button";
-import type { ModelDefinition, VideoDurationConstraints } from "@/lib/config/models";
+import { isMonochromeLogo, type ModelDefinition, type VideoDurationConstraints } from "@/lib/config/models";
 import { cn } from "@/lib/utils";
 import type { AspectRatio, AspectRatioOption, ModelConstraints, ResolutionTier } from "@/types/pollinations";
 import { Dice6, Frame, Image as ImageIcon, Layers, Ruler, Settings2, Sparkles, X, Wand2, Video, Volume2 } from "lucide-react";
@@ -102,6 +103,9 @@ export interface ControlsViewProps {
   durationConstraints?: VideoDurationConstraints
   supportsAudio?: boolean
   supportsInterpolation?: boolean
+
+  // History images (threaded from gallery for reference image browser)
+  historyImages?: ThumbnailData[]
 }
 
 export const ControlsView = React.memo(function ControlsView({
@@ -164,6 +168,9 @@ export const ControlsView = React.memo(function ControlsView({
   durationConstraints,
   supportsAudio = false,
   supportsInterpolation = false,
+
+  // History images
+  historyImages,
 }: ControlsViewProps) {
   const [modelExpanded, setModelExpanded] = React.useState(true);
 
@@ -202,7 +209,7 @@ export const ControlsView = React.memo(function ControlsView({
                 height={14}
                 className={cn(
                   "shrink-0",
-                  (selectedModelData.logo.includes("openai.svg") || selectedModelData.logo.includes("flux.svg") || selectedModelData.logo.includes("xai.svg")) && "dark:invert"
+                  isMonochromeLogo(selectedModelData.logo) && "dark:invert"
                 )}
               />
             ) : (
@@ -278,6 +285,7 @@ export const ControlsView = React.memo(function ControlsView({
                   supportsInterpolation={supportsInterpolation}
                   disabled={isGenerating}
                   hideHeader
+                  historyImages={historyImages}
               />
           </CollapsibleSection>
       )}
@@ -379,7 +387,7 @@ export const ControlsView = React.memo(function ControlsView({
             )
           }
         >
-          <ReferenceImagePicker selectedImage={referenceImage} onSelect={onReferenceImageChange} disabled={isGenerating} hideHeader />
+          <ReferenceImagePicker selectedImage={referenceImage} onSelect={onReferenceImageChange} disabled={isGenerating} hideHeader historyImages={historyImages} />
         </CollapsibleSection>
       )}
 

@@ -77,7 +77,7 @@ export function LandingHeader() {
     <header
       className={cn(
         "fixed top-0 left-0 right-0 z-50 backdrop-blur-md transition-all duration-300 ease-out border-b",
-        scrolled ? "py-1.5 bg-black/60 border-white/5 shadow-sm" : "py-2 lg:py-6 bg-black/5 border-transparent shadow-none",
+        scrolled ? "py-1.5 bg-black/60 border-white/5 shadow-sm" : "py-2 xl:py-6 bg-black/5 border-transparent shadow-none",
         mobileMenuOpen && "bg-black/90 border-white/10"
       )}
     >
@@ -89,12 +89,12 @@ export function LandingHeader() {
               alt="Bloom Studio Logo"
               width={32}
               height={32}
-              className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8"
+              className="h-5 w-5 sm:h-6 sm:w-6 xl:h-8 xl:w-8"
               priority
             />
-            <span className="text-xl sm:text-2xl lg:text-3xl font-bold text-primary font-brand tracking-tight -skew-x-6 whitespace-nowrap">Bloom Studio</span>
+            <span className="text-xl sm:text-2xl xl:text-3xl font-bold text-primary font-brand tracking-tight -skew-x-6 whitespace-nowrap">Bloom Studio</span>
           </Link>
-          <nav className="hidden lg:flex items-center gap-6">
+          <nav className="hidden xl:flex items-center gap-6">
             <Link
               href={pathname === "/" ? "#showcase" : "/#showcase"}
               onClick={(e) => handleNavClick(e, pathname === "/" ? "#showcase" : "/#showcase")}
@@ -177,7 +177,7 @@ export function LandingHeader() {
 
         <div className="flex items-center gap-3 ml-4">
           {/* Community Feed - Soft glow portal effect, visually distinct from primary CTAs */}
-          <Link href="/feed/public" className="hidden lg:block group/feed">
+          <Link href="/feed/public" className="hidden xl:block group/feed">
             <Button
               variant="ghost"
               className={cn(
@@ -203,10 +203,10 @@ export function LandingHeader() {
           </Link>
 
           {/* Visual separator between community link and auth actions */}
-          <div className="hidden lg:block h-5 w-px bg-muted-foreground/50" />
+          <div className="hidden xl:block h-5 w-px bg-muted-foreground/50" />
           {isLoaded &&
             (isSignedIn ? (
-              <div className="hidden lg:flex items-center gap-4">
+              <div className="hidden xl:flex items-center gap-4">
                 <Link href="/studio">
                   <Button variant="default" className={cn(
                       "group",
@@ -223,7 +223,7 @@ export function LandingHeader() {
                 <ClerkUserButton />
               </div>
             ) : (
-              <div className="hidden lg:flex items-center gap-3">
+              <div className="hidden xl:flex items-center gap-3">
                 <Link href="/sign-in" className="group">
                   {/* Elegant text link - matches "See Pricing" styling */}
                   <span className="relative inline-flex items-center text-sm font-medium text-foreground/80 hover:text-foreground transition-colors cursor-pointer py-2">
@@ -243,13 +243,13 @@ export function LandingHeader() {
 
           {/* Mobile User Button - Visible only on mobile when signed in */}
           {isLoaded && isSignedIn && (
-            <div className="lg:hidden flex items-center">
+            <div className="xl:hidden flex items-center">
               <ClerkUserButton />
             </div>
           )}
 
           {/* Mobile Menu Toggle */}
-          <Button variant="ghost" size="icon" className="lg:hidden text-foreground" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+          <Button variant="ghost" size="icon" className="xl:hidden text-foreground" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
             {mobileMenuOpen ? (
               <ArrowRight className="h-5 w-5 rotate-90" />
             ) : (
@@ -265,7 +265,7 @@ export function LandingHeader() {
 
       {/* Mobile Navigation */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-white/10 bg-black/95 absolute top-full left-0 right-0 p-6 flex flex-col gap-4 animate-in slide-in-from-top-2">
+        <div className="xl:hidden border-t border-white/10 bg-black/95 absolute top-full left-0 right-0 p-6 flex flex-col gap-4 animate-in slide-in-from-top-2">
           <nav className="flex flex-col gap-2">
             <Link
               href={pathname === "/" ? "#showcase" : "/#showcase"}

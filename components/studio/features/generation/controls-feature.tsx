@@ -20,12 +20,15 @@ import { useGenerationSettings, type UseGenerationSettingsReturn } from "@/hooks
 import { useBatchMode, type UseBatchModeReturn } from "@/hooks/use-batch-mode"
 import { useImageGalleryState } from "@/hooks/use-image-gallery-state"
 import { getModel } from "@/lib/config/models"
+import type { ThumbnailData } from "@/components/studio/gallery/types"
 import { ControlsView } from "./controls-view"
 import * as React from "react"
 
 export interface ControlsFeatureProps {
     /** Whether generation is in progress */
     isGenerating?: boolean
+    /** Pre-loaded history images from the gallery (passed to reference image pickers) */
+    historyImages?: ThumbnailData[]
 }
 
 /**
@@ -67,10 +70,12 @@ function ControlsFeatureView({
     generationSettings,
     batchMode,
     isGenerating,
+    historyImages,
 }: {
     generationSettings: UseGenerationSettingsReturn
     batchMode: UseBatchModeReturn
     isGenerating: boolean
+    historyImages?: ThumbnailData[]
 }) {
     // Models data - fetch all types (image + video) - always fetched fresh
     const { models, isLoading: isLoadingModels } = useImageModels({ type: "all" })
@@ -152,6 +157,9 @@ function ControlsFeatureView({
             durationConstraints={currentModelDef?.durationConstraints}
             supportsAudio={currentModelDef?.supportsAudio ?? false}
             supportsInterpolation={currentModelDef?.supportsInterpolation ?? false}
+
+            // History images for reference image browser
+            historyImages={historyImages}
         />
     )
 }
@@ -161,8 +169,10 @@ function ControlsFeatureView({
  */
 function ControlsFeatureStandalone({
     isGenerating,
+    historyImages,
 }: {
     isGenerating: boolean
+    historyImages?: ThumbnailData[]
 }) {
     // Create own generation settings
     const generationSettings = useGenerationSettings()
@@ -183,6 +193,7 @@ function ControlsFeatureStandalone({
                     generationSettings={generationSettings}
                     batchMode={batchMode}
                     isGenerating={isGenerating}
+                    historyImages={historyImages}
                 />
             </BatchModeContext.Provider>
         </GenerationSettingsContext.Provider>
@@ -210,6 +221,7 @@ function ControlsFeatureStandalone({
  */
 export function ControlsFeature({
     isGenerating = false,
+    historyImages,
 }: ControlsFeatureProps) {
     const existingSettings = React.useContext(GenerationSettingsContext)
     const existingBatchMode = React.useContext(BatchModeContext)
@@ -221,6 +233,7 @@ export function ControlsFeature({
                 generationSettings={existingSettings}
                 batchMode={existingBatchMode}
                 isGenerating={isGenerating}
+                historyImages={historyImages}
             />
         )
     }
@@ -229,6 +242,7 @@ export function ControlsFeature({
     return (
         <ControlsFeatureStandalone
             isGenerating={isGenerating}
+            historyImages={historyImages}
         />
     )
 }

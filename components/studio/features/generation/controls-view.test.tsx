@@ -68,9 +68,8 @@ vi.mock("@/components/studio", () => ({
       <span data-testid="seed-locked">{String(isLocked)}</span>
     </div>
   ),
-  OptionsPanel: ({ options }: { options: { enhance: boolean; private: boolean; safe: boolean } }) => (
+  OptionsPanel: ({ options }: { options: { private: boolean; safe: boolean } }) => (
     <div data-testid="options-panel">
-      <span data-testid="enhance">{String(options.enhance)}</span>
       <span data-testid="private">{String(options.private)}</span>
       <span data-testid="safe">{String(options.safe)}</span>
     </div>
@@ -160,7 +159,7 @@ describe("ControlsView", () => {
     onSeedLockedChange: vi.fn(),
 
     // Options
-    options: { enhance: false, private: false, safe: false },
+    options: { private: false, safe: false },
     onOptionsChange: vi.fn(),
 
     // Batch mode
@@ -217,9 +216,8 @@ describe("ControlsView", () => {
   });
 
   it("renders options panel with correct options", () => {
-    render(<ControlsView {...defaultProps} options={{ enhance: true, private: true, safe: false }} />);
+    render(<ControlsView {...defaultProps} options={{ private: true, safe: false }} />);
 
-    expect(screen.getByTestId("enhance")).toHaveTextContent("true");
     expect(screen.getByTestId("private")).toHaveTextContent("true");
     expect(screen.getByTestId("safe")).toHaveTextContent("false");
   });

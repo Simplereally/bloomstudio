@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { isMonochromeLogo } from "@/lib/config/models";
 import { ModelPageShell } from "@/components/models/model-page-shell";
 import { JsonLd } from "@/components/seo/json-ld";
 import { ALL_MODEL_SEO_CONFIGS } from "@/lib/seo/model-pages";
 import type { ModelSEOConfig } from "@/lib/models/types";
-import { ArrowRight, ImageIcon, Video } from "lucide-react";
+import { ArrowRight, ImageIcon, Shield, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { NsfwBadge } from "@/components/landing/nsfw-badge";
 
 // ============================================================================
 // Metadata
@@ -49,11 +51,6 @@ function ModelCard({ model }: { model: ModelSEOConfig }) {
   const { modelDefinition, provider } = model;
   const isVideo = modelDefinition.type === "video";
 
-  const isMonochromeLogo =
-    modelDefinition.logo?.includes("openai.svg") ||
-    modelDefinition.logo?.includes("flux.svg") ||
-    modelDefinition.logo?.includes("xai.svg");
-
   return (
     <Link
       href={`/models/${model.slug}/create`}
@@ -75,18 +72,22 @@ function ModelCard({ model }: { model: ModelSEOConfig }) {
                   src={modelDefinition.logo}
                   alt={`${provider.name} logo`}
                   fill
+                  sizes="20px"
                   className={cn(
                     "object-contain",
-                    isMonochromeLogo && "dark:invert"
+                    isMonochromeLogo(modelDefinition.logo) && "dark:invert"
                   )}
                 />
               </div>
             </div>
           )}
           <div>
-            <h3 className="text-base font-bold font-brand text-foreground group-hover:text-primary transition-colors">
-              {model.displayName}
-            </h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-bold font-brand text-foreground group-hover:text-primary transition-colors">
+                {model.displayName}
+              </h3>
+              {modelDefinition.isUnrestricted && <NsfwBadge />}
+            </div>
             <p className="text-xs text-muted-foreground">{provider.name}</p>
           </div>
         </div>
@@ -126,7 +127,7 @@ function ModelCard({ model }: { model: ModelSEOConfig }) {
       </div>
 
       {/* Hover arrow */}
-      <ArrowRight className="absolute top-6 right-6 h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+      <ArrowRight className="absolute top-6 right-6 h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" aria-hidden="true" />
     </Link>
   );
 }
@@ -162,9 +163,9 @@ export default function ModelsHubPage() {
       />
 
       {/* Hero */}
-      <section className="pt-28 md:pt-36 pb-16 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent pointer-events-none" />
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full bg-primary/10 blur-[120px] opacity-60 pointer-events-none" />
+      <section className="pt-28 md:pt-36 pb-16 relative" aria-label="AI Models overview">
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent pointer-events-none" aria-hidden="true" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full bg-primary/10 blur-[120px] opacity-60 pointer-events-none" aria-hidden="true" />
 
         <div className="container mx-auto px-6 relative z-10">
           <div className="max-w-3xl">
@@ -179,21 +180,21 @@ export default function ModelsHubPage() {
               with Veo 3.1 — pick the right model for your creative workflow.
               Every model is available in your free trial.
             </p>
-            <Link href="/studio">
-              <Button size="lg" className="h-14 px-8 text-lg group">
+            <Button asChild size="lg" className="h-14 px-8 text-lg group">
+              <Link href="/studio">
                 Open Studio
-                <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </Button>
-            </Link>
+                <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
+              </Link>
+            </Button>
           </div>
         </div>
       </section>
 
       {/* Image Models */}
-      <section className="py-16 border-t border-white/5">
+      <section className="py-16 border-t border-white/5" aria-label="Image generation models">
         <div className="container mx-auto px-6">
           <div className="flex items-center gap-3 mb-10">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20">
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20" aria-hidden="true">
               <ImageIcon className="h-5 w-5 text-orange-400" />
             </div>
             <div>
@@ -213,10 +214,10 @@ export default function ModelsHubPage() {
       </section>
 
       {/* Video Models */}
-      <section className="py-16 bg-black/20 border-y border-white/5">
+      <section className="py-16 bg-black/20 border-y border-white/5" aria-label="Video generation models">
         <div className="container mx-auto px-6">
           <div className="flex items-center gap-3 mb-10">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20">
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20" aria-hidden="true">
               <Video className="h-5 w-5 text-sky-400" />
             </div>
             <div>
@@ -235,8 +236,37 @@ export default function ModelsHubPage() {
         </div>
       </section>
 
+      {/* NSFW Section */}
+      <section className="py-16 border-t border-white/5" aria-label="NSFW content generation">
+        <div className="container mx-auto px-6">
+          <Link
+            href="/nsfw"
+            className="group block max-w-4xl mx-auto rounded-2xl relative overflow-hidden p-8 sm:p-10 transition-all duration-300 hover:scale-[1.01]"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-rose-500/10 via-violet-500/5 to-rose-500/10 border border-white/10 rounded-2xl group-hover:border-rose-500/30 transition-colors" aria-hidden="true" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-rose-500/10 via-transparent to-transparent" aria-hidden="true" />
+
+            <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-6">
+              <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/20 shrink-0">
+                <Shield className="w-7 h-7 text-rose-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-foreground mb-1 group-hover:text-rose-400 transition-colors">
+                  Looking for NSFW AI generation?
+                </h3>
+                <p className="text-muted-foreground">
+                  Select models support uncensored content. Explore our NSFW hub
+                  for model comparisons, guides, and unrestricted generation.
+                </p>
+              </div>
+              <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-rose-400 group-hover:translate-x-1 transition-all shrink-0" aria-hidden="true" />
+            </div>
+          </Link>
+        </div>
+      </section>
+
       {/* Bottom CTA */}
-      <section className="py-24 relative">
+      <section className="py-24 relative" aria-label="Call to action — start creating">
         <div className="container mx-auto px-6">
           <div className="max-w-4xl mx-auto text-center rounded-3xl relative overflow-hidden p-12 sm:p-16">
             <div
@@ -256,21 +286,17 @@ export default function ModelsHubPage() {
                 Studio free for 24 hours.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link href="/studio">
-                  <Button size="lg" className="px-10 h-14 text-lg group">
+                <Button asChild size="lg" className="px-10 h-14 text-lg group">
+                  <Link href="/studio">
                     Open Studio
-                    <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                  </Button>
-                </Link>
-                <Link href="/pricing">
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="px-10 h-14 text-lg border-white/20 hover:bg-white/5"
-                  >
+                    <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
+                  </Link>
+                </Button>
+                <Button asChild size="lg" variant="outline" className="px-10 h-14 text-lg border-white/20 hover:bg-white/5">
+                  <Link href="/pricing">
                     View Pricing
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </div>
             </div>
           </div>

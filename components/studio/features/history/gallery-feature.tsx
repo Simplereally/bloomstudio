@@ -12,21 +12,8 @@
  */
 
 import type { ThumbnailData } from "@/components/studio/gallery/image-gallery"
+import type { PaginatedGalleryResult } from "@/components/studio/gallery/types"
 import { GalleryView } from "./gallery-view"
-
-// Type for the paginated result from server cache
-type PaginatedGalleryResult = {
-    page: Array<{
-        _id: string
-        _creationTime: number
-        url: string
-        visibility?: "public" | "unlisted"
-        model?: string
-        contentType?: string
-    }>
-    isDone: boolean
-    continueCursor: string
-}
 
 export interface GalleryFeatureProps {
     /** Currently active image ID (for highlighting) */
@@ -37,6 +24,8 @@ export interface GalleryFeatureProps {
     thumbnailSize?: "sm" | "md" | "lg"
     /** Server-cached initial page (reduces Convex bandwidth on initial load) */
     initialPage?: PaginatedGalleryResult
+    /** Callback fired whenever the gallery's stable image list changes */
+    onImagesLoaded?: (images: ThumbnailData[]) => void
 }
 
 /**
@@ -56,6 +45,7 @@ export function GalleryFeature({
     onSelectImage,
     thumbnailSize = "md",
     initialPage,
+    onImagesLoaded,
 }: GalleryFeatureProps) {
     return (
         <GalleryView
@@ -63,6 +53,7 @@ export function GalleryFeature({
             onSelectImage={onSelectImage}
             thumbnailSize={thumbnailSize}
             initialPage={initialPage}
+            onImagesLoaded={onImagesLoaded}
         />
     )
 }

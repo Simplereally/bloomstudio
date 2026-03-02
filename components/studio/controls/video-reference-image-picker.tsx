@@ -21,9 +21,10 @@ import { Button } from "@/components/ui/button"
 import { useUploadReference } from "@/hooks/mutations/use-upload-reference"
 import { useReferenceImages } from "@/hooks/queries/use-reference-images"
 import { cn } from "@/lib/utils"
+import type { ThumbnailData } from "@/components/studio/gallery/types"
 import { Image as ImageIcon, Loader2, Upload, X, Play, Target, MoreHorizontal, ArrowRight } from "lucide-react"
 import Image from "next/image"
-import { useRef, useState, useCallback } from "react"
+import { useRef, useState, useCallback, useMemo } from "react"
 import { toast } from "sonner"
 
 export interface VideoReferenceImages {
@@ -44,12 +45,17 @@ interface VideoReferenceImagePickerProps {
     disabled?: boolean
     /** Hide the header (when wrapped in CollapsibleSection) */
     hideHeader?: boolean
+    /** Pre-loaded history images from the gallery (passed to browser modal) */
+    historyImages?: ThumbnailData[]
 }
 
 type FrameType = "firstFrame" | "lastFrame"
 
 /** Maximum number of recent images to show inline */
 const MAX_INLINE_RECENT_IMAGES = 3
+
+/** Maximum upload file size in bytes (10MB) */
+const MAX_FILE_SIZE = 10 * 1024 * 1024
 
 /**
  * Component to manage reference images for video frame interpolation.
@@ -61,6 +67,7 @@ export function VideoReferenceImagePicker({
     supportsInterpolation = false,
     disabled,
     hideHeader = false,
+    historyImages,
 }: VideoReferenceImagePickerProps) {
     const recentImages = useReferenceImages()
     const isLoadingRecent = recentImages === undefined
@@ -82,6 +89,18 @@ export function VideoReferenceImagePicker({
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>, frameType: FrameType) => {
         const file = e.target.files?.[0]
         if (!file) return
+
+        // Client-side validation for file size (10MB limit)
+        if (file.size > MAX_FILE_SIZE) {
+            toast.error("File is too large. Maximum size is 10MB.")
+            if (frameType === "firstFrame" && firstFrameInputRef.current) {
+                firstFrameInputRef.current.value = ""
+            }
+            if (frameType === "lastFrame" && lastFrameInputRef.current) {
+                lastFrameInputRef.current.value = ""
+            }
+            return
+        }
 
         setUploadFilename(file.name)
         setUploadProgress(0)
@@ -139,6 +158,14 @@ export function VideoReferenceImagePicker({
         }
     }, [browserFrameType, selectedImages, onImagesChange])
 
+    // Memoize selected URLs to avoid unnecessary re-renders of the browser modal
+    const selectedUrls = useMemo(
+        () => [selectedImages.firstFrame, selectedImages.lastFrame].filter(
+            (url): url is string => Boolean(url)
+        ),
+        [selectedImages.firstFrame, selectedImages.lastFrame],
+    )
+
     // Get count of selected frames for display
     const frameCount = (selectedImages.firstFrame ? 1 : 0) + (selectedImages.lastFrame ? 1 : 0)
 
@@ -177,6 +204,7 @@ export function VideoReferenceImagePicker({
                         />
                         <button
                             onClick={() => handleClearFrame(frameType)}
+                            aria-label={`Remove ${label.toLowerCase()} frame image`}
                             className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
                             data-testid={`clear-${frameType}-button`}
                         >
@@ -222,6 +250,7 @@ export function VideoReferenceImagePicker({
                     className="hidden"
                     accept="image/*"
                     onChange={(e) => handleUpload(e, frameType)}
+                    aria-label={`Upload ${label.toLowerCase()} frame image file`}
                 />
             </div>
         )
@@ -374,7 +403,9 @@ export function VideoReferenceImagePicker({
                 onSelect={handleBrowserSelect}
                 title={`Select ${browserFrameType === "lastFrame" ? "Last" : "First"} Frame`}
                 description="Choose a reference image from your library"
-                selectedUrls={[selectedImages.firstFrame, selectedImages.lastFrame].filter(Boolean) as string[]}
+                selectedUrls={selectedUrls}
+                allowVideo={true}
+                historyImages={historyImages}
             />
         </div>
     )

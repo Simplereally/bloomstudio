@@ -66,26 +66,13 @@ import type {
   VideoModel,
 } from "@/types/pollinations";
 import type { ThumbnailData } from "@/components/studio/gallery/image-gallery";
+import type { PaginatedGalleryResult } from "@/components/studio/gallery/types";
 import { useConvexAuth } from "convex/react";
 import { useSearchParams } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
 import { invalidateUserHistoryCache } from "@/app/_server/actions/invalidation";
 import { LowBalanceWarningDialog } from "@/components/pollen-balance/low-balance-warning-dialog";
-
-// Type for the paginated result from server cache
-type PaginatedGalleryResult = {
-  page: Array<{
-    _id: string;
-    _creationTime: number;
-    url: string;
-    visibility?: "public" | "unlisted";
-    model?: string;
-    contentType?: string;
-  }>;
-  isDone: boolean;
-  continueCursor: string;
-};
 
 export interface StudioShellProps {
   defaultLayout?: Record<string, number>;
@@ -261,20 +248,20 @@ export function StudioShell({
             generationSettings.seed === -1
               ? undefined
               : generationSettings.seed,
-          enhance: generationSettings.options.enhance,
-          private: generationSettings.options.private,
-          safe: generationSettings.options.safe,
-          // For video models, use the first frame as the reference image (image-to-video);
-          // for image models, use the standard reference image (image-to-image).
-          image: generationSettings.isVideoModel
-            ? generationSettings.videoReferenceImages.firstFrame
-            : generationSettings.referenceImage,
-          // Video-specific parameters
-          duration: generationSettings.videoSettings.duration,
-          audio: generationSettings.videoSettings.audio,
-          aspectRatio: generationSettings.aspectRatio,
-          lastFrameImage: generationSettings.videoReferenceImages.lastFrame,
-        },
+           enhance: false,
+           private: generationSettings.options.private,
+           safe: generationSettings.options.safe,
+           // For video models, use the first frame as the reference image (image-to-video);
+           // for image models, use the standard reference image (image-to-image).
+           image: generationSettings.isVideoModel
+             ? generationSettings.videoReferenceImages.firstFrame
+             : generationSettings.referenceImage,
+           // Video-specific parameters
+           duration: generationSettings.videoSettings.duration,
+           audio: generationSettings.videoSettings.audio,
+           aspectRatio: generationSettings.aspectRatio,
+           lastFrameImage: generationSettings.videoReferenceImages.lastFrame,
+         },
         batchMode.batchSettings.count,
       );
       return;
@@ -286,12 +273,6 @@ export function StudioShell({
         ? generationSettings.generateSeed()
         : generationSettings.seed;
 
-    function isVideoModel(model: string): model is VideoModel {
-      return (
-        model === "veo" || model === "seedance" || model === "seedance-pro" || model === "wan" || model === "grok-video"
-      );
-    }
-
     const commonParams = {
       prompt,
       negativePrompt: negativePrompt || undefined,
@@ -299,7 +280,7 @@ export function StudioShell({
       width: generationSettings.width,
       height: generationSettings.height,
       seed: effectiveSeed,
-      enhance: generationSettings.options.enhance,
+      enhance: false,
       private: generationSettings.options.private,
       safe: generationSettings.options.safe,
       // For video models, use the first frame as the reference image (image-to-video);
@@ -309,16 +290,18 @@ export function StudioShell({
         : generationSettings.referenceImage,
     };
 
-    if (isVideoModel(generationSettings.model)) {
+    if (generationSettings.isVideoModel) {
       const videoAspectRatio =
         generationSettings.aspectRatio === "16:9" ||
         generationSettings.aspectRatio === "9:16"
           ? generationSettings.aspectRatio
           : undefined;
 
+      // Safe cast: isVideoModel is derived from the model registry (modelDef.type === "video"),
+      // which guarantees the model string is a valid VideoModel enum member.
       const params: VideoGenerationParams = {
         ...commonParams,
-        model: generationSettings.model,
+        model: generationSettings.model as VideoModel,
         duration: generationSettings.videoSettings.duration,
         audio: generationSettings.videoSettings.audio,
         aspectRatio: videoAspectRatio,
@@ -410,6 +393,17 @@ export function StudioShell({
   );
 
   // ========================================
+  // Gallery Images for Reference Image Pickers
+  // ========================================
+  const [galleryImages, setGalleryImages] = React.useState<ThumbnailData[]>([]);
+  const handleGalleryImagesLoaded = React.useCallback(
+    (images: ThumbnailData[]) => {
+      setGalleryImages(images);
+    },
+    [],
+  );
+
+  // ========================================
   // Regenerate Handler
   // ========================================
   const handleRegenerate = React.useCallback(() => {
@@ -425,7 +419,7 @@ export function StudioShell({
         width: generationSettings.width,
         height: generationSettings.height,
         seed: generationSettings.generateSeed(),
-        enhance: generationSettings.options.enhance,
+        enhance: false,
         private: generationSettings.options.private,
         safe: generationSettings.options.safe,
       });
@@ -506,7 +500,7 @@ export function StudioShell({
             {/* Generation Controls Feature */}
             <GenerationSettingsContext.Provider value={generationSettings}>
               <BatchModeContext.Provider value={batchMode}>
-                <ControlsFeature isGenerating={isGenerating} />
+                <ControlsFeature isGenerating={isGenerating} historyImages={galleryImages} />
               </BatchModeContext.Provider>
             </GenerationSettingsContext.Provider>
           </div>
@@ -603,6 +597,7 @@ export function StudioShell({
       onSelectImage={handleSelectGalleryImage}
       thumbnailSize="md"
       initialPage={initialGalleryPage}
+      onImagesLoaded={handleGalleryImagesLoaded}
     />
   );
 

@@ -40,7 +40,7 @@ export function ValuePropSection() {
               <div className="h-full p-6 rounded-2xl bg-gradient-to-br from-white/5 via-card/80 to-purple-500/5 border border-white/10">
                 <h3 className="font-bold text-foreground mb-2">All Models Included</h3>
                 <p className="text-sm text-muted-foreground">
-                  Every active model is included: Imagen 4, Grok Imagine, Grok Video, Flux Schnell, GPT Image, Z-Image, Klein, Seedance — no extras to unlock.
+                  Every active model is included: Imagen 4, Grok Imagine, Grok Video, Flux Schnell, GPT Image, Z-Image, Klein 4B & 9B, Seedance — no extras to unlock.
                 </p>
               </div>
             </ScrollReveal>

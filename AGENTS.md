@@ -4,6 +4,10 @@
 
 # .agent — Development Guidelines
 
+## Git
+
+**CRITICAL: Never perform a `git stash` under any circumstance unless explicitly told to.**
+
 ## Package Manager
 
 Use Bun exclusively. Never use npm, npx, or yarn.
@@ -11,7 +15,9 @@ Use Bun exclusively. Never use npm, npx, or yarn.
 Install: `bun install`
 Run: `bun run <script>`
 Execute: `bunx <pkg>`
-Test: `bun test`
+Test: `bun run test` (NOT `bun test`)
+Build: `bun run build` — use sparingly; never run in parallel with test/lint
+Lint: `bun run lint` — use sparingly; never run in parallel with build/test
 Add: `bun add <pkg>`
 
 ## Stack

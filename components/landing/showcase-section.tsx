@@ -71,7 +71,7 @@ export function ShowcaseSection({ items }: ShowcaseSectionProps) {
                 From photorealistic renders to artistic illustrations, bring any vision to life with our state-of-the-art AI image generator and text-to-image models.
               </p>
               <p className="text-sm lg:text-base text-muted-foreground/85 text-balance max-w-lg xl:max-w-xl">
-                Generate high-resolution artwork, professional product photography, lifestyle influencer photos, and creative digital art — all powered by the latest AI models including GPT-4 Image, Flux, and Seedream. Perfect for designers, marketers, and creative professionals who need instant, high-quality visual content.
+                Generate high-resolution artwork, professional product photography, lifestyle influencer photos, and creative digital art — all powered by the latest AI models including Imagen 4, GPT Image, and Flux. Perfect for designers, marketers, and creative professionals who need instant, high-quality visual content.
               </p>
 
 
