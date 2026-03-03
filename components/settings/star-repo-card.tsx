@@ -40,10 +40,10 @@ export function StarRepoCard() {
                 <div className="space-y-6">
                     <div className="space-y-3">
                         <p className="text-base text-muted-foreground leading-relaxed">
-                            Default API keys are limited to <span className="font-bold text-foreground">180 generations/day</span>.
+                            Default API keys are limited to <span className="font-bold text-foreground">5,000 generations/day</span>.
                         </p>
                         <p className="text-base text-muted-foreground leading-relaxed">
-                            You may be eligible for <span className="font-bold text-green-500">~540 generations/day</span> based on your Github account standing and contributions.
+                            You may be eligible for <span className="font-bold text-green-500">15,000 generations/day</span> based on your Github account standing and contributions.
                         </p>
                     </div>
 

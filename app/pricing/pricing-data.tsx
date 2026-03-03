@@ -46,7 +46,7 @@ export const pricingTiers: PricingTier[] = [
         cta: "Upgrade to Pro",
         ctaVariant: "default",
         features: [
-            "180 high-quality images/month",
+            "Up to 5,000 daily generations",
             "Daily resets",
             "8 AI models included (Flux, GPT Image, Z-Image, Klein, Grok Imagine, Grok Video, and more)",
             "Advanced prompt enhancement",
@@ -62,12 +62,12 @@ export const pricingFaqs = [
     {
         question: "How does the free plan work?",
         answer:
-            "Sign up and get 180 high-quality images every month for free. Your quota resets daily (approx. 6 images/day). No credit card required.",
+            "Sign up and get up to 5,000 generations every single day for free. Your quota resets every 24 hours. No credit card required.",
     },
     {
         question: "What happens if I need more images?",
         answer:
-            "You have three options:\n\n1. Upgrade to Pro ($3/month) for exclusive features like private generations, NSFW generations, advanced prompt enhancement, and a 1,000 image batch queue. Note: This plan includes the same 180 images/month quota as the Starter plan.\n\n2. Wait for your daily reset.\n\n3. Purchase additional Pollen credits directly from Pollinations to extend your quota beyond the included 180 images/month.",
+            "You have three options:\n\n1. Upgrade to Pro ($3/month) for exclusive features like private generations, NSFW generations, advanced prompt enhancement, and a 1,000 image batch queue. Note: This plan includes the same massive daily quotas as the Starter plan.\n\n2. Wait for your daily reset.\n\n3. Purchase additional Pollen credits directly from Pollinations to extend your quota beyond the included daily limits.",
     },
     {
         question: "What AI models are included?",
@@ -93,7 +93,7 @@ export const pricingFaqs = [
 ]
 
 export const featureComparison = [
-    { feature: "Monthly images", starter: "180", pro: "180" },
+    { feature: "Daily images", starter: "5,000+", pro: "5,000+" },
     { feature: "Monthly cost", starter: "$0", pro: "$3" },
     { feature: "Quota system", starter: "Simple daily reset", pro: "Simple daily reset" },
     { feature: "Queue priority", starter: "Zero artificial delays", pro: "Zero artificial delays" },

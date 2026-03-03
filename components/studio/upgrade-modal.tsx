@@ -28,7 +28,7 @@ interface UpgradeModalProps {
 }
 
 const proFeatures = [
-	{ icon: Images, label: "180", description: "high-quality images/month" },
+	{ icon: Images, label: "5,000+", description: "generations / day" },
 	{ icon: Palette, label: "9", description: "AI models included" },
 	{ icon: RefreshCw, label: "Daily", description: "quota refresh" },
 ];

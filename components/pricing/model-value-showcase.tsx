@@ -33,49 +33,49 @@ const MODEL_VALUE_DATA: ModelValueData[] = [
         id: "flux",
         displayName: "Flux Schnell",
         logo: "/image-models/flux.svg",
-        monthlyQuota: 900_000,
+        monthlyQuota: 150_000,
         type: "image",
     },
     {
         id: "zimage",
         displayName: "Z-Image Turbo",
         logo: "/image-models/alibaba.svg",
-        monthlyQuota: 900_000,
+        monthlyQuota: 150_000,
         type: "image",
     },
     {
         id: "klein",
         displayName: "FLUX.2 Klein 4B",
         logo: "/image-models/flux.svg",
-        monthlyQuota: 27_000,
+        monthlyQuota: 4_500,
         type: "image",
     },
     {
         id: "klein-large",
         displayName: "FLUX.2 Klein 9B",
         logo: "/image-models/flux.svg",
-        monthlyQuota: 15_300,
+        monthlyQuota: 2_550,
         type: "image",
     },
     {
         id: "grok-imagine",
         displayName: "Grok Imagine",
         logo: "/image-models/xai.svg",
-        monthlyQuota: 72_000,
+        monthlyQuota: 12_000,
         type: "image",
     },
     {
         id: "gptimage",
         displayName: "GPT Image 1.0",
         logo: "/image-models/openai.svg",
-        monthlyQuota: 12_600,
+        monthlyQuota: 2_100,
         type: "image",
     },
     {
         id: "grok-video",
         displayName: "Grok Video",
         logo: "/image-models/xai.svg",
-        monthlyQuota: 14_400,
+        monthlyQuota: 2_400,
         type: "video",
     },
 ]
@@ -84,9 +84,9 @@ const MODEL_VALUE_DATA: ModelValueData[] = [
 const ACTIVE_MODEL_DATA = MODEL_VALUE_DATA.filter((m) => !isModelLegacy(m.id))
 const ORDERED_MODEL_DATA = [...ACTIVE_MODEL_DATA].sort((a, b) => a.displayName.localeCompare(b.displayName))
 // Separate into tiers for visual hierarchy
-const FAST_MODELS = ORDERED_MODEL_DATA.filter((m) => m.monthlyQuota >= 99_000)
-const STANDARD_MODELS = ORDERED_MODEL_DATA.filter((m) => m.monthlyQuota >= 2_000 && m.monthlyQuota < 99_000)
-const PREMIUM_MODELS = ORDERED_MODEL_DATA.filter((m) => m.monthlyQuota < 2_000)
+const FAST_MODELS = ORDERED_MODEL_DATA.filter((m) => m.monthlyQuota >= 100_000)
+const STANDARD_MODELS = ORDERED_MODEL_DATA.filter((m) => m.monthlyQuota >= 3_000 && m.monthlyQuota < 100_000)
+const PREMIUM_MODELS = ORDERED_MODEL_DATA.filter((m) => m.monthlyQuota < 3_000)
 
 function AnimatedNumber({ value, delay = 0 }: { value: number; delay?: number }) {
     const [displayValue, setDisplayValue] = useState(0)
@@ -272,7 +272,7 @@ export function ModelValueShowcase() {
                     className="max-w-3xl mx-auto text-center mb-8 md:mb-12"
                 >
                     <p className="text-[11px] uppercase tracking-[0.3em] text-primary font-semibold mb-4">
-                        Monthly Capacity
+                        Massive Quotas
                     </p>
 
                     <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-brand font-bold text-foreground mb-6 tracking-tight leading-[1.1]">

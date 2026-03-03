@@ -20,9 +20,9 @@ interface Capability {
 const capabilities: Capability[] = [
   {
     icon: ImageIcon,
-    label: "Monthly Output",
-    value: "900,000+",
-    detail: "images/month on Flux Schnell (180 pollen × 5,000 images each)",
+    label: "Daily Output",
+    value: "5,000+",
+    detail: "generations every 24 hours on Flux Schnell and Z-Image",
   },
   {
     icon: Zap,

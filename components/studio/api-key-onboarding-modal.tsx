@@ -306,17 +306,17 @@ function UpgradeFace({ onFinish }: UpgradeFaceProps) {
             <div className="flex items-center justify-center gap-6 py-2">
               <div className="text-center">
                 <div className="text-lg font-bold text-muted-foreground tabular-nums">
-                  180
+                  5,000
                 </div>
-                <div className="text-[10px] text-muted-foreground">base/mo</div>
+                <div className="text-[10px] text-muted-foreground">base/day</div>
               </div>
               <ArrowRight className="w-4 h-4 text-muted-foreground/40" />
               <div className="text-center">
                 <div className="text-lg font-bold text-emerald-500 tabular-nums">
-                  540
+                  15,000
                 </div>
                 <div className="text-[10px] text-muted-foreground">
-                  active dev/mo
+                  active dev/day
                 </div>
               </div>
             </div>

@@ -53,9 +53,9 @@ describe("UpgradeModal", () => {
 
 	it("displays pro features", () => {
 		render(<UpgradeModal isOpen={true} onClose={vi.fn()} />);
-		expect(screen.getByText("180")).toBeInTheDocument();
+		expect(screen.getByText("5,000+")).toBeInTheDocument();
 		expect(
-			screen.getByText("high-quality images/month"),
+			screen.getByText("generations / day"),
 		).toBeInTheDocument();
 		expect(screen.getByText("9")).toBeInTheDocument();
 		expect(screen.getByText("AI models included")).toBeInTheDocument();

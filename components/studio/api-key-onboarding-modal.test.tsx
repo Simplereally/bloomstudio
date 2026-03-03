@@ -243,8 +243,8 @@ describe("ApiKeyOnboardingModal", () => {
       await waitFor(() => {
         expect(screen.getByText("Increased Quota")).toBeInTheDocument();
         expect(screen.getByText(/3× limits/i)).toBeInTheDocument();
-        expect(screen.getByText("180")).toBeInTheDocument();
-        expect(screen.getByText("540")).toBeInTheDocument();
+        expect(screen.getByText("5,000")).toBeInTheDocument();
+        expect(screen.getByText("15,000")).toBeInTheDocument();
       });
     });
 

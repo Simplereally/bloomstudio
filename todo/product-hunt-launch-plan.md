@@ -6,8 +6,8 @@ We are democratizing access to top-tier models (Flux, Veo) by undercutting the m
 
 **Key Narrative:** "Why pay $30/month for Midjourney when you can get the same quality for $3?"
 *   **Simple:** No complex credits systems, just images.
-*   **Affordable:** $3/month for 180 images.
-*   **Powerful:** Flux, Veo, "Nano Banana Pro" (Google Gemini).
+*   **Affordable:** $3/month for 5,000 daily images.
+*   **Powerful:** Flux, Veo, Grok Imagine.
 
 ## 2. Launch Checklist & Asset Guidelines
 
@@ -51,7 +51,7 @@ This is your chance to humanize the product.
 > *   🎨 **Top-tier Image Gen** (Flux, Nano Banana Pro)
 > *   🎥 **Video Generation** (Veo)
 > *   🚀 **Lightning fast** execution
-> *   💸 **$3/month** for 180 images (seriously)
+> *   💸 **$3/month** for 5,000+ daily images (seriously)
 >
 > We offer a **24-hour free trial** where you can try *everything*—no credit card needed. We'd love for you to break it, make art with it, and tell us what you think! 
 >

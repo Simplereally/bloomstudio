@@ -231,7 +231,7 @@ const FAQ_ITEMS = [
   {
     question: "Can I generate NSFW images for free?",
     answer:
-      "Yes. Bloom Studio offers a 24-hour free trial with full access to all NSFW image models. Generate unlimited uncensored images during your trial. After that, plans start at $3/month.",
+      "Yes. Bloom Studio offers a 24-hour free trial with full access to all NSFW image models. Generate up to 5,000 images per day during your trial. After that, plans start at $3/month.",
   },
   {
     question: "What resolution can I generate NSFW images at?",

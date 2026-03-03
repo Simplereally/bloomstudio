@@ -121,7 +121,7 @@ function QueueCardGrid({
             className="absolute inset-x-4 bottom-4 z-20 pointer-events-none"
             data-testid="queue-card-grid"
         >
-            <div className="mx-auto max-w-[800px] max-h-[50%] overflow-y-auto">
+            <div className="mx-auto w-full max-w-[800px] max-h-[50%] overflow-y-auto overflow-x-hidden">
                 <div className="flex flex-wrap items-end justify-center gap-2.5">
                     {items.map((item) => (
                         <QueueCard
