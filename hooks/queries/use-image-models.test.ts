@@ -189,7 +189,7 @@ describe("useImageModels", () => {
         const modelIds = result.current.models.map(m => m.id)
         
         // All video models should be included
-        expect(modelIds).toContain("seedance") // active
+        expect(modelIds).toContain("seedance") // legacy
         expect(modelIds).toContain("seedance-pro") // legacy
         expect(modelIds).toContain("veo") // legacy
         expect(modelIds).toContain("wan") // legacy

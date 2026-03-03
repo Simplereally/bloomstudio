@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   title:
     "NSFW AI Models — Compare Uncensored AI Image & Video Models | Bloom Studio",
   description:
-    "Compare all 9 NSFW-capable AI models side-by-side. Image models: Flux Schnell, GPT Image, Imagen 4, Grok Imagine, Z-Image Turbo, FLUX.2 Klein. Video: Seedance, Grok Video. Find the best model for uncensored AI generation.",
+    "Compare all 8 NSFW-capable AI models side-by-side. Image models: Flux Schnell, GPT Image, Imagen 4, Grok Imagine, Z-Image Turbo, FLUX.2 Klein. Video: Grok Video. Find the best model for uncensored AI generation.",
   alternates: {
     canonical: "/nsfw/models",
   },
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "NSFW AI Models — Compare Uncensored AI Models",
     description:
-      "Compare all 9 NSFW-capable AI models side-by-side. Find the best model for uncensored image and video generation.",
+      "Compare all 8 NSFW-capable AI models side-by-side. Find the best model for uncensored image and video generation.",
     url: "https://bloomstudio.fun/nsfw/models",
     type: "website",
   },
@@ -55,7 +55,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "NSFW AI Models — Compare Uncensored AI Models",
     description:
-      "Compare all 9 NSFW-capable AI models. Find the best model for uncensored image and video generation.",
+      "Compare all 8 NSFW-capable AI models. Find the best model for uncensored image and video generation.",
   },
 };
 
@@ -198,24 +198,6 @@ const ALL_MODELS: NSFWModel[] = [
   },
   // ── Video Models ──────────────────────────────────────────────────────
   {
-    name: "Seedance",
-    slug: "seedance",
-    type: "video",
-    provider: "ByteDance",
-    maxRes: "1080p",
-    speed: "Medium",
-    unrestricted: false,
-    highlight: "Best Cinematic Quality",
-    bestFor: "Cinematic Video",
-    description:
-      "Multi-shot NSFW video with smooth cinematic motion and physical realism. Strong prompt following for detailed scene control.",
-    ratios: 2,
-    refImage: true,
-    negPrompt: false,
-    duration: "2–10s",
-    audio: false,
-  },
-  {
     name: "Grok Video",
     slug: "grok-video",
     type: "video",
@@ -275,20 +257,11 @@ const RECOMMENDATIONS = [
   {
     icon: Video,
     title: "Best NSFW Video",
-    model: "Seedance",
-    slug: "seedance",
-    type: "video" as const,
-    reason:
-      "Cinematic motion quality with multi-shot coherence. The best overall NSFW video model for quality.",
-  },
-  {
-    icon: Shield,
-    title: "Most Unrestricted",
     model: "Grok Video",
     slug: "grok-video",
     type: "video" as const,
     reason:
-      "Natively unrestricted by xAI. The only video model with zero guardrails built in. Fast generation.",
+      "Natively unrestricted by xAI. Fast video generation with image-to-video support. The best NSFW video model available.",
   },
 ];
 
@@ -296,7 +269,7 @@ const FAQ_ITEMS = [
   {
     question: "Which NSFW AI models are natively unrestricted?",
     answer:
-      "Four models are natively unrestricted (built without content guardrails): Flux Schnell, Grok Imagine, Z-Image Turbo, and Grok Video. The remaining models are uncensored at the platform level on Bloom Studio — all 9 models generate NSFW content without filters.",
+      "Four models are natively unrestricted (built without content guardrails): Flux Schnell, Grok Imagine, Z-Image Turbo, and Grok Video. The remaining models are uncensored at the platform level on Bloom Studio — all 8 models generate NSFW content without filters.",
   },
   {
     question:
@@ -312,12 +285,12 @@ const FAQ_ITEMS = [
   {
     question: "Which model should I use for NSFW video generation?",
     answer:
-      "Seedance for the best cinematic quality with smooth motion and multi-shot coherence. Grok Video for faster generation and native unrestricted support. Both support image-to-video and output at 1080p HD.",
+      "Grok Video by xAI is the primary NSFW video model. It offers fast generation with native unrestricted support, image-to-video capability, and outputs at 1080p HD.",
   },
   {
     question: "Can I try all NSFW models for free?",
     answer:
-      "Yes. Bloom Studio's 24-hour free trial gives you full access to all 9 models — both image and video. No credit card required. After the trial, plans start at $3/month.",
+      "Yes. Bloom Studio's 24-hour free trial gives you full access to all 8 models — both image and video. No credit card required. After the trial, plans start at $3/month.",
   },
   {
     question: "How many aspect ratios do NSFW models support?",
@@ -343,7 +316,7 @@ export default function NSFWModelsPage() {
           "@type": "WebPage",
           name: "NSFW AI Models — Compare Uncensored AI Models",
           description:
-            "Compare all 9 NSFW-capable AI models side-by-side for uncensored image and video generation.",
+            "Compare all 8 NSFW-capable AI models side-by-side for uncensored image and video generation.",
           url: "https://bloomstudio.fun/nsfw/models",
           breadcrumb: {
             "@type": "BreadcrumbList",
@@ -432,7 +405,7 @@ export default function NSFWModelsPage() {
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-rose-500/10 border border-rose-500/20 mb-6">
               <Sparkles className="w-4 h-4 text-rose-400" />
               <span className="text-sm font-medium text-rose-300">
-                9 Uncensored Models
+                8 Uncensored Models
               </span>
             </div>
 
@@ -446,7 +419,7 @@ export default function NSFWModelsPage() {
               model for your NSFW generation needs.
             </p>
             <p className="text-base text-muted-foreground/70 mb-8 max-w-xl">
-              7 image models + 2 video models. 4 natively unrestricted. All
+              7 image models + 1 video model. 4 natively unrestricted. All
               available in your free trial.
             </p>
 
@@ -783,7 +756,7 @@ export default function NSFWModelsPage() {
       {/* Final CTA — shared component */}
       <NSFWCtaSection
         headline="Try Every Model Free"
-        description="9 uncensored AI models. 7 for images, 2 for video. Full access with a 24-hour free trial. No credit card required."
+        description="8 uncensored AI models. 7 for images, 1 for video. Full access with a 24-hour free trial. No credit card required."
         primaryHref="/studio"
         primaryLabel="Start Free Trial"
         secondaryHref="/nsfw"

@@ -47,7 +47,7 @@ export default function PricingPage() {
         "@context": "https://schema.org",
         "@type": "Product",
         name: "Bloom Studio Pro",
-        description: "Professional AI image and video generation subscription. Includes 180 images/month, all active models (Flux, GPT Image, Z-Image, Klein, Imagen 4, Grok Imagine, Grok Video, Seedance), and private generations.",
+        description: "Professional AI image and video generation subscription. Includes 180 images/month, all active models (Flux, GPT Image, Z-Image, Klein, Imagen 4, Grok Imagine, Grok Video), and private generations.",
         image: "https://bloomstudio.fun/branding/bloom-studio_logo.png",
         offers: {
             "@type": "Offer",

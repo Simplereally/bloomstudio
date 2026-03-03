@@ -18,7 +18,7 @@ import { NsfwBadge } from "@/components/landing/nsfw-badge";
 export const metadata: Metadata = {
   title: "AI Models — Image & Video Generation Models | Bloom Studio",
   description:
-    "Explore 9 AI models for image and video generation. Compare Flux, GPT Image, Imagen 4, Seedance, and more. Try any model free on Bloom Studio.",
+    "Explore 8 AI models for image and video generation. Compare Flux, GPT Image, Imagen 4, Grok Video, and more. Try any model free on Bloom Studio.",
   alternates: {
     canonical: "/models",
   },
@@ -152,7 +152,7 @@ export default function ModelsHubPage() {
           "@type": "CollectionPage",
           name: "AI Models — Bloom Studio",
           description:
-            "Browse and compare 9 AI models for image and video generation on Bloom Studio.",
+            "Browse and compare 8 AI models for image and video generation on Bloom Studio.",
           url: "https://bloomstudio.fun/models",
           provider: {
             "@type": "Organization",
@@ -177,7 +177,7 @@ export default function ModelsHubPage() {
             </p>
             <p className="text-base text-muted-foreground/80 mb-8 max-w-2xl leading-relaxed">
               From lightning-fast drafts with Flux Schnell to cinematic video
-              with Veo 3.1 — pick the right model for your creative workflow.
+              with Grok Video — pick the right model for your creative workflow.
               Every model is available in your free trial.
             </p>
             <Button asChild size="lg" className="h-14 px-8 text-lg group">

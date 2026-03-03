@@ -47,6 +47,7 @@ import type * as stripe from "../stripe.js";
 import type * as tempTagStats from "../tempTagStats.js";
 import type * as thumbnailMigration from "../thumbnailMigration.js";
 import type * as thumbnailMigrationActions from "../thumbnailMigrationActions.js";
+import type * as troubleshoot_v2 from "../troubleshoot_v2.js";
 import type * as usernameGenerator from "../usernameGenerator.js";
 import type * as users from "../users.js";
 
@@ -96,6 +97,7 @@ declare const fullApi: ApiFromModules<{
   tempTagStats: typeof tempTagStats;
   thumbnailMigration: typeof thumbnailMigration;
   thumbnailMigrationActions: typeof thumbnailMigrationActions;
+  troubleshoot_v2: typeof troubleshoot_v2;
   usernameGenerator: typeof usernameGenerator;
   users: typeof users;
 }>;

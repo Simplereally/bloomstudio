@@ -23,7 +23,7 @@
 
 ## Features
 
-- 🎨 **6 AI Models** — Choose from Flux Schnell, Z-Image Turbo, GPT Image, FLUX.2 Klein, and Seedance
+- 🎨 **8 AI Models** — Choose from Imagen 4, Grok Imagine, Flux Schnell, Grok Video, GPT Image, Z-Image, and FLUX.2 Klein 4B & 9B
 - ⚡ **Generous Limits** — Up to 900,000 Flux Schnell generations per month (180 high-quality images)
 - 📐 **Full Dimension Control** — Create logos, banners, or any custom image size
 - 💾 **Cloud History** — Access your generated images from any device

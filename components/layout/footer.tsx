@@ -10,7 +10,6 @@ const FOOTER_MODELS = [
     { slug: "flux-schnell", label: "Flux Schnell" },
     { slug: "gpt-image", label: "GPT Image" },
     { slug: "imagen-4", label: "Imagen 4" },
-    { slug: "seedance", label: "Seedance" },
     { slug: "grok-video", label: "Grok Video" },
 ] as const
 

@@ -1004,6 +1004,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
       defaultDuration: 5,
     },
     modelPricing: VIDEO_MODEL_PRICING["seedance"],
+    isLegacy: true,
   },
 } as const;
 

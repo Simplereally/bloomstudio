@@ -15,6 +15,7 @@
  */
 
 import { useEnhancePrompt, useSuggestions } from "@/hooks/queries"
+import { useLocalStorage } from "@/hooks/use-local-storage"
 import type { PromptSectionAPI } from "@/components/studio"
 import * as React from "react"
 
@@ -86,8 +87,8 @@ export function usePromptManager(): UsePromptManagerReturn {
     // Local state for generate button - only updates when prompt content changes (debounced)
     const [hasPromptContent, setHasPromptContent] = React.useState(false)
 
-    // Prompt history state
-    const [promptHistory, setPromptHistory] = React.useState<string[]>([])
+    // Prompt history state (persisted)
+    const [promptHistory, setPromptHistory] = useLocalStorage<string[]>("ps:prompt:history", [])
 
     // Dynamic AI-generated suggestions
     const { suggestions, isLoading: isLoadingSuggestions, fetchSuggestions } = useSuggestions()
@@ -121,7 +122,7 @@ export function usePromptManager(): UsePromptManagerReturn {
             if (prev.includes(prompt)) return prev
             return [prompt, ...prev.slice(0, MAX_HISTORY_SIZE - 1)]
         })
-    }, [])
+    }, [setPromptHistory])
 
     // Handler to enhance main prompt - reads from ref
     const enhancePrompt = React.useCallback(() => {

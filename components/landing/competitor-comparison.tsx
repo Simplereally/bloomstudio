@@ -45,9 +45,9 @@ const capabilities: Capability[] = [
   {
     icon: Infinity,
     label: "All Models Included",
-    value: "9+",
+    value: "8+",
     detail:
-      "Imagen 4, Grok Imagine, Grok Video, Flux, GPT Image, Z-Image, Klein, Seedance & more",
+      "Imagen 4, Grok Imagine, Grok Video, Flux, GPT Image, Z-Image, Klein & more",
   },
   {
     icon: DollarSign,

@@ -19,7 +19,7 @@ interface HeroSectionProps {
 }
 
 export function HeroSection({ title, description }: HeroSectionProps = {}) {
-    const featuredModelIds = ["imagen-4", "grok-imagine", "flux", "klein", "klein-large", "zimage", "gptimage", "grok-video", "seedance"] as const
+    const featuredModelIds = ["imagen-4", "grok-imagine", "flux", "klein", "klein-large", "zimage", "gptimage", "grok-video"] as const
     const featuredModels = featuredModelIds
         .map((id) => getModel(id))
         .filter((m): m is ModelDefinition => m !== undefined)

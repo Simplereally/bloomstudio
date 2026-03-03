@@ -29,8 +29,8 @@ export function FeaturesSection() {
           <ScrollReveal delay={100}>
             <FeatureCard
               icon={Layers}
-              title="9 AI Models"
-              description="Access Imagen 4, Grok Imagine, Flux Schnell, GPT Image, Z-Image Turbo, Klein 4B & 9B, Grok Video, and Seedance. All models included in every plan."
+              title="8 AI Models"
+              description="Access Imagen 4, Grok Imagine, Flux Schnell, GPT Image, Z-Image Turbo, Klein 4B & 9B, and Grok Video. All models included in every plan."
             />
           </ScrollReveal>
           <ScrollReveal delay={200}>
@@ -51,7 +51,7 @@ export function FeaturesSection() {
             <FeatureCard
               icon={Video}
               title="AI Video"
-              description="Transform still images into dynamic videos with Seedance. Create motion from your images."
+              description="Transform still images into dynamic videos with Grok Video. Create motion from your images."
             />
           </ScrollReveal>
           <ScrollReveal delay={500}>

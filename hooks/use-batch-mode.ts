@@ -29,6 +29,7 @@ import {
     useBatchGeneration,
     useBatchJob
 } from "@/hooks/queries"
+import { useLocalStorage } from "@/hooks/use-local-storage"
 import { usePollenBalance } from "@/hooks/use-pollen-balance"
 import { ClientErrorCodeConst, showErrorToast } from "@/lib/errors"
 import { usePollenApiKey, usePollenAuthActions, useNeedsReconnect } from "@/lib/pollen-auth"
@@ -131,9 +132,9 @@ export function useBatchMode({
     void _addImage
 
     // ========================================
-    // Batch Settings State
+    // Batch Settings State (persisted)
     // ========================================
-    const [batchSettings, setBatchSettings] = React.useState<BatchModeSettings>({
+    const [batchSettings, setBatchSettings] = useLocalStorage<BatchModeSettings>("ps:batch:settings", {
         enabled: false,
         count: 10,
     })

@@ -48,7 +48,7 @@ export const pricingTiers: PricingTier[] = [
         features: [
             "180 high-quality images/month",
             "Daily resets",
-            "9 AI models included (Flux, GPT Image, Z-Image, Klein, Grok Imagine, Grok Video, and more)",
+            "8 AI models included (Flux, GPT Image, Z-Image, Klein, Grok Imagine, Grok Video, and more)",
             "Advanced prompt enhancement",
             "Custom prompt library",
             "1,000 image batch queue",
@@ -73,7 +73,7 @@ export const pricingFaqs = [
         question: "What AI models are included?",
         answer: (
             <span>
-                We offer 9 high-quality AI models including Flux Schnell, GPT Image, Z-Image Turbo, FLUX.2 Klein, Imagen 4, Grok Imagine, Grok Video, and Seedance. Both Free and Pro users get access to all active models.{" "}
+                We offer 8 high-quality AI models including Flux Schnell, GPT Image, Z-Image Turbo, FLUX.2 Klein, Imagen 4, Grok Imagine, and Grok Video. Both Free and Pro users get access to all active models.{" "}
                 <Link href="/#models" className="text-primary hover:underline font-medium">
                     View the full list of supported models here.
                 </Link>
@@ -110,7 +110,7 @@ export const featureComparison = [
         },
     },
     { feature: "Batch queue size", starter: "1,000", pro: "1,000" },
-    { feature: "AI Models", starter: "9", pro: "9" },
+    { feature: "AI Models", starter: "8", pro: "8" },
     { feature: "Prompt library", starter: true, pro: true },
     { feature: "Prompt enhancement", starter: true, pro: true },
     { feature: "Private gallery", starter: false, pro: true },

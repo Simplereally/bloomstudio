@@ -19,6 +19,7 @@
  */
 
 import type { GenerationOptions, VideoSettings, VideoReferenceImages } from "@/components/studio"
+import { useLocalStorage } from "@/hooks/use-local-storage"
 import { useRandomSeed } from "@/hooks/use-random-seed"
 import {
     getModel,
@@ -126,61 +127,70 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
     const defaultPrivate = useQuery(api.users.getDefaultPrivate)
 
     // ========================================
-    // Model State
+    // Model State (persisted)
     // ========================================
-    const [model, setModel] = React.useState<ImageModel>("zimage")
+    const [model, setModel] = useLocalStorage<ImageModel>("ps:gen:model", "zimage")
 
     // ========================================
-    // Resolution Tier State
+    // Resolution Tier State (persisted)
     // ========================================
-    const [resolutionTier, setResolutionTier] = React.useState<ResolutionTier>("hd")
+    const [resolutionTier, setResolutionTier] = useLocalStorage<ResolutionTier>("ps:gen:resolutionTier", "hd")
 
     // ========================================
-    // Dimension State
+    // Dimension State (persisted)
     // ========================================
-    const [aspectRatio, setAspectRatio] = React.useState<AspectRatio>("1:1")
-    const [width, setWidth] = React.useState(2048)
-    const [height, setHeight] = React.useState(2048)
-    const [dimensionsLinked, setDimensionsLinked] = React.useState(false)
+    const [aspectRatio, setAspectRatio] = useLocalStorage<AspectRatio>("ps:gen:aspectRatio", "1:1")
+    const [width, setWidth] = useLocalStorage<number>("ps:gen:width", 2048)
+    const [height, setHeight] = useLocalStorage<number>("ps:gen:height", 2048)
+    const [dimensionsLinked, setDimensionsLinked] = useLocalStorage<boolean>("ps:gen:dimensionsLinked", false)
 
     // ========================================
-    // Seed State
+    // Seed State (persisted)
     // ========================================
-    const [seed, setSeed] = React.useState(-1)
-    const [seedLocked, setSeedLocked] = React.useState(false)
+    const [seed, setSeed] = useLocalStorage<number>("ps:gen:seed", -1)
+    const [seedLocked, setSeedLocked] = useLocalStorage<boolean>("ps:gen:seedLocked", false)
     const { generateSeed, isRandomMode, supportsSeed } = useRandomSeed(model)
 
     // ========================================
-    // Options State
+    // Options State (persisted)
     // ========================================
-    const [options, setOptions] = React.useState<GenerationOptions>({
+    const [options, setOptions] = useLocalStorage<GenerationOptions>("ps:gen:options", {
         private: false,
         safe: false,
     })
 
     // Sync private toggle default from account settings (once loaded).
-    // Only applies on initial load — user can still toggle freely per session.
+    // Only applies on first-ever load (no localStorage entry yet) — user can still toggle freely per session.
     const hasAppliedDefault = React.useRef(false)
     React.useEffect(() => {
         if (defaultPrivate !== undefined && !hasAppliedDefault.current) {
             hasAppliedDefault.current = true
-            setOptions(prev => ({ ...prev, private: defaultPrivate }))
+            // Only apply account default if user has never persisted options
+            // (i.e. localStorage didn't have a value, so options still match the hook default)
+            setOptions(prev => {
+                // If the user already had persisted options, the private field may differ
+                // from our default. We only override on true first load.
+                if (typeof window !== "undefined" && window.localStorage.getItem("ps:gen:options") !== null) {
+                    return prev
+                }
+                return { ...prev, private: defaultPrivate }
+            })
         }
-    }, [defaultPrivate])
+    }, [defaultPrivate, setOptions])
 
     // ========================================
-    // Reference Image State
+    // Reference Image State (persisted)
     // ========================================
-    const [referenceImage, setReferenceImage] = React.useState<string | undefined>(undefined)
+    const [referenceImage, setReferenceImage] = useLocalStorage<string | undefined>("ps:gen:referenceImage", undefined)
 
     // ========================================
-    // Video-specific State
+    // Video-specific State (persisted)
     // ========================================
-    const [videoSettings, setVideoSettings] = React.useState<VideoSettings>({
+    const [videoSettings, setVideoSettings] = useLocalStorage<VideoSettings>("ps:gen:videoSettings", {
         duration: 5,
         audio: false,
     })
-    const [videoReferenceImages, setVideoReferenceImages] = React.useState<VideoReferenceImages>({
+    const [videoReferenceImages, setVideoReferenceImages] = useLocalStorage<VideoReferenceImages>("ps:gen:videoReferenceImages", {
         firstFrame: undefined,
         lastFrame: undefined,
     })
@@ -248,7 +258,7 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
                 setHeight(standardDims.height)
             }
         }
-    }, [constraints, aspectRatio])
+    }, [constraints, aspectRatio, setResolutionTier, setWidth, setHeight])
 
     // ========================================
     // Dimension Handlers
@@ -259,18 +269,18 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
             setWidth(dimensions.width)
             setHeight(dimensions.height)
         },
-        []
+        [setAspectRatio, setWidth, setHeight]
     )
 
     const handleWidthChange = React.useCallback((newWidth: number) => {
         setWidth(newWidth)
         setAspectRatio("custom")
-    }, [])
+    }, [setWidth, setAspectRatio])
 
     const handleHeightChange = React.useCallback((newHeight: number) => {
         setHeight(newHeight)
         setAspectRatio("custom")
-    }, [])
+    }, [setHeight, setAspectRatio])
 
     // ========================================
     // Model Change Handler
@@ -362,7 +372,7 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
                 lastFrame: undefined,
             })
         }
-    }, [width, height, aspectRatio, resolutionTier])
+    }, [width, height, aspectRatio, resolutionTier, setModel, setResolutionTier, setWidth, setHeight, setAspectRatio, setVideoSettings, setVideoReferenceImages])
 
     // ========================================
     // Seed Refresh Helper
@@ -372,7 +382,7 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
         if (!seedLocked && !isRandomMode(seed)) {
             setSeed(generateSeed())
         }
-    }, [seedLocked, seed, isRandomMode, generateSeed])
+    }, [seedLocked, seed, isRandomMode, generateSeed, setSeed])
 
     return {
         // Model state

@@ -72,13 +72,6 @@ const MODEL_VALUE_DATA: ModelValueData[] = [
         type: "image",
     },
     {
-        id: "seedance",
-        displayName: "Seedance",
-        logo: "/image-models/bytedance.svg",
-        monthlyQuota: 1_080,
-        type: "video",
-    },
-    {
         id: "grok-video",
         displayName: "Grok Video",
         logo: "/image-models/xai.svg",

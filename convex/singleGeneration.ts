@@ -224,6 +224,72 @@ export const cancelGeneration = mutation({
 // Internal Functions
 // ============================================================
 
+// ---- Stuck Generation Cleanup ----
+
+/**
+ * Maximum age (in ms) before a pending/processing generation is considered stuck.
+ *
+ * Image generations typically complete in <60s.  Video generations can take
+ * several minutes but should never exceed 10 min (Convex action timeout).
+ * We use 15 minutes as a conservative threshold that accommodates retries +
+ * backoff while still cleaning up genuinely orphaned records.
+ */
+const STUCK_GENERATION_THRESHOLD_MS = 15 * 60 * 1000 // 15 minutes
+
+/**
+ * Clean up stuck generations — marks any pending/processing record older than
+ * STUCK_GENERATION_THRESHOLD_MS as failed.
+ *
+ * Designed to be called by a cron job.  Safe to call repeatedly (idempotent).
+ */
+export const cleanupStuckGenerations = internalMutation({
+    args: {},
+    handler: async (ctx) => {
+        const cutoff = Date.now() - STUCK_GENERATION_THRESHOLD_MS
+        const logger = "[StuckCleanup]"
+
+        // Query both stuck statuses using the by_status index.
+        // We filter by updatedAt < cutoff after retrieval (the index doesn't
+        // cover updatedAt, but the set of active records should be small).
+        const [pending, processing] = await Promise.all([
+            ctx.db
+                .query("pendingGenerations")
+                .withIndex("by_status", (q) => q.eq("status", "pending"))
+                .collect(),
+            ctx.db
+                .query("pendingGenerations")
+                .withIndex("by_status", (q) => q.eq("status", "processing"))
+                .collect(),
+        ])
+
+        const stuck = [...pending, ...processing].filter(
+            (g) => g.updatedAt < cutoff
+        )
+
+        if (stuck.length === 0) {
+            return { cleaned: 0 }
+        }
+
+        console.log(`${logger} Found ${stuck.length} stuck generation(s), marking as failed`)
+
+        for (const generation of stuck) {
+            const ageMinutes = Math.round((Date.now() - generation.updatedAt) / 60_000)
+            console.log(
+                `${logger} Failing generation ${generation._id} ` +
+                `(status=${generation.status}, age=${ageMinutes}min, owner=${generation.ownerId})`
+            )
+
+            await ctx.db.patch(generation._id, {
+                status: "failed",
+                errorMessage: `Generation timed out after ${ageMinutes} minutes (cleaned up by system)`,
+                updatedAt: Date.now(),
+            })
+        }
+
+        return { cleaned: stuck.length }
+    },
+})
+
 /**
  * Internal query to get generation record.
  */

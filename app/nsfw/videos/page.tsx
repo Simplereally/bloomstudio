@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   title:
     "NSFW AI Video Generator — Uncensored AI Video, No Filters | Bloom Studio",
   description:
-    "Generate uncensored NSFW AI videos with no filters. Compare Seedance and Grok Video for adult AI video generation. HD resolution, up to 10 seconds. Free trial.",
+    "Generate uncensored NSFW AI videos with no filters. Grok Video for adult AI video generation. HD resolution, up to 10 seconds. Free trial.",
   alternates: {
     canonical: "/nsfw/videos",
   },
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "NSFW AI Video Generator — Uncensored AI Video, No Filters",
     description:
-      "Generate uncensored NSFW AI videos with Seedance and Grok Video. HD resolution, up to 10 seconds. Free trial.",
+      "Generate uncensored NSFW AI videos with Grok Video. HD resolution, up to 10 seconds. Free trial.",
     url: "https://bloomstudio.fun/nsfw/videos",
     type: "website",
   },
@@ -55,7 +55,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "NSFW AI Video Generator — Uncensored AI Video, No Filters",
     description:
-      "Generate uncensored NSFW AI videos with Seedance and Grok Video. HD resolution, up to 10 seconds.",
+      "Generate uncensored NSFW AI videos with Grok Video. HD resolution, up to 10 seconds.",
   },
 };
 
@@ -65,19 +65,6 @@ export const metadata: Metadata = {
 
 const VIDEO_MODELS = [
   {
-    name: "Seedance",
-    slug: "seedance",
-    provider: "ByteDance",
-    resolution: "1080p HD",
-    duration: "2–10 seconds",
-    speed: "Medium" as const,
-    referenceImage: true,
-    unrestricted: false,
-    highlight: "Best for Cinematic",
-    description:
-      "Multi-shot NSFW video generation with smooth cinematic motion and physical realism. Strong prompt following for detailed scene control.",
-  },
-  {
     name: "Grok Video",
     slug: "grok-video",
     provider: "xAI",
@@ -86,9 +73,9 @@ const VIDEO_MODELS = [
     speed: "Fast" as const,
     referenceImage: true,
     unrestricted: true,
-    highlight: "Best for Speed",
+    highlight: "Natively Unrestricted",
     description:
-      "Natively unrestricted video generation by xAI. Fast text and image-to-video generation with fixed resolution tiers up to 1080p.",
+      "Natively unrestricted video generation by xAI. Fast text and image-to-video generation with fixed resolution tiers up to 1080p. No content guardrails.",
   },
 ];
 
@@ -97,7 +84,7 @@ const VIDEO_FEATURES = [
     icon: Shield,
     title: "No Content Restrictions",
     description:
-      "Both video models generate NSFW content without content filters, censorship, or blurring. Full creative freedom.",
+      "Grok Video generates NSFW content without content filters, censorship, or blurring. Full creative freedom with native unrestricted support.",
   },
   {
     icon: Monitor,
@@ -115,19 +102,19 @@ const VIDEO_FEATURES = [
     icon: Film,
     title: "Cinematic Motion",
     description:
-      "Smooth, natural motion with physical realism. Seedance excels at multi-shot coherent scenes with camera movement.",
+      "Smooth, natural motion with physical realism. Grok Video delivers coherent scenes with natural camera movement.",
   },
   {
     icon: Upload,
     title: "Image-to-Video",
     description:
-      "Upload a reference image and animate it into an NSFW video. Both Seedance and Grok Video support image input.",
+      "Upload a reference image and animate it into an NSFW video. Grok Video supports image input for precise scene control.",
   },
   {
     icon: Zap,
     title: "Fast Generation",
     description:
-      "Grok Video delivers quick results while Seedance focuses on cinematic quality. Choose speed or fidelity.",
+      "Grok Video delivers quick results with natively unrestricted generation. No waiting for uncensored content.",
   },
 ];
 
@@ -142,7 +129,7 @@ const HOW_TO_STEPS = [
     step: 2,
     title: "Select a Video Model",
     description:
-      "Choose Seedance for cinematic motion quality or Grok Video for fast, natively unrestricted generation.",
+      "Choose Grok Video for fast, natively unrestricted generation.",
   },
   {
     step: 3,
@@ -162,22 +149,22 @@ const FAQ_ITEMS = [
   {
     question: "Which AI video models support NSFW content?",
     answer:
-      "Bloom Studio offers 2 active video models for NSFW generation: Seedance by ByteDance and Grok Video by xAI. Grok Video is natively unrestricted with no guardrails. Both generate uncensored content without filters.",
+      "Bloom Studio offers Grok Video by xAI for NSFW video generation. It is natively unrestricted with no guardrails, generating uncensored content without filters.",
   },
   {
     question: "What is the best AI model for NSFW videos?",
     answer:
-      "For cinematic quality and smooth motion, Seedance is the best choice — it excels at multi-shot coherent scenes with physical realism. For fast generation with native unrestricted support, Grok Video by xAI delivers quicker results.",
+      "Grok Video by xAI is our primary NSFW video model. It offers fast generation, native unrestricted support, image-to-video capability, and outputs at 1080p HD resolution.",
   },
   {
     question: "How long can NSFW AI videos be?",
     answer:
-      "Seedance generates videos from 2 to 10 seconds. Grok Video supports 1 to 10 seconds. Both models output in HD 1080p resolution in either landscape (16:9) or portrait (9:16) orientation.",
+      "Grok Video supports 1 to 10 seconds. Videos output in HD 1080p resolution in either landscape (16:9) or portrait (9:16) orientation.",
   },
   {
     question: "Can I generate NSFW videos from an image?",
     answer:
-      "Yes. Both Seedance and Grok Video support reference image input (image-to-video). Upload a still image and the AI will animate it into an NSFW video based on your text prompt.",
+      "Yes. Grok Video supports reference image input (image-to-video). Upload a still image and the AI will animate it into an NSFW video based on your text prompt.",
   },
   {
     question: "Are NSFW videos generated privately?",
@@ -187,12 +174,12 @@ const FAQ_ITEMS = [
   {
     question: "Can I generate NSFW videos for free?",
     answer:
-      "Yes. Bloom Studio offers a 24-hour free trial with full access to both video models. Generate uncensored NSFW videos without restrictions during your trial. Plans start at $3/month after.",
+      "Yes. Bloom Studio offers a 24-hour free trial with full access to Grok Video. Generate uncensored NSFW videos without restrictions during your trial. Plans start at $3/month after.",
   },
   {
     question: "What resolution are NSFW AI videos?",
     answer:
-      "Both Seedance and Grok Video generate at up to 1080p HD resolution. You can choose between landscape (1920×1080 for 16:9) and portrait (1080×1920 for 9:16) orientations.",
+      "Grok Video generates at up to 1080p HD resolution. You can choose between landscape (1920×1080 for 16:9) and portrait (1080×1920 for 9:16) orientations.",
   },
 ];
 
@@ -210,7 +197,7 @@ export default function NSFWVideosPage() {
           "@type": "WebPage",
           name: "NSFW AI Video Generator — Uncensored AI Video",
           description:
-            "Generate uncensored NSFW AI videos with Seedance and Grok Video. HD resolution, no filters.",
+            "Generate uncensored NSFW AI videos with Grok Video. HD resolution, no filters.",
           url: "https://bloomstudio.fun/nsfw/videos",
           breadcrumb: {
             "@type": "BreadcrumbList",
@@ -335,8 +322,7 @@ export default function NSFWVideosPage() {
               filters. HD resolution, up to 10 seconds.
             </p>
             <p className="text-base text-muted-foreground/70 mb-10 max-w-xl mx-auto">
-              Seedance for cinematic quality. Grok Video for speed. Both
-              unrestricted. Free 24-hour trial.
+              Grok Video for fast, natively unrestricted generation. Free 24-hour trial.
             </p>
 
             {/* CTAs */}
@@ -372,8 +358,7 @@ export default function NSFWVideosPage() {
               NSFW Video Models
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Two powerful video models, both supporting uncensored NSFW
-              generation. Compare and choose.
+              Grok Video — natively unrestricted NSFW video generation with no content guardrails.
             </p>
           </div>
 

@@ -18,6 +18,7 @@
  */
 
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { LightboxImage } from "@/hooks/use-image-lightbox";
 import * as React from "react";
@@ -70,16 +71,15 @@ export function useStudioUI(): UseStudioUIReturn {
   const isMobile = useIsMobile();
 
   // ========================================
-  // Panel Visibility State
-  // 
+  // Panel Visibility State (persisted)
+  //
   // IMPORTANT: SSR Hydration Behavior
-  // - During SSR, isMobile returns false (server doesn't know viewport)
-  // - This causes states to initialize as true (open) on server
-  // - On mobile clients, we need to close drawers after hydration
-  // - We use a ref to track if we've done the initial sync
+  // - useLocalStorage initializes with the provided default during SSR
+  // - On desktop clients, persisted value is restored before paint via useLayoutEffect
+  // - On mobile clients, we override to closed after hydration (drawers should start closed)
   // ========================================
-  const [showLeftSidebar, setShowLeftSidebar] = React.useState(() => !isMobile);
-  const [showGallery, setShowGallery] = React.useState(() => !isMobile);
+  const [showLeftSidebar, setShowLeftSidebar] = useLocalStorage<boolean>("ps:ui:showLeftSidebar", true);
+  const [showGallery, setShowGallery] = useLocalStorage<boolean>("ps:ui:showGallery", true);
 
   // Track if we've done the initial mobile sync
   const hasInitializedMobileRef = React.useRef(false);
@@ -92,7 +92,7 @@ export function useStudioUI(): UseStudioUIReturn {
     hasInitializedMobileRef.current = true;
     setShowLeftSidebar(false);
     setShowGallery(false);
-  }, [isMobile]);
+  }, [isMobile, setShowLeftSidebar, setShowGallery]);
 
   // ========================================
   // Fullscreen/Lightbox State
@@ -106,11 +106,11 @@ export function useStudioUI(): UseStudioUIReturn {
   // ========================================
   const toggleLeftSidebar = React.useCallback(() => {
     setShowLeftSidebar((prev) => !prev);
-  }, []);
+  }, [setShowLeftSidebar]);
 
   const toggleGallery = React.useCallback(() => {
     setShowGallery((prev) => !prev);
-  }, []);
+  }, [setShowGallery]);
 
   // ========================================
   // Lightbox Handlers
@@ -134,7 +134,7 @@ export function useStudioUI(): UseStudioUIReturn {
       setLightboxImage(image);
       setIsFullscreen(true);
     },
-    [isMobile],
+    [isMobile, setShowLeftSidebar, setShowGallery],
   );
 
   const closeLightbox = React.useCallback(() => {

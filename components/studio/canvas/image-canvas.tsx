@@ -136,6 +136,26 @@ function QueueCardGrid({
     )
 }
 
+/** Ticks every second, returning elapsed seconds since `startMs`. */
+function useElapsedSeconds(startMs: number): number {
+    const [elapsed, setElapsed] = React.useState(() =>
+        Math.floor((Date.now() - startMs) / 1000)
+    )
+
+    React.useEffect(() => {
+        // Sync immediately in case component mounted between ticks
+        setElapsed(Math.floor((Date.now() - startMs) / 1000))
+
+        const id = setInterval(() => {
+            setElapsed(Math.floor((Date.now() - startMs) / 1000))
+        }, 1_000)
+
+        return () => clearInterval(id)
+    }, [startMs])
+
+    return Math.max(0, elapsed)
+}
+
 function QueueCard({
     item,
     onCancel,
@@ -145,6 +165,7 @@ function QueueCard({
 }) {
     const isProcessing = item.status === "processing"
     const statusLabel = isProcessing ? "Generating" : "Queued"
+    const elapsed = useElapsedSeconds(item.createdAt)
 
     // Size cards relative to count — keep them compact but legible
     const targetWidthPx = 140
@@ -169,7 +190,7 @@ function QueueCard({
             {/* Subtle gradient overlay */}
             <div className="absolute inset-0 bg-gradient-to-br from-white/[0.04] via-transparent to-transparent" />
 
-            {/* Content: spinner + label */}
+            {/* Content: spinner + elapsed + label */}
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-2">
                 <Loader2
                     className={cn(
@@ -177,6 +198,15 @@ function QueueCard({
                         isProcessing ? "text-primary" : "text-muted-foreground/60"
                     )}
                 />
+                <span
+                    className={cn(
+                        "text-[10px] font-mono tabular-nums leading-none",
+                        isProcessing ? "text-primary/70" : "text-muted-foreground/50"
+                    )}
+                    aria-label={`${elapsed} seconds elapsed`}
+                >
+                    {elapsed}s
+                </span>
                 <span
                     className={cn(
                         "text-[10px] font-medium leading-tight text-center",

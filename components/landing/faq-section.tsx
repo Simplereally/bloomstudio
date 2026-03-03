@@ -21,7 +21,7 @@ export const faqs = [
     {
         question: "What AI models are included?",
         answer:
-            "We offer 9 high-quality AI models including Imagen 4, Grok Imagine, Flux Schnell, GPT Image, Z-Image Turbo, FLUX.2 Klein 4B & 9B, Grok Video, and Seedance. Both trial and Pro users get access to all models.",
+            "We offer 8 high-quality AI models including Imagen 4, Grok Imagine, Flux Schnell, GPT Image, Z-Image Turbo, FLUX.2 Klein 4B & 9B, and Grok Video. Both trial and Pro users get access to all models.",
     },
     {
         question: "Why is this so affordable?",

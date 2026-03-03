@@ -17,6 +17,14 @@ crons.daily(
     internal.orphanCleanup.scheduledCleanup,
 );
 
+// Cleanup stuck single generations (pending/processing > 15 min)
+// Runs every 5 minutes to quickly recover from orphaned action crashes
+crons.interval(
+    "cleanup stuck generations",
+    { minutes: 5 },
+    internal.singleGeneration.cleanupStuckGenerations,
+);
+
 // Ongoing analysis of unanalyzed images (catch-up mechanism)
 // Runs hourly to restart processing if recursive chain stops
 crons.interval(

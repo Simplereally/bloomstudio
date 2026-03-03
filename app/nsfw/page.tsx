@@ -73,7 +73,7 @@ const NSFW_FEATURES = [
     icon: Video,
     title: "NSFW Video Generation",
     description:
-      "Create uncensored AI videos with Seedance, Veo, and Grok Video.",
+      "Create uncensored AI videos with Grok Video. Cinematic motion, no restrictions.",
   },
 ];
 
@@ -106,12 +106,6 @@ const NSFW_MODELS = [
     slug: "grok-imagine",
   },
   {
-    name: "Seedance",
-    type: "video" as const,
-    description: "Cinematic NSFW video generation with smooth motion.",
-    slug: "seedance",
-  },
-  {
     name: "Grok Video",
     type: "video" as const,
     description:
@@ -134,7 +128,7 @@ const FAQ_ITEMS = [
   {
     question: "Which models support NSFW?",
     answer:
-      "All models on Bloom Studio support uncensored generation: Flux Schnell, GPT Image, Imagen 4, Grok Imagine, Seedance, Grok Video, and more. No model has content restrictions.",
+      "All models on Bloom Studio support uncensored generation: Flux Schnell, GPT Image, Imagen 4, Grok Imagine, Grok Video, and more. No model has content restrictions.",
   },
   {
     question: "Is there a free trial for NSFW generation?",
@@ -144,7 +138,7 @@ const FAQ_ITEMS = [
   {
     question: "Can I generate NSFW videos?",
     answer:
-      "Yes. Our video models (Seedance, Grok Video) support uncensored video generation. Create adult videos up to 10 seconds in HD resolution.",
+      "Yes. Our video model (Grok Video) supports uncensored video generation. Create adult videos up to 10 seconds in HD resolution.",
   },
 ];
 
@@ -256,7 +250,7 @@ export default function NSFWHubPage() {
             </p>
             <p className="text-base text-muted-foreground/70 mb-10 max-w-xl mx-auto">
               Access the most powerful unfiltered AI models: Flux, GPT Image,
-              Imagen 4, Seedance, and more. Free trial available.
+              Imagen 4, Grok Video, and more. Free trial available.
             </p>
 
             {/* CTAs */}
@@ -468,8 +462,7 @@ export default function NSFWHubPage() {
                   NSFW Video Generator
                 </h3>
                 <p className="text-muted-foreground mb-6">
-                  Create uncensored AI videos with Seedance, Grok Video, and
-                  Veo. Cinematic motion, no restrictions.
+                  Create uncensored AI videos with Grok Video. Cinematic motion, no restrictions.
                 </p>
                 <span className="inline-flex items-center text-violet-400 font-medium group-hover:text-violet-300">
                   Explore Video Models
