@@ -87,11 +87,19 @@ export function buildPollinationsUrl(params: PollinationsUrlParams): string {
     if (params.enhance) queryParams.append("enhance", "true")
     if (params.safe) queryParams.append("safe", "true")
     if (params.private) queryParams.append("private", "true")
-    if (params.image) queryParams.append("image", params.image)
 
     // Video-specific parameters - only include for video models
     const isVideoModel = params.model && VIDEO_MODELS.includes(params.model as typeof VIDEO_MODELS[number])
     if (isVideoModel) {
+        // Reference image(s): for models that support interpolation (two reference images),
+        // join both URLs with "|" in a single `image` param so the Pollinations gateway
+        // splits them into the upstream `image_urls` array.
+        if (params.image && params.lastFrameImage) {
+            queryParams.append("image", `${params.image}|${params.lastFrameImage}`)
+        } else if (params.image) {
+            queryParams.append("image", params.image)
+        }
+
         if (params.duration !== undefined && params.duration > 0) {
             queryParams.append("duration", params.duration.toString())
         }
@@ -101,10 +109,9 @@ export function buildPollinationsUrl(params: PollinationsUrlParams): string {
         if (params.audio) {
             queryParams.append("audio", "true")
         }
-        // Second image for video interpolation (veo) - appended as another image param
-        if (params.lastFrameImage) {
-            queryParams.append("image", params.lastFrameImage)
-        }
+    } else {
+        // Non-video models: single reference image
+        if (params.image) queryParams.append("image", params.image)
     }
 
     const query = queryParams.toString()

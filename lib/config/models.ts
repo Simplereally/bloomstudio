@@ -833,6 +833,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     aspectRatios: VIDEO_ASPECT_RATIOS,
     supportsNegativePrompt: false,
     supportsReferenceImage: true,
+    supportsInterpolation: true,
     durationConstraints: {
       // Gateway validates min: 1 (enter.pollinations.ai/src/schemas/image.ts line 107).
       // Duration is approximate — not enforced by api.airforce backend.

@@ -44,6 +44,7 @@ import type * as sensitivityMigration from "../sensitivityMigration.js";
 import type * as singleGeneration from "../singleGeneration.js";
 import type * as singleGenerationProcessor from "../singleGenerationProcessor.js";
 import type * as stripe from "../stripe.js";
+import type * as system_check from "../system_check.js";
 import type * as tempTagStats from "../tempTagStats.js";
 import type * as thumbnailMigration from "../thumbnailMigration.js";
 import type * as thumbnailMigrationActions from "../thumbnailMigrationActions.js";
@@ -94,6 +95,7 @@ declare const fullApi: ApiFromModules<{
   singleGeneration: typeof singleGeneration;
   singleGenerationProcessor: typeof singleGenerationProcessor;
   stripe: typeof stripe;
+  system_check: typeof system_check;
   tempTagStats: typeof tempTagStats;
   thumbnailMigration: typeof thumbnailMigration;
   thumbnailMigrationActions: typeof thumbnailMigrationActions;
