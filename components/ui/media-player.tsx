@@ -107,7 +107,7 @@ export const MediaPlayer = React.memo(function MediaPlayer({
 
     if (isVideo) {
         return (
-            <div className="relative">
+            <div className={cn("relative", className)}>
                 <video
                     ref={videoRef}
                     src={url}
@@ -120,8 +120,7 @@ export const MediaPlayer = React.memo(function MediaPlayer({
                     preload="metadata"
                     aria-label={alt}
                     className={cn(
-                        "w-auto h-auto object-contain",
-                        className,
+                        "w-full h-full object-contain",
                         isLoading && "opacity-0"
                     )}
                     onClick={handleVideoClick}
