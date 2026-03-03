@@ -17,8 +17,7 @@ import { PromptView } from "./prompt-view"
 import * as React from "react"
 
 export interface PromptFeatureProps {
-    /** Whether generation is in progress */
-    isGenerating?: boolean
+
     /** Whether to show negative prompt (model-dependent) */
     showNegativePrompt?: boolean
     /** Whether to show prompt library features (requires auth) */
@@ -46,19 +45,19 @@ export function usePromptManagerContext() {
  */
 function PromptFeatureView({
     promptManager,
-    isGenerating,
+
     showNegativePrompt,
     showLibrary,
 }: {
     promptManager: UsePromptManagerReturn
-    isGenerating: boolean
+
     showNegativePrompt: boolean
     showLibrary: boolean
 }) {
     return (
         <PromptView
             apiRef={promptManager.promptSectionRef}
-            isGenerating={isGenerating}
+
             showNegativePrompt={showNegativePrompt}
             promptHistory={promptManager.promptHistory}
             onSelectHistory={promptManager.handleSelectHistory}
@@ -80,11 +79,11 @@ function PromptFeatureView({
  * Standalone PromptFeature that creates its own prompt manager
  */
 function PromptFeatureStandalone({
-    isGenerating,
+
     showNegativePrompt,
     showLibrary,
 }: {
-    isGenerating: boolean
+
     showNegativePrompt: boolean
     showLibrary: boolean
 }) {
@@ -94,7 +93,7 @@ function PromptFeatureStandalone({
         <PromptManagerContext.Provider value={promptManager}>
             <PromptFeatureView
                 promptManager={promptManager}
-                isGenerating={isGenerating}
+
                 showNegativePrompt={showNegativePrompt}
                 showLibrary={showLibrary}
             />
@@ -112,18 +111,17 @@ function PromptFeatureStandalone({
  * ```tsx
  * // Standalone usage
  * <PromptFeature 
- *     isGenerating={isGenerating} 
  *     showNegativePrompt={supportsNegativePrompt}
  * />
  * 
  * // Integrated usage (with shared state)
  * <PromptManagerContext.Provider value={promptManager}>
- *     <PromptFeature isGenerating={isGenerating} />
+ *     <PromptFeature />
  * </PromptManagerContext.Provider>
  * ```
  */
 export function PromptFeature({
-    isGenerating = false,
+
     showNegativePrompt = true,
     showLibrary = false,
 }: PromptFeatureProps) {
@@ -134,7 +132,7 @@ export function PromptFeature({
         return (
             <PromptFeatureView
                 promptManager={existingContext}
-                isGenerating={isGenerating}
+
                 showNegativePrompt={showNegativePrompt}
                 showLibrary={showLibrary}
             />
@@ -144,7 +142,7 @@ export function PromptFeature({
     // Otherwise, create own state (standalone mode)
     return (
         <PromptFeatureStandalone
-            isGenerating={isGenerating}
+
             showNegativePrompt={showNegativePrompt}
             showLibrary={showLibrary}
         />

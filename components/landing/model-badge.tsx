@@ -2,6 +2,7 @@ import { type ModelDefinition, isMonochromeLogo } from "@/lib/config/models";
 import { cn } from "@/lib/utils";
 import { Sparkles } from "lucide-react";
 import Image from "next/image";
+import { AlphaBadge } from "./alpha-badge";
 import { NsfwBadge } from "./nsfw-badge";
 
 export function ModelBadge({
@@ -12,6 +13,8 @@ export function ModelBadge({
   /** When true, shows 18+ badge if this model supports unrestricted generation */
   showNsfw?: boolean;
 }) {
+  const isAlpha = model.modelPricing.isAlpha === true;
+
   return (
     <div className="group relative flex items-center gap-3 p-2 px-4 rounded-xl bg-white/[0.03] border border-white/5 transition-all duration-300 overflow-hidden hover:border-primary/50 hover:bg-white/[0.06]" role="listitem">
       {model.logo ? (
@@ -25,6 +28,7 @@ export function ModelBadge({
         {model.displayName}
       </span>
 
+      {isAlpha && <AlphaBadge />}
       {showNsfw && model.isUnrestricted && <NsfwBadge />}
     </div>
   );

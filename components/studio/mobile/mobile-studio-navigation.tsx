@@ -139,7 +139,7 @@ function GenerateFAB({
     <button
       type="button"
       onClick={onClick}
-      disabled={disabled || isGenerating}
+      disabled={disabled}
       className={cn(
         // Base sizing - larger than nav buttons (56px as per spec)
         "relative flex items-center justify-center",

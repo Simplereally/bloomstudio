@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as admin from "../admin.js";
 import type * as batchGeneration from "../batchGeneration.js";
 import type * as batchProcessor from "../batchProcessor.js";
 import type * as contentAnalysis from "../contentAnalysis.js";
@@ -56,6 +57,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  admin: typeof admin;
   batchGeneration: typeof batchGeneration;
   batchProcessor: typeof batchProcessor;
   contentAnalysis: typeof contentAnalysis;
@@ -204,6 +206,7 @@ export declare const components: {
         "mutation",
         "internal",
         {
+          cancelAt?: number;
           cancelAtPeriodEnd: boolean;
           currentPeriodEnd: number;
           metadata?: any;
@@ -225,9 +228,11 @@ export declare const components: {
         "mutation",
         "internal",
         {
+          cancelAt?: number;
           cancelAtPeriodEnd: boolean;
           currentPeriodEnd: number;
           metadata?: any;
+          priceId?: string;
           quantity?: number;
           status: string;
           stripeSubscriptionId: string;
@@ -291,6 +296,7 @@ export declare const components: {
         "internal",
         { stripeSubscriptionId: string },
         {
+          cancelAt?: number;
           cancelAtPeriodEnd: boolean;
           currentPeriodEnd: number;
           metadata?: any;
@@ -308,6 +314,7 @@ export declare const components: {
         "internal",
         { orgId: string },
         {
+          cancelAt?: number;
           cancelAtPeriodEnd: boolean;
           currentPeriodEnd: number;
           metadata?: any;
@@ -421,6 +428,7 @@ export declare const components: {
         "internal",
         { stripeCustomerId: string },
         Array<{
+          cancelAt?: number;
           cancelAtPeriodEnd: boolean;
           currentPeriodEnd: number;
           metadata?: any;
@@ -438,6 +446,7 @@ export declare const components: {
         "internal",
         { userId: string },
         Array<{
+          cancelAt?: number;
           cancelAtPeriodEnd: boolean;
           currentPeriodEnd: number;
           metadata?: any;

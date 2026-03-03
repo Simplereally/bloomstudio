@@ -1,7 +1,7 @@
 import type { GeneratedImage } from "@/types/pollinations"
 import { fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
-import { ImageCanvas } from "./image-canvas"
+import { ImageCanvas, type QueueItem } from "./image-canvas"
 
 const mockImage: GeneratedImage = {
     id: "test-1",
@@ -22,6 +22,18 @@ const mockImage: GeneratedImage = {
     },
     timestamp: Date.now(),
 }
+
+const createQueueItems = (count: number): QueueItem[] =>
+    Array.from({ length: count }, (_, i) => {
+        const status: QueueItem["status"] = i === 0 ? "processing" : "pending"
+        return {
+            id: `gen-${i + 1}`,
+            status,
+            createdAt: Date.now() - (count - i) * 1000,
+            aspectRatio: 1,
+            labelIndex: i + 1,
+        }
+    })
 
 describe("ImageCanvas", () => {
     it("renders the canvas container", () => {
@@ -119,5 +131,69 @@ describe("ImageCanvas", () => {
         const video = container.querySelector("video")
         expect(video).toBeInTheDocument()
         expect(video).toHaveAttribute("src", "https://example.com/video.mp4")
+    })
+
+    describe("Queue Cards", () => {
+        it("renders queue cards when queueItems are provided", () => {
+            const items = createQueueItems(3)
+            render(
+                <ImageCanvas image={null} isGenerating={true} queueItems={items} />
+            )
+
+            const cards = screen.getAllByTestId("queue-card")
+            expect(cards).toHaveLength(3)
+            expect(screen.getByTestId("queue-card-grid")).toBeInTheDocument()
+        })
+
+        it("does not render queue grid when queueItems is empty", () => {
+            render(<ImageCanvas image={null} isGenerating={true} queueItems={[]} />)
+
+            expect(screen.queryByTestId("queue-card-grid")).not.toBeInTheDocument()
+        })
+
+        it("renders stop button per queue card with cancel handler", () => {
+            const onCancelItem = vi.fn()
+            const items = createQueueItems(2)
+            render(
+                <ImageCanvas
+                    image={null}
+                    isGenerating={true}
+                    queueItems={items}
+                    onCancelItem={onCancelItem}
+                />
+            )
+
+            const stopButtons = screen.getAllByTestId("queue-card-stop")
+            expect(stopButtons).toHaveLength(2)
+
+            // Click the first stop button — should cancel gen-1
+            fireEvent.click(stopButtons[0])
+            expect(onCancelItem).toHaveBeenCalledTimes(1)
+            expect(onCancelItem).toHaveBeenCalledWith("gen-1")
+
+            // Click the second stop button — should cancel gen-2
+            fireEvent.click(stopButtons[1])
+            expect(onCancelItem).toHaveBeenCalledTimes(2)
+            expect(onCancelItem).toHaveBeenCalledWith("gen-2")
+        })
+
+        it("shows 'Generating' label for processing items and 'Queued' for pending", () => {
+            const items = createQueueItems(2) // first is processing, second is pending
+            render(
+                <ImageCanvas image={null} isGenerating={true} queueItems={items} />
+            )
+
+            expect(screen.getByText("Generating")).toBeInTheDocument()
+            expect(screen.getByText("Queued")).toBeInTheDocument()
+        })
+
+        it("does not render stop buttons when onCancelItem is not provided", () => {
+            const items = createQueueItems(2)
+            render(
+                <ImageCanvas image={null} isGenerating={true} queueItems={items} />
+            )
+
+            expect(screen.queryByTestId("queue-card-stop")).not.toBeInTheDocument()
+        })
     })
 })

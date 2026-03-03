@@ -18,13 +18,11 @@ vi.mock("@/components/studio", () => ({
             {children}
         </div>
     ),
-    PromptSection: ({ isGenerating, showNegativePrompt, promptHistory }: {
-        isGenerating: boolean;
+    PromptSection: ({ showNegativePrompt, promptHistory }: {
         showNegativePrompt: boolean;
         promptHistory: string[];
     }) => (
         <div data-testid="prompt-section-content">
-            <span data-testid="is-generating">{String(isGenerating)}</span>
             <span data-testid="show-negative">{String(showNegativePrompt)}</span>
             <span data-testid="history-count">{promptHistory.length}</span>
         </div>
@@ -59,16 +57,11 @@ describe("PromptView", () => {
     it("renders with default props", () => {
         render(<PromptView {...defaultProps} />)
 
-        expect(screen.getByTestId("is-generating")).toHaveTextContent("false")
         expect(screen.getByTestId("show-negative")).toHaveTextContent("true")
         expect(screen.getByTestId("history-count")).toHaveTextContent("0")
     })
 
-    it("passes isGenerating prop to PromptSection", () => {
-        render(<PromptView {...defaultProps} isGenerating={true} />)
 
-        expect(screen.getByTestId("is-generating")).toHaveTextContent("true")
-    })
 
     it("passes showNegativePrompt prop to PromptSection", () => {
         render(<PromptView {...defaultProps} showNegativePrompt={false} />)

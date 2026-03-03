@@ -114,14 +114,40 @@ export function useStudioUI(): UseStudioUIReturn {
 
   // ========================================
   // Lightbox Handlers
+  //
+  // IMPORTANT: On mobile, vaul drawers and the Radix Dialog lightbox use
+  // separate instances of @radix-ui/react-dismissable-layer (v1.1.3 in vaul
+  // vs v1.1.11 at top-level). Each instance independently manages
+  // body.style.pointerEvents. When both are open simultaneously, the close
+  // order can leave body stuck with pointer-events:none, making the entire
+  // page unresponsive. The fix: close drawers before opening the lightbox
+  // and defensively reset pointer-events on lightbox close.
   // ========================================
-  const openLightbox = React.useCallback((image: LightboxImage | null) => {
-    setLightboxImage(image);
-    setIsFullscreen(true);
-  }, []);
+  const openLightbox = React.useCallback(
+    (image: LightboxImage | null) => {
+      // Close mobile drawers first to avoid the pointer-events race condition
+      // between vaul's and Radix Dialog's dismissable-layer instances
+      if (isMobile) {
+        setShowLeftSidebar(false);
+        setShowGallery(false);
+      }
+      setLightboxImage(image);
+      setIsFullscreen(true);
+    },
+    [isMobile],
+  );
 
   const closeLightbox = React.useCallback(() => {
     setIsFullscreen(false);
+    // Defensive cleanup: ensure body pointer-events are restored.
+    // The dual dismissable-layer instances can leave pointer-events:none
+    // on the body after the lightbox closes. We use rAF to run after
+    // Radix's own cleanup microtask.
+    requestAnimationFrame(() => {
+      if (document.body.style.pointerEvents === "none") {
+        document.body.style.pointerEvents = "";
+      }
+    });
   }, []);
 
   // ========================================

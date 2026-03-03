@@ -1,13 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
+// Hoisted mock for S3Client.send — shared between the mock factory and test code.
+// vi.hoisted ensures this runs before vi.mock factories.
+const { mockSend } = vi.hoisted(() => ({ mockSend: vi.fn() }));
+
 // Mock AWS S3 Client
 vi.mock("@aws-sdk/client-s3", () => {
-  const mockSend = vi.fn();
   const S3Client = vi.fn(function() {
     return { send: mockSend };
   });
-  // Attach mockSend to S3Client so we can access it in tests
-  (S3Client as any).mockSend = mockSend;
 
   return {
     S3Client,
@@ -20,7 +21,6 @@ vi.mock("@aws-sdk/client-s3", () => {
 
 import { S3Client } from "@aws-sdk/client-s3";
 const mockS3Client = S3Client as unknown as ReturnType<typeof vi.fn>;
-const mockSend = (S3Client as any).mockSend;
 
 // Mock process.env
 const originalEnv = process.env;
@@ -31,23 +31,20 @@ vi.mock("./retry", () => ({
   isRetryableError: vi.fn(),
 }));
 
-// Mock crypto
-vi.mock("crypto", async (importOriginal) => {
-    const actual = await importOriginal<any>();
-    const mockCrypto = {
-        ...actual,
-        randomUUID: vi.fn().mockReturnValue("mock-uuid"),
-        createHash: vi.fn(() => ({
-            update: vi.fn().mockReturnThis(),
-            digest: vi.fn().mockReturnValue("mock-user-hash"),
-        })),
-    };
-    
-    return {
-        ...actual,
-        default: mockCrypto,
-    };
-});
+// Spy on crypto methods for deterministic test values
+import crypto from "crypto";
+const MOCK_UUID = "00000000-0000-4000-8000-000000000000" satisfies `${string}-${string}-${string}-${string}-${string}`;
+const mockRandomUUID = vi.spyOn(crypto, "randomUUID").mockReturnValue(MOCK_UUID);
+
+// Create a real Hash instance so we get proper types without double-casting,
+// then stub only update/digest for deterministic test values.
+const realHashInstance = crypto.createHash("sha256");
+vi.spyOn(realHashInstance, "update").mockReturnThis();
+// digest() has overloads: (encoding: string) => string | (no args) => Buffer.
+// The SUT calls .digest("hex") which returns string, so we mock accordingly.
+// The spy's type signature picks the Buffer overload, so we narrow with a type parameter.
+vi.spyOn<crypto.Hash, "digest">(realHashInstance, "digest").mockReturnValue("mock-user-hash");
+const mockCreateHash = vi.spyOn(crypto, "createHash").mockReturnValue(realHashInstance);
 
 import {
   uploadImage,
@@ -62,6 +59,10 @@ import {
 describe("r2-client", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // clearAllMocks clears call history but not mock implementations, so
+    // a non-Once implementation (e.g. mockResolvedValue) set by one test
+    // would leak into the next. Reset mockSend explicitly to prevent this.
+    mockSend.mockReset();
     _resetClient();
     process.env = {
       ...originalEnv,
@@ -189,7 +190,7 @@ describe("r2-client", () => {
       // Format: {type}/{userHash}/{timestamp}-{randomId}.{ext}
       // userHash for "user123" mocked to "mock-user-hash"
       // randomUUID mocked to "mock-uuid"
-      expect(key).toMatch(/^generated\/mock-user-hash\/\d+-mock-uuid\.png$/);
+      expect(key).toMatch(/^generated\/mock-user-hash\/\d+-00000000-0000-4000-8000-000000000000\.png$/);
     });
   });
 

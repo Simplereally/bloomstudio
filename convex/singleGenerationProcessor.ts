@@ -23,6 +23,7 @@ import {
     generateThumbnailKey,
     generatePreviewKey,
     uploadMediaWithThumbnail,
+    deleteR2Objects,
     fetchWithRetry,
     type RetryConfig,
 } from "./lib"
@@ -73,10 +74,18 @@ export const processGeneration = internalAction({
     handler: async (ctx, args) => {
         const logger = "[SingleGeneration]"
 
+        const getGeneration = async () =>
+            ctx.runQuery(internal.singleGeneration.getGenerationInternal, {
+                generationId: args.generationId,
+            })
+
+        const isCancelled = async () => {
+            const current = await getGeneration()
+            return current?.status === "cancelled"
+        }
+
         // Get the generation record
-        const generation = await ctx.runQuery(internal.singleGeneration.getGenerationInternal, {
-            generationId: args.generationId,
-        })
+        const generation = await getGeneration()
 
         if (!generation) {
             console.error(`${logger} Generation ${args.generationId} not found`)
@@ -116,6 +125,11 @@ export const processGeneration = internalAction({
             const INT32_MAX = 2147483647
             const rawSeed = params.seed ?? Math.floor(Math.random() * INT32_MAX)
             const seed = Math.min(rawSeed, INT32_MAX)
+
+            if (await isCancelled()) {
+                console.log(`${logger} Generation ${args.generationId} was cancelled before provider request`)
+                return
+            }
 
             // Build the generation URL
             const generationUrl = buildPollinationsUrl({
@@ -177,6 +191,11 @@ export const processGeneration = internalAction({
 
             const response = result.data
 
+            if (await isCancelled()) {
+                console.log(`${logger} Generation ${args.generationId} was cancelled after provider response`)
+                return
+            }
+
             // Get the image data
             const imageBuffer = Buffer.from(await response.arrayBuffer())
             const contentType = response.headers.get("content-type") || "image/jpeg"
@@ -199,6 +218,21 @@ export const processGeneration = internalAction({
             }
             if (previewResult) {
                 console.log(`${logger} Preview complete: ${previewResult.url} (${previewResult.sizeBytes} bytes)`)
+            }
+
+            if (await isCancelled()) {
+                console.log(`${logger} Generation ${args.generationId} was cancelled before persistence, cleaning up R2 objects`)
+                // Best-effort R2 cleanup to avoid orphan objects
+                const keysToDelete = [r2Key]
+                if (thumbnailResult?.url) keysToDelete.push(generateThumbnailKey(r2Key))
+                if (previewResult?.url) keysToDelete.push(generatePreviewKey(r2Key))
+                try {
+                    await deleteR2Objects(keysToDelete)
+                    console.log(`${logger} R2 cleanup succeeded for generation ${args.generationId}`)
+                } catch (err) {
+                    console.error(`${logger} R2 cleanup failed for generation ${args.generationId}:`, err)
+                }
+                return
             }
 
             // Store the image in Convex database

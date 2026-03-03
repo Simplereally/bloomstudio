@@ -18,6 +18,7 @@ import {
     ImageMetadata,
     ImageToolbar,
 } from "@/components/studio"
+import type { QueueItem } from "@/components/studio/canvas/image-canvas"
 import type { GeneratedImage } from "@/types/pollinations"
 import * as React from "react"
 
@@ -26,6 +27,11 @@ export interface CanvasViewProps {
     image: GeneratedImage | null
     /** Whether generation is in progress */
     isGenerating?: boolean
+    /** Structured queue items for per-generation cards */
+    queueItems?: QueueItem[]
+    /** Callback to cancel a specific generation by ID */
+    onCancelItem?: (id: string) => void
+
     /** Handle image click (for fullscreen) */
     onImageClick?: () => void
     /** Handle download */
@@ -46,6 +52,9 @@ export interface CanvasViewProps {
 export const CanvasView = React.memo(function CanvasView({
     image,
     isGenerating = false,
+    queueItems = [],
+    onCancelItem,
+
     onImageClick,
     onDownload,
     onCopyUrl,
@@ -61,6 +70,9 @@ export const CanvasView = React.memo(function CanvasView({
                 <ImageCanvas
                     image={image}
                     isGenerating={isGenerating}
+                    queueItems={queueItems}
+                    onCancelItem={onCancelItem}
+
                     progress={progress}
                     onImageClick={onImageClick}
                     className="h-full"

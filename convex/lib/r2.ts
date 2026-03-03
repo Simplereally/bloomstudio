@@ -7,7 +7,7 @@
  * Requires R2 environment variables to be set in Convex.
  */
 
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3"
+import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3"
 import { NodeHttpHandler } from "@smithy/node-http-handler"
 import { Agent as HttpsAgent } from "https"
 import crypto from "crypto"
@@ -147,6 +147,40 @@ export async function uploadToR2(
     return {
         url: `${publicUrl}/${key}`,
         sizeBytes: imageBuffer.length,
+    }
+}
+
+// ============================================================
+// Deletion
+// ============================================================
+
+/**
+ * Best-effort delete one or more R2 objects by key.
+ * Failures are logged but never thrown — this is designed for
+ * cleanup paths where we must not mask the primary error.
+ *
+ * @param keys - R2 object keys to delete
+ */
+export async function deleteR2Objects(keys: string[]): Promise<void> {
+    if (keys.length === 0) return
+    try {
+        const bucketName = process.env.R2_BUCKET_NAME
+        if (!bucketName) {
+            console.error("[R2 Cleanup] R2_BUCKET_NAME not configured, skipping delete")
+            return
+        }
+        const client = await getS3Client()
+        await Promise.allSettled(
+            keys.map(async (key) => {
+                try {
+                    await client.send(new DeleteObjectCommand({ Bucket: bucketName, Key: key }))
+                } catch (err) {
+                    console.error(`[R2 Cleanup] Failed to delete ${key}:`, err)
+                }
+            })
+        )
+    } catch (err) {
+        console.error("[R2 Cleanup] Failed to initialise R2 client, skipping delete:", err)
     }
 }
 

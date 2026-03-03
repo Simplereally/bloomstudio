@@ -6,14 +6,12 @@ import * as React from "react"
 
 // Mock PromptView
 vi.mock("./prompt-view", () => ({
-    PromptView: ({ isGenerating, showNegativePrompt, promptHistory, suggestions }: {
-        isGenerating: boolean;
+    PromptView: ({ showNegativePrompt, promptHistory, suggestions }: {
         showNegativePrompt: boolean;
         promptHistory: string[];
         suggestions: string[];
     }) => (
         <div data-testid="prompt-view">
-            <span data-testid="is-generating">{String(isGenerating)}</span>
             <span data-testid="show-negative">{String(showNegativePrompt)}</span>
             <span data-testid="history-count">{promptHistory.length}</span>
             <span data-testid="suggestions-count">{suggestions.length}</span>
@@ -58,17 +56,9 @@ describe("PromptFeature", () => {
             expect(screen.getByTestId("prompt-view")).toBeInTheDocument()
         })
 
-        it("passes isGenerating prop to PromptView", () => {
-            render(<PromptFeature isGenerating={true} />)
 
-            expect(screen.getByTestId("is-generating")).toHaveTextContent("true")
-        })
 
-        it("defaults isGenerating to false", () => {
-            render(<PromptFeature />)
 
-            expect(screen.getByTestId("is-generating")).toHaveTextContent("false")
-        })
 
         it("passes showNegativePrompt prop to PromptView", () => {
             render(<PromptFeature showNegativePrompt={false} />)
@@ -117,11 +107,11 @@ describe("PromptFeature", () => {
         it("passes props correctly in integrated mode", () => {
             render(
                 <PromptManagerContext.Provider value={customPromptManager}>
-                    <PromptFeature isGenerating={true} showNegativePrompt={false} />
+                    <PromptFeature showNegativePrompt={false} />
                 </PromptManagerContext.Provider>
             )
 
-            expect(screen.getByTestId("is-generating")).toHaveTextContent("true")
+
             expect(screen.getByTestId("show-negative")).toHaveTextContent("false")
         })
     })

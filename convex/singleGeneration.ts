@@ -122,6 +122,40 @@ export const getGenerationStatus = query({
 })
 
 /**
+ * Get statuses for multiple generations in one query.
+ */
+export const getGenerationsStatus = query({
+    args: {
+        generationIds: v.array(v.id("pendingGenerations")),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity()
+        if (!identity || args.generationIds.length === 0) {
+            return []
+        }
+
+        // Dedupe and cap the number of IDs to prevent unbounded fan-out
+        const MAX_IDS = 100
+        const uniqueIds = [...new Set(args.generationIds)]
+        if (uniqueIds.length > MAX_IDS) {
+            throw new ConvexError({
+                code: "TOO_MANY_IDS",
+                message: `Cannot query more than ${MAX_IDS} generation IDs at once (got ${uniqueIds.length}).`,
+            })
+        }
+
+        const generations = await Promise.all(
+            uniqueIds.map((generationId) => ctx.db.get(generationId))
+        )
+
+        return generations.filter(
+            (generation): generation is NonNullable<typeof generation> =>
+                generation !== null && generation.ownerId === identity.subject
+        )
+    },
+})
+
+/**
  * Get the current user's active (pending/processing) generations.
  */
 export const getActiveGenerations = query({
@@ -136,21 +170,53 @@ export const getActiveGenerations = query({
         const [pending, processing] = await Promise.all([
             ctx.db
                 .query("pendingGenerations")
-                .withIndex("by_owner_status", (q) => 
+                .withIndex("by_owner_status", (q) =>
                     q.eq("ownerId", identity.subject).eq("status", "pending")
                 )
                 .order("desc")
                 .collect(),
             ctx.db
                 .query("pendingGenerations")
-                .withIndex("by_owner_status", (q) => 
+                .withIndex("by_owner_status", (q) =>
                     q.eq("ownerId", identity.subject).eq("status", "processing")
                 )
                 .order("desc")
-                .collect()
+                .collect(),
         ])
 
         return [...pending, ...processing].sort((a, b) => b.createdAt - a.createdAt)
+    },
+})
+
+/**
+ * Cancel a single generation by ID.
+ * This is a soft-cancel: processor actions check status and skip persistence.
+ */
+export const cancelGeneration = mutation({
+    args: {
+        generationId: v.id("pendingGenerations"),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity()
+        if (!identity) {
+            throw new Error("Not authenticated")
+        }
+
+        const generation = await ctx.db.get(args.generationId)
+        if (!generation || generation.ownerId !== identity.subject) {
+            throw new Error("Generation not found")
+        }
+
+        if (generation.status !== "pending" && generation.status !== "processing") {
+            return { success: false }
+        }
+
+        await ctx.db.patch(args.generationId, {
+            status: "cancelled",
+            updatedAt: Date.now(),
+        })
+
+        return { success: true }
     },
 })
 
@@ -180,7 +246,8 @@ export const updateGenerationStatus = internalMutation({
             v.literal("pending"),
             v.literal("processing"),
             v.literal("completed"),
-            v.literal("failed")
+            v.literal("failed"),
+            v.literal("cancelled")
         ),
         errorMessage: v.optional(v.string()),
         /** HTTP error code from Pollinations API (401=auth, 402=budget, 403=access) */

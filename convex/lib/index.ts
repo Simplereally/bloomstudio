@@ -28,6 +28,7 @@ export {
     generateThumbnailKey,
     generatePreviewKey,
     uploadToR2,
+    deleteR2Objects,
     generateAndUploadThumbnail,
     uploadMediaWithThumbnail,
     type R2UploadResult,

@@ -47,6 +47,7 @@ import {
 
 // Hooks
 import { useGenerateImage } from "@/hooks/queries";
+import { useImageHistory } from "@/hooks/queries/use-image-history";
 import { useBatchMode } from "@/hooks/use-batch-mode";
 import {
   useEstimatedCost,
@@ -67,12 +68,16 @@ import type {
 } from "@/types/pollinations";
 import type { ThumbnailData } from "@/components/studio/gallery/image-gallery";
 import type { PaginatedGalleryResult } from "@/components/studio/gallery/types";
-import { useConvexAuth } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 import { useSearchParams } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
 import { invalidateUserHistoryCache } from "@/app/_server/actions/invalidation";
 import { LowBalanceWarningDialog } from "@/components/pollen-balance/low-balance-warning-dialog";
+import { api } from "@/convex/_generated/api";
+import { Loader2 } from "lucide-react";
+import type { QueueItem } from "@/components/studio/canvas/image-canvas";
+
 
 export interface StudioShellProps {
   defaultLayout?: Record<string, number>;
@@ -191,7 +196,7 @@ export function StudioShell({
   // ========================================
   // Image Generation
   // ========================================
-  const { generate, isGenerating } = useGenerateImage({
+  const { generate, cancelGenerationById } = useGenerateImage({
     onSuccess: async (image) => {
       galleryState.addImage(image);
       generationSettings.refreshSeedIfNeeded();
@@ -222,9 +227,67 @@ export function StudioShell({
     },
   });
 
+  // Active single generations (pending + processing) for queue UX
+  const activeSingleGenerations = useQuery(
+    api.singleGeneration.getActiveGenerations,
+    isSignedIn ? {} : "skip",
+  );
+
+  const activeSingleList = React.useMemo(
+    () => (Array.isArray(activeSingleGenerations) ? activeSingleGenerations : []),
+    [activeSingleGenerations],
+  );
+
+  const singlePendingCount = React.useMemo(
+    () => activeSingleList.filter((g) => g.status === "pending").length,
+    [activeSingleList],
+  );
+
+  const singleActiveCount = activeSingleList.length;
+  const singleIsActive = singleActiveCount > 0;
+
+  // Derive structured queue items from active generations, sorted oldest-first
+  const singleQueueItems: QueueItem[] = React.useMemo(() => {
+    const sorted = [...activeSingleList].sort(
+      (a, b) => a.createdAt - b.createdAt,
+    );
+    return sorted
+      .filter(
+        (g): g is typeof g & { status: "pending" | "processing" } =>
+          g.status === "pending" || g.status === "processing",
+      )
+      .map((g, i) => {
+        const w = g.generationParams?.width ?? 1024;
+        const h = g.generationParams?.height ?? 1024;
+        const aspectRatio = h > 0 ? w / h : 1;
+        return {
+          id: g._id,
+          status: g.status,
+          createdAt: g.createdAt,
+          aspectRatio: Number.isFinite(aspectRatio) ? aspectRatio : 1,
+          labelIndex: i + 1,
+        };
+      });
+  }, [activeSingleList]);
+
+  const handleCancelSingleItem = React.useCallback(
+    async (id: string) => {
+      try {
+        await cancelGenerationById(id as Parameters<typeof cancelGenerationById>[0]);
+      } catch (error) {
+        console.error("Failed to cancel generation:", error);
+        toast.error("Could not stop generation", {
+          description: "Please try again.",
+        });
+      }
+    },
+    [cancelGenerationById],
+  );
+
   // ========================================
   // Generation Handler
   // ========================================
+
 
   // Core generation logic (called directly or after warning confirmation)
   const executeGeneration = React.useCallback(() => {
@@ -373,14 +436,14 @@ export function StudioShell({
   // ========================================
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !isGenerating) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
         e.preventDefault();
         handleGenerateClick();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isGenerating, handleGenerateClick]);
+  }, [handleGenerateClick]);
 
   // ========================================
   // Gallery Image Selection Handler
@@ -395,13 +458,56 @@ export function StudioShell({
   // ========================================
   // Gallery Images for Reference Image Pickers
   // ========================================
-  const [galleryImages, setGalleryImages] = React.useState<ThumbnailData[]>([]);
+  // Subscribe to image history directly so thumbnails are available immediately,
+  // even on mobile where the history drawer (and its gallery component) is rendered
+  // inside a portal that only mounts when the drawer is open.
+  // Convex deduplicates identical query subscriptions, so when the gallery panel
+  // is also mounted (desktop, or after opening the mobile drawer), there is no
+  // extra bandwidth cost.
+  const historyQuery = useImageHistory();
+
+  /** Map raw Convex paginated results to the ThumbnailData shape expected by controls. */
+  const baseGalleryImages: ThumbnailData[] = React.useMemo(
+    () =>
+      historyQuery.results.map((img) => {
+        const id = String(img._id);
+        return {
+          id,
+          _id: id,
+          _creationTime: img._creationTime,
+          url: img.url,
+          originalUrl: img.originalUrl,
+          visibility: img.visibility,
+          model: img.model,
+          contentType: img.contentType,
+          prompt: "",
+        };
+      }),
+    [historyQuery.results],
+  );
+
+  // When the gallery component is mounted (always on desktop; on mobile after the
+  // history drawer opens) it may have loaded additional pages via "load more". We
+  // store those extended results here so the reference image picker can show them
+  // too. The callback is intentionally memoised with useCallback so that passing
+  // it to GalleryFeature doesn't cause unnecessary re-renders.
+  const [extendedGalleryImages, setExtendedGalleryImages] = React.useState<
+    ThumbnailData[] | null
+  >(null);
   const handleGalleryImagesLoaded = React.useCallback(
     (images: ThumbnailData[]) => {
-      setGalleryImages(images);
+      setExtendedGalleryImages(images);
     },
     [],
   );
+
+  // Use the extended set from the gallery when available (it's a superset that
+  // includes "load more" pages), otherwise fall back to the direct subscription
+  // which provides at least the first page.
+  const galleryImages =
+    extendedGalleryImages && extendedGalleryImages.length > 0
+      ? extendedGalleryImages
+      : baseGalleryImages;
 
   // ========================================
   // Regenerate Handler
@@ -489,7 +595,7 @@ export function StudioShell({
             {/* Prompt Feature */}
             <PromptManagerContext.Provider value={promptManager}>
               <PromptFeature
-                isGenerating={isGenerating}
+
                 showNegativePrompt={getModelSupportsNegativePrompt(
                   generationSettings.model,
                 )}
@@ -500,7 +606,10 @@ export function StudioShell({
             {/* Generation Controls Feature */}
             <GenerationSettingsContext.Provider value={generationSettings}>
               <BatchModeContext.Provider value={batchMode}>
-                <ControlsFeature isGenerating={isGenerating} historyImages={galleryImages} />
+                <ControlsFeature
+                  isGenerating={batchMode.isBatchActive}
+                  historyImages={galleryImages}
+                />
               </BatchModeContext.Provider>
             </GenerationSettingsContext.Provider>
           </div>
@@ -535,32 +644,43 @@ export function StudioShell({
             onCancel={batchMode.cancelBatchGeneration}
           />
         ) : (
-          <div className="flex items-center gap-1.5 w-full">
-            <Button
-              onClick={handleGenerateClick}
-              disabled={isGenerating || !promptManager.hasPromptContent}
-              className="flex-1 h-11 text-base font-semibold"
-              size="lg"
-            >
-              {isGenerating ? (
-                "Generating..."
-              ) : batchMode.batchSettings.enabled ? (
-                <>Generate Batch ({batchMode.batchSettings.count})</>
-              ) : (
-                <>Generate Image</>
-              )}
-            </Button>
-            
-            {isMobile && (
-              <Separator orientation="vertical" className="h-8 bg-border/40 mx-0.5" />
-            )}
+          <div className="flex flex-col gap-1.5 w-full">
+            <div className="flex items-center gap-1.5 w-full">
+              <Button
+                onClick={handleGenerateClick}
+                disabled={!promptManager.hasPromptContent}
+                className="flex-1 h-11 text-base font-semibold"
+                size="lg"
+              >
+                {batchMode.batchSettings.enabled ? (
+                  <>Generate Batch ({batchMode.batchSettings.count})</>
+                ) : (
+                  <>Generate Image</>
+                )}
+              </Button>
 
-            <BatchConfigButton
-              settings={batchMode.batchSettings}
-              onSettingsChange={batchMode.setBatchSettings}
-              disabled={isGenerating || batchMode.isBatchActive}
-              className={isMobile ? "w-14" : undefined}
-            />
+              {isMobile && (
+                <Separator orientation="vertical" className="h-8 bg-border/40 mx-0.5" />
+              )}
+
+              <BatchConfigButton
+                settings={batchMode.batchSettings}
+                onSettingsChange={batchMode.setBatchSettings}
+                disabled={batchMode.isBatchActive}
+                className={isMobile ? "w-14" : undefined}
+              />
+            </div>
+
+            {/* Queue status indicator */}
+            {singleActiveCount > 0 && (
+              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                <span>
+                  {singleActiveCount} generation{singleActiveCount !== 1 ? "s" : ""} in progress
+                  {singlePendingCount > 0 && <> ({singlePendingCount} queued)</>}
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -573,7 +693,10 @@ export function StudioShell({
   const canvasContent = (
     <CanvasFeature
       currentImage={galleryState.currentImage}
-      isGenerating={isGenerating || batchMode.isBatchActive}
+      isGenerating={singleIsActive || batchMode.isBatchActive}
+      queueItems={singleQueueItems}
+      onCancelItem={handleCancelSingleItem}
+
       progress={
         batchMode.isBatchActive
           ? batchMode.batchProgress.totalCount > 0
@@ -621,7 +744,7 @@ export function StudioShell({
           defaultLayout={defaultLayout}
           // Mobile-specific props
           onGenerate={handleGenerateClick}
-          isGenerating={isGenerating}
+          isGenerating={singleIsActive}
           isGenerateDisabled={!promptManager.hasPromptContent}
           batchSettings={batchMode.batchSettings}
           isBatchActive={batchMode.isBatchActive}
