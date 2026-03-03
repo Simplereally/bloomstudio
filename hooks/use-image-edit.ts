@@ -232,6 +232,7 @@ export function useImageEdit({
 		generate,
 		isGenerating,
 		error,
+		cancelCurrentGeneration,
 		reset: resetGeneration,
 	} = useGenerateImage({
 		onSuccess: (image) => {
@@ -272,8 +273,9 @@ export function useImageEdit({
 	);
 
 	const cancelGeneration = React.useCallback(() => {
+		void cancelCurrentGeneration();
 		resetGeneration();
-	}, [resetGeneration]);
+	}, [cancelCurrentGeneration, resetGeneration]);
 
 	const reset = React.useCallback(() => {
 		setIsEditPanelOpen(false);

@@ -31,23 +31,13 @@ vi.mock("./retry", () => ({
   isRetryableError: vi.fn(),
 }));
 
-// Mock crypto
-vi.mock("crypto", async (importOriginal) => {
-    const actual = await importOriginal<any>();
-    const mockCrypto = {
-        ...actual,
-        randomUUID: vi.fn().mockReturnValue("mock-uuid"),
-        createHash: vi.fn(() => ({
-            update: vi.fn().mockReturnThis(),
-            digest: vi.fn().mockReturnValue("mock-user-hash"),
-        })),
-    };
-    
-    return {
-        ...actual,
-        default: mockCrypto,
-    };
-});
+// Spy on crypto methods for deterministic test values
+import crypto from "crypto";
+const mockRandomUUID = vi.spyOn(crypto, "randomUUID").mockReturnValue("mock-uuid" as `${string}-${string}-${string}-${string}-${string}`);
+const mockCreateHash = vi.spyOn(crypto, "createHash").mockReturnValue({
+    update: vi.fn().mockReturnThis(),
+    digest: vi.fn().mockReturnValue("mock-user-hash"),
+} as unknown as crypto.Hash);
 
 import {
   uploadImage,

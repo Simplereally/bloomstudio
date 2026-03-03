@@ -39,6 +39,10 @@ vi.mock("@/convex/_generated/api", () => ({
         stripe: {
             getUserSubscriptionStatus: "getUserSubscriptionStatus",
         },
+        singleGeneration: {
+            getActiveGenerations: "getActiveGenerations",
+            cancelGeneration: "cancelGeneration",
+        },
     },
 }))
 
@@ -71,10 +75,12 @@ vi.mock("@/components/studio/features/generation", () => ({
 }))
 
 vi.mock("@/components/studio/features/canvas", () => ({
-    CanvasFeature: ({ currentImage, isGenerating }: { currentImage: GeneratedImage | null; isGenerating: boolean }) => (
+    CanvasFeature: ({ currentImage, isGenerating, queueItems, onCancelItem }: { currentImage: GeneratedImage | null; isGenerating: boolean; queueItems?: unknown[]; onCancelItem?: (id: string) => void }) => (
         <div data-testid="canvas-feature">
             <span data-testid="canvas-has-image">{String(!!currentImage)}</span>
             <span data-testid="canvas-is-generating">{String(isGenerating)}</span>
+            <span data-testid="canvas-queue-count">{queueItems?.length ?? 0}</span>
+            <span data-testid="canvas-has-cancel">{String(typeof onCancelItem === "function")}</span>
         </div>
     ),
 }))
@@ -253,9 +259,11 @@ vi.mock("@/hooks/use-image-gallery-state", () => ({
     useImageGalleryState: () => mockGalleryState,
 }))
 
+const mockCancelGenerationById = vi.fn()
 vi.mock("@/hooks/queries", () => ({
     useGenerateImage: () => ({
         generate: mockGenerate,
+        cancelGenerationById: mockCancelGenerationById,
         isGenerating: false,
     }),
 }))

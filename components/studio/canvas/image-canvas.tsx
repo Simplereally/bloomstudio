@@ -16,7 +16,7 @@ import { isVideoContent, MediaPlayer } from "@/components/ui/media-player"
 import { cn } from "@/lib/utils"
 import type { GeneratedImage } from "@/types/pollinations"
 import { AnimatePresence, motion, type Variants } from "framer-motion"
-import { ImagePlus, Loader2 } from "lucide-react"
+import { ImagePlus, Loader2, X } from "lucide-react"
 import * as React from "react"
 import { CanvasWave } from "./canvas-wave"
 
@@ -39,11 +39,26 @@ const containerVariants: Variants = {
     },
 }
 
+// --- Queue Item Type ---
+
+export interface QueueItem {
+    id: string
+    status: "pending" | "processing"
+    createdAt: number
+    aspectRatio: number
+    labelIndex: number
+}
+
 // --- Component ---
 
 export interface ImageCanvasProps {
     image: GeneratedImage | null
     isGenerating?: boolean
+    /** Structured queue items for per-generation cards */
+    queueItems?: QueueItem[]
+    /** Callback to cancel a specific generation by ID */
+    onCancelItem?: (id: string) => void
+
     progress?: number
     onImageClick?: () => void
     children?: React.ReactNode
@@ -85,11 +100,123 @@ function CapillaryProgress({ progress }: { progress: number }) {
     )
 }
 
+/**
+ * QueueCardGrid - Per-item grid/tray of active single generations.
+ *
+ * Each card shows an aspect-ratio frame, a spinner, a status label,
+ * and a per-card Stop button. Cards are laid out in a flex-wrap grid
+ * anchored to the bottom of the canvas — never stacked on top of each other.
+ */
+function QueueCardGrid({
+    items,
+    onCancel,
+}: {
+    items: QueueItem[]
+    onCancel?: (id: string) => void
+}) {
+    if (items.length === 0) return null
 
+    return (
+        <div
+            className="absolute inset-x-4 bottom-4 z-20 pointer-events-none"
+            data-testid="queue-card-grid"
+        >
+            <div className="mx-auto max-w-[800px] max-h-[50%] overflow-y-auto">
+                <div className="flex flex-wrap items-end justify-center gap-2.5">
+                    {items.map((item) => (
+                        <QueueCard
+                            key={item.id}
+                            item={item}
+                            onCancel={onCancel}
+                        />
+                    ))}
+                </div>
+            </div>
+        </div>
+    )
+}
+
+function QueueCard({
+    item,
+    onCancel,
+}: {
+    item: QueueItem
+    onCancel?: (id: string) => void
+}) {
+    const isProcessing = item.status === "processing"
+    const statusLabel = isProcessing ? "Generating" : "Queued"
+
+    // Size cards relative to count — keep them compact but legible
+    const targetWidthPx = 140
+    const heightPx = Math.round(targetWidthPx / Math.max(0.4, item.aspectRatio))
+    const clampedHeightPx = Math.max(64, Math.min(180, heightPx))
+
+    return (
+        <div
+            className={cn(
+                "relative rounded-xl border shadow-sm overflow-hidden pointer-events-auto",
+                "bg-background/60 backdrop-blur-md",
+                isProcessing
+                    ? "border-primary/30 ring-1 ring-primary/10"
+                    : "border-primary/15"
+            )}
+            style={{
+                height: clampedHeightPx,
+                aspectRatio: item.aspectRatio,
+            }}
+            data-testid="queue-card"
+        >
+            {/* Subtle gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.04] via-transparent to-transparent" />
+
+            {/* Content: spinner + label */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-2">
+                <Loader2
+                    className={cn(
+                        "h-5 w-5 animate-spin",
+                        isProcessing ? "text-primary" : "text-muted-foreground/60"
+                    )}
+                />
+                <span
+                    className={cn(
+                        "text-[10px] font-medium leading-tight text-center",
+                        isProcessing ? "text-primary/90" : "text-muted-foreground/70"
+                    )}
+                >
+                    {statusLabel}
+                </span>
+            </div>
+
+            {/* Per-card Stop button — top-right corner */}
+            {onCancel && (
+                <button
+                    type="button"
+                    onClick={() => onCancel(item.id)}
+                    className={cn(
+                        "absolute top-1 right-1 z-10 pointer-events-auto",
+                        "flex items-center justify-center",
+                        "h-5 w-5 rounded-full",
+                        "bg-background/80 backdrop-blur-sm border border-white/10",
+                        "text-muted-foreground hover:text-destructive hover:bg-destructive/10",
+                        "transition-colors duration-150",
+                        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-destructive"
+                    )}
+                    aria-label={`Stop generation ${item.labelIndex}`}
+                    data-testid="queue-card-stop"
+                >
+                    <X className="h-3 w-3" />
+                </button>
+            )}
+        </div>
+    )
+}
 
 export const ImageCanvas = React.memo(function ImageCanvas({
     image,
     isGenerating = false,
+    queueItems = [],
+    onCancelItem,
+
     progress,
     onImageClick,
     children,
@@ -243,6 +370,13 @@ export const ImageCanvas = React.memo(function ImageCanvas({
                     )}
                 </AnimatePresence>
             </div>
+
+            {queueItems.length > 0 && (
+                <QueueCardGrid
+                    items={queueItems}
+                    onCancel={onCancelItem}
+                />
+            )}
         </div>
     )
 })

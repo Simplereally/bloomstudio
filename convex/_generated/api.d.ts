@@ -204,6 +204,7 @@ export declare const components: {
         "mutation",
         "internal",
         {
+          cancelAt?: number;
           cancelAtPeriodEnd: boolean;
           currentPeriodEnd: number;
           metadata?: any;
@@ -225,9 +226,11 @@ export declare const components: {
         "mutation",
         "internal",
         {
+          cancelAt?: number;
           cancelAtPeriodEnd: boolean;
           currentPeriodEnd: number;
           metadata?: any;
+          priceId?: string;
           quantity?: number;
           status: string;
           stripeSubscriptionId: string;
@@ -291,6 +294,7 @@ export declare const components: {
         "internal",
         { stripeSubscriptionId: string },
         {
+          cancelAt?: number;
           cancelAtPeriodEnd: boolean;
           currentPeriodEnd: number;
           metadata?: any;
@@ -308,6 +312,7 @@ export declare const components: {
         "internal",
         { orgId: string },
         {
+          cancelAt?: number;
           cancelAtPeriodEnd: boolean;
           currentPeriodEnd: number;
           metadata?: any;
@@ -421,6 +426,7 @@ export declare const components: {
         "internal",
         { stripeCustomerId: string },
         Array<{
+          cancelAt?: number;
           cancelAtPeriodEnd: boolean;
           currentPeriodEnd: number;
           metadata?: any;
@@ -438,6 +444,7 @@ export declare const components: {
         "internal",
         { userId: string },
         Array<{
+          cancelAt?: number;
           cancelAtPeriodEnd: boolean;
           currentPeriodEnd: number;
           metadata?: any;

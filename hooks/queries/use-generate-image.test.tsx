@@ -13,11 +13,12 @@ import {
 } from "./use-generate-image"
 
 let mockGenerationStatus: {
-    status: "pending" | "processing" | "completed" | "failed"
+    status: "pending" | "processing" | "completed" | "failed" | "cancelled"
     imageId?: string
     errorMessage?: string
+    errorCode?: number
 } | null = null
-let mockGeneratedImage: {
+const mockGeneratedImagesById = new Map<string, {
     _id: string
     url: string
     prompt: string
@@ -26,36 +27,50 @@ let mockGeneratedImage: {
     r2Key?: string
     sizeBytes?: number
     contentType?: string
-} | null = null
+}>()
 
-// Mock mutation function
+// Mock mutation functions
 const mockStartGeneration = vi.fn()
+const mockCancelGeneration = vi.fn()
 
-// Mock Convex react hooks
+// Mock Convex react hooks — differentiate the two useMutation calls
+let mutationCallIndex = 0
 vi.mock("convex/react", () => ({
-    useMutation: () => mockStartGeneration,
+    useMutation: () => {
+        const fns = [mockStartGeneration, mockCancelGeneration]
+        const fn = fns[mutationCallIndex % 2]
+        mutationCallIndex++
+        return fn
+    },
     useQuery: (
         _apiRef: unknown,
         args: unknown
     ) => {
-        // Return appropriate mock data based on which query is being called
-        // The hook passes "skip" when it doesn't want to run the query
         if (args === "skip") {
             return undefined
         }
-
-        // Check if this is a generation status query (has generationId)
-        if (args && typeof args === "object" && "generationId" in args) {
-            return mockGenerationStatus
+        if (args && typeof args === "object" && "generationIds" in args) {
+            const ids = (args as { generationIds: string[] }).generationIds
+            if (!mockGenerationStatus) return []
+            return ids.map((id) => ({
+                _id: id,
+                ownerId: "user_1",
+                generationParams: { prompt: "test" },
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+                ...mockGenerationStatus,
+            }))
         }
-
-        // Check if this is a getById query (has imageId)
-        if (args && typeof args === "object" && "imageId" in args) {
-            return mockGeneratedImage
-        }
-
         return undefined
     },
+    useConvex: () => ({
+        query: vi.fn(async (_apiRef: unknown, args: unknown) => {
+            if (args && typeof args === "object" && "imageId" in args) {
+                return mockGeneratedImagesById.get((args as { imageId: string }).imageId) ?? null
+            }
+            return null
+        }),
+    }),
 }))
 
 // Mock BYOP pollen-auth hooks
@@ -97,6 +112,8 @@ vi.mock("@/convex/_generated/api", () => ({
         singleGeneration: {
             startGeneration: "singleGeneration.startGeneration",
             getGenerationStatus: "singleGeneration.getGenerationStatus",
+            getGenerationsStatus: "singleGeneration.getGenerationsStatus",
+            cancelGeneration: "singleGeneration.cancelGeneration",
         },
         generatedImages: {
             getById: "generatedImages.getById",
@@ -113,9 +130,11 @@ describe("useGenerateImage", () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockGenerationStatus = null
-        mockGeneratedImage = null
+        mockGeneratedImagesById.clear()
         mockStartGeneration.mockReset()
+        mockCancelGeneration.mockReset()
         mockAuthorize.mockReset()
+        mutationCallIndex = 0
     })
 
     it("starts generation via Convex mutation", async () => {
@@ -172,7 +191,7 @@ describe("useGenerateImage", () => {
 
         // Simulate generation completing
         mockGenerationStatus = { status: "completed", imageId }
-        mockGeneratedImage = {
+        mockGeneratedImagesById.set(imageId, {
             _id: imageId,
             url: "https://example.com/image.png",
             prompt: "test prompt",
@@ -181,7 +200,7 @@ describe("useGenerateImage", () => {
             r2Key: "r2/key",
             sizeBytes: 1024,
             contentType: "image/png",
-        }
+        })
 
         // Trigger re-render to pick up the new mock values
         rerender()
@@ -287,13 +306,13 @@ describe("useGenerateImage", () => {
 
         // Complete generation
         mockGenerationStatus = { status: "completed", imageId: "img_123" }
-        mockGeneratedImage = {
+        mockGeneratedImagesById.set("img_123", {
             _id: "img_123",
             url: "https://example.com/image.png",
             prompt: "test",
             generationParams: { prompt: "test" },
             createdAt: Date.now(),
-        }
+        })
 
         rerender()
 
@@ -317,13 +336,13 @@ describe("useGenerateImage", () => {
         })
 
         mockGenerationStatus = { status: "completed", imageId: "img_123" }
-        mockGeneratedImage = {
+        mockGeneratedImagesById.set("img_123", {
             _id: "img_123",
             url: "https://example.com/image.png",
             prompt: "test",
             generationParams: { prompt: "test" },
             createdAt: Date.now(),
-        }
+        })
 
         rerender()
 
@@ -377,6 +396,162 @@ describe("useGenerateImage", () => {
             },
             apiKey: mockApiKey,
         })
+    })
+
+    // ======================================================================
+    // Cancel / queue behavior for multi-single
+    // ======================================================================
+
+    it("handles cancelled generation status", async () => {
+        const generationId = "gen_cancel"
+        mockStartGeneration.mockResolvedValueOnce(generationId)
+
+        const onSettled = vi.fn()
+        const { result, rerender } = renderHook(
+            () => useGenerateImage({ onSettled }),
+            { wrapper: TestWrapper }
+        )
+
+        await act(async () => {
+            result.current.generate({ prompt: "test cancel" })
+        })
+
+        expect(result.current.isGenerating).toBe(true)
+
+        // Simulate backend marking it cancelled
+        mockGenerationStatus = { status: "cancelled" }
+
+        rerender()
+
+        await waitFor(() => {
+            expect(result.current.isGenerating).toBe(false)
+        })
+
+        // Should not be error or success — just settled with no image
+        expect(result.current.isError).toBe(false)
+        expect(result.current.isSuccess).toBe(false)
+        expect(result.current.currentGenerationId).toBeNull()
+        expect(onSettled).toHaveBeenCalledWith(undefined, null, { prompt: "test cancel" })
+    })
+
+    it("cancelGenerationById calls cancel mutation and resets matching id", async () => {
+        const generationId = "gen_to_cancel"
+        mockStartGeneration.mockResolvedValueOnce(generationId)
+        mockCancelGeneration.mockResolvedValueOnce({ success: true })
+
+        const { result } = renderHook(() => useGenerateImage(), {
+            wrapper: TestWrapper,
+        })
+
+        await act(async () => {
+            result.current.generate({ prompt: "test" })
+        })
+
+        expect(result.current.isGenerating).toBe(true)
+
+        await act(async () => {
+            await result.current.cancelGenerationById(generationId as never)
+        })
+
+        // After cancel of current ID, should reset generating state
+        expect(result.current.isGenerating).toBe(false)
+        expect(result.current.currentGenerationId).toBeNull()
+    })
+
+    it("cancelGenerationById does not reset state for a different id", async () => {
+        const generationId = "gen_current"
+        mockStartGeneration.mockResolvedValueOnce(generationId)
+        mockCancelGeneration.mockResolvedValueOnce({ success: true })
+
+        const { result } = renderHook(() => useGenerateImage(), {
+            wrapper: TestWrapper,
+        })
+
+        await act(async () => {
+            result.current.generate({ prompt: "test" })
+        })
+
+        expect(result.current.isGenerating).toBe(true)
+
+        // Cancel a *different* generation id
+        await act(async () => {
+            await result.current.cancelGenerationById("gen_other" as never)
+        })
+
+        // Current generation should still be tracked
+        expect(result.current.isGenerating).toBe(true)
+        expect(result.current.currentGenerationId).toBe(generationId)
+    })
+
+    // ======================================================================
+    // Overlapping generations: second generate() supersedes the first
+    // ======================================================================
+
+    it("tracks multiple generations without blocking", async () => {
+        mockStartGeneration
+            .mockResolvedValueOnce("gen_first")
+            .mockResolvedValueOnce("gen_second")
+
+        const { result } = renderHook(() => useGenerateImage(), {
+            wrapper: TestWrapper,
+        })
+
+        await act(async () => {
+            result.current.generate({ prompt: "first" })
+        })
+        expect(result.current.currentGenerationId).toBe("gen_first")
+        expect(result.current.isGenerating).toBe(true)
+
+        await act(async () => {
+            result.current.generate({ prompt: "second" })
+        })
+        expect(result.current.currentGenerationId).toBe("gen_second")
+        expect(result.current.isGenerating).toBe(true)
+    })
+
+    // ======================================================================
+    // Callback stability: callbacks updated between renders are picked up
+    // ======================================================================
+
+    it("picks up updated callbacks via ref without re-fire", async () => {
+        const generationId = "gen_cb"
+        const imageId = "img_cb"
+        mockStartGeneration.mockResolvedValueOnce(generationId)
+
+        const onSuccessFirst = vi.fn()
+        const onSuccessSecond = vi.fn()
+
+        const { result, rerender } = renderHook(
+            ({ cb }: { cb: typeof onSuccessFirst }) => useGenerateImage({ onSuccess: cb }),
+            { wrapper: TestWrapper, initialProps: { cb: onSuccessFirst } }
+        )
+
+        await act(async () => {
+            result.current.generate({ prompt: "test" })
+        })
+
+        // Swap callback before completion
+        rerender({ cb: onSuccessSecond })
+
+        // Complete generation
+        mockGenerationStatus = { status: "completed", imageId }
+        mockGeneratedImagesById.set(imageId, {
+            _id: imageId,
+            url: "https://example.com/img.png",
+            prompt: "test",
+            generationParams: { prompt: "test" },
+            createdAt: Date.now(),
+        })
+
+        rerender({ cb: onSuccessSecond })
+
+        await waitFor(() => {
+            expect(result.current.isSuccess).toBe(true)
+        })
+
+        // Only the *latest* callback should have been called
+        expect(onSuccessFirst).not.toHaveBeenCalled()
+        expect(onSuccessSecond).toHaveBeenCalledTimes(1)
     })
 })
 

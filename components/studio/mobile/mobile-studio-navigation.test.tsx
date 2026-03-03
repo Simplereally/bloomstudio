@@ -91,11 +91,11 @@ describe("MobileStudioNavigation", () => {
             expect(fab).toBeDisabled()
         })
 
-        it("disables Generate FAB when isGenerating is true", () => {
+        it("does not disable Generate FAB when isGenerating is true (allows queueing)", () => {
             render(<MobileStudioNavigation {...defaultProps} isGenerating={true} />)
 
             const fab = screen.getByTestId("mobile-generate-fab")
-            expect(fab).toBeDisabled()
+            expect(fab).not.toBeDisabled()
         })
 
         it("shows pulse animation when isGenerating is true", () => {

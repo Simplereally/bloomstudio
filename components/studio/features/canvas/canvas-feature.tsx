@@ -17,6 +17,7 @@ import { useIsFavorited, useToggleFavorite } from "@/hooks/queries/use-favorites
 import { showErrorToast } from "@/lib/errors"
 import type { Id } from "@/convex/_generated/dataModel"
 import type { GeneratedImage } from "@/types/pollinations"
+import type { QueueItem } from "@/components/studio/canvas/image-canvas"
 import { CanvasView } from "./canvas-view"
 import * as React from "react"
 
@@ -25,6 +26,11 @@ export interface CanvasFeatureProps {
     currentImage: GeneratedImage | null
     /** Whether generation is in progress */
     isGenerating?: boolean
+    /** Structured queue items for per-generation cards */
+    queueItems?: QueueItem[]
+    /** Callback to cancel a specific generation by ID */
+    onCancelItem?: (id: string) => void
+
     /** Callback to open lightbox with image */
     onOpenLightbox?: (image: GeneratedImage | null) => void
     /** Callback to regenerate current image */
@@ -53,6 +59,9 @@ function isGeneratedImagesId(id: string): id is Id<"generatedImages"> {
 export function CanvasFeature({
     currentImage,
     isGenerating = false,
+    queueItems = [],
+    onCancelItem,
+
     onOpenLightbox,
     onRegenerate,
     progress,
@@ -108,6 +117,9 @@ export function CanvasFeature({
         <CanvasView
             image={currentImage}
             isGenerating={isGenerating}
+            queueItems={queueItems}
+            onCancelItem={onCancelItem}
+
             onImageClick={handleImageClick}
             onDownload={handleDownload}
             onCopyUrl={handleCopyUrl}

@@ -66,7 +66,7 @@ export {
 export { ReferenceImagesBrowserModal } from "./controls/reference-images-browser-modal";
 
 // Canvas Components
-export { ImageCanvas, type ImageCanvasProps } from "./canvas/image-canvas";
+export { ImageCanvas, type ImageCanvasProps, type QueueItem } from "./canvas/image-canvas";
 export {
   ImageMetadata,
   type ImageMetadataProps,

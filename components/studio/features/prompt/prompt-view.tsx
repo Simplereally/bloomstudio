@@ -28,8 +28,7 @@ import * as React from "react"
 export interface PromptViewProps {
     /** Ref to PromptSection API for reading values */
     apiRef: React.RefObject<PromptSectionAPI | null>
-    /** Whether generation is in progress */
-    isGenerating?: boolean
+
     /** Whether to show negative prompt (model-dependent) */
     showNegativePrompt?: boolean
     /** Prompt history for autocomplete */
@@ -56,7 +55,7 @@ export interface PromptViewProps {
 
 export const PromptView = React.memo(function PromptView({
     apiRef,
-    isGenerating = false,
+
     showNegativePrompt = true,
     promptHistory = [],
     onSelectHistory,
@@ -87,7 +86,7 @@ export const PromptView = React.memo(function PromptView({
         >
             <PromptSection
                 apiRef={apiRef}
-                isGenerating={isGenerating}
+
                 showNegativePrompt={showNegativePrompt}
                 promptHistory={promptHistory}
                 onSelectHistory={onSelectHistory}

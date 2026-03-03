@@ -29,8 +29,7 @@ import * as React from "react";
 export interface PromptSectionProps {
   /** Maximum character limit for prompt */
   maxLength?: number;
-  /** Whether generation is in progress */
-  isGenerating?: boolean;
+
   /** Whether to show the negative prompt section (model-dependent) */
   showNegativePrompt?: boolean;
   /** Recent prompts for history */
@@ -85,7 +84,7 @@ export interface PromptSectionAPI {
 
 export function PromptSection({
   maxLength = MAX_PROMPT_LENGTH,
-  isGenerating = false,
+
   showNegativePrompt = true,
   promptHistory = [],
   onSelectHistory,
@@ -309,12 +308,12 @@ export function PromptSection({
             defaultValue=""
             onChange={handlePromptInput}
             onKeyDown={handleKeyDown}
-            disabled={isGenerating || isEnhancingPrompt}
+            disabled={isEnhancingPrompt}
             maxLength={maxLength}
             className="min-h-24 max-h-48 overflow-y-auto resize-none px-2 pr-8 pb-10 bg-background/50 border-border/50 focus-visible:ring-0 focus-visible:border-primary transition-all duration-200 break-words [overflow-wrap:anywhere] block w-0 min-w-full"
             data-testid="prompt-input"
           />
-          {hasContent && !isGenerating && !isEnhancingPrompt && (
+          {hasContent && !isEnhancingPrompt && (
             <Button
               type="button"
               variant="ghost"
@@ -340,7 +339,7 @@ export function PromptSection({
                       setLibraryOpen(true);
                     }
                   }}
-                  disabled={!hasContent || isGenerating}
+                  disabled={!hasContent}
                   className="relative right-auto bottom-auto"
                 />
                 <PromptLibraryButton
@@ -350,7 +349,6 @@ export function PromptSection({
                     setLibraryPromptType("positive");
                     setLibraryOpen(true);
                   }}
-                  disabled={isGenerating}
                   className="relative right-auto bottom-auto"
                 />
               </>
@@ -358,7 +356,7 @@ export function PromptSection({
             {onEnhancePrompt && onCancelEnhancePrompt && (
               <EnhanceButton
                 isEnhancing={isEnhancingPrompt}
-                disabled={!hasContent || isGenerating}
+                disabled={!hasContent}
                 onEnhance={onEnhancePrompt}
                 onCancel={onCancelEnhancePrompt}
                 className="relative right-auto bottom-auto"
@@ -426,7 +424,7 @@ export function PromptSection({
                 placeholder="What to avoid in the image..."
                 defaultValue=""
                 onChange={handleNegativePromptInput}
-                disabled={isGenerating || isEnhancingNegativePrompt}
+                disabled={isEnhancingNegativePrompt}
                 className="min-h-16 max-h-48 overflow-y-auto resize-none pb-10 bg-background/50 border-border/50 text-sm focus-visible:ring-0 focus-visible:border-primary break-words [overflow-wrap:anywhere] block w-0 min-w-full"
                 data-testid="negative-prompt-input"
               />
@@ -444,7 +442,6 @@ export function PromptSection({
                           setLibraryOpen(true);
                         }
                       }}
-                      disabled={isGenerating}
                       className="relative right-auto bottom-auto"
                     />
                     <PromptLibraryButton
@@ -454,7 +451,6 @@ export function PromptSection({
                         setLibraryPromptType("negative");
                         setLibraryOpen(true);
                       }}
-                      disabled={isGenerating}
                       className="relative right-auto bottom-auto"
                     />
                   </>
@@ -462,7 +458,7 @@ export function PromptSection({
                 {onEnhanceNegativePrompt && onCancelEnhanceNegativePrompt && (
                   <EnhanceButton
                     isEnhancing={isEnhancingNegativePrompt}
-                    disabled={!hasContent || isGenerating}
+                    disabled={!hasContent}
                     onEnhance={onEnhanceNegativePrompt}
                     onCancel={onCancelEnhanceNegativePrompt}
                     className="relative right-auto bottom-auto"

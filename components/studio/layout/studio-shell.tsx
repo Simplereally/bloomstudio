@@ -67,12 +67,16 @@ import type {
 } from "@/types/pollinations";
 import type { ThumbnailData } from "@/components/studio/gallery/image-gallery";
 import type { PaginatedGalleryResult } from "@/components/studio/gallery/types";
-import { useConvexAuth } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 import { useSearchParams } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
 import { invalidateUserHistoryCache } from "@/app/_server/actions/invalidation";
 import { LowBalanceWarningDialog } from "@/components/pollen-balance/low-balance-warning-dialog";
+import { api } from "@/convex/_generated/api";
+import { Loader2 } from "lucide-react";
+import type { QueueItem } from "@/components/studio/canvas/image-canvas";
+
 
 export interface StudioShellProps {
   defaultLayout?: Record<string, number>;
@@ -191,7 +195,7 @@ export function StudioShell({
   // ========================================
   // Image Generation
   // ========================================
-  const { generate, isGenerating } = useGenerateImage({
+  const { generate, cancelGenerationById } = useGenerateImage({
     onSuccess: async (image) => {
       galleryState.addImage(image);
       generationSettings.refreshSeedIfNeeded();
@@ -222,9 +226,59 @@ export function StudioShell({
     },
   });
 
+  // Active single generations (pending + processing) for queue UX
+  const activeSingleGenerations = useQuery(
+    api.singleGeneration.getActiveGenerations,
+    isSignedIn ? {} : "skip",
+  );
+
+  const activeSingleList = React.useMemo(
+    () => (Array.isArray(activeSingleGenerations) ? activeSingleGenerations : []),
+    [activeSingleGenerations],
+  );
+
+  const singlePendingCount = React.useMemo(
+    () => activeSingleList.filter((g) => g.status === "pending").length,
+    [activeSingleList],
+  );
+
+  const singleActiveCount = activeSingleList.length;
+  const singleIsActive = singleActiveCount > 0;
+
+  // Derive structured queue items from active generations, sorted oldest-first
+  const singleQueueItems: QueueItem[] = React.useMemo(() => {
+    const sorted = [...activeSingleList].sort(
+      (a, b) => a.createdAt - b.createdAt,
+    );
+    return sorted.map((g, i) => ({
+      id: g._id,
+      status: g.status as "pending" | "processing",
+      createdAt: g.createdAt,
+      aspectRatio:
+        (g.generationParams?.width ?? 1024) /
+        (g.generationParams?.height ?? 1024),
+      labelIndex: i + 1,
+    }));
+  }, [activeSingleList]);
+
+  const handleCancelSingleItem = React.useCallback(
+    async (id: string) => {
+      try {
+        await cancelGenerationById(id as Parameters<typeof cancelGenerationById>[0]);
+      } catch (error) {
+        console.error("Failed to cancel generation:", error);
+        toast.error("Could not stop generation", {
+          description: "Please try again.",
+        });
+      }
+    },
+    [cancelGenerationById],
+  );
+
   // ========================================
   // Generation Handler
   // ========================================
+
 
   // Core generation logic (called directly or after warning confirmation)
   const executeGeneration = React.useCallback(() => {
@@ -373,14 +427,14 @@ export function StudioShell({
   // ========================================
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !isGenerating) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
         e.preventDefault();
         handleGenerateClick();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isGenerating, handleGenerateClick]);
+  }, [handleGenerateClick]);
 
   // ========================================
   // Gallery Image Selection Handler
@@ -489,7 +543,7 @@ export function StudioShell({
             {/* Prompt Feature */}
             <PromptManagerContext.Provider value={promptManager}>
               <PromptFeature
-                isGenerating={isGenerating}
+
                 showNegativePrompt={getModelSupportsNegativePrompt(
                   generationSettings.model,
                 )}
@@ -500,7 +554,10 @@ export function StudioShell({
             {/* Generation Controls Feature */}
             <GenerationSettingsContext.Provider value={generationSettings}>
               <BatchModeContext.Provider value={batchMode}>
-                <ControlsFeature isGenerating={isGenerating} historyImages={galleryImages} />
+                <ControlsFeature
+                  isGenerating={batchMode.isBatchActive}
+                  historyImages={galleryImages}
+                />
               </BatchModeContext.Provider>
             </GenerationSettingsContext.Provider>
           </div>
@@ -535,32 +592,43 @@ export function StudioShell({
             onCancel={batchMode.cancelBatchGeneration}
           />
         ) : (
-          <div className="flex items-center gap-1.5 w-full">
-            <Button
-              onClick={handleGenerateClick}
-              disabled={isGenerating || !promptManager.hasPromptContent}
-              className="flex-1 h-11 text-base font-semibold"
-              size="lg"
-            >
-              {isGenerating ? (
-                "Generating..."
-              ) : batchMode.batchSettings.enabled ? (
-                <>Generate Batch ({batchMode.batchSettings.count})</>
-              ) : (
-                <>Generate Image</>
-              )}
-            </Button>
-            
-            {isMobile && (
-              <Separator orientation="vertical" className="h-8 bg-border/40 mx-0.5" />
-            )}
+          <div className="flex flex-col gap-1.5 w-full">
+            <div className="flex items-center gap-1.5 w-full">
+              <Button
+                onClick={handleGenerateClick}
+                disabled={!promptManager.hasPromptContent}
+                className="flex-1 h-11 text-base font-semibold"
+                size="lg"
+              >
+                {batchMode.batchSettings.enabled ? (
+                  <>Generate Batch ({batchMode.batchSettings.count})</>
+                ) : (
+                  <>Generate Image</>
+                )}
+              </Button>
 
-            <BatchConfigButton
-              settings={batchMode.batchSettings}
-              onSettingsChange={batchMode.setBatchSettings}
-              disabled={isGenerating || batchMode.isBatchActive}
-              className={isMobile ? "w-14" : undefined}
-            />
+              {isMobile && (
+                <Separator orientation="vertical" className="h-8 bg-border/40 mx-0.5" />
+              )}
+
+              <BatchConfigButton
+                settings={batchMode.batchSettings}
+                onSettingsChange={batchMode.setBatchSettings}
+                disabled={batchMode.isBatchActive}
+                className={isMobile ? "w-14" : undefined}
+              />
+            </div>
+
+            {/* Queue status indicator */}
+            {singleActiveCount > 0 && (
+              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                <span>
+                  {singleActiveCount} generation{singleActiveCount !== 1 ? "s" : ""} in progress
+                  {singlePendingCount > 0 && <> ({singlePendingCount} queued)</>}
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -573,7 +641,10 @@ export function StudioShell({
   const canvasContent = (
     <CanvasFeature
       currentImage={galleryState.currentImage}
-      isGenerating={isGenerating || batchMode.isBatchActive}
+      isGenerating={singleIsActive || batchMode.isBatchActive}
+      queueItems={singleQueueItems}
+      onCancelItem={handleCancelSingleItem}
+
       progress={
         batchMode.isBatchActive
           ? batchMode.batchProgress.totalCount > 0
@@ -621,7 +692,7 @@ export function StudioShell({
           defaultLayout={defaultLayout}
           // Mobile-specific props
           onGenerate={handleGenerateClick}
-          isGenerating={isGenerating}
+          isGenerating={singleIsActive}
           isGenerateDisabled={!promptManager.hasPromptContent}
           batchSettings={batchMode.batchSettings}
           isBatchActive={batchMode.isBatchActive}
