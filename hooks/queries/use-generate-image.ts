@@ -332,7 +332,18 @@ export function useGenerateImage(
             setIsError(false)
             setError(null)
 
-            await callbacksRef.current.onMutate?.(params)
+            try {
+                await callbacksRef.current.onMutate?.(params)
+            } catch (onMutateError) {
+                const message = onMutateError instanceof Error ? onMutateError.message : "onMutate callback failed"
+                const err = new ServerGenerationError(message, "MUTATE_CALLBACK_FAILED")
+                setError(err)
+                setIsError(true)
+                callbacksRef.current.onError?.(err, params)
+                callbacksRef.current.onSettled?.(undefined, err, params)
+                deferred?.reject(err)
+                return
+            }
 
             if (!apiKey) {
                 const err = new ServerGenerationError(
@@ -412,7 +423,19 @@ export function useGenerateImage(
 
     const cancelGenerationById = React.useCallback(
         async (id: Id<"pendingGenerations">) => {
-            await cancelGeneration({ generationId: id })
+            let result: { success: boolean }
+            try {
+                result = await cancelGeneration({ generationId: id })
+            } catch (err) {
+                // Server call failed — do NOT remove local entries so UI stays consistent
+                const message = err instanceof Error ? err.message : "Failed to cancel generation"
+                throw new ServerGenerationError(message, "CANCEL_FAILED")
+            }
+
+            if (!result.success) {
+                // Generation was already completed/failed/cancelled — don't tear down local state
+                return
+            }
 
             const entry = activeGenerationsRef.current.find((item) => item.id === id)
             if (entry) {
@@ -434,7 +457,11 @@ export function useGenerateImage(
     }, [cancelGenerationById, currentGenerationId])
 
     const reset = React.useCallback(() => {
+        // Fire-and-forget server cancellation for each active generation
         for (const entry of activeGenerationsRef.current) {
+            void cancelGeneration({ generationId: entry.id }).catch(() => {
+                // Ignore cancellation failures during reset
+            })
             entry.reject?.(
                 new ServerGenerationError("Generation cancelled", "CANCELLED")
             )
@@ -446,7 +473,7 @@ export function useGenerateImage(
         setIsError(false)
         setError(null)
         setData(undefined)
-    }, [])
+    }, [cancelGeneration])
 
     return {
         generate,

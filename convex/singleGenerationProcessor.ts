@@ -226,7 +226,12 @@ export const processGeneration = internalAction({
                 const keysToDelete = [r2Key]
                 if (thumbnailResult?.url) keysToDelete.push(generateThumbnailKey(r2Key))
                 if (previewResult?.url) keysToDelete.push(generatePreviewKey(r2Key))
-                await deleteR2Objects(keysToDelete)
+                try {
+                    await deleteR2Objects(keysToDelete)
+                    console.log(`${logger} R2 cleanup succeeded for generation ${args.generationId}`)
+                } catch (err) {
+                    console.error(`${logger} R2 cleanup failed for generation ${args.generationId}:`, err)
+                }
                 return
             }
 

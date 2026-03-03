@@ -163,21 +163,25 @@ export async function uploadToR2(
  */
 export async function deleteR2Objects(keys: string[]): Promise<void> {
     if (keys.length === 0) return
-    const bucketName = process.env.R2_BUCKET_NAME
-    if (!bucketName) {
-        console.error("[R2 Cleanup] R2_BUCKET_NAME not configured, skipping delete")
-        return
+    try {
+        const bucketName = process.env.R2_BUCKET_NAME
+        if (!bucketName) {
+            console.error("[R2 Cleanup] R2_BUCKET_NAME not configured, skipping delete")
+            return
+        }
+        const client = await getS3Client()
+        await Promise.allSettled(
+            keys.map(async (key) => {
+                try {
+                    await client.send(new DeleteObjectCommand({ Bucket: bucketName, Key: key }))
+                } catch (err) {
+                    console.error(`[R2 Cleanup] Failed to delete ${key}:`, err)
+                }
+            })
+        )
+    } catch (err) {
+        console.error("[R2 Cleanup] Failed to initialise R2 client, skipping delete:", err)
     }
-    const client = await getS3Client()
-    await Promise.allSettled(
-        keys.map(async (key) => {
-            try {
-                await client.send(new DeleteObjectCommand({ Bucket: bucketName, Key: key }))
-            } catch (err) {
-                console.error(`[R2 Cleanup] Failed to delete ${key}:`, err)
-            }
-        })
-    )
 }
 
 // ============================================================

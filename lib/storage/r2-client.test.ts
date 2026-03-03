@@ -1,13 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
+// Hoisted mock for S3Client.send — shared between the mock factory and test code.
+// vi.hoisted ensures this runs before vi.mock factories.
+const { mockSend } = vi.hoisted(() => ({ mockSend: vi.fn() }));
+
 // Mock AWS S3 Client
 vi.mock("@aws-sdk/client-s3", () => {
-  const mockSend = vi.fn();
   const S3Client = vi.fn(function() {
     return { send: mockSend };
   });
-  // Attach mockSend to S3Client so we can access it in tests
-  (S3Client as any).mockSend = mockSend;
 
   return {
     S3Client,
@@ -20,7 +21,6 @@ vi.mock("@aws-sdk/client-s3", () => {
 
 import { S3Client } from "@aws-sdk/client-s3";
 const mockS3Client = S3Client as unknown as ReturnType<typeof vi.fn>;
-const mockSend = (S3Client as any).mockSend;
 
 // Mock process.env
 const originalEnv = process.env;
@@ -33,11 +33,16 @@ vi.mock("./retry", () => ({
 
 // Spy on crypto methods for deterministic test values
 import crypto from "crypto";
-const mockRandomUUID = vi.spyOn(crypto, "randomUUID").mockReturnValue("mock-uuid" as `${string}-${string}-${string}-${string}-${string}`);
-const mockCreateHash = vi.spyOn(crypto, "createHash").mockReturnValue({
+const MOCK_UUID = "00000000-0000-4000-8000-000000000000" satisfies `${string}-${string}-${string}-${string}-${string}`;
+const mockRandomUUID = vi.spyOn(crypto, "randomUUID").mockReturnValue(MOCK_UUID);
+
+// createHash is used only as .update().digest("hex") in the SUT, so we stub the
+// minimal chain.  We cast via Partial<crypto.Hash> to keep a single, narrow assertion.
+const mockHashInstance = {
     update: vi.fn().mockReturnThis(),
     digest: vi.fn().mockReturnValue("mock-user-hash"),
-} as unknown as crypto.Hash);
+} as Partial<crypto.Hash> as crypto.Hash;
+const mockCreateHash = vi.spyOn(crypto, "createHash").mockReturnValue(mockHashInstance);
 
 import {
   uploadImage,
@@ -179,7 +184,7 @@ describe("r2-client", () => {
       // Format: {type}/{userHash}/{timestamp}-{randomId}.{ext}
       // userHash for "user123" mocked to "mock-user-hash"
       // randomUUID mocked to "mock-uuid"
-      expect(key).toMatch(/^generated\/mock-user-hash\/\d+-mock-uuid\.png$/);
+      expect(key).toMatch(/^generated\/mock-user-hash\/\d+-00000000-0000-4000-8000-000000000000\.png$/);
     });
   });
 

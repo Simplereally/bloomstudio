@@ -134,8 +134,18 @@ export const getGenerationsStatus = query({
             return []
         }
 
+        // Dedupe and cap the number of IDs to prevent unbounded fan-out
+        const MAX_IDS = 100
+        const uniqueIds = [...new Set(args.generationIds)]
+        if (uniqueIds.length > MAX_IDS) {
+            throw new ConvexError({
+                code: "TOO_MANY_IDS",
+                message: `Cannot query more than ${MAX_IDS} generation IDs at once (got ${uniqueIds.length}).`,
+            })
+        }
+
         const generations = await Promise.all(
-            args.generationIds.map((generationId) => ctx.db.get(generationId))
+            uniqueIds.map((generationId) => ctx.db.get(generationId))
         )
 
         return generations.filter(

@@ -33,14 +33,15 @@ const mockGeneratedImagesById = new Map<string, {
 const mockStartGeneration = vi.fn()
 const mockCancelGeneration = vi.fn()
 
-// Mock Convex react hooks — differentiate the two useMutation calls
-let mutationCallIndex = 0
+// Map mutation references to their mock implementations
+const mutationMocks: Record<string, ReturnType<typeof vi.fn>> = {
+    "singleGeneration.startGeneration": mockStartGeneration,
+    "singleGeneration.cancelGeneration": mockCancelGeneration,
+}
+
 vi.mock("convex/react", () => ({
-    useMutation: () => {
-        const fns = [mockStartGeneration, mockCancelGeneration]
-        const fn = fns[mutationCallIndex % 2]
-        mutationCallIndex++
-        return fn
+    useMutation: (mutationRef: string) => {
+        return mutationMocks[mutationRef] ?? vi.fn()
     },
     useQuery: (
         _apiRef: unknown,
@@ -134,7 +135,6 @@ describe("useGenerateImage", () => {
         mockStartGeneration.mockReset()
         mockCancelGeneration.mockReset()
         mockAuthorize.mockReset()
-        mutationCallIndex = 0
     })
 
     it("starts generation via Convex mutation", async () => {
@@ -325,6 +325,7 @@ describe("useGenerateImage", () => {
 
     it("resets state correctly", async () => {
         mockStartGeneration.mockResolvedValueOnce("gen_123")
+        mockCancelGeneration.mockResolvedValue({ success: true })
 
         const { result, rerender } = renderHook(() => useGenerateImage(), {
             wrapper: TestWrapper,
@@ -552,6 +553,173 @@ describe("useGenerateImage", () => {
         // Only the *latest* callback should have been called
         expect(onSuccessFirst).not.toHaveBeenCalled()
         expect(onSuccessSecond).toHaveBeenCalledTimes(1)
+    })
+
+    // ======================================================================
+    // onMutate error handling
+    // ======================================================================
+
+    it("handles synchronous onMutate throw by setting error state and rejecting deferred", async () => {
+        const onMutate = vi.fn(() => {
+            throw new Error("onMutate exploded")
+        })
+        const onError = vi.fn()
+        const onSettled = vi.fn()
+
+        const { result } = renderHook(
+            () => useGenerateImage({ onMutate, onError, onSettled }),
+            { wrapper: TestWrapper }
+        )
+
+        let rejectedError: unknown
+        await act(async () => {
+            result.current.generateAsync({ prompt: "test" }).catch((e) => {
+                rejectedError = e
+            })
+        })
+
+        // Should not have called startGeneration
+        expect(mockStartGeneration).not.toHaveBeenCalled()
+
+        // Should set hook error state
+        expect(result.current.isError).toBe(true)
+        expect(result.current.error?.code).toBe("MUTATE_CALLBACK_FAILED")
+        expect(result.current.error?.message).toBe("onMutate exploded")
+
+        // Should call onError and onSettled
+        expect(onError).toHaveBeenCalledWith(
+            expect.objectContaining({ code: "MUTATE_CALLBACK_FAILED" }),
+            { prompt: "test" }
+        )
+        expect(onSettled).toHaveBeenCalledWith(
+            undefined,
+            expect.objectContaining({ code: "MUTATE_CALLBACK_FAILED" }),
+            { prompt: "test" }
+        )
+
+        // Deferred should have been rejected
+        expect(rejectedError).toBeInstanceOf(ServerGenerationError)
+    })
+
+    it("handles async onMutate rejection by setting error state", async () => {
+        const onMutate = vi.fn(async () => {
+            throw new Error("async onMutate failed")
+        })
+        const onError = vi.fn()
+
+        const { result } = renderHook(
+            () => useGenerateImage({ onMutate, onError }),
+            { wrapper: TestWrapper }
+        )
+
+        await act(async () => {
+            result.current.generate({ prompt: "test" })
+        })
+
+        expect(mockStartGeneration).not.toHaveBeenCalled()
+        expect(result.current.isError).toBe(true)
+        expect(result.current.error?.code).toBe("MUTATE_CALLBACK_FAILED")
+        expect(onError).toHaveBeenCalled()
+    })
+
+    // ======================================================================
+    // cancelGenerationById error handling
+    // ======================================================================
+
+    it("cancelGenerationById does not remove local state when server returns success: false", async () => {
+        const generationId = "gen_already_done"
+        mockStartGeneration.mockResolvedValueOnce(generationId)
+        mockCancelGeneration.mockResolvedValueOnce({ success: false })
+
+        const { result } = renderHook(() => useGenerateImage(), {
+            wrapper: TestWrapper,
+        })
+
+        await act(async () => {
+            result.current.generate({ prompt: "test" })
+        })
+
+        expect(result.current.isGenerating).toBe(true)
+
+        await act(async () => {
+            await result.current.cancelGenerationById(generationId as never)
+        })
+
+        // Local state should NOT be torn down since cancel was not successful
+        expect(result.current.isGenerating).toBe(true)
+        expect(result.current.currentGenerationId).toBe(generationId)
+    })
+
+    it("cancelGenerationById throws ServerGenerationError when server call fails", async () => {
+        const generationId = "gen_fail_cancel"
+        mockStartGeneration.mockResolvedValueOnce(generationId)
+        mockCancelGeneration.mockRejectedValueOnce(new Error("Network error"))
+
+        const { result } = renderHook(() => useGenerateImage(), {
+            wrapper: TestWrapper,
+        })
+
+        await act(async () => {
+            result.current.generate({ prompt: "test" })
+        })
+
+        expect(result.current.isGenerating).toBe(true)
+
+        let thrownError: unknown
+        await act(async () => {
+            try {
+                await result.current.cancelGenerationById(generationId as never)
+            } catch (e) {
+                thrownError = e
+            }
+        })
+
+        // Should throw a ServerGenerationError with CANCEL_FAILED code
+        expect(thrownError).toBeInstanceOf(ServerGenerationError)
+        expect((thrownError as ServerGenerationError).code).toBe("CANCEL_FAILED")
+
+        // Local state should NOT be removed
+        expect(result.current.isGenerating).toBe(true)
+        expect(result.current.currentGenerationId).toBe(generationId)
+    })
+
+    // ======================================================================
+    // reset() calls server cancellation
+    // ======================================================================
+
+    it("reset() calls server cancellation for each active generation", async () => {
+        mockStartGeneration
+            .mockResolvedValueOnce("gen_r1")
+            .mockResolvedValueOnce("gen_r2")
+        mockCancelGeneration.mockResolvedValue({ success: true })
+
+        const { result } = renderHook(() => useGenerateImage(), {
+            wrapper: TestWrapper,
+        })
+
+        await act(async () => {
+            result.current.generate({ prompt: "first" })
+        })
+        await act(async () => {
+            result.current.generate({ prompt: "second" })
+        })
+
+        expect(result.current.isGenerating).toBe(true)
+
+        act(() => {
+            result.current.reset()
+        })
+
+        // Should have called cancelGeneration for each active generation
+        expect(mockCancelGeneration).toHaveBeenCalledTimes(2)
+        expect(mockCancelGeneration).toHaveBeenCalledWith({ generationId: "gen_r1" })
+        expect(mockCancelGeneration).toHaveBeenCalledWith({ generationId: "gen_r2" })
+
+        // State should be fully reset
+        expect(result.current.isGenerating).toBe(false)
+        expect(result.current.isSuccess).toBe(false)
+        expect(result.current.data).toBeUndefined()
+        expect(result.current.error).toBeNull()
     })
 })
 

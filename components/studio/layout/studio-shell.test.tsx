@@ -75,12 +75,22 @@ vi.mock("@/components/studio/features/generation", () => ({
 }))
 
 vi.mock("@/components/studio/features/canvas", () => ({
-    CanvasFeature: ({ currentImage, isGenerating, queueItems, onCancelItem }: { currentImage: GeneratedImage | null; isGenerating: boolean; queueItems?: unknown[]; onCancelItem?: (id: string) => void }) => (
+    CanvasFeature: ({ currentImage, isGenerating, queueItems, onCancelItem }: { currentImage: GeneratedImage | null; isGenerating: boolean; queueItems?: Array<{ id: string; aspectRatio: number }>; onCancelItem?: (id: string) => void }) => (
         <div data-testid="canvas-feature">
             <span data-testid="canvas-has-image">{String(!!currentImage)}</span>
             <span data-testid="canvas-is-generating">{String(isGenerating)}</span>
             <span data-testid="canvas-queue-count">{queueItems?.length ?? 0}</span>
             <span data-testid="canvas-has-cancel">{String(typeof onCancelItem === "function")}</span>
+            <span data-testid="canvas-queue-ratios">{JSON.stringify(queueItems?.map(q => q.aspectRatio) ?? [])}</span>
+            {queueItems?.map((item) => (
+                <button
+                    key={item.id}
+                    data-testid={`queue-cancel-${item.id}`}
+                    onClick={() => onCancelItem?.(item.id)}
+                >
+                    Cancel {item.id}
+                </button>
+            ))}
         </div>
     ),
 }))
@@ -312,13 +322,20 @@ vi.mock("@/lib/errors", () => ({
     showErrorToast: vi.fn(),
 }))
 
+// Mutable mock for active generations query (used by useQuery mock)
+let mockActiveGenerations: unknown[] = []
+
 vi.mock("convex/react", () => ({
     useConvexAuth: vi.fn(() => ({
         isAuthenticated: true,
         isLoading: false,
     })),
     useMutation: vi.fn(() => vi.fn()),
-    useQuery: vi.fn(() => ({ status: "pro" })), // Default to pro for existing tests
+    useQuery: vi.fn((apiRef: unknown, args: unknown) => {
+        if (args === "skip") return undefined
+        if (apiRef === "getActiveGenerations") return mockActiveGenerations
+        return { status: "pro" }
+    }),
 }))
 
 // Mock UI components
@@ -371,6 +388,7 @@ describe("StudioShell", () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
+        mockActiveGenerations = []
     })
 
     it("renders all main components", () => {
@@ -544,6 +562,89 @@ describe("StudioShell", () => {
             await waitFor(() => {
                 expect(mockPromptManager.addToPromptHistory).toHaveBeenCalledWith("Test prompt")
             })
+        })
+    })
+
+    it("calls cancelGenerationById when queue-item cancel is clicked", async () => {
+        mockActiveGenerations = [
+            {
+                _id: "gen_abc",
+                status: "processing",
+                createdAt: 1000,
+                generationParams: { width: 1024, height: 1024 },
+            },
+        ]
+        mockCancelGenerationById.mockResolvedValueOnce({ success: true })
+
+        render(<StudioShell {...defaultProps} />)
+
+        fireEvent.click(screen.getByTestId("queue-cancel-gen_abc"))
+
+        await waitFor(() => {
+            expect(mockCancelGenerationById).toHaveBeenCalledTimes(1)
+            expect(mockCancelGenerationById).toHaveBeenCalledWith("gen_abc")
+        })
+    })
+
+    describe("Aspect Ratio Guard", () => {
+        it("clamps aspectRatio to 1 when height is 0 or missing", () => {
+            mockActiveGenerations = [
+                {
+                    _id: "gen_zero_h",
+                    status: "pending",
+                    createdAt: 1000,
+                    generationParams: { width: 1024, height: 0 },
+                },
+                {
+                    _id: "gen_missing_h",
+                    status: "processing",
+                    createdAt: 2000,
+                    generationParams: { width: 512 },
+                },
+                {
+                    _id: "gen_normal",
+                    status: "pending",
+                    createdAt: 3000,
+                    generationParams: { width: 1920, height: 1080 },
+                },
+            ]
+
+            render(<StudioShell {...defaultProps} />)
+
+            expect(screen.getByTestId("canvas-queue-count")).toHaveTextContent("3")
+
+            // Parse the rendered aspect ratios
+            const ratiosText = screen.getByTestId("canvas-queue-ratios").textContent
+            const ratios = JSON.parse(ratiosText!)
+
+            // height=0 → fallback to 1
+            expect(ratios[0]).toBe(1)
+            // missing height → defaults to 1024, so 512/1024 = 0.5
+            expect(ratios[1]).toBe(0.5)
+            // normal: 1920/1080 ≈ 1.778
+            expect(ratios[2]).toBeCloseTo(1920 / 1080, 5)
+        })
+
+        it("filters out non-pending/processing statuses from queue items", () => {
+            mockActiveGenerations = [
+                {
+                    _id: "gen_completed",
+                    status: "completed",
+                    createdAt: 1000,
+                    generationParams: { width: 1024, height: 1024 },
+                },
+                {
+                    _id: "gen_pending",
+                    status: "pending",
+                    createdAt: 2000,
+                    generationParams: { width: 1024, height: 1024 },
+                },
+            ]
+
+            render(<StudioShell {...defaultProps} />)
+
+            // Only the pending one should appear
+            expect(screen.getByTestId("canvas-queue-count")).toHaveTextContent("1")
         })
     })
 })

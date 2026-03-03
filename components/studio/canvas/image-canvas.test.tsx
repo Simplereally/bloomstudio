@@ -24,13 +24,16 @@ const mockImage: GeneratedImage = {
 }
 
 const createQueueItems = (count: number): QueueItem[] =>
-    Array.from({ length: count }, (_, i) => ({
-        id: `gen-${i + 1}`,
-        status: (i === 0 ? "processing" : "pending") as "processing" | "pending",
-        createdAt: Date.now() - (count - i) * 1000,
-        aspectRatio: 1,
-        labelIndex: i + 1,
-    }))
+    Array.from({ length: count }, (_, i) => {
+        const status: QueueItem["status"] = i === 0 ? "processing" : "pending"
+        return {
+            id: `gen-${i + 1}`,
+            status,
+            createdAt: Date.now() - (count - i) * 1000,
+            aspectRatio: 1,
+            labelIndex: i + 1,
+        }
+    })
 
 describe("ImageCanvas", () => {
     it("renders the canvas container", () => {

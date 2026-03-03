@@ -122,6 +122,7 @@ export function PromptSection({
   // Display state - updated via RAF batching to prevent lag
   const [characterCount, setCharacterCount] = React.useState(0);
   const [hasContent, setHasContent] = React.useState(false);
+  const [hasNegativeContent, setHasNegativeContent] = React.useState(false);
   const isNearLimit = characterCount > maxLength * 0.9;
 
   // Prompt library modal state
@@ -187,15 +188,20 @@ export function PromptSection({
     return unsubscribe;
   }, [subscribeToPrompt, getPrompt]);
 
-  // Subscribe to negative prompt changes (no display state needed, just RAF-batch any UI updates if added later)
+  // Subscribe to negative prompt changes for hasNegativeContent tracking
   React.useEffect(() => {
-    // Currently no UI display for negative prompt character count, 
-    // but subscription ensures setNegativePrompt flows through hook properly
-    const unsubscribe = subscribeToNegativePrompt(() => {
-      // Could add negative prompt character count here if needed
+    const unsubscribe = subscribeToNegativePrompt((value: string) => {
+      setHasNegativeContent(value.length > 0);
     });
+
+    // Initialize with current value
+    const initialValue = getNegativePrompt();
+    if (initialValue) {
+      setHasNegativeContent(initialValue.length > 0);
+    }
+
     return unsubscribe;
-  }, [subscribeToNegativePrompt]);
+  }, [subscribeToNegativePrompt, getNegativePrompt]);
 
   // Handle input changes - call setPrompt which notifies subscribers
   const handlePromptInput = React.useCallback(
@@ -442,6 +448,7 @@ export function PromptSection({
                           setLibraryOpen(true);
                         }
                       }}
+                      disabled={!hasNegativeContent}
                       className="relative right-auto bottom-auto"
                     />
                     <PromptLibraryButton
@@ -458,7 +465,7 @@ export function PromptSection({
                 {onEnhanceNegativePrompt && onCancelEnhanceNegativePrompt && (
                   <EnhanceButton
                     isEnhancing={isEnhancingNegativePrompt}
-                    disabled={!hasContent}
+                    disabled={!hasNegativeContent}
                     onEnhance={onEnhanceNegativePrompt}
                     onCancel={onCancelEnhanceNegativePrompt}
                     className="relative right-auto bottom-auto"

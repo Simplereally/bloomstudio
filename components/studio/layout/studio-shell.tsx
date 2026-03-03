@@ -250,15 +250,23 @@ export function StudioShell({
     const sorted = [...activeSingleList].sort(
       (a, b) => a.createdAt - b.createdAt,
     );
-    return sorted.map((g, i) => ({
-      id: g._id,
-      status: g.status as "pending" | "processing",
-      createdAt: g.createdAt,
-      aspectRatio:
-        (g.generationParams?.width ?? 1024) /
-        (g.generationParams?.height ?? 1024),
-      labelIndex: i + 1,
-    }));
+    return sorted
+      .filter(
+        (g): g is typeof g & { status: "pending" | "processing" } =>
+          g.status === "pending" || g.status === "processing",
+      )
+      .map((g, i) => {
+        const w = g.generationParams?.width ?? 1024;
+        const h = g.generationParams?.height ?? 1024;
+        const aspectRatio = h > 0 ? w / h : 1;
+        return {
+          id: g._id,
+          status: g.status,
+          createdAt: g.createdAt,
+          aspectRatio: Number.isFinite(aspectRatio) ? aspectRatio : 1,
+          labelIndex: i + 1,
+        };
+      });
   }, [activeSingleList]);
 
   const handleCancelSingleItem = React.useCallback(
