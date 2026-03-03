@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as admin from "../admin.js";
 import type * as batchGeneration from "../batchGeneration.js";
 import type * as batchProcessor from "../batchProcessor.js";
 import type * as contentAnalysis from "../contentAnalysis.js";
@@ -56,6 +57,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  admin: typeof admin;
   batchGeneration: typeof batchGeneration;
   batchProcessor: typeof batchProcessor;
   contentAnalysis: typeof contentAnalysis;
