@@ -47,6 +47,7 @@ import {
 
 // Hooks
 import { useGenerateImage } from "@/hooks/queries";
+import { useImageHistory } from "@/hooks/queries/use-image-history";
 import { useBatchMode } from "@/hooks/use-batch-mode";
 import {
   useEstimatedCost,
@@ -457,13 +458,56 @@ export function StudioShell({
   // ========================================
   // Gallery Images for Reference Image Pickers
   // ========================================
-  const [galleryImages, setGalleryImages] = React.useState<ThumbnailData[]>([]);
+  // Subscribe to image history directly so thumbnails are available immediately,
+  // even on mobile where the history drawer (and its gallery component) is rendered
+  // inside a portal that only mounts when the drawer is open.
+  // Convex deduplicates identical query subscriptions, so when the gallery panel
+  // is also mounted (desktop, or after opening the mobile drawer), there is no
+  // extra bandwidth cost.
+  const historyQuery = useImageHistory();
+
+  /** Map raw Convex paginated results to the ThumbnailData shape expected by controls. */
+  const baseGalleryImages: ThumbnailData[] = React.useMemo(
+    () =>
+      historyQuery.results.map((img) => {
+        const id = String(img._id);
+        return {
+          id,
+          _id: id,
+          _creationTime: img._creationTime,
+          url: img.url,
+          originalUrl: img.originalUrl,
+          visibility: img.visibility,
+          model: img.model,
+          contentType: img.contentType,
+          prompt: "",
+        };
+      }),
+    [historyQuery.results],
+  );
+
+  // When the gallery component is mounted (always on desktop; on mobile after the
+  // history drawer opens) it may have loaded additional pages via "load more". We
+  // store those extended results here so the reference image picker can show them
+  // too. The callback is intentionally memoised with useCallback so that passing
+  // it to GalleryFeature doesn't cause unnecessary re-renders.
+  const [extendedGalleryImages, setExtendedGalleryImages] = React.useState<
+    ThumbnailData[] | null
+  >(null);
   const handleGalleryImagesLoaded = React.useCallback(
     (images: ThumbnailData[]) => {
-      setGalleryImages(images);
+      setExtendedGalleryImages(images);
     },
     [],
   );
+
+  // Use the extended set from the gallery when available (it's a superset that
+  // includes "load more" pages), otherwise fall back to the direct subscription
+  // which provides at least the first page.
+  const galleryImages =
+    extendedGalleryImages && extendedGalleryImages.length > 0
+      ? extendedGalleryImages
+      : baseGalleryImages;
 
   // ========================================
   // Regenerate Handler

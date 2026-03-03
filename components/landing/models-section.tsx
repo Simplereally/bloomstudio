@@ -2,10 +2,13 @@ import { getActiveModels, isMonochromeLogo, type ModelDefinition } from "@/lib/c
 import { cn } from "@/lib/utils";
 import { ImageIcon, Sparkles, Video } from "lucide-react";
 import Image from "next/image";
+import { AlphaBadge } from "./alpha-badge";
 import { NsfwBadge } from "./nsfw-badge";
 import { ScrollReveal } from "./scroll-reveal";
 
 function ModelBadgeDetailed({ model }: { model: ModelDefinition }) {
+  const isAlpha = model.modelPricing.isAlpha === true;
+
   return (
     <div className="group relative flex items-center gap-3 p-3 px-4 rounded-xl bg-white/[0.06] border border-white/10 transition-all duration-300">
       {model.logo ? (
@@ -19,6 +22,7 @@ function ModelBadgeDetailed({ model }: { model: ModelDefinition }) {
         <span className="text-[14px] font-bold font-brand text-foreground uppercase tracking-tight truncate block">{model.displayName}</span>
       </div>
 
+      {isAlpha && <AlphaBadge />}
       {model.isUnrestricted && <NsfwBadge />}
     </div>
   );

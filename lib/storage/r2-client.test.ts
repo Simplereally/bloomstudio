@@ -36,13 +36,15 @@ import crypto from "crypto";
 const MOCK_UUID = "00000000-0000-4000-8000-000000000000" satisfies `${string}-${string}-${string}-${string}-${string}`;
 const mockRandomUUID = vi.spyOn(crypto, "randomUUID").mockReturnValue(MOCK_UUID);
 
-// createHash is used only as .update().digest("hex") in the SUT, so we stub the
-// minimal chain.  We cast via Partial<crypto.Hash> to keep a single, narrow assertion.
-const mockHashInstance = {
-    update: vi.fn().mockReturnThis(),
-    digest: vi.fn().mockReturnValue("mock-user-hash"),
-} as Partial<crypto.Hash> as crypto.Hash;
-const mockCreateHash = vi.spyOn(crypto, "createHash").mockReturnValue(mockHashInstance);
+// Create a real Hash instance so we get proper types without double-casting,
+// then stub only update/digest for deterministic test values.
+const realHashInstance = crypto.createHash("sha256");
+vi.spyOn(realHashInstance, "update").mockReturnThis();
+// digest() has overloads: (encoding: string) => string | (no args) => Buffer.
+// The SUT calls .digest("hex") which returns string, so we mock accordingly.
+// The spy's type signature picks the Buffer overload, so we narrow with a type parameter.
+vi.spyOn<crypto.Hash, "digest">(realHashInstance, "digest").mockReturnValue("mock-user-hash");
+const mockCreateHash = vi.spyOn(crypto, "createHash").mockReturnValue(realHashInstance);
 
 import {
   uploadImage,
@@ -57,6 +59,10 @@ import {
 describe("r2-client", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // clearAllMocks clears call history but not mock implementations, so
+    // a non-Once implementation (e.g. mockResolvedValue) set by one test
+    // would leak into the next. Reset mockSend explicitly to prevent this.
+    mockSend.mockReset();
     _resetClient();
     process.env = {
       ...originalEnv,

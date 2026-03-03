@@ -43,6 +43,9 @@ vi.mock("@/convex/_generated/api", () => ({
             getActiveGenerations: "getActiveGenerations",
             cancelGeneration: "cancelGeneration",
         },
+        generatedImages: {
+            getMyImages: "getMyImages",
+        },
     },
 }))
 
@@ -336,6 +339,11 @@ vi.mock("convex/react", () => ({
         if (apiRef === "getActiveGenerations") return mockActiveGenerations
         return { status: "pro" }
     }),
+    usePaginatedQuery: vi.fn(() => ({
+        results: [],
+        status: "Exhausted",
+        loadMore: vi.fn(),
+    })),
 }))
 
 // Mock UI components

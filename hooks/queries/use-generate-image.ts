@@ -188,11 +188,23 @@ export function useGenerateImage(
 
     const isGenerating = activeGenerationIds.length > 0
 
-    // Watch statuses for all active generations in one query
+    // Watch statuses for all active generations in one query.
+    // The server query throws TOO_MANY_IDS for >100 IDs, so we cap
+    // the polling window to the 100 most-recently started generations
+    // (last elements in the array, which are appended in start order).
+    const MAX_POLLED_IDS = 100
+    const polledGenerationIds = React.useMemo(
+        () =>
+            activeGenerationIds.length > MAX_POLLED_IDS
+                ? activeGenerationIds.slice(-MAX_POLLED_IDS)
+                : activeGenerationIds,
+        [activeGenerationIds]
+    )
+
     const generationStatuses = useQuery(
         api.singleGeneration.getGenerationsStatus,
-        activeGenerationIds.length > 0
-            ? { generationIds: activeGenerationIds }
+        polledGenerationIds.length > 0
+            ? { generationIds: polledGenerationIds }
             : "skip"
     )
 
@@ -231,37 +243,88 @@ export function useGenerateImage(
                 try {
                     if (generationStatus.status === "completed") {
                         if (!generationStatus.imageId) {
-                            continue
+                            const err = new ServerGenerationError(
+                                "Generation completed but no image ID was returned",
+                                "MISSING_IMAGE_ID"
+                            )
+
+                            if (!cancelled) {
+                                setError(err)
+                                setIsError(true)
+                            }
+
+                            callbacksRef.current.onError?.(err, entry.params)
+                            callbacksRef.current.onSettled?.(undefined, err, entry.params)
+                            entry.reject?.(err)
+                        } else {
+                            let generatedImage: Awaited<
+                                ReturnType<typeof convex.query<typeof api.generatedImages.getById>>
+                            >
+                            let fetchFailed = false
+
+                            try {
+                                generatedImage = await convex.query(api.generatedImages.getById, {
+                                    imageId: generationStatus.imageId,
+                                })
+                            } catch (queryError) {
+                                fetchFailed = true
+                                const message =
+                                    queryError instanceof Error
+                                        ? queryError.message
+                                        : "Failed to fetch generated image"
+                                const err = new ServerGenerationError(
+                                    message,
+                                    "IMAGE_FETCH_FAILED"
+                                )
+
+                                if (!cancelled) {
+                                    setError(err)
+                                    setIsError(true)
+                                }
+
+                                callbacksRef.current.onError?.(err, entry.params)
+                                callbacksRef.current.onSettled?.(undefined, err, entry.params)
+                                entry.reject?.(err)
+                                generatedImage = null
+                            }
+
+                            if (!fetchFailed && generatedImage === null) {
+                                const err = new ServerGenerationError(
+                                    "Generation completed but image could not be found",
+                                    "IMAGE_NOT_FOUND"
+                                )
+
+                                if (!cancelled) {
+                                    setError(err)
+                                    setIsError(true)
+                                }
+
+                                callbacksRef.current.onError?.(err, entry.params)
+                                callbacksRef.current.onSettled?.(undefined, err, entry.params)
+                                entry.reject?.(err)
+                            } else if (generatedImage) {
+                                const image: GeneratedImage = {
+                                    id: generatedImage._id,
+                                    url: generatedImage.url,
+                                    prompt: generatedImage.prompt,
+                                    params: entry.params as GeneratedImage["params"],
+                                    timestamp: generatedImage.createdAt,
+                                    r2Key: generatedImage.r2Key,
+                                    sizeBytes: generatedImage.sizeBytes,
+                                    contentType: generatedImage.contentType,
+                                }
+
+                                if (!cancelled) {
+                                    setData(image)
+                                    setIsSuccess(true)
+                                    invalidateBalance()
+                                }
+
+                                callbacksRef.current.onSuccess?.(image, entry.params)
+                                callbacksRef.current.onSettled?.(image, null, entry.params)
+                                entry.resolve?.(image)
+                            }
                         }
-
-                        const generatedImage = await convex.query(api.generatedImages.getById, {
-                            imageId: generationStatus.imageId,
-                        })
-
-                        if (!generatedImage) {
-                            continue
-                        }
-
-                        const image: GeneratedImage = {
-                            id: generatedImage._id,
-                            url: generatedImage.url,
-                            prompt: generatedImage.prompt,
-                            params: entry.params as GeneratedImage["params"],
-                            timestamp: generatedImage.createdAt,
-                            r2Key: generatedImage.r2Key,
-                            sizeBytes: generatedImage.sizeBytes,
-                            contentType: generatedImage.contentType,
-                        }
-
-                        if (!cancelled) {
-                            setData(image)
-                            setIsSuccess(true)
-                            invalidateBalance()
-                        }
-
-                        callbacksRef.current.onSuccess?.(image, entry.params)
-                        callbacksRef.current.onSettled?.(image, null, entry.params)
-                        entry.resolve?.(image)
                     } else if (generationStatus.status === "failed") {
                         const errorCode = generationStatus.errorCode
                         let codeString = "GENERATION_FAILED"
@@ -301,12 +364,19 @@ export function useGenerateImage(
                     }
                 } finally {
                     if (!cancelled) {
-                        setActiveGenerations((prev) =>
-                            prev.filter((item) => item.id !== generationId)
-                        )
-                        setCurrentGenerationId((prev) =>
-                            prev === generationId ? null : prev
-                        )
+                        setActiveGenerations((prev) => {
+                            const remaining = prev.filter((item) => item.id !== generationId)
+
+                            setCurrentGenerationId((prevId) => {
+                                if (prevId !== generationId) return prevId
+                                // The current ID just finished — fall back to the latest remaining
+                                return remaining.length > 0
+                                    ? remaining[remaining.length - 1].id
+                                    : null
+                            })
+
+                            return remaining
+                        })
                     }
                     processingGenerationIdsRef.current.delete(processingKey)
                 }
@@ -445,8 +515,18 @@ export function useGenerateImage(
                 )
             }
 
-            setActiveGenerations((prev) => prev.filter((item) => item.id !== id))
-            setCurrentGenerationId((prev) => (prev === id ? null : prev))
+            setActiveGenerations((prev) => {
+                const remaining = prev.filter((item) => item.id !== id)
+
+                setCurrentGenerationId((prevId) => {
+                    if (prevId !== id) return prevId
+                    return remaining.length > 0
+                        ? remaining[remaining.length - 1].id
+                        : null
+                })
+
+                return remaining
+            })
         },
         [cancelGeneration]
     )

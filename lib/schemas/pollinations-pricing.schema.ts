@@ -330,6 +330,7 @@ export const IMAGE_MODEL_PRICING: Record<string, ModelPricingDefinition> = {
         type: "image",
         approximatePerPollen: 400,
         supportsReferenceImage: false,
+        isAlpha: true,
         imagePricing: {
             perImage: 0.0025, // completionImageTokens from API
         },
