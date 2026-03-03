@@ -275,12 +275,31 @@ describe("ReferenceImagesBrowserModal", () => {
   });
 
   describe("selection", () => {
-    it("calls onSelect with url when a history image is clicked", () => {
+    it("calls onSelect with originalUrl when a history image is clicked", () => {
+      const historyWithOriginal = mockHistoryImages.map((img) => ({
+        ...img,
+        originalUrl: img.url.replace("thumb-", "original-"),
+      }));
+      render(
+        <ReferenceImagesBrowserModal
+          open={true}
+          {...defaultProps}
+          historyImages={historyWithOriginal}
+        />
+      );
+      const selectButton = screen.getByTestId("select-image-gen1");
+      fireEvent.click(selectButton);
+
+      // Should use the full-size originalUrl, not the thumbnail url
+      expect(mockOnSelect).toHaveBeenCalledWith("https://example.com/original-gen1.jpg");
+    });
+
+    it("falls back to thumbnail url when originalUrl is absent", () => {
       render(<ReferenceImagesBrowserModal open={true} {...defaultProps} />);
       const selectButton = screen.getByTestId("select-image-gen1");
       fireEvent.click(selectButton);
 
-      // History images now use the thumbnail url for selection (no separate originalUrl)
+      // No originalUrl on mock data → falls back to url
       expect(mockOnSelect).toHaveBeenCalledWith("https://example.com/thumb-gen1.jpg");
     });
 

@@ -4,6 +4,8 @@ export type PaginatedGalleryResult = {
     _id: string;
     _creationTime: number;
     url: string;
+    /** Original full-size URL (R2) — present when the gallery url is a thumbnail */
+    originalUrl?: string;
     visibility?: "public" | "unlisted";
     model?: string;
     contentType?: string;
@@ -16,6 +18,8 @@ export interface ThumbnailData {
   id: string;
   _id?: string;
   url: string;
+  /** Original full-size URL (R2) for use when the actual image content is needed (e.g. reference images) */
+  originalUrl?: string;
   prompt?: string;
   visibility?: "public" | "unlisted";
   model?: string;

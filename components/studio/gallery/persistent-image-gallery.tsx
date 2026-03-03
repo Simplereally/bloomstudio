@@ -252,6 +252,7 @@ export function PersistentImageGallery(props: PersistentImageGalleryProps) {
           _id: img._id,
           _creationTime: img._creationTime,
           url: img.url,
+          originalUrl: img.originalUrl,
           visibility: img.visibility,
           model: img.model,
           contentType: img.contentType,
@@ -317,6 +318,7 @@ export function PersistentImageGallery(props: PersistentImageGalleryProps) {
 
       // Get values from either format
       const url = img.url;
+      const originalUrl = (img as ThumbnailData).originalUrl;
       const visibility = img.visibility;
       const model = img.model;
       const contentType = img.contentType;
@@ -330,6 +332,7 @@ export function PersistentImageGallery(props: PersistentImageGalleryProps) {
       if (
         cached &&
         cached.url === url &&
+        cached.originalUrl === originalUrl &&
         cached.visibility === visibility &&
         cached.model === model &&
         cached.contentType === contentType
@@ -345,6 +348,7 @@ export function PersistentImageGallery(props: PersistentImageGalleryProps) {
         _id: id,
         _creationTime: creationTime,
         url,
+        originalUrl,
         visibility,
         model,
         contentType,

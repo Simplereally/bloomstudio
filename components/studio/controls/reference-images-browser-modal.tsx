@@ -267,7 +267,7 @@ export function ReferenceImagesBrowserModal({
             .map((img) => ({
                 _id: img.id,
                 url: img.url,
-                selectUrl: img.url,
+                selectUrl: img.originalUrl ?? img.url,
                 isDeletable: false,
             }))
     }, [historyImages, allowVideo])
