@@ -13,52 +13,60 @@ const mockReferenceImages = [
   { _id: "img4" as unknown as Id<"referenceImages">, _creationTime: Date.now(), ownerId: "user_1", r2Key: "reference/sunset.jpg", url: "https://example.com/sunset.jpg", filename: "sunset.jpg", contentType: "image/jpeg", sizeBytes: 400, width: 128, height: 128, createdAt: Date.now() },
 ];
 
-// Mock generated images (history) — passed as historyImages prop (ThumbnailData[])
-const mockHistoryImages = [
+// Mock generated images (history) — returned by useImageHistory hook
+const mockHistoryConvexResults = [
   {
-    id: "gen1",
     _id: "gen1",
+    _creationTime: Date.now(),
     url: "https://example.com/thumb-gen1.jpg",
     contentType: "image/png",
-    _creationTime: Date.now(),
     visibility: "public" as const,
     model: "flux",
-    prompt: "",
   },
   {
-    id: "gen2",
     _id: "gen2",
+    _creationTime: Date.now(),
     url: "https://example.com/thumb-gen2.jpg",
     contentType: "image/jpeg",
-    _creationTime: Date.now(),
     visibility: "public" as const,
     model: "flux",
-    prompt: "",
   },
   {
-    id: "gen3",
     _id: "gen3",
+    _creationTime: Date.now(),
     url: "https://example.com/thumb-gen3.mp4",
     contentType: "video/mp4",
-    _creationTime: Date.now(),
     visibility: "public" as const,
     model: "veo",
-    prompt: "",
   },
   {
-    id: "gen4",
     _id: "gen4",
+    _creationTime: Date.now(),
     url: "https://example.com/thumb-gen4.jpg",
     contentType: "image/webp",
-    _creationTime: Date.now(),
     visibility: "public" as const,
     model: "flux",
-    prompt: "",
   },
 ];
 
+// Default mock return for useImageHistory — "Exhausted" means all data loaded
+const mockLoadMore = vi.fn();
+const mockUseImageHistory = vi.fn().mockReturnValue({
+  results: mockHistoryConvexResults,
+  status: "Exhausted",
+  loadMore: mockLoadMore,
+});
+
 vi.mock("@/hooks/queries/use-reference-images", () => ({
   useReferenceImages: () => mockReferenceImages,
+}));
+
+vi.mock("@/hooks/queries/use-image-history", () => ({
+  useImageHistory: (...args: unknown[]) => mockUseImageHistory(...args),
+}));
+
+vi.mock("@/app/_server/actions/history", () => ({
+  loadMyHistoryPage: vi.fn().mockResolvedValue({ page: [], continueCursor: null, isDone: true }),
 }));
 
 vi.mock("@/hooks/mutations/use-delete-image", () => ({
@@ -84,19 +92,42 @@ vi.mock("@/components/studio/delete-image-dialog", () => ({
   ),
 }));
 
+// Mock @tanstack/react-virtual to avoid layout measurement issues in jsdom
+vi.mock("@tanstack/react-virtual", () => ({
+  useVirtualizer: ({ count, estimateSize }: { count: number; estimateSize: () => number }) => {
+    // Return all rows as virtual items so they render in tests
+    const items = Array.from({ length: count }, (_, i) => ({
+      index: i,
+      key: i,
+      start: i * estimateSize(),
+      size: estimateSize(),
+    }));
+    return {
+      getVirtualItems: () => items,
+      getTotalSize: () => count * estimateSize(),
+      measure: vi.fn(),
+    };
+  },
+}));
+
 describe("ReferenceImagesBrowserModal", () => {
   const mockOnSelect = vi.fn();
   const mockOnOpenChange = vi.fn();
 
-  /** Default props shared by most tests — includes historyImages so the History tab is populated */
+  /** Default props shared by most tests */
   const defaultProps = {
     onOpenChange: mockOnOpenChange,
     onSelect: mockOnSelect,
-    historyImages: mockHistoryImages,
   } as const;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset the mock to default return value
+    mockUseImageHistory.mockReturnValue({
+      results: mockHistoryConvexResults,
+      status: "Exhausted",
+      loadMore: mockLoadMore,
+    });
   });
 
   describe("rendering", () => {
@@ -275,32 +306,33 @@ describe("ReferenceImagesBrowserModal", () => {
   });
 
   describe("selection", () => {
-    it("calls onSelect with originalUrl when a history image is clicked", () => {
-      const historyWithOriginal = mockHistoryImages.map((img) => ({
-        ...img,
-        originalUrl: img.url.replace("thumb-", "original-"),
-      }));
-      render(
-        <ReferenceImagesBrowserModal
-          open={true}
-          {...defaultProps}
-          historyImages={historyWithOriginal}
-        />
-      );
-      const selectButton = screen.getByTestId("select-image-gen1");
-      fireEvent.click(selectButton);
-
-      // Should use the full-size originalUrl, not the thumbnail url
-      expect(mockOnSelect).toHaveBeenCalledWith("https://example.com/original-gen1.jpg");
-    });
-
-    it("falls back to thumbnail url when originalUrl is absent", () => {
+    it("calls onSelect with url when a history image is clicked (no originalUrl)", () => {
       render(<ReferenceImagesBrowserModal open={true} {...defaultProps} />);
       const selectButton = screen.getByTestId("select-image-gen1");
       fireEvent.click(selectButton);
 
       // No originalUrl on mock data → falls back to url
       expect(mockOnSelect).toHaveBeenCalledWith("https://example.com/thumb-gen1.jpg");
+    });
+
+    it("calls onSelect with originalUrl when a history image has originalUrl", () => {
+      // Override mock to include originalUrl
+      const resultsWithOriginal = mockHistoryConvexResults.map((img) => ({
+        ...img,
+        originalUrl: img.url.replace("thumb-", "original-"),
+      }));
+      mockUseImageHistory.mockReturnValue({
+        results: resultsWithOriginal,
+        status: "Exhausted",
+        loadMore: mockLoadMore,
+      });
+
+      render(<ReferenceImagesBrowserModal open={true} {...defaultProps} />);
+      const selectButton = screen.getByTestId("select-image-gen1");
+      fireEvent.click(selectButton);
+
+      // Should use the full-size originalUrl, not the thumbnail url
+      expect(mockOnSelect).toHaveBeenCalledWith("https://example.com/original-gen1.jpg");
     });
 
     it("calls onSelect with url when an uploaded image is clicked", () => {
@@ -345,6 +377,11 @@ describe("ReferenceImagesBrowserModal - state reset on reopen", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseImageHistory.mockReturnValue({
+      results: mockHistoryConvexResults,
+      status: "Exhausted",
+      loadMore: mockLoadMore,
+    });
   });
 
   it("resets search query when modal is reopened", () => {
@@ -353,7 +390,6 @@ describe("ReferenceImagesBrowserModal - state reset on reopen", () => {
         open={true}
         onOpenChange={mockOnOpenChange}
         onSelect={mockOnSelect}
-        historyImages={mockHistoryImages}
       />
     );
 
@@ -368,7 +404,6 @@ describe("ReferenceImagesBrowserModal - state reset on reopen", () => {
         open={false}
         onOpenChange={mockOnOpenChange}
         onSelect={mockOnSelect}
-        historyImages={mockHistoryImages}
       />
     );
 
@@ -378,7 +413,6 @@ describe("ReferenceImagesBrowserModal - state reset on reopen", () => {
         open={true}
         onOpenChange={mockOnOpenChange}
         onSelect={mockOnSelect}
-        historyImages={mockHistoryImages}
       />
     );
 
@@ -394,7 +428,6 @@ describe("ReferenceImagesBrowserModal - state reset on reopen", () => {
         open={true}
         onOpenChange={mockOnOpenChange}
         onSelect={mockOnSelect}
-        historyImages={mockHistoryImages}
       />
     );
 
@@ -409,7 +442,6 @@ describe("ReferenceImagesBrowserModal - state reset on reopen", () => {
         open={false}
         onOpenChange={mockOnOpenChange}
         onSelect={mockOnSelect}
-        historyImages={mockHistoryImages}
       />
     );
 
@@ -419,7 +451,6 @@ describe("ReferenceImagesBrowserModal - state reset on reopen", () => {
         open={true}
         onOpenChange={mockOnOpenChange}
         onSelect={mockOnSelect}
-        historyImages={mockHistoryImages}
       />
     );
 

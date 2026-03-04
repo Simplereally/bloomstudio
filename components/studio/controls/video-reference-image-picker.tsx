@@ -404,7 +404,7 @@ export function VideoReferenceImagePicker({
                 title={`Select ${browserFrameType === "lastFrame" ? "Last" : "First"} Frame`}
                 description="Choose a reference image from your library"
                 selectedUrls={selectedUrls}
-                allowVideo={true}
+                allowVideo={false}
                 historyImages={historyImages}
             />
         </div>

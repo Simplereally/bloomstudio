@@ -6,11 +6,11 @@ import * as React from "react"
 
 // Mock next/image
 vi.mock("next/image", () => ({
-    default: ({ src, alt, fill: _fill, sizes: _sizes, ...props }: { src: string | { src: string }; alt: string; fill?: boolean; sizes?: string } & React.ImgHTMLAttributes<HTMLImageElement>) => {
+    default: ({ src, alt, fill: _fill, sizes: _sizes, ...props }: { src: string | { src: string }; alt: string; fill?: boolean; sizes?: string; [key: string]: unknown }) => {
         void _fill
         void _sizes
-         
-        return <img src={typeof src === "string" ? src : src.src} alt={alt} {...props} />
+        const imgSrc = typeof src === "string" ? src : (src as { src: string }).src
+        return <img src={imgSrc} alt={alt} {...props} />
     },
 }))
 
@@ -57,6 +57,7 @@ describe("MediaPlayer", () => {
         render(<MediaPlayer url={videoUrl} alt="Test Video" contentType="video/mp4" />)
         const video = screen.getByTestId("media-video")
         expect(video).toBeInTheDocument()
+        // URL is directly on the <video> element's src attribute
         expect(video).toHaveAttribute("src", videoUrl)
         expect(video).toHaveAttribute("aria-label", "Test Video")
     })
@@ -66,6 +67,33 @@ describe("MediaPlayer", () => {
         const video = screen.getByTestId("media-video")
         expect(video).toBeInTheDocument()
         expect(video).toHaveAttribute("src", videoUrl)
+    })
+
+    it("does not render <source> child elements", () => {
+        render(<MediaPlayer url={videoUrl} alt="Test Video" contentType="video/mp4" />)
+        const video = screen.getByTestId("media-video")
+        // Should use src attribute directly, not <source> children
+        const source = video.querySelector("source")
+        expect(source).toBeNull()
+    })
+
+    it("uses preload=auto when autoPlay is true", () => {
+        render(<MediaPlayer url={videoUrl} autoPlay={true} contentType="video/mp4" />)
+        const video = screen.getByTestId("media-video")
+        expect(video).toHaveAttribute("preload", "auto")
+    })
+
+    it("uses preload=metadata when autoPlay is false", () => {
+        render(<MediaPlayer url={videoUrl} autoPlay={false} contentType="video/mp4" />)
+        const video = screen.getByTestId("media-video")
+        expect(video).toHaveAttribute("preload", "metadata")
+    })
+
+    it("renders video muted when autoPlay is true regardless of muted prop", () => {
+        render(<MediaPlayer url={videoUrl} autoPlay={true} muted={false} contentType="video/mp4" />)
+        const video = screen.getByTestId("media-video") as HTMLVideoElement
+        // Video should start muted — autoplay always starts muted
+        expect(video.muted).toBe(true)
     })
 
     it("shows loading spinner initially", () => {
@@ -97,6 +125,22 @@ describe("MediaPlayer", () => {
         fireEvent.error(img)
         expect(screen.getByText("Failed to load media")).toBeInTheDocument()
         expect(handleError).toHaveBeenCalled()
+    })
+
+    it("does not attach click handler when native controls are enabled", () => {
+        render(<MediaPlayer url={videoUrl} controls={true} contentType="video/mp4" />)
+        const video = screen.getByTestId("media-video") as HTMLVideoElement
+
+        // With native controls, handleVideoClick is undefined, so no onClick is attached.
+        // Clicking should not call preventDefault or interfere with native behavior.
+        video.play = vi.fn().mockResolvedValue(undefined)
+        video.pause = vi.fn()
+
+        fireEvent.click(video)
+
+        // Neither play nor pause should be called by our handler
+        expect(video.play).not.toHaveBeenCalled()
+        expect(video.pause).not.toHaveBeenCalled()
     })
 
     it("handles video click to play/pause when controls are disabled", async () => {

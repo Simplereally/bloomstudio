@@ -9,6 +9,16 @@
  * 
  * Video playback is managed by the useMediaPlayer hook which properly
  * handles the asynchronous nature of play() to prevent race conditions.
+ * 
+ * Chrome compatibility: The hook uses a muted autoplay strategy to work
+ * around Chrome's strict autoplay policy. The <video> element is rendered
+ * without the `autoPlay` attribute; instead, the hook programmatically
+ * calls play() after the video has loaded data. The video stays muted
+ * during autoplay — the user can unmute via native controls.
+ * 
+ * Native controls: When `controls` is true, the component does not attach
+ * a click handler to <video>, because the browser's native controls
+ * already toggle play/pause on click. This prevents the double-toggle bug.
  */
 
 import { cn } from "@/lib/utils"
@@ -86,6 +96,9 @@ export const MediaPlayer = React.memo(function MediaPlayer({
     } = useMediaPlayer({
         url,
         isVideo,
+        autoPlay,
+        muted,
+        controls,
         onLoad,
         onError,
         onClick,
@@ -108,16 +121,32 @@ export const MediaPlayer = React.memo(function MediaPlayer({
     if (isVideo) {
         return (
             <div className={cn("relative", className)}>
+                {/*
+                  * Chrome autoplay compatibility notes:
+                  * - No `autoPlay` attribute: the useMediaPlayer hook handles
+                  *   programmatic play() with a muted-start strategy.
+                  * - `preload="auto"` when autoPlay is requested: ensures Chrome
+                  *   buffers enough data for immediate playback instead of just
+                  *   fetching metadata headers.
+                  * - Using `src` directly on <video> instead of <source>: React
+                  *   does not call video.load() when <source> children change,
+                  *   so dynamic URL updates wouldn't take effect. The `src`
+                  *   attribute is detected as a prop change and triggers reload.
+                  * - `muted` starts as true when autoPlay is requested: the video
+                  *   stays muted to avoid Chrome pausing it. User can unmute via
+                  *   native controls.
+                  * - No onClick handler when controls=true: native controls
+                  *   already handle play/pause; adding our own would double-toggle.
+                  */}
                 <video
                     ref={videoRef}
                     src={url}
                     poster={poster}
-                    autoPlay={autoPlay}
                     controls={controls}
                     loop={loop}
-                    muted={muted}
+                    muted={autoPlay ? true : muted}
                     playsInline
-                    preload="metadata"
+                    preload={autoPlay ? "auto" : "metadata"}
                     aria-label={alt}
                     className={cn(
                         "w-full h-full object-contain",

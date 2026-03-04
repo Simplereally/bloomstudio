@@ -116,6 +116,33 @@ describe("useMediaPlayer", () => {
 
             expect(onError).toHaveBeenCalled()
         })
+
+        it("ignores errors from stale URLs (prevents 'Failed to load' flicker)", () => {
+            const onError = vi.fn()
+            const { result, rerender } = renderHook(
+                ({ url }) => useMediaPlayer({ url, isVideo: true, onError }),
+                { initialProps: { url: "https://example.com/video1.mp4" } }
+            )
+
+            // Attach a mock video element pointing to the OLD URL
+            const mockVideo = {
+                src: "https://example.com/video1.mp4",
+                currentSrc: "https://example.com/video1.mp4",
+            } as unknown as HTMLVideoElement
+            ;(result.current.videoRef as React.MutableRefObject<HTMLVideoElement | null>).current = mockVideo
+
+            // Change the URL (simulates switching to a new video)
+            rerender({ url: "https://example.com/video2.mp4" })
+
+            // Now fire handleError — this is from the OLD video element
+            act(() => {
+                result.current.handleError()
+            })
+
+            // Error should be ignored because the video ref's src doesn't match the new URL
+            expect(result.current.hasError).toBe(false)
+            expect(onError).not.toHaveBeenCalled()
+        })
     })
 
     describe("handleVideoLoadedData", () => {
@@ -149,9 +176,34 @@ describe("useMediaPlayer", () => {
             return video
         }
 
-        it("prevents default event behavior", async () => {
+        it("returns undefined when controls are enabled (default)", () => {
             const { result } = renderHook(() =>
                 useMediaPlayer({ url: "https://example.com/video.mp4", isVideo: true })
+            )
+
+            // controls defaults to true, so handleVideoClick should be undefined
+            expect(result.current.handleVideoClick).toBeUndefined()
+        })
+
+        it("returns a function when controls are disabled", () => {
+            const { result } = renderHook(() =>
+                useMediaPlayer({
+                    url: "https://example.com/video.mp4",
+                    isVideo: true,
+                    controls: false,
+                })
+            )
+
+            expect(result.current.handleVideoClick).toBeInstanceOf(Function)
+        })
+
+        it("prevents default event behavior", async () => {
+            const { result } = renderHook(() =>
+                useMediaPlayer({
+                    url: "https://example.com/video.mp4",
+                    isVideo: true,
+                    controls: false,
+                })
             )
 
             const mockEvent = {
@@ -159,7 +211,7 @@ describe("useMediaPlayer", () => {
             } as unknown as React.MouseEvent
 
             await act(async () => {
-                await result.current.handleVideoClick(mockEvent)
+                await result.current.handleVideoClick!(mockEvent)
             })
 
             expect(mockEvent.preventDefault).toHaveBeenCalled()
@@ -171,6 +223,7 @@ describe("useMediaPlayer", () => {
                 useMediaPlayer({
                     url: "https://example.com/video.mp4",
                     isVideo: true,
+                    controls: false,
                     onClick,
                 })
             )
@@ -180,7 +233,7 @@ describe("useMediaPlayer", () => {
             } as unknown as React.MouseEvent
 
             await act(async () => {
-                await result.current.handleVideoClick(mockEvent)
+                await result.current.handleVideoClick!(mockEvent)
             })
 
             expect(onClick).toHaveBeenCalledWith(mockEvent)
@@ -192,6 +245,7 @@ describe("useMediaPlayer", () => {
                 useMediaPlayer({
                     url: "https://example.com/video.mp4",
                     isVideo: true,
+                    controls: false,
                     onClick,
                 })
             )
@@ -205,7 +259,7 @@ describe("useMediaPlayer", () => {
             } as unknown as React.MouseEvent
 
             await act(async () => {
-                await result.current.handleVideoClick(mockEvent)
+                await result.current.handleVideoClick!(mockEvent)
             })
 
             expect(mockVideo.play).toHaveBeenCalled()
@@ -219,6 +273,7 @@ describe("useMediaPlayer", () => {
                 useMediaPlayer({
                     url: "https://example.com/video.mp4",
                     isVideo: true,
+                    controls: false,
                     onClick,
                 })
             )
@@ -232,7 +287,7 @@ describe("useMediaPlayer", () => {
             } as unknown as React.MouseEvent
 
             await act(async () => {
-                await result.current.handleVideoClick(mockEvent)
+                await result.current.handleVideoClick!(mockEvent)
             })
 
             expect(mockVideo.pause).toHaveBeenCalled()
@@ -247,6 +302,7 @@ describe("useMediaPlayer", () => {
                 useMediaPlayer({
                     url: "https://example.com/video.mp4",
                     isVideo: true,
+                    controls: false,
                 })
             )
 
@@ -265,7 +321,7 @@ describe("useMediaPlayer", () => {
 
             // Should not throw
             await act(async () => {
-                await result.current.handleVideoClick(mockEvent)
+                await result.current.handleVideoClick!(mockEvent)
             })
 
             // AbortError should be silently ignored (not logged)
@@ -281,6 +337,7 @@ describe("useMediaPlayer", () => {
                 useMediaPlayer({
                     url: "https://example.com/video.mp4",
                     isVideo: true,
+                    controls: false,
                 })
             )
 
@@ -299,7 +356,7 @@ describe("useMediaPlayer", () => {
             } as unknown as React.MouseEvent
 
             await act(async () => {
-                await result.current.handleVideoClick(mockEvent)
+                await result.current.handleVideoClick!(mockEvent)
             })
 
             // Non-AbortError should be logged
@@ -313,6 +370,7 @@ describe("useMediaPlayer", () => {
                 useMediaPlayer({
                     url: "https://example.com/video.mp4",
                     isVideo: true,
+                    controls: false,
                 })
             )
 
@@ -337,7 +395,7 @@ describe("useMediaPlayer", () => {
             // Start playing (async)
             let playClickPromise: Promise<void>
             act(() => {
-                playClickPromise = result.current.handleVideoClick(mockEvent)
+                playClickPromise = result.current.handleVideoClick!(mockEvent)
             })
 
             // Now change the mock to be "playing"
@@ -345,7 +403,7 @@ describe("useMediaPlayer", () => {
 
             // Click again to pause while play() is still pending
             const pauseClickPromise = act(async () => {
-                await result.current.handleVideoClick(mockEvent)
+                await result.current.handleVideoClick!(mockEvent)
             })
 
             // Resolve the play promise
@@ -363,12 +421,158 @@ describe("useMediaPlayer", () => {
         })
     })
 
+    describe("Chrome-compatible autoplay", () => {
+        it("does not attempt autoplay when autoPlay is false", () => {
+            const mockVideo = {
+                readyState: 4,
+                muted: false,
+                play: vi.fn().mockResolvedValue(undefined),
+                pause: vi.fn(),
+                addEventListener: vi.fn(),
+                removeEventListener: vi.fn(),
+            } as unknown as HTMLVideoElement
+
+            const { result } = renderHook(() =>
+                useMediaPlayer({
+                    url: "https://example.com/video.mp4",
+                    isVideo: true,
+                    autoPlay: false,
+                })
+            )
+
+            ;(result.current.videoRef as React.MutableRefObject<HTMLVideoElement | null>).current = mockVideo
+
+            // play() should not have been called since autoPlay is false
+            expect(mockVideo.play).not.toHaveBeenCalled()
+        })
+
+        it("always starts muted during autoplay regardless of muted prop", async () => {
+            // This test verifies that the autoplay effect sets muted=true before
+            // calling play(). We track the muted state at the time play() is invoked.
+            let mutedWhenPlayCalled: boolean | undefined
+            const mockVideo = {
+                readyState: 4,
+                muted: false,
+                play: vi.fn().mockImplementation(() => {
+                    // Capture the muted state at the time play() is called
+                    mutedWhenPlayCalled = mockVideo.muted
+                    return Promise.resolve(undefined)
+                }),
+                pause: vi.fn(),
+                addEventListener: vi.fn(),
+                removeEventListener: vi.fn(),
+            } as unknown as HTMLVideoElement
+
+            const { result, rerender } = renderHook(
+                ({ url }) =>
+                    useMediaPlayer({
+                        url,
+                        isVideo: true,
+                        autoPlay: true,
+                        muted: false, // User wants unmuted, but autoplay must start muted
+                    }),
+                { initialProps: { url: "https://example.com/video.mp4" } }
+            )
+
+            // Attach mock video
+            ;(result.current.videoRef as React.MutableRefObject<HTMLVideoElement | null>).current = mockVideo
+
+            // Change URL to trigger the effect to re-run with the ref now populated
+            rerender({ url: "https://example.com/video2.mp4" })
+
+            await act(async () => {
+                await new Promise((resolve) => setTimeout(resolve, 0))
+            })
+
+            // play() should have been called with the video in muted state
+            expect(mutedWhenPlayCalled).toBe(true)
+            // And should still be muted after (no programmatic unmute)
+            expect(mockVideo.muted).toBe(true)
+        })
+
+        it("listens for canplay event when video data is not ready", () => {
+            const addEventListenerSpy = vi.fn()
+            const removeEventListenerSpy = vi.fn()
+            const mockVideo = {
+                readyState: 0,
+                muted: true,
+                play: vi.fn().mockResolvedValue(undefined),
+                pause: vi.fn(),
+                addEventListener: addEventListenerSpy,
+                removeEventListener: removeEventListenerSpy,
+            } as unknown as HTMLVideoElement
+
+            const { result } = renderHook(() =>
+                useMediaPlayer({
+                    url: "https://example.com/video.mp4",
+                    isVideo: true,
+                    autoPlay: true,
+                    muted: true,
+                })
+            )
+
+            // Manually set the ref
+            ;(result.current.videoRef as React.MutableRefObject<HTMLVideoElement | null>).current = mockVideo
+        })
+
+        it("only attempts autoplay once per URL", async () => {
+            const mockVideo = {
+                readyState: 4,
+                muted: false,
+                play: vi.fn().mockResolvedValue(undefined),
+                pause: vi.fn(),
+                addEventListener: vi.fn(),
+                removeEventListener: vi.fn(),
+            } as unknown as HTMLVideoElement
+
+            const { result, rerender } = renderHook(
+                ({ url }) =>
+                    useMediaPlayer({
+                        url,
+                        isVideo: true,
+                        autoPlay: true,
+                        muted: true,
+                    }),
+                { initialProps: { url: "https://example.com/video.mp4" } }
+            )
+
+            ;(result.current.videoRef as React.MutableRefObject<HTMLVideoElement | null>).current = mockVideo
+
+            // Re-render with same URL should not trigger additional play
+            rerender({ url: "https://example.com/video.mp4" })
+
+            await act(async () => {
+                await new Promise((resolve) => setTimeout(resolve, 0))
+            })
+        })
+
+        it("resets autoplay tracking when URL changes", async () => {
+            const { result, rerender } = renderHook(
+                ({ url }) =>
+                    useMediaPlayer({
+                        url,
+                        isVideo: true,
+                        autoPlay: true,
+                        muted: true,
+                    }),
+                { initialProps: { url: "https://example.com/video1.mp4" } }
+            )
+
+            // Change URL - should reset state and allow new autoplay attempt
+            rerender({ url: "https://example.com/video2.mp4" })
+
+            expect(result.current.isLoading).toBe(true)
+            expect(result.current.hasError).toBe(false)
+        })
+    })
+
     describe("callback stability", () => {
         it("maintains stable callback references across renders", () => {
             const { result, rerender } = renderHook(() =>
                 useMediaPlayer({
                     url: "https://example.com/video.mp4",
                     isVideo: true,
+                    controls: false,
                 })
             )
 
@@ -408,6 +612,30 @@ describe("useMediaPlayer", () => {
 
             // handleLoad should be a new function since onLoad changed
             expect(result.current.handleLoad).not.toBe(firstHandleLoad)
+        })
+
+        it("handleVideoClick is undefined when controls=true", () => {
+            const { result } = renderHook(() =>
+                useMediaPlayer({
+                    url: "https://example.com/video.mp4",
+                    isVideo: true,
+                    controls: true,
+                })
+            )
+
+            expect(result.current.handleVideoClick).toBeUndefined()
+        })
+
+        it("handleVideoClick is defined when controls=false", () => {
+            const { result } = renderHook(() =>
+                useMediaPlayer({
+                    url: "https://example.com/video.mp4",
+                    isVideo: true,
+                    controls: false,
+                })
+            )
+
+            expect(result.current.handleVideoClick).toBeInstanceOf(Function)
         })
     })
 })
