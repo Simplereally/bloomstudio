@@ -101,12 +101,14 @@ function CapillaryProgress({ progress }: { progress: number }) {
 }
 
 /**
- * QueueCardGrid - Grid view of active single generations that take up the canvas.
+ * QueueCardGrid - Memoized grid view of active single generations.
  *
+ * Wrapped in React.memo so that unrelated state changes in ImageCanvas
+ * (e.g. imageLoaded, imageError) don't cascade into this subtree.
  * Each card shows an aspect-ratio frame, a spinner, a status label,
  * and a per-card Stop button.
  */
-function QueueCardGrid({
+const QueueCardGrid = React.memo(function QueueCardGrid({
     items,
     onCancel,
 }: {
@@ -137,14 +139,13 @@ function QueueCardGrid({
                             key={item.id}
                             item={item}
                             onCancel={onCancel}
-                            totalCount={items.length}
                         />
                     ))}
                 </AnimatePresence>
             </div>
         </div>
     )
-}
+})
 
 /** Ticks every second, returning elapsed seconds since `startMs`. */
 function useElapsedSeconds(startMs: number): number {
@@ -166,17 +167,50 @@ function useElapsedSeconds(startMs: number): number {
     return Math.max(0, elapsed)
 }
 
-function QueueCard({
+/**
+ * ElapsedTimer — Isolated component that owns the per-second tick.
+ *
+ * By extracting the `useElapsedSeconds` hook into this leaf component,
+ * the every-second state update only re-renders this tiny <span>,
+ * NOT the entire QueueCard (which owns Framer Motion layout animations,
+ * the stop button, gradient overlays, etc.).
+ */
+function ElapsedTimer({
+    startMs,
+    isProcessing,
+}: {
+    startMs: number
+    isProcessing: boolean
+}) {
+    const elapsed = useElapsedSeconds(startMs)
+
+    return (
+        <span
+            className={cn(
+                "text-[10px] font-mono tabular-nums leading-none",
+                isProcessing ? "text-primary/70" : "text-muted-foreground/50"
+            )}
+            aria-label={`${elapsed} seconds elapsed`}
+        >
+            {elapsed}s
+        </span>
+    )
+}
+
+/**
+ * QueueCard — Memoized so it skips re-renders when the parent grid
+ * re-renders due to items being added/removed (only the changed cards
+ * re-render). The per-second timer is isolated in `ElapsedTimer`.
+ */
+const QueueCard = React.memo(function QueueCard({
     item,
     onCancel,
 }: {
     item: QueueItem
     onCancel?: (id: string) => void
-    totalCount: number
 }) {
     const isProcessing = item.status === "processing"
     const statusLabel = isProcessing ? "Generating" : "Queued"
-    const elapsed = useElapsedSeconds(item.createdAt)
 
     const isTall = item.aspectRatio < 1
 
@@ -216,15 +250,7 @@ function QueueCard({
                         isProcessing ? "text-primary" : "text-muted-foreground/60"
                     )}
                 />
-                <span
-                    className={cn(
-                        "text-[10px] font-mono tabular-nums leading-none",
-                        isProcessing ? "text-primary/70" : "text-muted-foreground/50"
-                    )}
-                    aria-label={`${elapsed} seconds elapsed`}
-                >
-                    {elapsed}s
-                </span>
+                <ElapsedTimer startMs={item.createdAt} isProcessing={isProcessing} />
                 <span
                     className={cn(
                         "text-[10px] font-medium leading-tight text-center",
@@ -258,7 +284,7 @@ function QueueCard({
             </div>
         </motion.div>
     )
-}
+})
 
 export const ImageCanvas = React.memo(function ImageCanvas({
     image,
