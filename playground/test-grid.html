@@ -51,6 +51,12 @@ function render(items) {
   c.innerHTML = '';
 
   const count = items.length;
+  if (count === 0) {
+    c.style.gridTemplateColumns = '';
+    c.style.gridTemplateRows = '';
+    return;
+  }
+
   const cols = count <= 2 ? 2 : count <= 4 ? 2 : count <= 6 ? 3 : 4;
   const rows = Math.ceil(count / cols);
 

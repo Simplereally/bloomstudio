@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils"
 import type { ThumbnailData } from "@/components/studio/gallery/types"
 import { Image as ImageIcon, Loader2, X, Plus, MoreHorizontal } from "lucide-react"
 import Image from "next/image"
-import { useRef, useState, useCallback, useMemo } from "react"
+import { useRef, useState, useCallback, useMemo, type ChangeEvent } from "react"
 import { toast } from "sonner"
 
 /** Internal image component with loading skeleton transition */
@@ -60,7 +60,7 @@ export interface VideoReferenceFrames {
     frames: string[]
 }
 
-interface VideoReferenceFramesPickerProps {
+export interface VideoReferenceFramesPickerProps {
     /** Currently selected reference frame URLs */
     frames: string[]
     /** Callback when frames change */
@@ -123,7 +123,7 @@ export function VideoReferenceFramesPicker({
         fileInputRefs.current.get(key)?.click()
     }, [])
 
-    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>, targetIndex: number | "new") => {
+    const handleUpload = async (e: ChangeEvent<HTMLInputElement>, targetIndex: number | "new") => {
         const file = e.target.files?.[0]
         if (!file) return
 

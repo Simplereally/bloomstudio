@@ -47,12 +47,16 @@ export const create = mutation({
 
 /**
  * Set or clear a reaction (like/dislike) on a music generation.
- * Passing the same reaction again clears it (toggle behavior).
+ *
+ * The client computes the desired reaction (including clearing via omission)
+ * and sends the final value — no server-side toggle logic. This eliminates
+ * client-server desync when the client's optimistic state diverges from
+ * the server's persisted state (e.g. due to stale data or concurrent mutations).
  */
 export const setReaction = mutation({
     args: {
         generationId: v.id("musicGenerations"),
-        reaction: v.union(v.literal("like"), v.literal("dislike")),
+        reaction: v.optional(v.union(v.literal("like"), v.literal("dislike"))),
     },
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity()
@@ -69,13 +73,9 @@ export const setReaction = mutation({
             throw new Error("Not authorized to modify this generation")
         }
 
-        // Toggle: if same reaction already set, clear it; otherwise set it
-        const newReaction =
-            generation.reaction === args.reaction ? undefined : args.reaction
+        await ctx.db.patch(args.generationId, { reaction: args.reaction })
 
-        await ctx.db.patch(args.generationId, { reaction: newReaction })
-
-        return { reaction: newReaction ?? null }
+        return { reaction: args.reaction ?? null }
     },
 })
 

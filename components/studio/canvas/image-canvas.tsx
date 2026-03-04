@@ -212,7 +212,9 @@ const QueueCard = React.memo(function QueueCard({
     const isProcessing = item.status === "processing"
     const statusLabel = isProcessing ? "Generating" : "Queued"
 
-    const isTall = item.aspectRatio < 1
+    const raw = item.aspectRatio
+    const aspectRatio = Number.isFinite(raw) && raw > 0 ? raw : 1
+    const isTall = aspectRatio < 1
 
     return (
         <motion.div
@@ -231,7 +233,7 @@ const QueueCard = React.memo(function QueueCard({
                         : "border-primary/15 shadow-black/40"
                 )}
                 style={{
-                    aspectRatio: item.aspectRatio,
+                    aspectRatio,
                     width: isTall ? "auto" : "100%",
                     height: isTall ? "100%" : "auto",
                     maxWidth: "100%",

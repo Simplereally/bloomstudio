@@ -181,11 +181,31 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
     options: DEFAULT_MUSIC_OPTIONS,
   })
 
+  // Convex IDs dismissed during this session (via removeTrack / clearTracks).
+  // Prevents historical records from reappearing in mergedTracks after
+  // the user clears or removes them, without destructively deleting data.
+  const dismissedConvexIdsRef = React.useRef<Set<string>>(new Set())
+
+  // Session track IDs (UUIDs) removed/cleared before their convexId arrived.
+  // When persistPromise.then() resolves for a track in this set, we add
+  // the newly-known convexId to dismissedConvexIdsRef so the historical
+  // record is suppressed as soon as it appears in the Convex subscription.
+  const dismissedTrackIdsRef = React.useRef<Set<string>>(new Set())
+
+  // Pending reactions for tracks whose convexId hasn't arrived yet.
+  // Maps trackId → the latest reaction value set by the user.
+  // Entries are flushed in persistPromise.then() once the convexId is known.
+  const pendingReactionsRef = React.useRef<Map<string, "like" | "dislike">>(new Map())
+
   // Merge in-session tracks with historical Convex records.
   // Session tracks (those with audio blobs) take priority over Convex records.
   // Historical tracks appear after session tracks, deduplicated by convexId.
+  // Tracks whose convexId appears in dismissedConvexIdsRef are excluded —
+  // this lets clearTracks/removeTrack hide persisted records without deletion.
   const mergedTracks = React.useMemo(() => {
     if (!historicalGenerations) return state.tracks
+
+    const dismissed = dismissedConvexIdsRef.current
 
     // Collect convexIds from session tracks to avoid duplicates
     const sessionConvexIds = new Set(
@@ -196,12 +216,14 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
 
     // Map Convex documents to MusicGenerationResult format.
     // Historical tracks use persisted audio URLs from R2 storage.
-    // Filter out tracks without valid audio URLs (upload may have failed)
-    // and tracks with unrecognised model values (schema drift).
+    // Filter out tracks without valid audio URLs (upload may have failed),
+    // tracks with unrecognised model values (schema drift),
+    // and tracks dismissed during this session.
     const historicalTracks: MusicGenerationResult[] = historicalGenerations
       .filter(
         (doc) =>
           !sessionConvexIds.has(doc._id) &&
+          !dismissed.has(doc._id) &&
           doc.audioUrl &&
           isValidMusicModel(doc.model),
       )
@@ -223,6 +245,12 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
 
     return [...state.tracks, ...historicalTracks]
   }, [state.tracks, historicalGenerations])
+
+  // Ref to hold current merged tracks for use in callbacks without stale closures
+  const mergedTracksRef = React.useRef(mergedTracks)
+  React.useEffect(() => {
+    mergedTracksRef.current = mergedTracks
+  }, [mergedTracks])
 
   // Map of in-flight generations: trackId → AbortController
   const inFlightRef = React.useRef<Map<string, AbortController>>(new Map())
@@ -409,6 +437,16 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
       persistPromise.then((convexId) => {
         if (convexId) {
           const id: string = convexId
+
+          // If the track was removed/cleared before the convexId arrived,
+          // immediately dismiss the convexId so the historical record
+          // doesn't resurface when the Convex subscription delivers it.
+          if (dismissedTrackIdsRef.current.has(trackId)) {
+            dismissedTrackIdsRef.current.delete(trackId)
+            dismissedConvexIdsRef.current.add(id)
+            return
+          }
+
           setState((prev) => ({
             ...prev,
             currentTrack:
@@ -419,6 +457,28 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
               t.id === trackId ? { ...t, convexId: id } : t
             ),
           }))
+
+          // Flush any pending reaction that was queued before convexId arrived.
+          const pendingReaction = pendingReactionsRef.current.get(trackId)
+          if (pendingReaction) {
+            pendingReactionsRef.current.delete(trackId)
+            const generationId = asConvexId(id)
+            if (generationId) {
+              setReactionMutation({ generationId, reaction: pendingReaction }).catch(() => {
+                // Revert optimistic update on failure
+                setState((prev) => ({
+                  ...prev,
+                  tracks: prev.tracks.map((t) =>
+                    t.id === trackId ? { ...t, reaction: null } : t
+                  ),
+                  currentTrack:
+                    prev.currentTrack?.id === trackId
+                      ? { ...prev.currentTrack, reaction: null }
+                      : prev.currentTrack,
+                }))
+              })
+            }
+          }
         }
       })
     } catch (err) {
@@ -463,13 +523,15 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
         isGenerating: inFlightRef.current.size > 0,
       }))
     }
-  }, [apiKey, authorize, createGeneration])
+  }, [apiKey, authorize, createGeneration, setReactionMutation])
 
   const cancel = React.useCallback((trackId?: string) => {
+    let wasInFlight = false
     if (trackId) {
       // Cancel a specific generation
       const controller = inFlightRef.current.get(trackId)
       if (controller) {
+        wasInFlight = true
         controller.abort()
         inFlightRef.current.delete(trackId)
       }
@@ -480,7 +542,9 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
     }
 
     setState((prev) => {
-      const cancelledIds = trackId ? [trackId] : prev.tracks.filter((t) => t.status === "generating").map((t) => t.id)
+      const cancelledIds = trackId
+        ? wasInFlight ? [trackId] : []
+        : prev.tracks.filter((t) => t.status === "generating").map((t) => t.id)
       return {
         ...prev,
         tracks: prev.tracks.filter((t) => !cancelledIds.includes(t.id)),
@@ -508,6 +572,22 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
       inFlightRef.current.delete(trackId)
     }
 
+    // Clear any pending reaction for this track
+    pendingReactionsRef.current.delete(trackId)
+
+    // Dismiss by convexId so historical records don't reappear via mergedTracks.
+    // For session tracks, the convexId may differ from trackId; for historical
+    // tracks the trackId IS the convexId (set in mergedTracks mapping).
+    const mergedTrack = mergedTracksRef.current.find((t) => t.id === trackId)
+    if (mergedTrack?.convexId) {
+      dismissedConvexIdsRef.current.add(mergedTrack.convexId)
+    } else {
+      // No convexId yet — persistence may still be in-flight.
+      // Record the trackId so persistPromise.then() can dismiss the
+      // convexId when it arrives, preventing a ghost reappearance.
+      dismissedTrackIdsRef.current.add(trackId)
+    }
+
     setState((prev) => {
       const trackToRemove = prev.tracks.find((t) => t.id === trackId)
       if (trackToRemove?.audioUrl) {
@@ -532,6 +612,22 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
     // Abort all in-flight
     inFlightRef.current.forEach((ctrl) => ctrl.abort())
     inFlightRef.current.clear()
+
+    // Clear all pending reactions
+    pendingReactionsRef.current.clear()
+
+    // Dismiss all currently-visible tracks so historical records don't
+    // reappear in mergedTracks after state.tracks is emptied.
+    for (const track of mergedTracksRef.current) {
+      if (track.convexId) {
+        dismissedConvexIdsRef.current.add(track.convexId)
+      } else {
+        // Session track whose persistence hasn't completed yet.
+        // Record the trackId so persistPromise.then() can dismiss the
+        // convexId when it arrives.
+        dismissedTrackIdsRef.current.add(track.id)
+      }
+    }
 
     setState((prev) => {
       prev.tracks.forEach((track) => {
@@ -558,12 +654,6 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
     }))
   }, [])
 
-  // Ref to hold current merged tracks for use in callbacks without stale closures
-  const mergedTracksRef = React.useRef(mergedTracks)
-  React.useEffect(() => {
-    mergedTracksRef.current = mergedTracks
-  }, [mergedTracks])
-
   const setReaction = React.useCallback((trackId: string, reaction: "like" | "dislike") => {
     // Optimistic update for session tracks
     setState((prev) => ({
@@ -584,12 +674,16 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
 
     // Find the track from merged tracks (includes both session + historical)
     const track = mergedTracksRef.current.find((t) => t.id === trackId)
+    // Compute the toggled value once — identical logic to the optimistic update.
+    const newReaction = track?.reaction === reaction ? undefined : reaction
     const generationId = track ? asConvexId(track.convexId) : undefined
     if (track && generationId) {
       const previousReaction = track.reaction
+      // Send the exact desired state to the server — no server-side toggle.
+      // `undefined` (omitted) clears the reaction; a value sets it.
       setReactionMutation({
         generationId,
-        reaction,
+        reaction: newReaction,
       }).catch(() => {
         // Revert optimistic update on failure (for session tracks only;
         // historical tracks will be reverted automatically via useQuery)
@@ -604,6 +698,16 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
               : prev.currentTrack,
         }))
       })
+    } else if (track) {
+      // No convexId yet — queue the reaction so it's applied once the
+      // convexId arrives via persistPromise.then(). We store the toggled
+      // value to match the optimistic UI update above.
+      if (newReaction) {
+        pendingReactionsRef.current.set(trackId, newReaction)
+      } else {
+        // Toggled off — remove from pending queue
+        pendingReactionsRef.current.delete(trackId)
+      }
     }
   }, [setReactionMutation])
 

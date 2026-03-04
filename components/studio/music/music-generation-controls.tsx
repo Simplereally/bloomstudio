@@ -29,6 +29,7 @@ import {
   MUSIC_PROVIDERS,
   ELEVENMUSIC_DURATION_RANGE,
   type MusicProvider,
+  type MusicModel,
   formatMusicDuration,
 } from "@/lib/music-api"
 import type { MusicGenerationOptions } from "@/hooks/use-music-generation"
@@ -36,6 +37,7 @@ import {
   Clock,
   Guitar,
 } from "lucide-react"
+import * as RadioGroupPrimitive from "@radix-ui/react-radio-group"
 import * as React from "react"
 
 // ============================================================================
@@ -99,9 +101,13 @@ function ProviderSelector({
   disabled?: boolean
 }) {
   return (
-    <div
+    <RadioGroupPrimitive.Root
       className="grid grid-cols-2 gap-1.5"
-      role="radiogroup"
+      value={selectedProvider}
+      onValueChange={(value) => onProviderChange(value as MusicProvider)}
+      disabled={disabled}
+      orientation="horizontal"
+      loop
       aria-label="Music generation provider"
       data-testid="provider-selector"
     >
@@ -111,14 +117,10 @@ function ProviderSelector({
         const isSelected = selectedProvider === provider
 
         return (
-          <button
+          <RadioGroupPrimitive.Item
             key={provider}
-            type="button"
-            role="radio"
-            aria-checked={isSelected}
+            value={provider}
             aria-label={`${meta.label} provider`}
-            onClick={() => onProviderChange(provider)}
-            disabled={disabled}
             className={cn(
               "h-10 px-2 gap-2 flex items-center justify-start rounded-md border transition-all text-left",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-1",
@@ -149,10 +151,10 @@ function ProviderSelector({
                 {meta.label}
               </span>
             </div>
-          </button>
+          </RadioGroupPrimitive.Item>
         )
       })}
-    </div>
+    </RadioGroupPrimitive.Root>
   )
 }
 
@@ -308,7 +310,7 @@ export function MusicGenerationControls({
           selectedProvider={options.provider}
           onProviderChange={(provider) => {
             const newModel = MUSIC_PROVIDER_META[provider].models[0]
-            onOptionsChange({ provider, model: newModel })
+            onOptionsChange({ provider, model: newModel, instrumental: false })
           }}
           disabled={disabled}
         />
@@ -341,30 +343,35 @@ export function MusicGenerationControls({
           {/* Suno Model Selector */}
           {options.provider === "suno" && (
             <div className="animate-in fade-in slide-in-from-top-1 duration-300">
-              <div className="grid grid-cols-2 gap-1.5" role="radiogroup" aria-labelledby="provider-settings-label">
+              <RadioGroupPrimitive.Root
+                className="grid grid-cols-2 gap-1.5"
+                value={options.model}
+                onValueChange={(value) => onOptionsChange({ model: value as MusicModel })}
+                disabled={disabled}
+                orientation="horizontal"
+                loop
+                aria-labelledby="provider-settings-label"
+              >
                 {MUSIC_PROVIDER_META.suno.models.map((model) => {
                   const meta = MUSIC_MODEL_META[model]
                   const isSelected = options.model === model
                   return (
-                    <button
+                    <RadioGroupPrimitive.Item
                       key={model}
-                      type="button"
-                      role="radio"
-                      aria-checked={isSelected}
-                      onClick={() => onOptionsChange({ model })}
-                      disabled={disabled}
+                      value={model}
                       className={cn(
                         "py-2 px-3 rounded-xl border text-xs font-medium transition-all text-center",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-1",
                         isSelected
                           ? "bg-primary text-primary-foreground border-primary shadow-sm"
                           : "bg-background border-border/40 text-muted-foreground hover:text-foreground hover:border-foreground/30",
                       )}
                     >
                       {meta.label}
-                    </button>
+                    </RadioGroupPrimitive.Item>
                   )
                 })}
-              </div>
+              </RadioGroupPrimitive.Root>
             </div>
           )}
 

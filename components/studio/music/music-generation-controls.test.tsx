@@ -46,7 +46,21 @@ describe("MusicGenerationControls", () => {
 
     await user.click(screen.getByRole("radio", { name: /elevenlabs provider/i }))
 
-    expect(onOptionsChange).toHaveBeenCalledWith({ provider: "elevenlabs", model: "elevenmusic" })
+    expect(onOptionsChange).toHaveBeenCalledWith({ provider: "elevenlabs", model: "elevenmusic", instrumental: false })
+  })
+
+  it("resets instrumental to false when switching providers", async () => {
+    const user = userEvent.setup()
+    const { onOptionsChange } = renderControls({
+      ...baseOptions,
+      provider: "elevenlabs",
+      model: "elevenmusic",
+      instrumental: true,
+    })
+
+    await user.click(screen.getByRole("radio", { name: /suno provider/i }))
+
+    expect(onOptionsChange).toHaveBeenCalledWith({ provider: "suno", model: "suno-v5", instrumental: false })
   })
 
   it("shows ElevenLabs-only duration controls and forwards duration updates", async () => {

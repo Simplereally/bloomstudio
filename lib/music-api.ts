@@ -102,7 +102,7 @@ export interface MusicGenerationParams {
   duration?: number
   /** Whether to generate an instrumental track without vocals */
   instrumental?: boolean
-  /** Optional lyrics to include in the generation (Suno only) */
+  /** Optional lyrics to include in the generation */
   lyrics?: string
 }
 
@@ -220,7 +220,9 @@ export class MusicAPI {
       )
     }
 
-    // Build the formatted prompt for Suno when lyrics are provided.
+    // Build the formatted prompt when lyrics are provided.
+    // Embeds lyrics into the prompt text so both Suno (POST body) and
+    // ElevenLabs (GET URL) receive them.
     // Format: [Style]\n{prompt}\n\n[Lyrics]\n{lyrics}
     const trimmedLyrics = lyrics?.trim()
     const formattedPrompt = trimmedLyrics
@@ -230,27 +232,31 @@ export class MusicAPI {
     const headers = this.getHeaders(apiKey)
     let response: Response
 
-    if (model === "suno-v5" || model === "suno-v4.5") {
-      // Suno must use the POST /v1/audio/speech endpoint.
-      // The GET /audio/:text route does NOT dispatch to Suno — it falls
-      // through to ElevenLabs TTS. Only the POST route handles Suno.
-      const url = `${this.BASE_URL}/v1/audio/speech`
-      response = await fetch(url, {
-        method: "POST",
-        headers: {
-          ...headers,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model,
-          input: formattedPrompt,
-        }),
-        signal,
-      })
-    } else {
-      // ElevenLabs uses the GET shorthand endpoint with query params
-      const url = this.buildAudioUrl(prompt, { model, duration, instrumental })
-      response = await fetch(url, { headers, signal })
+    try {
+      if (model === "suno-v5" || model === "suno-v4.5") {
+        // Suno must use the POST /v1/audio/speech endpoint.
+        // The GET /audio/:text route does NOT dispatch to Suno — it falls
+        // through to ElevenLabs TTS. Only the POST route handles Suno.
+        const url = `${this.BASE_URL}/v1/audio/speech`
+        response = await fetch(url, {
+          method: "POST",
+          headers: {
+            ...headers,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model,
+            input: formattedPrompt,
+          }),
+          signal,
+        })
+      } else {
+        // ElevenLabs uses the GET shorthand endpoint with query params
+        const url = this.buildAudioUrl(formattedPrompt, { model, duration, instrumental })
+        response = await fetch(url, { headers, signal })
+      }
+    } catch (err) {
+      throw normalizeNetworkError(err, signal)
     }
 
     if (!response.ok) {
@@ -262,7 +268,13 @@ export class MusicAPI {
       )
     }
 
-    const audioBlob = await response.blob()
+    let audioBlob: Blob
+    try {
+      audioBlob = await response.blob()
+    } catch (err) {
+      throw normalizeNetworkError(err, signal)
+    }
+
     // NOTE: This creates a persistent object URL that holds a strong reference
     // to `audioBlob` in memory. Callers MUST call `URL.revokeObjectURL(audioUrl)`
     // when playback is complete or the owning component unmounts to avoid leaks.
@@ -319,8 +331,9 @@ export class MusicGenerationError extends Error {
   constructor(
     message: string,
     public readonly code: MusicErrorCode,
+    options?: ErrorOptions,
   ) {
-    super(message)
+    super(message, options)
     this.name = "MusicGenerationError"
   }
 }
@@ -346,4 +359,24 @@ export function formatMusicDuration(seconds: number): string {
   const m = Math.floor(seconds / 60)
   const s = Math.floor(seconds % 60)
   return `${m}:${s.toString().padStart(2, "0")}`
+}
+
+/**
+ * Normalizes raw fetch/stream errors into typed MusicGenerationErrors.
+ * Detects AbortError and network failures.
+ */
+function normalizeNetworkError(err: unknown, signal?: AbortSignal): MusicGenerationError {
+  // If it's already a MusicGenerationError, pass it through
+  if (err instanceof MusicGenerationError) return err
+
+  // Detect AbortError (DOMException) or signal state
+  const isAbort = signal?.aborted || (err instanceof Error && err.name === "AbortError")
+
+  if (isAbort) {
+    return new MusicGenerationError("Music generation aborted", "ABORTED", { cause: err })
+  }
+
+  // Everything else is treated as a network/system error
+  const message = err instanceof Error ? err.message : String(err)
+  return new MusicGenerationError(message, "NETWORK_ERROR", { cause: err })
 }

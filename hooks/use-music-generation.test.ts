@@ -72,6 +72,9 @@ function createMockResult(overrides: Partial<MusicGenerationResult> = {}): Music
     audioBlob: new Blob(["audio"], { type: "audio/mpeg" }),
     timestamp: Date.now(),
     estimatedDuration: 60,
+    model: DEFAULT_MUSIC_MODEL,
+    instrumental: false,
+    status: "done",
     ...overrides,
   }
 }

@@ -56,6 +56,42 @@ function expectMusicGenerationError(err: unknown): MusicGenerationError {
   return err
 }
 
+/**
+ * Safely extracts [url, options] from the first call recorded by a fetch spy.
+ * Replaces unsafe `fetchSpy.mock.calls[0][0] as string` / `as RequestInit`
+ * casts with runtime checks that fail with a descriptive message.
+ */
+function extractFetchCall(
+  fetchSpy: { mock: { calls: unknown[][] } },
+): { calledUrl: string; calledOptions: RequestInit } {
+  const firstCall = fetchSpy.mock.calls[0]
+  if (!firstCall) {
+    throw new Error(
+      "extractFetchCall: fetchSpy.mock.calls[0] is undefined — fetch was never called",
+    )
+  }
+
+  const [rawUrl, rawOptions] = firstCall
+
+  if (typeof rawUrl !== "string") {
+    throw new Error(
+      `extractFetchCall: expected calledUrl to be a string, got ${typeof rawUrl}`,
+    )
+  }
+
+  if (
+    !rawOptions ||
+    typeof rawOptions !== "object" ||
+    !("method" in rawOptions || "headers" in rawOptions || "signal" in rawOptions || "body" in rawOptions)
+  ) {
+    throw new Error(
+      "extractFetchCall: expected calledOptions to be a RequestInit object with at least one known property",
+    )
+  }
+
+  return { calledUrl: rawUrl, calledOptions: rawOptions as RequestInit }
+}
+
 describe("MusicAPI", () => {
   describe("buildAudioUrl", () => {
     it("uses the correct base URL and /audio/ path", () => {
@@ -255,9 +291,8 @@ describe("MusicAPI", () => {
       await MusicAPI.generate({ prompt: "test prompt" })
 
       expect(fetchSpy).toHaveBeenCalledOnce()
-      const calledUrl = fetchSpy.mock.calls[0][0] as string
+      const { calledUrl, calledOptions } = extractFetchCall(fetchSpy)
       expect(calledUrl).toBe("https://gen.pollinations.ai/v1/audio/speech")
-      const calledOptions = fetchSpy.mock.calls[0][1] as RequestInit
       expect(calledOptions.method).toBe("POST")
       expect(calledOptions.body).toBe(JSON.stringify({ model: "suno-v5", input: "test prompt" }))
     })
@@ -276,7 +311,7 @@ describe("MusicAPI", () => {
         instrumental: true,
       })
 
-      const calledUrl = fetchSpy.mock.calls[0][0] as string
+      const { calledUrl } = extractFetchCall(fetchSpy)
       expect(calledUrl).toContain("model=elevenmusic")
       expect(calledUrl).toContain("duration=120")
       expect(calledUrl).toContain("instrumental=true")
@@ -308,7 +343,7 @@ describe("MusicAPI", () => {
 
       await MusicAPI.generate({ prompt: "test", model: "elevenmusic" })
 
-      const calledOptions = fetchSpy.mock.calls[0][1] as RequestInit
+      const { calledOptions } = extractFetchCall(fetchSpy)
       expect(calledOptions.headers).toEqual({
         Authorization: "Bearer my-key",
       })
@@ -323,7 +358,7 @@ describe("MusicAPI", () => {
 
       await MusicAPI.generate({ prompt: "test", model: "suno-v5" })
 
-      const calledOptions = fetchSpy.mock.calls[0][1] as RequestInit
+      const { calledOptions } = extractFetchCall(fetchSpy)
       // getHeaders() returns base headers; Suno POST branch spreads them + adds Content-Type
       expect(calledOptions.headers).toEqual({
         Authorization: "Bearer my-key",
@@ -340,7 +375,7 @@ describe("MusicAPI", () => {
 
       await MusicAPI.generate({ prompt: "test", model: "elevenmusic" }, undefined, "user-key")
 
-      const calledOptions = fetchSpy.mock.calls[0][1] as RequestInit
+      const { calledOptions } = extractFetchCall(fetchSpy)
       expect(calledOptions.headers).toEqual({
         Authorization: "Bearer user-key",
       })
@@ -355,7 +390,7 @@ describe("MusicAPI", () => {
 
       await MusicAPI.generate({ prompt: "test" }, undefined, "user-key")
 
-      const calledOptions = fetchSpy.mock.calls[0][1] as RequestInit
+      const { calledOptions } = extractFetchCall(fetchSpy)
       // Default model is suno-v5 which uses POST, so Content-Type is included
       expect(calledOptions.headers).toEqual({
         Authorization: "Bearer user-key",
@@ -373,7 +408,7 @@ describe("MusicAPI", () => {
       const controller = new AbortController()
       await MusicAPI.generate({ prompt: "test", model: "elevenmusic" }, controller.signal)
 
-      const calledOptions = fetchSpy.mock.calls[0][1] as RequestInit
+      const { calledOptions } = extractFetchCall(fetchSpy)
       expect(calledOptions.signal).toBe(controller.signal)
     })
 
@@ -387,7 +422,7 @@ describe("MusicAPI", () => {
       const controller = new AbortController()
       await MusicAPI.generate({ prompt: "test", model: "suno-v5" }, controller.signal)
 
-      const calledOptions = fetchSpy.mock.calls[0][1] as RequestInit
+      const { calledOptions } = extractFetchCall(fetchSpy)
       expect(calledOptions.signal).toBe(controller.signal)
     })
 
@@ -507,8 +542,11 @@ describe("MusicAPI", () => {
           lyrics: "La la la\nHey hey hey",
         })
 
-        const calledOptions = fetchSpy.mock.calls[0][1] as RequestInit
-        const body = JSON.parse(calledOptions.body as string)
+        const { calledOptions } = extractFetchCall(fetchSpy)
+        if (typeof calledOptions.body !== "string") {
+          throw new Error(`Expected body to be a string, got ${typeof calledOptions.body}`)
+        }
+        const body = JSON.parse(calledOptions.body)
         expect(body.input).toBe("[Style]\nupbeat pop\n\n[Lyrics]\nLa la la\nHey hey hey")
       })
 
@@ -520,8 +558,11 @@ describe("MusicAPI", () => {
 
         await MusicAPI.generate({ prompt: "ambient drone" })
 
-        const calledOptions = fetchSpy.mock.calls[0][1] as RequestInit
-        const body = JSON.parse(calledOptions.body as string)
+        const { calledOptions } = extractFetchCall(fetchSpy)
+        if (typeof calledOptions.body !== "string") {
+          throw new Error(`Expected body to be a string, got ${typeof calledOptions.body}`)
+        }
+        const body = JSON.parse(calledOptions.body)
         expect(body.input).toBe("ambient drone")
       })
 
@@ -533,8 +574,11 @@ describe("MusicAPI", () => {
 
         await MusicAPI.generate({ prompt: "rock anthem", lyrics: "   " })
 
-        const calledOptions = fetchSpy.mock.calls[0][1] as RequestInit
-        const body = JSON.parse(calledOptions.body as string)
+        const { calledOptions } = extractFetchCall(fetchSpy)
+        if (typeof calledOptions.body !== "string") {
+          throw new Error(`Expected body to be a string, got ${typeof calledOptions.body}`)
+        }
+        const body = JSON.parse(calledOptions.body)
         expect(body.input).toBe("rock anthem")
       })
 
@@ -549,8 +593,11 @@ describe("MusicAPI", () => {
           lyrics: "  Hello world  ",
         })
 
-        const calledOptions = fetchSpy.mock.calls[0][1] as RequestInit
-        const body = JSON.parse(calledOptions.body as string)
+        const { calledOptions } = extractFetchCall(fetchSpy)
+        if (typeof calledOptions.body !== "string") {
+          throw new Error(`Expected body to be a string, got ${typeof calledOptions.body}`)
+        }
+        const body = JSON.parse(calledOptions.body)
         expect(body.input).toBe("[Style]\nballad\n\n[Lyrics]\nHello world")
       })
 
