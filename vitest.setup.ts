@@ -2,6 +2,35 @@ import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
 import { afterEach } from 'vitest'
 
+// ============================================================================
+// In-memory localStorage mock
+// ============================================================================
+// jsdom may provide a `window.localStorage` object whose methods are not real
+// functions (depending on the vitest/jsdom version and Node flags). This
+// in-memory implementation guarantees that `getItem`, `setItem`, `removeItem`,
+// and `clear` are always callable, preventing the ubiquitous
+// "window.localStorage.getItem is not a function" errors across all tests.
+
+function createLocalStorageMock(): Storage {
+    let store: Record<string, string> = {}
+    return {
+        getItem(key: string) { return store[key] ?? null },
+        setItem(key: string, value: string) { store[key] = String(value) },
+        removeItem(key: string) { delete store[key] },
+        clear() { store = {} },
+        get length() { return Object.keys(store).length },
+        key(index: number) { return Object.keys(store)[index] ?? null },
+    }
+}
+
+if (typeof window !== 'undefined') {
+    Object.defineProperty(window, 'localStorage', {
+        value: createLocalStorageMock(),
+        writable: true,
+        configurable: true,
+    })
+}
+
 // Cleanup after each test
 afterEach(() => {
     cleanup()

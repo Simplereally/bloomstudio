@@ -184,11 +184,16 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
   // Convex IDs dismissed during this session (via removeTrack / clearTracks).
   // Prevents historical records from reappearing in mergedTracks after
   // the user clears or removes them, without destructively deleting data.
-  const dismissedConvexIdsRef = React.useRef<Set<string>>(new Set())
+  // Stored as state (not a ref) so that mutations trigger mergedTracks to
+  // recompute — the old ref approach deferred visibility until the next
+  // unrelated render, and also violated the react-hooks/refs lint rule.
+  const [dismissedConvexIds, setDismissedConvexIds] = React.useState<ReadonlySet<string>>(
+    () => new Set<string>(),
+  )
 
   // Session track IDs (UUIDs) removed/cleared before their convexId arrived.
   // When persistPromise.then() resolves for a track in this set, we add
-  // the newly-known convexId to dismissedConvexIdsRef so the historical
+  // the newly-known convexId to dismissedConvexIds so the historical
   // record is suppressed as soon as it appears in the Convex subscription.
   const dismissedTrackIdsRef = React.useRef<Set<string>>(new Set())
 
@@ -200,12 +205,12 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
   // Merge in-session tracks with historical Convex records.
   // Session tracks (those with audio blobs) take priority over Convex records.
   // Historical tracks appear after session tracks, deduplicated by convexId.
-  // Tracks whose convexId appears in dismissedConvexIdsRef are excluded —
+  // Tracks whose convexId appears in dismissedConvexIds are excluded —
   // this lets clearTracks/removeTrack hide persisted records without deletion.
   const mergedTracks = React.useMemo(() => {
     if (!historicalGenerations) return state.tracks
 
-    const dismissed = dismissedConvexIdsRef.current
+    const dismissed = dismissedConvexIds
 
     // Collect convexIds from session tracks to avoid duplicates
     const sessionConvexIds = new Set(
@@ -244,7 +249,7 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
       }))
 
     return [...state.tracks, ...historicalTracks]
-  }, [state.tracks, historicalGenerations])
+  }, [state.tracks, historicalGenerations, dismissedConvexIds])
 
   // Ref to hold current merged tracks for use in callbacks without stale closures
   const mergedTracksRef = React.useRef(mergedTracks)
@@ -281,16 +286,6 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
   React.useEffect(() => {
     optionsRef.current = state.options
   }, [state.options])
-
-  /** Helper: update in-flight count and isGenerating flag */
-  const syncInFlightCount = React.useCallback(() => {
-    const count = inFlightRef.current.size
-    setState((prev) => ({
-      ...prev,
-      inFlightCount: count,
-      isGenerating: count > 0,
-    }))
-  }, [])
 
   const generate = React.useCallback(async (prompt: string, lyrics?: string) => {
     // Check for API key first — prompt user to connect if missing
@@ -443,7 +438,7 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
           // doesn't resurface when the Convex subscription delivers it.
           if (dismissedTrackIdsRef.current.has(trackId)) {
             dismissedTrackIdsRef.current.delete(trackId)
-            dismissedConvexIdsRef.current.add(id)
+            setDismissedConvexIds((prev) => new Set(prev).add(id))
             return
           }
 
@@ -580,7 +575,7 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
     // tracks the trackId IS the convexId (set in mergedTracks mapping).
     const mergedTrack = mergedTracksRef.current.find((t) => t.id === trackId)
     if (mergedTrack?.convexId) {
-      dismissedConvexIdsRef.current.add(mergedTrack.convexId)
+      setDismissedConvexIds((prev) => new Set(prev).add(mergedTrack.convexId!))
     } else {
       // No convexId yet — persistence may still be in-flight.
       // Record the trackId so persistPromise.then() can dismiss the
@@ -620,7 +615,7 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
     // reappear in mergedTracks after state.tracks is emptied.
     for (const track of mergedTracksRef.current) {
       if (track.convexId) {
-        dismissedConvexIdsRef.current.add(track.convexId)
+        setDismissedConvexIds((prev) => new Set(prev).add(track.convexId!))
       } else {
         // Session track whose persistence hasn't completed yet.
         // Record the trackId so persistPromise.then() can dismiss the
