@@ -668,7 +668,7 @@ describe("useMusicGeneration", () => {
       })
 
       // Suno uses the POST /v1/audio/speech endpoint, not the GET shorthand.
-      // The POST body contains model: "suno" (not the full model ID).
+      // The POST body contains the specific model ID (e.g., "suno-v5").
       const calledUrl = String(fetchSpy.mock.calls[0][0])
       expect(calledUrl).toContain("/v1/audio/speech")
       expect(calledUrl).not.toContain("duration=")

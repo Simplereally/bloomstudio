@@ -31,9 +31,6 @@ export const DEFAULT_MUSIC_PROVIDER: MusicProvider = "suno"
 /** Default model */
 export const DEFAULT_MUSIC_MODEL: MusicModel = "suno-v5"
 
-/** Suno model identifier (legacy alias) */
-export const SUNO_MODEL = "suno" as const
-
 /** Maximum prompt length for Suno (10,000 characters) */
 export const SUNO_MAX_PROMPT_LENGTH = 10_000
 
@@ -81,6 +78,8 @@ export const MUSIC_MODEL_META: Record<MusicModel, {
   "suno-v4.5": {
     label: "Suno v4.5",
     description: "Previous Suno model, fast and reliable",
+    // NOTE: Upstream API currently treats this as an internal fallback for suno-v5.
+    // Explicit selection support pending in future API update.
     features: ["Lyrics", "Vocals", "Full arrangement"],
   },
   elevenmusic: {
