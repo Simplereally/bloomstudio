@@ -27,6 +27,11 @@ export function HeroSection({ title, description }: HeroSectionProps = {}) {
     const imageModels = featuredModels.filter((m) => m.type === "image")
     const videoModels = featuredModels.filter((m) => m.type === "video")
 
+    // Split image models into balanced rows of 4 for a stable, non-wrapping layout.
+    // Each row is independently centered so badges size intrinsically — no truncation.
+    const imageRow1 = imageModels.slice(0, 4)
+    const imageRow2 = imageModels.slice(4)
+
     return (
         <section id="hero" aria-label="Hero — The cheapest AI studio" className="relative h-dvh w-full overflow-hidden flex flex-col items-center">
             {/* Main content — fills viewport minus scroll-indicator zone */}
@@ -74,17 +79,26 @@ export function HeroSection({ title, description }: HeroSectionProps = {}) {
 
                 {/* Model showcase card */}
                 <ScrollReveal delay={300}>
-                    <div className="mt-3 sm:mt-4 lg:mt-5 xl:mt-6 3xl:mt-8 4xl:mt-10 max-w-xl xl:max-w-2xl 2xl:max-w-3xl 3xl:max-w-4xl 4xl:max-w-5xl mx-auto relative">
+                    <div className="mt-3 sm:mt-4 lg:mt-5 xl:mt-6 3xl:mt-8 4xl:mt-10 w-full max-w-xl sm:max-w-2xl lg:max-w-3xl xl:max-w-4xl 3xl:max-w-5xl 4xl:max-w-6xl mx-auto relative">
                         {/* Ambient glow */}
                         <div className="absolute inset-0 bg-primary/10 blur-[40px] rounded-full pointer-events-none animate-pulse-glow" aria-hidden="true" />
 
-                        <div className="relative px-3 sm:px-4 3xl:px-8 pt-4 pb-3 sm:pt-5 sm:pb-4 lg:pt-6 lg:pb-5 xl:pt-7 xl:pb-5 3xl:pt-9 3xl:pb-7 4xl:pt-11 4xl:pb-9 5xl:pt-14 5xl:pb-12 rounded-2xl bg-[#0A0A0A]/80 border border-white/10 shadow-2xl backdrop-blur-sm">
+                        <div className="relative px-3 sm:px-5 lg:px-6 3xl:px-8 pt-4 pb-3 sm:pt-5 sm:pb-4 lg:pt-6 lg:pb-5 xl:pt-7 xl:pb-5 3xl:pt-9 3xl:pb-7 4xl:pt-11 4xl:pb-9 5xl:pt-14 5xl:pb-12 rounded-2xl bg-[#0A0A0A]/80 border border-white/10 shadow-2xl backdrop-blur-sm">
                             <div className="flex flex-col gap-1.5 sm:gap-2 3xl:gap-3 4xl:gap-4 relative z-10">
-                                {/* Image models */}
-                                <div className="flex flex-wrap justify-center gap-1.5 3xl:gap-3 4xl:gap-4" role="list" aria-label="Image models">
-                                    {imageModels.map((model) => (
-                                        <ModelBadge key={model.id} model={model} showNsfw />
-                                    ))}
+                                {/* Image models — two balanced rows, each independently centered */}
+                                <div className="flex flex-col gap-1.5 3xl:gap-3 4xl:gap-4" role="list" aria-label="Image models">
+                                    <div className="flex flex-wrap justify-center gap-1.5 3xl:gap-3 4xl:gap-4">
+                                        {imageRow1.map((model) => (
+                                            <ModelBadge key={model.id} model={model} showNsfw />
+                                        ))}
+                                    </div>
+                                    {imageRow2.length > 0 && (
+                                        <div className="flex flex-wrap justify-center gap-1.5 3xl:gap-3 4xl:gap-4">
+                                            {imageRow2.map((model) => (
+                                                <ModelBadge key={model.id} model={model} showNsfw />
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Separator */}

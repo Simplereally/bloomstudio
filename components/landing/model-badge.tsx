@@ -17,7 +17,7 @@ export function ModelBadge({
   const isUnrestricted = showNsfw && model.isUnrestricted;
 
   return (
-    <div className="group relative flex items-center gap-2 p-2 px-3 sm:p-2 sm:px-4 rounded-xl bg-white/[0.03] border border-white/5 transition-all duration-300 overflow-hidden hover:border-primary/50 hover:bg-white/[0.06]" role="listitem">
+    <div className="group relative flex items-center gap-2 p-2 px-3 sm:p-2 sm:px-3.5 rounded-xl bg-white/[0.03] border border-white/5 transition-all duration-300 overflow-hidden hover:border-primary/50 hover:bg-white/[0.06]" role="listitem">
       {model.logo ? (
         <div className="relative w-5 h-5 flex-shrink-0">
           <Image src={model.logo} alt={`${model.displayName} logo`} fill sizes="20px" className={cn("object-contain", isMonochromeLogo(model.logo) && "dark:invert")} />
@@ -25,7 +25,7 @@ export function ModelBadge({
       ) : (
         <Sparkles className="h-4 w-4 text-primary flex-shrink-0" />
       )}
-      <span className="text-[12px] sm:text-[13px] font-bold font-brand text-foreground uppercase tracking-tight truncate min-w-0 max-w-[120px] sm:max-w-[180px]">
+      <span className="text-[12px] sm:text-[13px] font-bold font-brand text-foreground uppercase tracking-tight whitespace-nowrap">
         {model.displayName}
       </span>
 
