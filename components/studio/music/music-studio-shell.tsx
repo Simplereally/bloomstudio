@@ -35,7 +35,7 @@ type TrackFilter = "all" | "liked" | "disliked"
 
 export function MusicStudioShell() {
   const {
-    status,
+    status: _status,
     currentTrack,
     tracks,
     error,
@@ -43,7 +43,7 @@ export function MusicStudioShell() {
     inFlightCount,
     options,
     generate,
-    cancel,
+    cancel: _cancel,
     selectTrack,
     removeTrack,
     clearTracks,

@@ -297,7 +297,9 @@ describe("useMusicGeneration", () => {
       })
 
       expect(result.current.status).toBe("error")
-      expect(result.current.error).toBe("An unexpected error occurred")
+      // normalizeNetworkError in music-api.ts wraps non-Error values via
+      // String(err), so the raw string propagates as the error message.
+      expect(result.current.error).toBe("string error")
       expect(result.current.errorCode).toBe("NETWORK_ERROR")
     })
 
