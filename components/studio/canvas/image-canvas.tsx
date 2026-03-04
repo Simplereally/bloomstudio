@@ -101,11 +101,10 @@ function CapillaryProgress({ progress }: { progress: number }) {
 }
 
 /**
- * QueueCardGrid - Per-item grid/tray of active single generations.
+ * QueueCardGrid - Grid view of active single generations that take up the canvas.
  *
  * Each card shows an aspect-ratio frame, a spinner, a status label,
- * and a per-card Stop button. Cards are laid out in a flex-wrap grid
- * anchored to the bottom of the canvas — never stacked on top of each other.
+ * and a per-card Stop button.
  */
 function QueueCardGrid({
     items,
@@ -114,23 +113,34 @@ function QueueCardGrid({
     items: QueueItem[]
     onCancel?: (id: string) => void
 }) {
-    if (items.length === 0) return null
+    if (items.length <= 1) return null
+
+    const count = items.length
+    // Responsive grid columns based on count
+    const cols = count <= 2 ? 2 : count <= 4 ? 2 : count <= 6 ? 3 : 4
 
     return (
         <div
-            className="absolute inset-x-4 bottom-4 z-20 pointer-events-none"
+            className="absolute inset-0 z-20 pointer-events-none p-6 md:p-12"
             data-testid="queue-card-grid"
         >
-            <div className="mx-auto w-full max-w-[800px] max-h-[50%] overflow-y-auto overflow-x-hidden">
-                <div className="flex flex-wrap items-end justify-center gap-2.5">
+            <div
+                className="w-full h-full grid gap-4 md:gap-6 place-content-center place-items-center"
+                style={{
+                    gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+                    gridTemplateRows: `repeat(${Math.ceil(count / cols)}, minmax(0, 1fr))`,
+                }}
+            >
+                <AnimatePresence mode="popLayout">
                     {items.map((item) => (
                         <QueueCard
                             key={item.id}
                             item={item}
                             onCancel={onCancel}
+                            totalCount={items.length}
                         />
                     ))}
-                </div>
+                </AnimatePresence>
             </div>
         </div>
     )
@@ -162,31 +172,39 @@ function QueueCard({
 }: {
     item: QueueItem
     onCancel?: (id: string) => void
+    totalCount: number
 }) {
     const isProcessing = item.status === "processing"
     const statusLabel = isProcessing ? "Generating" : "Queued"
     const elapsed = useElapsedSeconds(item.createdAt)
 
-    // Size cards relative to count — keep them compact but legible
-    const targetWidthPx = 140
-    const heightPx = Math.round(targetWidthPx / Math.max(0.4, item.aspectRatio))
-    const clampedHeightPx = Math.max(64, Math.min(180, heightPx))
+    const isTall = item.aspectRatio < 1
 
     return (
-        <div
-            className={cn(
-                "relative rounded-xl border shadow-sm overflow-hidden pointer-events-auto",
-                "bg-background/60 backdrop-blur-md",
-                isProcessing
-                    ? "border-primary/30 ring-1 ring-primary/10"
-                    : "border-primary/15"
-            )}
-            style={{
-                height: clampedHeightPx,
-                aspectRatio: item.aspectRatio,
-            }}
-            data-testid="queue-card"
+        <motion.div
+            layout
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className="w-full h-full flex items-center justify-center min-w-0 min-h-0 pointer-events-none"
         >
+            <div
+                className={cn(
+                    "relative rounded-xl border shadow-lg overflow-hidden pointer-events-auto transition-all duration-300",
+                    "bg-background/80 backdrop-blur-xl",
+                    isProcessing
+                        ? "border-primary/40 ring-2 ring-primary/20 shadow-primary/10"
+                        : "border-primary/15 shadow-black/40"
+                )}
+                style={{
+                    aspectRatio: item.aspectRatio,
+                    width: isTall ? "auto" : "100%",
+                    height: isTall ? "100%" : "auto",
+                    maxWidth: "100%",
+                    maxHeight: "100%",
+                }}
+                data-testid="queue-card"
+            >
             {/* Subtle gradient overlay */}
             <div className="absolute inset-0 bg-gradient-to-br from-white/[0.04] via-transparent to-transparent" />
 
@@ -237,7 +255,8 @@ function QueueCard({
                     <X className="h-3 w-3" />
                 </button>
             )}
-        </div>
+            </div>
+        </motion.div>
     )
 }
 
@@ -327,7 +346,7 @@ export const ImageCanvas = React.memo(function ImageCanvas({
                                         className="flex flex-col items-center justify-center gap-6"
                                     >
 
-                                        {typeof progress === "number" && (
+                                        {queueItems.length <= 1 && typeof progress === "number" && (
                                             <motion.div
                                                 initial={{ opacity: 0, y: 10 }}
                                                 animate={{ opacity: 1, y: 0 }}
