@@ -333,7 +333,7 @@ export function MusicGenerationControls({
 
       {/* 3. Provider-Specific Settings (Model Versions / Duration) */}
       <div className="space-y-2.5">
-        <Label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 px-0.5">
+        <Label id="provider-settings-label" className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 px-0.5">
           {options.provider === "elevenlabs" ? "Generation Settings" : "Model Version"}
         </Label>
         
@@ -341,7 +341,7 @@ export function MusicGenerationControls({
           {/* Suno Model Selector */}
           {options.provider === "suno" && (
             <div className="animate-in fade-in slide-in-from-top-1 duration-300">
-              <div className="grid grid-cols-2 gap-1.5" role="radiogroup">
+              <div className="grid grid-cols-2 gap-1.5" role="radiogroup" aria-labelledby="provider-settings-label">
                 {MUSIC_PROVIDER_META.suno.models.map((model) => {
                   const meta = MUSIC_MODEL_META[model]
                   const isSelected = options.model === model

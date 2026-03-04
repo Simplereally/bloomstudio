@@ -175,10 +175,11 @@ describe("Drawer pointer-events cleanup (orphaned overlay bug)", () => {
     // Intercept requestAnimationFrame so we can flush it synchronously
     rafCallbacks = [];
     originalRaf = globalThis.requestAnimationFrame;
-    globalThis.requestAnimationFrame = ((cb: FrameRequestCallback) => {
+    const mockRaf: typeof requestAnimationFrame = (cb) => {
       rafCallbacks.push(cb);
       return rafCallbacks.length;
-    }) as typeof requestAnimationFrame;
+    };
+    globalThis.requestAnimationFrame = mockRaf;
   });
 
   afterEach(() => {

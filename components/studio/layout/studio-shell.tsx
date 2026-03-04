@@ -323,8 +323,10 @@ export function StudioShell({
            duration: generationSettings.videoSettings.duration,
            audio: generationSettings.videoSettings.audio,
            aspectRatio: generationSettings.aspectRatio,
-           lastFrameImage: generationSettings.videoReferenceImages[1],
-         },
+            lastFrameImage: generationSettings.videoReferenceImages.length >= 2
+              ? generationSettings.videoReferenceImages.at(-1)
+              : undefined,
+          },
         batchMode.batchSettings.count,
       );
       return;
@@ -368,7 +370,9 @@ export function StudioShell({
         duration: generationSettings.videoSettings.duration,
         audio: generationSettings.videoSettings.audio,
         aspectRatio: videoAspectRatio,
-        lastFrameImage: generationSettings.videoReferenceImages[1],
+        lastFrameImage: generationSettings.videoReferenceImages.length >= 2
+          ? generationSettings.videoReferenceImages.at(-1)
+          : undefined,
       };
       generate(params);
       return;

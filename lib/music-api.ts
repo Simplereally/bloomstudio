@@ -112,7 +112,14 @@ export interface MusicGenerationResult {
   id: string
   /** The prompt used to generate the track */
   prompt: string
-  /** Object URL for the audio blob (for playback) */
+  /**
+   * Object URL for the audio blob (for playback).
+   *
+   * **Caller must call `URL.revokeObjectURL(audioUrl)` when the URL is no
+   * longer needed** (e.g., on component unmount or after playback cleanup)
+   * to release the underlying blob memory. Failing to revoke will leak
+   * memory for the lifetime of the document.
+   */
   audioUrl: string
   /** Raw audio blob (for download) */
   audioBlob: Blob
@@ -236,7 +243,7 @@ export class MusicAPI {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "suno",
+          model,
           input: formattedPrompt,
         }),
         signal,
@@ -257,6 +264,9 @@ export class MusicAPI {
     }
 
     const audioBlob = await response.blob()
+    // NOTE: This creates a persistent object URL that holds a strong reference
+    // to `audioBlob` in memory. Callers MUST call `URL.revokeObjectURL(audioUrl)`
+    // when playback is complete or the owning component unmounts to avoid leaks.
     const audioUrl = URL.createObjectURL(audioBlob)
 
     // Estimate duration from blob size (fallback: byteLength / 46000 per discovery doc)
@@ -297,9 +307,11 @@ export class MusicAPI {
 
 export type MusicErrorCode =
   | "INVALID_INPUT"
+  | "BAD_REQUEST"
   | "UNAUTHORIZED"
   | "RATE_LIMITED"
   | "BUDGET_EXHAUSTED"
+  | "CLIENT_ERROR"
   | "SERVER_ERROR"
   | "NETWORK_ERROR"
   | "ABORTED"
@@ -315,10 +327,11 @@ export class MusicGenerationError extends Error {
 }
 
 function mapHttpStatusToErrorCode(status: number): MusicErrorCode {
+  if (status === 400) return "BAD_REQUEST"
   if (status === 401 || status === 403) return "UNAUTHORIZED"
-  if (status === 429) return "RATE_LIMITED"
   if (status === 402) return "BUDGET_EXHAUSTED"
-  if (status >= 500) return "SERVER_ERROR"
+  if (status === 429) return "RATE_LIMITED"
+  if (status >= 400 && status < 500) return "CLIENT_ERROR"
   return "SERVER_ERROR"
 }
 

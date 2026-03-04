@@ -114,6 +114,95 @@ export interface ControlsViewProps {
   historyImages?: ThumbnailData[]
 }
 
+// ---------------------------------------------------------------------------
+// VideoFramesSection — shared wrapper for both interpolation and non-interpolation
+// video-frame picker variants, eliminating the duplicated CollapsibleSection shell.
+// ---------------------------------------------------------------------------
+
+interface VideoFramesSectionProps {
+  isInterpolation: boolean
+  /** Non-interpolation: array of frame URLs */
+  frames?: string[]
+  onFramesChange?: (frames: string[]) => void
+  /** Interpolation: first/last frame object */
+  selectedImages?: VideoReferenceImages
+  onImagesChange?: (images: VideoReferenceImages) => void
+  maxFrames: number
+  disabled: boolean
+  historyImages?: ThumbnailData[]
+  videoFrameCount: number
+  badgeClassName: string
+}
+
+function VideoFramesSection({
+  isInterpolation,
+  frames,
+  onFramesChange,
+  selectedImages,
+  onImagesChange,
+  maxFrames,
+  disabled,
+  historyImages,
+  videoFrameCount,
+  badgeClassName,
+}: VideoFramesSectionProps) {
+  const handleClear = React.useCallback(() => {
+    if (isInterpolation) {
+      onImagesChange?.({ firstFrame: undefined, lastFrame: undefined })
+    } else {
+      onFramesChange?.([])
+    }
+  }, [isInterpolation, onImagesChange, onFramesChange])
+
+  return (
+    <CollapsibleSection
+      title="Video Frames"
+      icon={<Video className="h-3.5 w-3.5" />}
+      testId="video-frames-section"
+      collapsedContent={
+        videoFrameCount > 0 ? (
+          <span className={cn(badgeClassName, "tabular-nums")}>
+            {videoFrameCount} frame{videoFrameCount !== 1 ? "s" : ""}
+          </span>
+        ) : undefined
+      }
+      rightContent={
+        videoFrameCount > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleClear}
+            className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-destructive flex items-center gap-1"
+          >
+            <X className="h-3 w-3" />
+            Clear
+          </Button>
+        )
+      }
+    >
+      {isInterpolation ? (
+        <VideoReferenceImagePicker
+          selectedImages={selectedImages!}
+          onImagesChange={onImagesChange!}
+          supportsInterpolation
+          disabled={disabled}
+          hideHeader
+          historyImages={historyImages}
+        />
+      ) : (
+        <VideoReferenceFramesPicker
+          frames={frames!}
+          onFramesChange={onFramesChange!}
+          maxFrames={maxFrames}
+          disabled={disabled}
+          hideHeader
+          historyImages={historyImages}
+        />
+      )}
+    </CollapsibleSection>
+  )
+}
+
 export const ControlsView = React.memo(function ControlsView({
   // Model
   model,
@@ -263,80 +352,23 @@ export const ControlsView = React.memo(function ControlsView({
         />
       </CollapsibleSection>
 
-      {/* Video Frames (video models only) — non-interpolation models use array-based picker */}
-      {isVideoModel && !supportsInterpolation && videoReferenceImages && onVideoReferenceImagesChange && (
-          <CollapsibleSection
-              title="Video Frames"
-              icon={<Video className="h-3.5 w-3.5" />}
-              testId="video-frames-section"
-              collapsedContent={
-                  videoFrameCount > 0 ? (
-                      <span className={cn(badgeClassName, "tabular-nums")}>
-                          {videoFrameCount} frame{videoFrameCount !== 1 ? "s" : ""}
-                      </span>
-                  ) : undefined
-              }
-              rightContent={
-                  videoFrameCount > 0 && (
-                      <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onVideoReferenceImagesChange([])}
-                          className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-destructive flex items-center gap-1"
-                      >
-                          <X className="h-3 w-3" />
-                          Clear
-                      </Button>
-                  )
-              }
-          >
-              <VideoReferenceFramesPicker
-                  frames={videoReferenceImages}
-                  onFramesChange={onVideoReferenceImagesChange}
-                  maxFrames={maxReferenceFrames}
-                  disabled={isGenerating}
-                  hideHeader
-                  historyImages={historyImages}
-              />
-          </CollapsibleSection>
-      )}
-
-      {/* Video Frames (video models only) — interpolation models use first/last frame picker */}
-      {isVideoModel && supportsInterpolation && videoInterpolationImages && onVideoInterpolationImagesChange && (
-          <CollapsibleSection
-              title="Video Frames"
-              icon={<Video className="h-3.5 w-3.5" />}
-              testId="video-frames-section"
-              collapsedContent={
-                  videoFrameCount > 0 ? (
-                      <span className={cn(badgeClassName, "tabular-nums")}>
-                          {videoFrameCount} frame{videoFrameCount !== 1 ? "s" : ""}
-                      </span>
-                  ) : undefined
-              }
-              rightContent={
-                  videoFrameCount > 0 && (
-                      <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onVideoInterpolationImagesChange({ firstFrame: undefined, lastFrame: undefined })}
-                          className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-destructive flex items-center gap-1"
-                      >
-                          <X className="h-3 w-3" />
-                          Clear
-                      </Button>
-                  )
-              }
-          >
-              <VideoReferenceImagePicker
-                  selectedImages={videoInterpolationImages}
-                  onImagesChange={onVideoInterpolationImagesChange}
-                  supportsInterpolation={supportsInterpolation}
-                  disabled={isGenerating}
-                  hideHeader
-                  historyImages={historyImages}
-              />
-          </CollapsibleSection>
+      {/* Video Frames (video models only) */}
+      {isVideoModel && (supportsInterpolation
+        ? videoInterpolationImages && onVideoInterpolationImagesChange
+        : videoReferenceImages && onVideoReferenceImagesChange
+      ) && (
+        <VideoFramesSection
+          isInterpolation={supportsInterpolation}
+          frames={videoReferenceImages}
+          onFramesChange={onVideoReferenceImagesChange}
+          selectedImages={videoInterpolationImages}
+          onImagesChange={onVideoInterpolationImagesChange}
+          maxFrames={maxReferenceFrames}
+          disabled={isGenerating}
+          historyImages={historyImages}
+          videoFrameCount={videoFrameCount}
+          badgeClassName={badgeClassName}
+        />
       )}
 
       {/* Video Settings (video models only) */}

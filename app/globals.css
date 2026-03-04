@@ -373,7 +373,7 @@
     }
   }
 
-  @keyframes musicBar {
+  @keyframes music-bar {
     0% {
       height: 15%;
     }

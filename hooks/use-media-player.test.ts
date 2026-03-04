@@ -446,7 +446,7 @@ describe("useMediaPlayer", () => {
             expect(mockVideo.play).not.toHaveBeenCalled()
         })
 
-        it("always starts muted during autoplay regardless of muted prop", async () => {
+        it("always force-mutes during autoplay", async () => {
             // This test verifies that the autoplay effect sets muted=true before
             // calling play(). We track the muted state at the time play() is invoked.
             let mutedWhenPlayCalled: boolean | undefined
@@ -469,7 +469,6 @@ describe("useMediaPlayer", () => {
                         url,
                         isVideo: true,
                         autoPlay: true,
-                        muted: false, // User wants unmuted, but autoplay must start muted
                     }),
                 { initialProps: { url: "https://example.com/video.mp4" } }
             )
@@ -507,7 +506,6 @@ describe("useMediaPlayer", () => {
                     url: "https://example.com/video.mp4",
                     isVideo: true,
                     autoPlay: true,
-                    muted: true,
                 })
             )
 
@@ -531,7 +529,6 @@ describe("useMediaPlayer", () => {
                         url,
                         isVideo: true,
                         autoPlay: true,
-                        muted: true,
                     }),
                 { initialProps: { url: "https://example.com/video.mp4" } }
             )
@@ -553,7 +550,6 @@ describe("useMediaPlayer", () => {
                         url,
                         isVideo: true,
                         autoPlay: true,
-                        muted: true,
                     }),
                 { initialProps: { url: "https://example.com/video1.mp4" } }
             )

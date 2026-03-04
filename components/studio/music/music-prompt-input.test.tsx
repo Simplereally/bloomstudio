@@ -1,12 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { MusicPromptInput } from "./music-prompt-input"
+import { MusicPromptInput, type MusicPromptInputProps } from "./music-prompt-input"
 
 describe("MusicPromptInput", () => {
-  const defaultProps = {
+  const defaultProps: MusicPromptInputProps = {
     onGenerate: vi.fn(),
-    error: null as string | null,
+    error: null,
   }
 
   beforeEach(() => {

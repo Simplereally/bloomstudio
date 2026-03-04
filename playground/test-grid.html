@@ -1,3 +1,13 @@
+<!--
+  Experimental Layout Demo — NOT production code.
+
+  A standalone prototype for testing CSS Grid layouts with
+  mixed-aspect-ratio cards. Open directly in a browser to
+  experiment with the `render()` call at the bottom.
+
+  Adjust the aspect-ratio array passed to render() to try
+  different item counts and proportions.
+-->
 <!DOCTYPE html>
 <html>
 <head>
@@ -39,30 +49,29 @@
 function render(items) {
   const c = document.getElementById('container');
   c.innerHTML = '';
-  
+
   const count = items.length;
   const cols = count <= 2 ? 2 : count <= 4 ? 2 : count <= 6 ? 3 : 4;
   const rows = Math.ceil(count / cols);
-  
+
   c.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
   c.style.gridTemplateRows = `repeat(${rows}, minmax(0, 1fr))`;
-  
+
   items.forEach(ar => {
     const isTall = ar < 1;
     const cell = document.createElement('div');
     cell.className = 'cell';
-    
+
     const card = document.createElement('div');
     card.className = 'card';
     card.innerText = ar.toFixed(2);
-    
-    // CSS trick
+
     card.style.aspectRatio = ar;
     card.style.width = isTall ? 'auto' : '100%';
     card.style.height = isTall ? '100%' : 'auto';
     card.style.maxWidth = '100%';
     card.style.maxHeight = '100%';
-    
+
     cell.appendChild(card);
     c.appendChild(cell);
   });

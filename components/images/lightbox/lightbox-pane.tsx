@@ -157,7 +157,8 @@ export function LightboxPane({
 
 		const observer = new ResizeObserver((entries) => {
 			for (const entry of entries) {
-				const { width, height } = entry.contentRect;
+				const width = Math.round(entry.contentRect.width);
+				const height = Math.round(entry.contentRect.height);
 				setPaneSize((prev) => {
 					if (prev && prev.width === width && prev.height === height)
 						return prev;
@@ -171,8 +172,8 @@ export function LightboxPane({
 	}, [scrollContainerRef]);
 
 	// Padding inside the pane (p-2 = 0.5rem × 2 = 1rem total each axis)
-	const imageMaxWidth = paneSize ? paneSize.width - 16 : undefined;
-	const imageMaxHeight = paneSize ? paneSize.height - 16 : undefined;
+	const imageMaxWidth = paneSize ? Math.max(0, paneSize.width - 16) : undefined;
+	const imageMaxHeight = paneSize ? Math.max(0, paneSize.height - 16) : undefined;
 
 	const imageConstraintStyle: React.CSSProperties | undefined =
 		!isZoomed && imageMaxWidth && imageMaxHeight

@@ -140,7 +140,6 @@ describe("pollinations-pricing.schema", () => {
 
     it("should return false for models that do not support reference image", () => {
       expect(modelSupportsReferenceImage("flux")).toBe(false);
-      expect(modelSupportsReferenceImage("flux")).toBe(false);
       expect(modelSupportsReferenceImage("flux-2-dev")).toBe(false);
     });
 
@@ -156,7 +155,6 @@ describe("pollinations-pricing.schema", () => {
     });
 
     it("should return false for stable models", () => {
-      expect(isModelAlpha("flux")).toBe(false);
       expect(isModelAlpha("flux")).toBe(false);
       expect(isModelAlpha("flux-2-dev")).toBe(false);
     });

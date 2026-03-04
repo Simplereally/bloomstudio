@@ -23,7 +23,7 @@ Source: `shared/registry/audio.ts` lines 104-120
 ## 2. API Endpoint
 
 ### OpenAI-compatible POST endpoint
-```
+```http
 POST https://enter.pollinations.ai/v1/audio/speech
 Content-Type: application/json
 Authorization: Bearer <api-key>
@@ -36,7 +36,7 @@ Authorization: Bearer <api-key>
 ```
 
 ### GET shorthand (gen.pollinations.ai)
-```
+```http
 GET https://gen.pollinations.ai/audio/<encodedPrompt>?model=suno
 ```
 
@@ -122,14 +122,14 @@ The Suno path specifically uses a separate `AIRFORCE_API_KEY` (not the ElevenLab
 ## 8. Integration Approach for Pixelstream
 
 ### Option A: Direct GET endpoint (simplest)
-```
+```http
 GET https://gen.pollinations.ai/audio/{encodedPrompt}?model=suno
 Authorization: Bearer <user-api-key>
 ```
 Returns raw audio bytes. Simple `fetch()` + `URL.createObjectURL()`.
 
 ### Option B: OpenAI-compatible POST
-```
+```http
 POST https://enter.pollinations.ai/v1/audio/speech
 { "model": "suno", "input": "<prompt>" }
 ```

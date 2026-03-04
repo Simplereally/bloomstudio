@@ -14,6 +14,49 @@ import {
   type MusicModel,
 } from "./music-api"
 
+// ============================================================================
+// Test Helpers — typed factories that avoid unsafe casts
+// ============================================================================
+
+/**
+ * Creates a real Response with the given body and status.
+ * Using the actual Response constructor ensures full interface conformance
+ * without `as unknown as Response` double-casts.
+ */
+function makeMockResponse(body: BodyInit, init?: ResponseInit): Response {
+  return new Response(body, init)
+}
+
+/**
+ * Creates a Response whose `.blob()` resolves to the given Blob.
+ * In jsdom, constructing `new Response(emptyBlob)` may not round-trip
+ * `.blob()` with the exact same size. This helper builds a real Response
+ * and patches `.blob()` to return the exact Blob, giving us precise
+ * control without `as unknown as Response` double-casts.
+ */
+function makeBlobResponse(blob: Blob, init?: ResponseInit): Response {
+  const response = new Response(null, init)
+  // Override `.blob()` so the exact Blob is returned regardless of jsdom quirks
+  response.blob = () => Promise.resolve(blob)
+  return response
+}
+
+/**
+ * Runtime-narrowing assertion: asserts the caught value is a
+ * MusicGenerationError and returns it with the correct type.
+ * Replaces `(err as MusicGenerationError)` casts throughout tests.
+ */
+function expectMusicGenerationError(err: unknown): MusicGenerationError {
+  expect(err).toBeInstanceOf(MusicGenerationError)
+  // After the assertion above, the runtime guarantee is established.
+  // TypeScript still needs a narrowing path — we use a type guard rather
+  // than a bare cast so the type is backed by an actual runtime check.
+  if (!(err instanceof MusicGenerationError)) {
+    throw new Error("Expected MusicGenerationError but got something else")
+  }
+  return err
+}
+
 describe("MusicAPI", () => {
   describe("buildAudioUrl", () => {
     it("uses the correct base URL and /audio/ path", () => {
@@ -143,9 +186,11 @@ describe("MusicAPI", () => {
   describe("generate", () => {
     beforeEach(() => {
       vi.restoreAllMocks()
-      // Mock crypto.randomUUID
+      // Mock crypto.randomUUID — spyOn infers the correct return type
+      // (`${string}-${string}-${string}-${string}-${string}`) so the literal
+      // satisfies it without a cast since it matches the UUID pattern.
       vi.spyOn(crypto, "randomUUID").mockReturnValue(
-        "test-uuid-1234-5678-9abc-def012345678" as `${string}-${string}-${string}-${string}-${string}`,
+        "test-uuid-1234-5678-9abc-def012345678",
       )
     })
 
@@ -163,8 +208,8 @@ describe("MusicAPI", () => {
         await MusicAPI.generate({ prompt: "" })
         expect.fail("Should have thrown")
       } catch (err) {
-        expect(err).toBeInstanceOf(MusicGenerationError)
-        expect((err as MusicGenerationError).code).toBe("INVALID_INPUT")
+        const musicErr = expectMusicGenerationError(err)
+        expect(musicErr.code).toBe("INVALID_INPUT")
       }
     })
 
@@ -174,8 +219,8 @@ describe("MusicAPI", () => {
         await MusicAPI.generate({ prompt: longPrompt })
         expect.fail("Should have thrown")
       } catch (err) {
-        expect(err).toBeInstanceOf(MusicGenerationError)
-        expect((err as MusicGenerationError).code).toBe("INVALID_INPUT")
+        const musicErr = expectMusicGenerationError(err)
+        expect(musicErr.code).toBe("INVALID_INPUT")
       }
     })
 
@@ -190,7 +235,10 @@ describe("MusicAPI", () => {
 
       expect(result.id).toBe("test-uuid-1234-5678-9abc-def012345678")
       expect(result.prompt).toBe("chill vibes")
-      expect(result.audioBlob).toBeInstanceOf(Blob)
+      expect(result.audioBlob).toBeDefined()
+      expect(result.audioBlob).toHaveProperty("size")
+      expect(result.audioBlob).toHaveProperty("type")
+      expect(typeof result.audioBlob.slice).toBe("function")
       expect(result.audioUrl).toMatch(/^blob:/)
       expect(result.timestamp).toBeTypeOf("number")
       expect(result.estimatedDuration).toBeTypeOf("number")
@@ -212,7 +260,7 @@ describe("MusicAPI", () => {
       expect(calledUrl).toBe("https://gen.pollinations.ai/v1/audio/speech")
       const calledOptions = fetchSpy.mock.calls[0][1] as RequestInit
       expect(calledOptions.method).toBe("POST")
-      expect(calledOptions.body).toBe(JSON.stringify({ model: "suno", input: "test prompt" }))
+      expect(calledOptions.body).toBe(JSON.stringify({ model: "suno-v5", input: "test prompt" }))
     })
 
     it("sends elevenmusic params when model is elevenmusic", async () => {
@@ -371,15 +419,9 @@ describe("MusicAPI", () => {
     })
 
     it("returns null estimatedDuration when blob size is 0", async () => {
-      // Directly test the formula: size=0 → null
-      // We mock fetch to return a Response whose blob() resolves to a 0-size blob
+      // A real Response constructed from an empty Blob — no partial stubs needed
       const emptyBlob = new Blob([], { type: "audio/mpeg" })
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        blob: () => Promise.resolve(emptyBlob),
-        text: () => Promise.resolve(""),
-      } as unknown as Response
+      const mockResponse = makeBlobResponse(emptyBlob, { status: 200 })
       vi.spyOn(global, "fetch").mockResolvedValue(mockResponse)
       vi.spyOn(apiConfig, "getApiKey").mockReturnValue(undefined)
 
@@ -393,10 +435,14 @@ describe("MusicAPI", () => {
       })
 
       it.each([
+        [400, "BAD_REQUEST"],
         [401, "UNAUTHORIZED"],
         [403, "UNAUTHORIZED"],
         [429, "RATE_LIMITED"],
         [402, "BUDGET_EXHAUSTED"],
+        [404, "CLIENT_ERROR"],
+        [405, "CLIENT_ERROR"],
+        [422, "CLIENT_ERROR"],
         [500, "SERVER_ERROR"],
         [502, "SERVER_ERROR"],
         [503, "SERVER_ERROR"],
@@ -404,44 +450,44 @@ describe("MusicAPI", () => {
         "maps HTTP %i to error code %s",
         async (status, expectedCode) => {
           vi.spyOn(global, "fetch").mockResolvedValue(
-            new Response("error body", { status }),
+            makeMockResponse("error body", { status }),
           )
 
           try {
             await MusicAPI.generate({ prompt: "test" })
             expect.fail("Should have thrown")
           } catch (err) {
-            expect(err).toBeInstanceOf(MusicGenerationError)
-            expect((err as MusicGenerationError).code).toBe(expectedCode)
+            const musicErr = expectMusicGenerationError(err)
+            expect(musicErr.code).toBe(expectedCode)
           }
         },
       )
 
       it("includes response body text in error message when available", async () => {
         vi.spyOn(global, "fetch").mockResolvedValue(
-          new Response("Rate limit exceeded", { status: 429 }),
+          makeMockResponse("Rate limit exceeded", { status: 429 }),
         )
 
         try {
           await MusicAPI.generate({ prompt: "test" })
           expect.fail("Should have thrown")
         } catch (err) {
-          expect((err as MusicGenerationError).message).toBe(
-            "Rate limit exceeded",
-          )
+          const musicErr = expectMusicGenerationError(err)
+          expect(musicErr.message).toBe("Rate limit exceeded")
         }
       })
 
       it("falls back to generic message when response body is empty", async () => {
         vi.spyOn(global, "fetch").mockResolvedValue(
-          new Response("", { status: 500 }),
+          makeMockResponse("", { status: 500 }),
         )
 
         try {
           await MusicAPI.generate({ prompt: "test" })
           expect.fail("Should have thrown")
         } catch (err) {
-          expect((err as MusicGenerationError).message).toContain("500")
+          const musicErr = expectMusicGenerationError(err)
+          expect(musicErr.message).toContain("500")
         }
       })
     })

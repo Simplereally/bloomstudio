@@ -91,10 +91,15 @@ function ControlsFeatureView({
     }), [generationSettings.videoReferenceImages])
 
     const handleInterpolationImagesChange = React.useCallback((images: { firstFrame?: string; lastFrame?: string }) => {
-        const newFrames: string[] = []
-        if (images.firstFrame) newFrames.push(images.firstFrame)
-        if (images.lastFrame) newFrames.push(images.lastFrame)
-        generationSettings.setVideoReferenceImages(newFrames)
+        const firstFrame = images.firstFrame ?? ""
+        const lastFrame = images.lastFrame ?? ""
+
+        // Trim trailing empty slots to keep the array clean when neither or only the first frame is set
+        if (!lastFrame) {
+            generationSettings.setVideoReferenceImages(firstFrame ? [firstFrame] : [])
+        } else {
+            generationSettings.setVideoReferenceImages([firstFrame, lastFrame])
+        }
     }, [generationSettings])
 
     // Compute dimension info for limit display (derived from settings)

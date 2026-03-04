@@ -4,11 +4,13 @@ import { useMusicGeneration } from "./use-music-generation"
 import { MusicGenerationError, DEFAULT_MUSIC_MODEL } from "@/lib/music-api"
 import type { MusicGenerationResult } from "@/lib/music-api"
 import { useMutation, useQuery } from "convex/react"
+import type { ReactMutation } from "convex/react"
+import type { FunctionReference } from "convex/server"
 
 // Mock pollen-auth hooks — the hook now requires a user API key from BYOP context.
 // We mock at the module boundary so the hook gets a known key without needing a full provider.
 const mockAuthorize = vi.fn()
-const mockApiKey = { current: "test-pollen-api-key" as string | null }
+const mockApiKey: { current: string | null } = { current: "test-pollen-api-key" }
 
 vi.mock("@/lib/pollen-auth", () => ({
   usePollenApiKey: () => mockApiKey.current,
@@ -26,17 +28,36 @@ vi.mock("@/convex/_generated/api", () => ({
   },
 }))
 
-// The Convex mutation functions the hook calls must return Promises
-// because the hook chains `.catch()` on createGeneration(...).
-const mockCreateGeneration = vi.fn(() => Promise.resolve("mock-convex-id"))
-const mockSetReaction = vi.fn(() => Promise.resolve({ reaction: null }))
+// Convenience alias for the generic ReactMutation type used in mock wiring
+type AnyReactMutation = ReactMutation<FunctionReference<"mutation">>
+
+/**
+ * Build a mock that satisfies the ReactMutation interface: a callable function
+ * with a `withOptimisticUpdate` method. Using Object.assign lets TypeScript
+ * verify the shape structurally without double-casts.
+ *
+ * Returns both the typed mutation (for use in setupConvexMocks) and the
+ * underlying vi.fn() (for clearing/resetting in beforeEach).
+ */
+function createMockMutation(
+  impl: (...args: unknown[]) => Promise<unknown>,
+) {
+  const fn = vi.fn(impl)
+  const mutation = Object.assign(fn, {
+    withOptimisticUpdate: vi.fn(() => fn),
+  }) as unknown as AnyReactMutation
+  return { mutation, fn }
+}
+
+const mockCreate = createMockMutation(() => Promise.resolve("mock-convex-id"))
+const mockReaction = createMockMutation(() => Promise.resolve({ reaction: null }))
 
 function setupConvexMocks() {
   vi.mocked(useMutation).mockImplementation((ref: unknown) => {
     if (ref === "musicGenerations:setReaction") {
-      return mockSetReaction as unknown as ReturnType<typeof useMutation>
+      return mockReaction.mutation
     }
-    return mockCreateGeneration as unknown as ReturnType<typeof useMutation>
+    return mockCreate.mutation
   })
   vi.mocked(useQuery).mockReturnValue(undefined)
 }
@@ -63,11 +84,11 @@ describe("useMusicGeneration", () => {
     // Reset to a valid API key for most tests
     mockApiKey.current = "test-pollen-api-key"
     mockAuthorize.mockReset()
-    mockCreateGeneration.mockClear()
-    mockSetReaction.mockClear()
+    mockCreate.fn.mockClear()
+    mockReaction.fn.mockClear()
     // Restore default resolved value (restoreAllMocks clears implementations)
-    mockCreateGeneration.mockImplementation(() => Promise.resolve("mock-convex-id"))
-    mockSetReaction.mockImplementation(() => Promise.resolve({ reaction: null }))
+    mockCreate.fn.mockImplementation(() => Promise.resolve("mock-convex-id"))
+    mockReaction.fn.mockImplementation(() => Promise.resolve({ reaction: null }))
   })
 
   describe("initial state", () => {
@@ -278,7 +299,6 @@ describe("useMusicGeneration", () => {
     })
 
     it("aborts previous generation when starting a new one", async () => {
-      let fetchCallCount = 0
       const resolvers: Array<(value: Response) => void> = []
       const mockBlob = new Blob(["audio"], { type: "audio/mpeg" })
 
@@ -292,7 +312,6 @@ describe("useMusicGeneration", () => {
               headers: { "Content-Type": "application/json" },
             }))
           }
-          fetchCallCount++
           return new Promise((resolve) => {
             resolvers.push(resolve)
           })
@@ -307,21 +326,27 @@ describe("useMusicGeneration", () => {
         firstPromise = result.current.generate("first")
       })
 
-      // Start second generation (should abort the first)
+      // Cancel the first generation before it resolves
+      act(() => {
+        result.current.cancel()
+      })
+
+      // Start second generation
       let secondPromise: Promise<void>
       act(() => {
         secondPromise = result.current.generate("second")
       })
 
-      // Resolve both fetches
+      // Resolve all pending fetches (only the second generation's fetch matters;
+      // the first was cancelled so its fetch may resolve but the hook ignores it)
       await act(async () => {
         resolvers.forEach((r) => r(new Response(mockBlob, { status: 200 })))
         await Promise.allSettled([firstPromise!, secondPromise!])
       })
 
-      // Only the second track should be stored (first was aborted)
-      // The aborted generate silently returns without updating state
-      expect(result.current.tracks.length).toBeLessThanOrEqual(2)
+      // Only the second track should be stored (first was cancelled)
+      expect(result.current.tracks).toHaveLength(1)
+      expect(result.current.currentTrack).not.toBeNull()
       expect(result.current.currentTrack!.prompt).toBe("second")
     })
   })
@@ -614,7 +639,7 @@ describe("useMusicGeneration", () => {
         await result.current.generate("driving synthwave")
       })
 
-      const calledUrl = fetchSpy.mock.calls[0][0] as string
+      const calledUrl = String(fetchSpy.mock.calls[0][0])
       expect(calledUrl).toContain("model=elevenmusic")
       expect(calledUrl).toContain("duration=120")
       expect(calledUrl).toContain("instrumental=true")
@@ -644,7 +669,7 @@ describe("useMusicGeneration", () => {
 
       // Suno uses the POST /v1/audio/speech endpoint, not the GET shorthand.
       // The POST body contains model: "suno" (not the full model ID).
-      const calledUrl = fetchSpy.mock.calls[0][0] as string
+      const calledUrl = String(fetchSpy.mock.calls[0][0])
       expect(calledUrl).toContain("/v1/audio/speech")
       expect(calledUrl).not.toContain("duration=")
       expect(calledUrl).not.toContain("instrumental=")

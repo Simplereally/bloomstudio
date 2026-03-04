@@ -119,7 +119,7 @@ function formatRelativeTime(timestamp: number): string {
 
 function GeneratingRow({ track }: { track: MusicGenerationResult }) {
   return (
-    <div className="flex items-center gap-4 px-4 py-3 rounded-xl bg-card/40 border border-border/30 animate-in fade-in slide-in-from-top-2 duration-300">
+    <div className="relative overflow-hidden flex items-center gap-4 px-4 py-3 rounded-xl bg-card/40 border border-border/30 animate-in fade-in slide-in-from-top-2 duration-300">
       {/* Spinning disc icon */}
       <div className="relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-primary/10 border border-primary/20">
         <Loader2 className="h-5 w-5 animate-spin text-primary" />
@@ -140,7 +140,7 @@ function GeneratingRow({ track }: { track: MusicGenerationResult }) {
                 key={i}
                 className="w-[2px] rounded-full bg-primary/60"
                 style={{
-                  animation: `musicBar 1.2s ease-in-out ${i * 0.15}s infinite alternate`,
+                  animation: `music-bar 1.2s ease-in-out ${i * 0.15}s infinite alternate`,
                 }}
               />
             ))}
@@ -246,7 +246,7 @@ export function MusicTrackRow({
         }
       }}
       className={cn(
-        "group relative flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-150 cursor-pointer",
+        "group relative overflow-hidden flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-150 cursor-pointer",
         "hover:bg-accent/40",
         isActive
           ? "bg-primary/5 border border-primary/20 shadow-sm"
@@ -269,7 +269,7 @@ export function MusicTrackRow({
                 key={i}
                 className="w-[3px] rounded-full bg-primary"
                 style={{
-                  animation: `musicBar 0.8s ease-in-out ${i * 0.12}s infinite alternate`,
+                  animation: `music-bar 0.8s ease-in-out ${i * 0.12}s infinite alternate`,
                 }}
               />
             ))}

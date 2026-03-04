@@ -7,7 +7,7 @@
 
 import { auth } from "@clerk/nextjs/server"
 import { NextRequest, NextResponse } from "next/server"
-import { uploadImage } from "@/lib/storage"
+import { uploadFile } from "@/lib/storage"
 import crypto from "crypto"
 
 const MAX_AUDIO_SIZE = 50 * 1024 * 1024 // 50MB (music files can be large)
@@ -41,7 +41,7 @@ function generateAudioKey(userId: string, contentType: string): string {
         : contentType.split("/")[1] || "mp3"
     const timestamp = Date.now()
     const randomId = crypto.randomUUID()
-    const userHash = crypto.createHash("sha256").update(userId).digest("hex")
+    const userHash = crypto.createHash("sha256").update(userId).digest("hex").slice(0, 12)
 
     return `music/${userHash}/${timestamp}-${randomId}.${ext}`
 }
@@ -59,9 +59,9 @@ export async function POST(
         }
 
         const formData = await request.formData()
-        const file = formData.get("file") as File | null
+        const file = formData.get("file")
 
-        if (!file) {
+        if (!(file instanceof File)) {
             return NextResponse.json(
                 { success: false, error: { code: "NO_FILE", message: "No audio file provided" } },
                 { status: 400 }
@@ -102,7 +102,7 @@ export async function POST(
 
         // Generate key and upload
         const r2Key = generateAudioKey(userId, file.type)
-        const result = await uploadImage({
+        const result = await uploadFile({
             data: buffer,
             contentType: file.type,
             key: r2Key,

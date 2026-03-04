@@ -47,7 +47,7 @@ vi.spyOn<crypto.Hash, "digest">(realHashInstance, "digest").mockReturnValue("moc
 const mockCreateHash = vi.spyOn(crypto, "createHash").mockReturnValue(realHashInstance);
 
 import {
-  uploadImage,
+  uploadFile,
   deleteImage,
   deleteImages,
   imageExists,
@@ -78,11 +78,11 @@ describe("r2-client", () => {
     process.env = originalEnv;
   });
 
-  describe("uploadImage", () => {
-    it("should upload an image successfully", async () => {
+  describe("uploadFile", () => {
+    it("should upload a file successfully", async () => {
       mockSend.mockResolvedValueOnce({});
       const data = Buffer.from("test-image-data");
-      const result = await uploadImage({
+      const result = await uploadFile({
         data,
         contentType: "image/png",
         key: "test-key.png",
@@ -110,7 +110,7 @@ describe("r2-client", () => {
 
     it("should throw error if env vars are missing", async () => {
       delete process.env.R2_ACCOUNT_ID;
-      await expect(uploadImage({
+      await expect(uploadFile({
         data: Buffer.from(""),
         contentType: "image/png",
         key: "key",
@@ -190,7 +190,7 @@ describe("r2-client", () => {
       // Format: {type}/{userHash}/{timestamp}-{randomId}.{ext}
       // userHash for "user123" mocked to "mock-user-hash"
       // randomUUID mocked to "mock-uuid"
-      expect(key).toMatch(/^generated\/mock-user-hash\/\d+-00000000-0000-4000-8000-000000000000\.png$/);
+      expect(key).toMatch(/^generated\/mock-user-ha\/\d+-00000000-0000-4000-8000-000000000000\.png$/);
     });
   });
 

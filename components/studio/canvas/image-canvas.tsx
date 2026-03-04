@@ -115,11 +115,11 @@ const QueueCardGrid = React.memo(function QueueCardGrid({
     items: QueueItem[]
     onCancel?: (id: string) => void
 }) {
-    if (items.length <= 1) return null
+    if (items.length === 0) return null
 
     const count = items.length
-    // Responsive grid columns based on count
-    const cols = count <= 2 ? 2 : count <= 4 ? 2 : count <= 6 ? 3 : 4
+    // Responsive grid columns based on count — single item gets centered solo
+    const cols = count === 1 ? 1 : count <= 4 ? 2 : count <= 6 ? 3 : 4
 
     return (
         <div
@@ -269,7 +269,7 @@ const QueueCard = React.memo(function QueueCard({
                     className={cn(
                         "absolute top-1 right-1 z-10 pointer-events-auto",
                         "flex items-center justify-center",
-                        "h-5 w-5 rounded-full",
+                        "rounded-full p-1.5",
                         "bg-background/80 backdrop-blur-sm border border-white/10",
                         "text-muted-foreground hover:text-destructive hover:bg-destructive/10",
                         "transition-colors duration-150",

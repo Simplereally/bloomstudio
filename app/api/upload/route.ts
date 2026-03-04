@@ -7,7 +7,7 @@
 
 import { auth } from "@clerk/nextjs/server"
 import { NextRequest, NextResponse } from "next/server"
-import { uploadImage, generateImageKey } from "@/lib/storage"
+import { uploadFile, generateImageKey } from "@/lib/storage"
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"]
@@ -53,9 +53,9 @@ export async function POST(
         }
 
         const formData = await request.formData()
-        const file = formData.get("file") as File | null
+        const file = formData.get("file")
 
-        if (!file) {
+        if (!(file instanceof File)) {
             return NextResponse.json(
                 { success: false, error: { code: "NO_FILE", message: "No file provided" } },
                 { status: 400 }
@@ -96,7 +96,7 @@ export async function POST(
 
         // Generate key and upload
         const r2Key = generateImageKey(userId, "reference", file.type)
-        const result = await uploadImage({
+        const result = await uploadFile({
             data: buffer,
             contentType: file.type,
             key: r2Key,

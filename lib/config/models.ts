@@ -1156,11 +1156,17 @@ export function getActiveVideoModels(): ModelDefinition[] {
   return Object.values(MODEL_REGISTRY).filter((m) => m.type === "video" && !m.isLegacy);
 }
 
+/** Active (non-legacy) model IDs */
+export const ACTIVE_MODEL_IDS = getActiveModels().map((m) => m.id);
+
 /** Active (non-legacy) image model IDs */
 export const ACTIVE_IMAGE_MODEL_IDS = getActiveImageModels().map((m) => m.id);
 
-/** Active (non-legacy) video model IDs */
+/** Active (non-legacy) video model IDS */
 export const ACTIVE_VIDEO_MODEL_IDS = getActiveVideoModels().map((m) => m.id);
+
+/** Total count of active (non-legacy) models — single source of truth for UI copy */
+export const ACTIVE_MODEL_COUNT = ACTIVE_MODEL_IDS.length;
 
 /** All legacy model IDs */
 export const LEGACY_MODEL_IDS = getLegacyModels().map((m) => m.id);

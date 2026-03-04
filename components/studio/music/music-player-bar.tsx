@@ -1,3 +1,5 @@
+"use client"
+
 /**
  * MusicPlayerBar — Spotify-style sticky bottom audio player bar
  *
@@ -12,8 +14,6 @@
  *
  * Layout: [Track Info + Reactions] — [Playback Controls] — [Download · Lyrics · Time]
  */
-
-"use client"
 
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -148,10 +148,17 @@ export function MusicPlayerBar({
   // Close lyrics panel when track changes
   const prevTrackIdRef = React.useRef<string | null>(null)
 
+  // Stable ref for onPlayingChange so the notification effect doesn't
+  // re-fire when callers pass an inline / non-memoized callback.
+  const onPlayingChangeRef = React.useRef(onPlayingChange)
+  React.useEffect(() => {
+    onPlayingChangeRef.current = onPlayingChange
+  }, [onPlayingChange])
+
   // Notify parent of playing state changes
   React.useEffect(() => {
-    onPlayingChange?.(isPlaying)
-  }, [isPlaying, onPlayingChange])
+    onPlayingChangeRef.current?.(isPlaying)
+  }, [isPlaying])
 
   // Release seeking state when mouse is released anywhere on the page
   React.useEffect(() => {
@@ -291,14 +298,40 @@ export function MusicPlayerBar({
     [duration],
   )
 
-  const handleDownload = React.useCallback(() => {
-    if (!track) return
-    const a = document.createElement("a")
-    a.href = track.audioUrl
-    a.download = `bloom-music-${track.id.slice(0, 8)}.mp3`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
+  const handleDownload = React.useCallback(async () => {
+    if (!track?.audioUrl) return
+
+    let objectUrl: string | undefined
+    let anchor: HTMLAnchorElement | undefined
+
+    try {
+      // Validate URL shape before fetching
+      new URL(track.audioUrl)
+
+      const response = await fetch(track.audioUrl)
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.status} ${response.statusText}`)
+      }
+
+      const blob = await response.blob()
+      objectUrl = URL.createObjectURL(blob)
+
+      anchor = document.createElement("a")
+      anchor.href = objectUrl
+      anchor.download = `bloom-music-${track.id.slice(0, 8)}.mp3`
+      anchor.rel = "noopener"
+      document.body.appendChild(anchor)
+      anchor.click()
+    } catch (error) {
+      console.error("[MusicPlayerBar] Track download failed:", error)
+    } finally {
+      if (anchor?.parentNode) {
+        anchor.parentNode.removeChild(anchor)
+      }
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl)
+      }
+    }
   }, [track])
 
   const toggleLyrics = React.useCallback(() => {
@@ -378,7 +411,7 @@ export function MusicPlayerBar({
                     key={i}
                     className="w-[3px] rounded-full bg-primary"
                     style={{
-                      animation: `musicBar 0.8s ease-in-out ${i * 0.12}s infinite alternate`,
+                      animation: `music-bar 0.8s ease-in-out ${i * 0.12}s infinite alternate`,
                     }}
                   />
                 ))}

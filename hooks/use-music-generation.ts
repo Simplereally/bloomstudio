@@ -18,6 +18,7 @@
 import {
   MusicAPI,
   MusicGenerationError,
+  MUSIC_MODELS,
   type MusicGenerationParams,
   type MusicGenerationResult,
   type MusicErrorCode,
@@ -32,6 +33,65 @@ import { usePollenApiKey, usePollenAuthActions } from "@/lib/pollen-auth"
 import { useMutation, useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
+
+// ============================================================================
+// Runtime Validators
+// ============================================================================
+
+const MUSIC_MODELS_SET: ReadonlySet<string> = new Set<string>(MUSIC_MODELS)
+
+/** Type-guard: checks that a value is one of the known MusicModel literals. */
+function isValidMusicModel(value: unknown): value is MusicModel {
+  return typeof value === "string" && MUSIC_MODELS_SET.has(value)
+}
+
+/**
+ * Validates the shape of the R2 upload JSON response.
+ * Returns the parsed payload or `undefined` if the shape is invalid.
+ */
+function parseUploadResponse(
+  json: unknown,
+): { url: string; r2Key: string; sizeBytes: number } | undefined {
+  if (
+    typeof json !== "object" ||
+    json === null ||
+    !("success" in json) ||
+    !("data" in json)
+  )
+    return undefined
+
+  const { success, data } = json as Record<string, unknown>
+  if (success !== true || typeof data !== "object" || data === null)
+    return undefined
+
+  const d = data as Record<string, unknown>
+  if (
+    typeof d.url !== "string" ||
+    typeof d.r2Key !== "string" ||
+    typeof d.sizeBytes !== "number"
+  )
+    return undefined
+
+  return { url: d.url, r2Key: d.r2Key, sizeBytes: d.sizeBytes }
+}
+
+/**
+ * Narrows an optional `convexId` string to a typed Convex document ID.
+ * Returns the id or `undefined` if the value is falsy or not a string.
+ */
+function asConvexId(
+  value: string | undefined,
+): Id<"musicGenerations"> | undefined {
+  // Convex IDs are opaque strings at runtime; we validate presence + type.
+  // The server will reject invalid IDs, so this guard prevents sending
+  // garbage values through the wire rather than asserting correctness.
+  if (typeof value === "string" && value.length > 0) {
+    // Convex Id<T> is a branded string — after validating presence + type,
+    // this is the narrowest safe assertion we can make at runtime.
+    return value as Id<"musicGenerations">
+  }
+  return undefined
+}
 
 // ============================================================================
 // Types
@@ -136,9 +196,15 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
 
     // Map Convex documents to MusicGenerationResult format.
     // Historical tracks use persisted audio URLs from R2 storage.
-    // Filter out tracks without valid audio URLs (upload may have failed).
+    // Filter out tracks without valid audio URLs (upload may have failed)
+    // and tracks with unrecognised model values (schema drift).
     const historicalTracks: MusicGenerationResult[] = historicalGenerations
-      .filter((doc) => !sessionConvexIds.has(doc._id) && doc.audioUrl)
+      .filter(
+        (doc) =>
+          !sessionConvexIds.has(doc._id) &&
+          doc.audioUrl &&
+          isValidMusicModel(doc.model),
+      )
       .map((doc) => ({
         id: doc._id,
         prompt: doc.prompt,
@@ -146,6 +212,7 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
         audioBlob: new Blob(),
         timestamp: doc.createdAt,
         estimatedDuration: doc.estimatedDuration ?? null,
+        // Safe: filtered for isValidMusicModel above
         model: doc.model as MusicModel,
         instrumental: doc.instrumental,
         status: "done" as const,
@@ -288,14 +355,12 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
           let audioSizeBytes: number | undefined
 
           if (uploadRes.ok) {
-            const uploadData = await uploadRes.json() as {
-              success: boolean
-              data: { url: string; r2Key: string; sizeBytes: number }
-            }
-            if (uploadData.success) {
-              r2Key = uploadData.data.r2Key
-              persistedAudioUrl = uploadData.data.url
-              audioSizeBytes = uploadData.data.sizeBytes
+            const uploadJson: unknown = await uploadRes.json()
+            const uploadData = parseUploadResponse(uploadJson)
+            if (uploadData) {
+              r2Key = uploadData.r2Key
+              persistedAudioUrl = uploadData.url
+              audioSizeBytes = uploadData.sizeBytes
             }
           }
 
@@ -323,15 +388,10 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
         status: "done",
       }
 
-      // Wait briefly for the convexId so we can attach it
-      const convexId = await persistPromise
-      if (convexId) {
-        completedTrack.convexId = convexId as string
-      }
-
       // Remove from in-flight
       inFlightRef.current.delete(trackId)
 
+      // Update UI immediately — don't block on persistence
       setState((prev) => ({
         ...prev,
         status: "success",
@@ -342,6 +402,25 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
         inFlightCount: inFlightRef.current.size,
         isGenerating: inFlightRef.current.size > 0,
       }))
+
+      // Attach convexId asynchronously once persistence completes.
+      // createGeneration returns Id<"musicGenerations"> which is a branded
+      // string; we store it as a plain string on MusicGenerationResult.
+      persistPromise.then((convexId) => {
+        if (convexId) {
+          const id: string = convexId
+          setState((prev) => ({
+            ...prev,
+            currentTrack:
+              prev.currentTrack?.id === trackId
+                ? { ...prev.currentTrack, convexId: id }
+                : prev.currentTrack,
+            tracks: prev.tracks.map((t) =>
+              t.id === trackId ? { ...t, convexId: id } : t
+            ),
+          }))
+        }
+      })
     } catch (err) {
       // Remove from in-flight
       inFlightRef.current.delete(trackId)
@@ -505,9 +584,11 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
 
     // Find the track from merged tracks (includes both session + historical)
     const track = mergedTracksRef.current.find((t) => t.id === trackId)
-    if (track?.convexId) {
+    const generationId = track ? asConvexId(track.convexId) : undefined
+    if (track && generationId) {
+      const previousReaction = track.reaction
       setReactionMutation({
-        generationId: track.convexId as Id<"musicGenerations">,
+        generationId,
         reaction,
       }).catch(() => {
         // Revert optimistic update on failure (for session tracks only;
@@ -515,8 +596,12 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
         setState((prev) => ({
           ...prev,
           tracks: prev.tracks.map((t) =>
-            t.id === trackId ? { ...t, reaction: track.reaction } : t
+            t.id === trackId ? { ...t, reaction: previousReaction } : t
           ),
+          currentTrack:
+            prev.currentTrack?.id === trackId
+              ? { ...prev.currentTrack, reaction: previousReaction }
+              : prev.currentTrack,
         }))
       })
     }

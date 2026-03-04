@@ -122,9 +122,11 @@ export function VideoReferenceFramesPicker({
                 onFramesChange(updated)
             }
             toast.success("Reference frame uploaded")
-        } catch (error) {
-            console.error("Upload failed:", error)
-            toast.error("Failed to upload reference frame")
+        } catch (error: unknown) {
+            const message =
+                error instanceof Error ? error.message : String(error)
+            console.error("Upload failed:", message)
+            toast.error(`Failed to upload reference frame: ${message}`)
         } finally {
             const key = targetIndex === "new" ? "new" : `frame-${targetIndex}`
             const input = fileInputRefs.current.get(key)
@@ -193,9 +195,9 @@ export function VideoReferenceFramesPicker({
                 <span className="text-sm font-medium text-muted-foreground">{label}</span>
 
                 {/* Frame preview */}
-                <div className="relative group aspect-square w-32 rounded-lg overflow-hidden border-2 border-primary/50 ring-2 ring-primary/20">
+                <div className="relative group aspect-square w-32 rounded-lg overflow-hidden border-2 border-primary/50 ring-2 ring-primary/20 bg-muted">
                     {isUploading ? (
-                        <div className="flex items-center justify-center w-full h-full bg-muted">
+                        <div className="flex items-center justify-center w-full h-full">
                             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                         </div>
                     ) : (
@@ -203,6 +205,7 @@ export function VideoReferenceFramesPicker({
                             src={url}
                             alt={`${label} image`}
                             fill
+                            sizes="128px"
                             className="object-cover"
                         />
                     )}
@@ -370,7 +373,7 @@ export function VideoReferenceFramesPicker({
                             .map((img) => (
                                 <div
                                     key={img._id}
-                                    className="relative group aspect-square w-16 rounded-md overflow-hidden border border-border cursor-pointer ring-offset-background transition-all hover:ring-2 hover:ring-primary/20"
+                                    className="relative group aspect-square w-16 rounded-md overflow-hidden border border-border cursor-pointer ring-offset-background transition-all hover:ring-2 hover:ring-primary/20 bg-muted"
                                     data-testid="recent-image-thumbnail"
                                 >
                                     <button
@@ -382,6 +385,7 @@ export function VideoReferenceFramesPicker({
                                             src={img.url}
                                             alt="Reference image"
                                             fill
+                                            sizes="64px"
                                             className="object-cover transition-transform group-hover:scale-105"
                                         />
                                     </button>

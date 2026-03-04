@@ -20,7 +20,7 @@ function Drawer({
         // Allow Radix/Vaul internals to finish cleanup, then verify body is usable
         requestAnimationFrame(() => {
           const hasOpenModal = document.querySelector(
-            '[data-state="open"][role="dialog"]'
+            '[data-state="open"][role="dialog"], [data-state="open"][role="alertdialog"]'
           );
           if (!hasOpenModal && document.body.style.pointerEvents === "none") {
             document.body.style.pointerEvents = "";

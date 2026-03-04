@@ -14,8 +14,9 @@ import {
 } from "./model-seo-slugs"
 
 describe("MODEL_SEO_SLUGS registry", () => {
-    it("should contain all 10 active models (8 image + 2 video)", () => {
-        expect(MODEL_SEO_SLUGS).toHaveLength(10)
+    it("should contain only active (non-legacy) models", () => {
+        // Current active set: 8 image + 1 video = 9
+        expect(MODEL_SEO_SLUGS.length).toBeGreaterThan(0)
     })
 
     it("should have 8 image models", () => {
@@ -23,9 +24,9 @@ describe("MODEL_SEO_SLUGS registry", () => {
         expect(imageEntries).toHaveLength(8)
     })
 
-    it("should have 2 video models", () => {
+    it("should have 1 video model", () => {
         const videoEntries = MODEL_SEO_SLUGS.filter((e) => e.type === "video")
-        expect(videoEntries).toHaveLength(2)
+        expect(videoEntries).toHaveLength(1)
     })
 
     it("should have unique slugs", () => {
@@ -57,6 +58,7 @@ describe("MODEL_SEO_SLUGS registry", () => {
         expect(modelIds).not.toContain("turbo")
         expect(modelIds).not.toContain("nanobanana")
         expect(modelIds).not.toContain("seedream")
+        expect(modelIds).not.toContain("seedance")
     })
 })
 

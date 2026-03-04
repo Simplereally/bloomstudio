@@ -18,8 +18,9 @@ import {
     formatMegapixels,
     formatDimensions,
     calculatePixelBudgetPercent,
+    type AspectRatioParts,
 } from "./resolution-tiers"
-import type { ModelConstraints } from "@/types/pollinations"
+import type { ModelConstraints, ResolutionTier } from "@/types/pollinations"
 
 // Test constraint configurations
 const KONTEXT_CONSTRAINTS: ModelConstraints = {
@@ -248,8 +249,8 @@ describe("calculateDimensionsForTier", () => {
             { widthRatio: 16, heightRatio: 9 },
             { widthRatio: 9, heightRatio: 16 },
             { widthRatio: 4, heightRatio: 3 },
-        ] as const
-        const tiers = ["sd", "hd"] as const
+        ] satisfies AspectRatioParts[]
+        const tiers = ["sd", "hd"] satisfies ResolutionTier[]
 
         for (const ratio of ratios) {
             for (const tier of tiers) {
