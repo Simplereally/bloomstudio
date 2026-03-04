@@ -27,6 +27,34 @@ import Image from "next/image"
 import { useRef, useState, useCallback, useMemo } from "react"
 import { toast } from "sonner"
 
+/** Internal image component with loading skeleton transition */
+function LoadableFrameImage({
+    src,
+    alt,
+    sizes,
+}: {
+    src: string
+    alt: string
+    sizes: string
+}) {
+    const [isLoaded, setIsLoaded] = useState(false)
+
+    return (
+        <Image
+            src={src}
+            alt={alt}
+            fill
+            sizes={sizes}
+            className={cn(
+                "object-cover transition-all duration-500 ease-out",
+                isLoaded ? "opacity-100 scale-100" : "opacity-0 scale-105 blur-sm"
+            )}
+            onLoad={() => setIsLoaded(true)}
+            onError={() => setIsLoaded(true)}
+        />
+    )
+}
+
 export interface VideoReferenceFrames {
     /** Array of reference frame URLs */
     frames: string[]
@@ -201,12 +229,10 @@ export function VideoReferenceFramesPicker({
                             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                         </div>
                     ) : (
-                        <Image
+                        <LoadableFrameImage
                             src={url}
                             alt={`${label} image`}
-                            fill
                             sizes="128px"
-                            className="object-cover"
                         />
                     )}
                     <button
@@ -381,12 +407,10 @@ export function VideoReferenceFramesPicker({
                                         className="w-full h-full relative"
                                         data-testid={`select-recent-${img._id}`}
                                     >
-                                        <Image
+                                        <LoadableFrameImage
                                             src={img.url}
                                             alt="Reference image"
-                                            fill
                                             sizes="64px"
-                                            className="object-cover transition-transform group-hover:scale-105"
                                         />
                                     </button>
                                 </div>
