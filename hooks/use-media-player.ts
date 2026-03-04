@@ -12,8 +12,6 @@ export interface UseMediaPlayerProps {
     isVideo: boolean
     /** Whether the video should autoplay (default: false) */
     autoPlay?: boolean
-    /** Whether the video should be muted (default: true) */
-    muted?: boolean
     /** Whether native controls are enabled (default: true) */
     controls?: boolean
     /** Callback when media successfully loads */
@@ -63,10 +61,11 @@ export interface UseMediaPlayerReturn {
  * video.play() to prevent "The play() request was interrupted by a call
  * to pause()" errors.
  * 
- * Chrome autoplay policy: When autoplay is requested, the video starts muted
- * (always allowed by Chrome) and stays muted. The user can unmute via the
- * native controls. This avoids the "1-second stall" caused by programmatic
- * unmuting, which makes Chrome re-evaluate its autoplay policy and pause.
+ * Chrome autoplay policy: When autoplay is requested, the video is
+ * force-muted before the initial play() call (always allowed by Chrome).
+ * The user can unmute via native controls. The `muted` attribute on the
+ * `<video>` element itself is the caller's responsibility (see MediaPlayer
+ * component, which sets `muted={autoPlay ? true : muted}`).
  * 
  * Native controls: When `controls` is true, `handleVideoClick` is undefined
  * to prevent double-toggling playback (the browser's native controls already
@@ -81,7 +80,6 @@ export interface UseMediaPlayerReturn {
  *   url: videoUrl,
  *   isVideo: true,
  *   autoPlay: true,
- *   muted: false,
  *   controls: true,
  *   onLoad: () => console.log('Loaded!'),
  * });
@@ -91,7 +89,6 @@ export function useMediaPlayer({
     url,
     isVideo,
     autoPlay = false,
-    muted = true,
     controls = true,
     onLoad,
     onError,
@@ -171,8 +168,9 @@ export function useMediaPlayer({
      * may already be consumed by intermediate UI (Dialog/Modal opening).
      * 
      * Strategy:
-     * 1. Always start playback muted (guaranteed to succeed in all browsers)
-     * 2. Leave the video muted — the user can unmute via native controls
+     * 1. Force muted before play() to guarantee autoplay succeeds in all
+     *    browsers.
+     * 2. Leave the video muted — the user can unmute via native controls.
      * 
      * Previous versions tried to unmute programmatically after play() succeeded.
      * This caused Chrome to re-evaluate its autoplay policy and pause the video
@@ -189,9 +187,9 @@ export function useMediaPlayer({
         autoPlayAttemptedRef.current = url
 
         const attemptAutoplay = async () => {
-            // Always start muted to guarantee autoplay succeeds.
-            // The user can unmute via native controls at any time.
             try {
+                // Force muted to guarantee autoplay succeeds per Chrome's
+                // autoplay policy. The user can unmute via native controls.
                 video.muted = true
                 const playPromise = video.play()
                 playPromiseRef.current = playPromise

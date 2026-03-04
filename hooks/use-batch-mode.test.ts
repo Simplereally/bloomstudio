@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { useBatchMode } from "./use-batch-mode"
 
 // Mock dependencies
@@ -78,6 +78,9 @@ describe("useBatchMode", () => {
     beforeEach(() => {
         vi.clearAllMocks()
         vi.stubGlobal("fetch", vi.fn())
+        // Clear localStorage to prevent cross-test state contamination
+        // (useLocalStorage persists batchSettings between tests)
+        window.localStorage.clear()
     })
 
     afterEach(() => {

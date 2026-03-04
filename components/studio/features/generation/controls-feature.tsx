@@ -20,6 +20,7 @@ import { useGenerationSettings, type UseGenerationSettingsReturn } from "@/hooks
 import { useBatchMode, type UseBatchModeReturn } from "@/hooks/use-batch-mode"
 import { useImageGalleryState } from "@/hooks/use-image-gallery-state"
 import { getModel } from "@/lib/config/models"
+
 import type { ThumbnailData } from "@/components/studio/gallery/types"
 import { ControlsView } from "./controls-view"
 import * as React from "react"
@@ -82,6 +83,21 @@ function ControlsFeatureView({
 
     // Get current model definition for video-specific properties
     const currentModelDef = getModel(generationSettings.model)
+
+    // Convert array-based reference images to first/last frame format for interpolation models
+    const interpolationImages = React.useMemo(() => ({
+        firstFrame: generationSettings.videoReferenceImages[0],
+        lastFrame: generationSettings.videoReferenceImages[1],
+    }), [generationSettings.videoReferenceImages])
+
+    const handleInterpolationImagesChange = React.useCallback((images: { firstFrame?: string; lastFrame?: string }) => {
+        // Always preserve positional semantics: index 0 = firstFrame, index 1 = lastFrame.
+        // Use a fixed-length-2 array so consumers can rely on stable indexing.
+        generationSettings.setVideoReferenceImages([
+            images.firstFrame ?? "",
+            images.lastFrame ?? "",
+        ])
+    }, [generationSettings])
 
     // Compute dimension info for limit display (derived from settings)
     const {
@@ -154,9 +170,13 @@ function ControlsFeatureView({
             onVideoSettingsChange={generationSettings.setVideoSettings}
             videoReferenceImages={generationSettings.videoReferenceImages}
             onVideoReferenceImagesChange={generationSettings.setVideoReferenceImages}
+            // For interpolation models, convert string[] ↔ {firstFrame, lastFrame}
+            videoInterpolationImages={interpolationImages}
+            onVideoInterpolationImagesChange={handleInterpolationImagesChange}
             durationConstraints={currentModelDef?.durationConstraints}
             supportsAudio={currentModelDef?.supportsAudio ?? false}
             supportsInterpolation={currentModelDef?.supportsInterpolation ?? false}
+            maxReferenceFrames={currentModelDef?.referenceFrameCount ?? 2}
 
             // History images for reference image browser
             historyImages={historyImages}

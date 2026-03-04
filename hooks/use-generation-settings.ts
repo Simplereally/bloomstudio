@@ -18,7 +18,7 @@
  * This hook follows the "Headless UI" pattern - pure logic with stable callbacks.
  */
 
-import type { GenerationOptions, VideoSettings, VideoReferenceImages } from "@/components/studio"
+import type { GenerationOptions, VideoSettings } from "@/components/studio"
 import { useLocalStorage } from "@/hooks/use-local-storage"
 import { useRandomSeed } from "@/hooks/use-random-seed"
 import {
@@ -98,8 +98,8 @@ export interface UseGenerationSettingsReturn {
     isVideoModel: boolean
     videoSettings: VideoSettings
     setVideoSettings: React.Dispatch<React.SetStateAction<VideoSettings>>
-    videoReferenceImages: VideoReferenceImages
-    setVideoReferenceImages: React.Dispatch<React.SetStateAction<VideoReferenceImages>>
+    videoReferenceImages: string[]
+    setVideoReferenceImages: React.Dispatch<React.SetStateAction<string[]>>
 }
 
 /**
@@ -190,10 +190,7 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
         duration: 5,
         audio: false,
     })
-    const [videoReferenceImages, setVideoReferenceImages] = useLocalStorage<VideoReferenceImages>("ps:gen:videoReferenceImages", {
-        firstFrame: undefined,
-        lastFrame: undefined,
-    })
+    const [videoReferenceImages, setVideoReferenceImages] = useLocalStorage<string[]>("ps:gen:videoReferenceFrames", [])
 
     // ========================================
     // Model-specific Data (Memoized)
@@ -367,10 +364,7 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
                 audio: false,
             })
             // Clear video reference images when switching models
-            setVideoReferenceImages({
-                firstFrame: undefined,
-                lastFrame: undefined,
-            })
+            setVideoReferenceImages([])
         }
     }, [width, height, aspectRatio, resolutionTier, setModel, setResolutionTier, setWidth, setHeight, setAspectRatio, setVideoSettings, setVideoReferenceImages])
 

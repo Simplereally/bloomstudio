@@ -15,7 +15,7 @@ import { cn, isLocalhost } from "@/lib/utils"
 import { SubscriptionBadge } from "@/components/subscription/subscription-badge"
 import { PollenBalanceDisplay } from "@/components/pollen-balance"
 import { UserButton, useUser } from "@clerk/nextjs"
-import { Crown, Heart, HelpCircle, History, Key, Menu, Moon, Settings, Sparkles, Sun, Users, Wallet, X } from "lucide-react"
+import { Crown, Heart, HelpCircle, History, Key, Menu, Moon, Music, Settings, Sparkles, Sun, Users, Wallet, X } from "lucide-react"
 import { useTheme } from "next-themes"
 import Image from "next/image"
 import Link from "next/link"
@@ -23,7 +23,8 @@ import { usePathname } from "next/navigation"
 import { useState, useSyncExternalStore } from "react"
 
 const navItems = [
-    { href: "/studio", label: "Studio", icon: Sparkles },
+    { href: "/studio", label: "Studio", icon: Sparkles, exact: true },
+    { href: "/studio/music", label: "Music", icon: Music },
     { href: "/feed", label: "Feed", icon: Users },
     { href: "/history", label: "History", icon: History },
     { href: "/favorites", label: "Favorites", icon: Heart },
@@ -79,7 +80,7 @@ export function Header() {
                     {showAuthUI && isSignedIn && (
                         <nav className="flex items-center p-1 rounded-full bg-muted/30 border border-border/50 shadow-inner backdrop-blur-md">
                             {navItems.map((item) => {
-                                const isActive = pathname.startsWith(item.href)
+                                const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href)
                                 const Icon = item.icon
                                 return (
                                     <Link key={item.href} href={item.href}>
@@ -247,7 +248,7 @@ export function Header() {
                 <div className="lg:hidden border-t border-border bg-background/95 backdrop-blur-2xl animate-in slide-in-from-top-1 duration-200">
                     <nav className="container mx-auto px-6 py-6 flex flex-col gap-2">
                         {navItems.map((item) => {
-                            const isActive = pathname.startsWith(item.href)
+                            const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href)
                             const Icon = item.icon
                             return (
                                 <Link

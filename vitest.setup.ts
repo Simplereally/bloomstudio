@@ -5,6 +5,12 @@ import { afterEach } from 'vitest'
 // Cleanup after each test
 afterEach(() => {
     cleanup()
+    // Clear localStorage between tests to prevent cross-test state contamination.
+    // Hooks like useLocalStorage and usePromptInput persist values that can leak
+    // between tests and cause non-deterministic failures.
+    if (typeof window !== 'undefined' && window.localStorage && typeof window.localStorage.clear === 'function') {
+        window.localStorage.clear()
+    }
 })
 
 // Only set up browser mocks when window is available (jsdom environment)

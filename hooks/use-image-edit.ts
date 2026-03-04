@@ -33,10 +33,13 @@ import type {
 
 const EDIT_CAPABLE_MODELS = Object.values(MODEL_REGISTRY).filter(
 	(model): model is ModelDefinition =>
-		model.supportsReferenceImage === true && model.type === "image",
+		model.supportsReferenceImage === true &&
+		model.type === "image" &&
+		!model.isLegacy,
 );
 
-const DEFAULT_EDIT_MODEL = "kontext";
+const DEFAULT_EDIT_MODEL =
+	EDIT_CAPABLE_MODELS.length > 0 ? EDIT_CAPABLE_MODELS[0].id : "gptimage";
 
 export interface UseImageEditOptions {
 	onSuccess: (newImage: GeneratedImage) => void;

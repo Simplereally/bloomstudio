@@ -19,6 +19,7 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { api } from "@/convex/_generated/api";
+import { ACTIVE_MODEL_COUNT } from "@/lib/config/models";
 
 interface UpgradeModalProps {
 	/** Whether the modal is open */
@@ -29,7 +30,7 @@ interface UpgradeModalProps {
 
 const proFeatures = [
 	{ icon: Images, label: "5,000+", description: "generations / day" },
-	{ icon: Palette, label: "9", description: "AI models included" },
+	{ icon: Palette, label: String(ACTIVE_MODEL_COUNT), description: "AI models included" },
 	{ icon: RefreshCw, label: "Daily", description: "quota refresh" },
 ];
 

@@ -58,6 +58,8 @@ export interface ModelDefinition {
   readonly durationConstraints?: VideoDurationConstraints
   /** Whether this model supports reference image interpolation (first/last frame) */
   readonly supportsInterpolation?: boolean
+  /** Number of reference frames supported (for video models) */
+  readonly referenceFrameCount?: number
   /** Whether this model supports image-to-image generation (reference image) */
   readonly supportsReferenceImage?: boolean
   /** The pricing definition for this model */
@@ -654,6 +656,32 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     modelPricing: IMAGE_MODEL_PRICING["flux"],
   },
 
+  "flux-2-dev": {
+    id: "flux-2-dev",
+    displayName: "FLUX.2 Dev",
+    type: "image",
+    icon: "zap",
+    logo: "/image-models/flux.svg",
+    description: "Next-gen Flux image generation via api.airforce",
+    isUnrestricted: true,
+    constraints: {
+      maxPixels: 1_048_576, // 1 MP limit - matches Flux Schnell
+      minPixels: 65_536, // Minimum 256×256
+      minDimension: 256, // Minimum per-side dimension
+      maxDimension: 1600, // Max per-side (accounts for ultrawide ratios)
+      step: 16, // Dimensions must be multiples of 16
+      defaultDimensions: { width: 1024, height: 1024 },
+      dimensionsEnabled: true,
+      maxSeed: 2_147_483_647, // int32 max - Pollinations API limit
+      supportedTiers: ["sd", "hd"], // SD/HD due to 1MP cap
+      outputCertainty: "likely",
+      dimensionWarning: "Dimensions rounded to multiples of 16",
+    },
+    aspectRatios: FLUX_SCHNELL_ASPECT_RATIOS,
+    supportsNegativePrompt: false, // Does NOT support negative prompts (unlike Flux Schnell)
+    modelPricing: IMAGE_MODEL_PRICING["flux-2-dev"],
+  },
+
   klein: {
     id: "klein",
     displayName: "FLUX.2 Klein 4B",
@@ -834,6 +862,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     supportsNegativePrompt: false,
     supportsReferenceImage: true,
     supportsInterpolation: true,
+    referenceFrameCount: 2,
     durationConstraints: {
       // Gateway validates min: 1 (enter.pollinations.ai/src/schemas/image.ts line 107).
       // Duration is approximate — not enforced by api.airforce backend.
@@ -1127,11 +1156,17 @@ export function getActiveVideoModels(): ModelDefinition[] {
   return Object.values(MODEL_REGISTRY).filter((m) => m.type === "video" && !m.isLegacy);
 }
 
+/** Active (non-legacy) model IDs */
+export const ACTIVE_MODEL_IDS = getActiveModels().map((m) => m.id);
+
 /** Active (non-legacy) image model IDs */
 export const ACTIVE_IMAGE_MODEL_IDS = getActiveImageModels().map((m) => m.id);
 
-/** Active (non-legacy) video model IDs */
+/** Active (non-legacy) video model IDS */
 export const ACTIVE_VIDEO_MODEL_IDS = getActiveVideoModels().map((m) => m.id);
+
+/** Total count of active (non-legacy) models — single source of truth for UI copy */
+export const ACTIVE_MODEL_COUNT = ACTIVE_MODEL_IDS.length;
 
 /** All legacy model IDs */
 export const LEGACY_MODEL_IDS = getLegacyModels().map((m) => m.id);

@@ -19,6 +19,14 @@ describe("pollinations-pricing.schema", () => {
       expect(pricing?.modelId).toBe("flux");
     });
 
+    it("should return pricing for flux-2-dev", () => {
+      const pricing = getModelPricing("flux-2-dev");
+      expect(pricing).toBeDefined();
+      expect(pricing?.type).toBe("image");
+      expect(pricing?.modelId).toBe("flux-2-dev");
+      expect(pricing?.approximatePerPollen).toBe(1000);
+    });
+
     it("should return pricing for a valid video model", () => {
       const pricing = getModelPricing("veo");
       expect(pricing).toBeDefined();
@@ -43,6 +51,14 @@ describe("pollinations-pricing.schema", () => {
       // Flux is 0.0002 per image
       const cost = estimateImageCost("flux", 10);
       expect(cost).toBe(0.0002 * 10);
+    });
+
+    it("should calculate cost for flux-2-dev at $0.001/image", () => {
+      const cost1 = estimateImageCost("flux-2-dev", 1);
+      expect(cost1).toBe(0.001);
+
+      const cost10 = estimateImageCost("flux-2-dev", 10);
+      expect(cost10).toBe(0.001 * 10);
     });
 
     it("should calculate cost for token-based model (rough estimate)", () => {
@@ -124,6 +140,7 @@ describe("pollinations-pricing.schema", () => {
 
     it("should return false for models that do not support reference image", () => {
       expect(modelSupportsReferenceImage("flux")).toBe(false);
+      expect(modelSupportsReferenceImage("flux-2-dev")).toBe(false);
     });
 
     it("should return false for unknown models", () => {
@@ -139,10 +156,45 @@ describe("pollinations-pricing.schema", () => {
 
     it("should return false for stable models", () => {
       expect(isModelAlpha("flux")).toBe(false);
+      expect(isModelAlpha("flux-2-dev")).toBe(false);
     });
 
     it("should return false for unknown models", () => {
       expect(isModelAlpha("unknown")).toBe(false);
     });
+  });
+});
+
+describe("FLUX.2 Dev pricing specifics", () => {
+  it("should exist in IMAGE_MODEL_PRICING", () => {
+    expect(IMAGE_MODEL_PRICING["flux-2-dev"]).toBeDefined();
+  });
+
+  it("should have per-image pricing at $0.001", () => {
+    const pricing = IMAGE_MODEL_PRICING["flux-2-dev"];
+    expect(pricing.imagePricing?.perImage).toBe(0.001);
+  });
+
+  it("should have approximatePerPollen of 1000 (consistent with perImage)", () => {
+    const pricing = IMAGE_MODEL_PRICING["flux-2-dev"];
+    expect(pricing.approximatePerPollen).toBe(1000);
+    // Verify: 1 / perImage should equal approximatePerPollen
+    const expectedEfficiency = 1 / pricing.imagePricing!.perImage;
+    expect(pricing.approximatePerPollen).toBe(expectedEfficiency);
+  });
+
+  it("should not support reference image", () => {
+    const pricing = IMAGE_MODEL_PRICING["flux-2-dev"];
+    expect(pricing.supportsReferenceImage).toBe(false);
+  });
+
+  it("should not be alpha", () => {
+    const pricing = IMAGE_MODEL_PRICING["flux-2-dev"];
+    expect(pricing.isAlpha).toBeUndefined();
+  });
+
+  it("should not have token pricing (uses simple per-image pricing)", () => {
+    const pricing = IMAGE_MODEL_PRICING["flux-2-dev"];
+    expect(pricing.tokenPricing).toBeUndefined();
   });
 });

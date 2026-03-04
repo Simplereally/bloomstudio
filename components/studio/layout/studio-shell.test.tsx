@@ -202,7 +202,7 @@ const mockGenerationSettings = {
     isVideoModel: false,
     videoSettings: { duration: 5, audio: false },
     setVideoSettings: vi.fn(),
-    videoReferenceImages: { firstFrame: undefined, lastFrame: undefined },
+    videoReferenceImages: [],
     setVideoReferenceImages: vi.fn(),
     resolutionTier: "hd" as const,
     setResolutionTier: vi.fn(),

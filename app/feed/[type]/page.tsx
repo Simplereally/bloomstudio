@@ -1,5 +1,6 @@
 import { FeedClient } from "@/components/gallery/feed-client"
 import { FeedCta } from "@/components/gallery/feed-cta"
+import { JsonLd } from "@/components/seo/json-ld"
 import { getPublicFeedPageCached, getFollowingFeedPageCached } from "@/app/_server/cache/feed"
 import { getCurrentUserId, getConvexClerkToken } from "@/app/_server/convex/client"
 import { api } from "@/convex/_generated/api"
@@ -73,8 +74,6 @@ export default async function FeedTypePage({ params }: FeedPageProps) {
 
     // Fetch initial page on server (cached)
     // Public feed: shared cache across all users but segmented by preference
-    console.log(`Loading feed type: ${feedType}, preference: ${preference}`)
-
     let initialPage
     if (isPublicFeed) {
         initialPage = await getPublicFeedPageCached(null, undefined, preference)
@@ -112,22 +111,19 @@ export default async function FeedTypePage({ params }: FeedPageProps) {
 
             {/* JSON-LD Structured Data for SEO (public feed only) */}
             {isPublicFeed && (
-                <script
-                    type="application/ld+json"
-                    dangerouslySetInnerHTML={{
-                        __html: JSON.stringify({
-                            "@context": "https://schema.org",
-                            "@type": "ImageGallery",
-                            name: "Bloom Studio Community Creations",
-                            description:
-                                "A curated feed of AI-generated images and videos created by the Bloom Studio community using cutting-edge AI models.",
-                            url: "https://bloomstudio.fun/feed/public",
-                            provider: {
-                                "@type": "Organization",
-                                name: "Bloom Studio",
-                                url: "https://bloomstudio.fun",
-                            },
-                        }),
+                <JsonLd
+                    data={{
+                        "@context": "https://schema.org",
+                        "@type": "ImageGallery",
+                        name: "Bloom Studio Community Creations",
+                        description:
+                            "A curated feed of AI-generated images and videos created by the Bloom Studio community using cutting-edge AI models.",
+                        url: "https://bloomstudio.fun/feed/public",
+                        provider: {
+                            "@type": "Organization",
+                            name: "Bloom Studio",
+                            url: "https://bloomstudio.fun",
+                        },
                     }}
                 />
             )}

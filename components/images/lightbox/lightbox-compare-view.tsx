@@ -63,6 +63,9 @@ export function LightboxCompareView({
 				- Mobile: 2 rows (stacked images), edit panel overlays from bottom
 				- Desktop without edit panel: 2 columns (side-by-side images)
 				- Desktop with edit panel: 3 columns [image, image, panel] with reserved space
+
+				Each pane cell uses min-h-0 to allow grid children to shrink below
+				their content size, preventing images from overflowing the grid track.
 			*/}
 			<div
 				className={cn(
@@ -76,7 +79,7 @@ export function LightboxCompareView({
 				)}
 			>
 				{/* Left pane - Original image */}
-				<div className="bg-black/20 rounded-lg overflow-hidden min-w-0">
+				<div className="bg-black/20 rounded-lg overflow-hidden min-w-0 min-h-0">
 					<LightboxPane
 						image={baseImage}
 						label="Original"
@@ -92,7 +95,7 @@ export function LightboxCompareView({
 				</div>
 
 				{/* Right pane - Current/selected version */}
-				<div className="bg-black/20 rounded-lg overflow-hidden min-w-0">
+				<div className="bg-black/20 rounded-lg overflow-hidden min-w-0 min-h-0">
 					<LightboxPane
 						image={selectedImage}
 						label="Current"

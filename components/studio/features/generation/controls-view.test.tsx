@@ -85,6 +85,11 @@ vi.mock("@/components/studio", () => ({
       Frames: {(selectedImages?.firstFrame ? 1 : 0) + (selectedImages?.lastFrame ? 1 : 0)}
     </div>
   ),
+  VideoReferenceFramesPicker: ({ frames }: { frames?: string[] }) => (
+    <div data-testid="video-reference-frames-picker">
+      Frames: {frames?.length ?? 0}
+    </div>
+  ),
   VideoSettingsPanel: () => <div data-testid="video-settings-panel">Video Settings</div>,
 }));
 
@@ -324,7 +329,7 @@ describe("ControlsView", () => {
     const videoProps = {
       ...defaultProps,
       isVideoModel: true,
-      videoReferenceImages: { firstFrame: undefined, lastFrame: undefined },
+      videoReferenceImages: [],
       onVideoReferenceImagesChange: vi.fn(),
       // videoSettings explicitly undefined to test independence
       videoSettings: undefined,
@@ -333,7 +338,7 @@ describe("ControlsView", () => {
     render(<ControlsView {...videoProps} />);
 
     expect(screen.getByTestId("video-frames-section")).toBeInTheDocument();
-    expect(screen.getByTestId("video-reference-image-picker")).toBeInTheDocument();
+    expect(screen.getByTestId("video-reference-frames-picker")).toBeInTheDocument();
     // Video settings section should NOT assume to be present if videoSettings is missing (but logic requires it as per current implementation)
     expect(screen.queryByTestId("video-settings-section")).not.toBeInTheDocument();
   });

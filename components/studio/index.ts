@@ -63,6 +63,10 @@ export {
   VideoReferenceImagePicker,
   type VideoReferenceImages,
 } from "./controls/video-reference-image-picker";
+export {
+  VideoReferenceFramesPicker,
+  type VideoReferenceFrames,
+} from "./controls/video-reference-frames-picker";
 export { ReferenceImagesBrowserModal } from "./controls/reference-images-browser-modal";
 
 // Canvas Components

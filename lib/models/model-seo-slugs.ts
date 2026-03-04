@@ -4,8 +4,10 @@
  * Maps MODEL_REGISTRY keys to SEO-friendly URL slugs and declares
  * which page categories each model participates in.
  *
- * 9 active models: 7 image + 2 video.
- * Legacy/retired models are intentionally excluded.
+ * Legacy/retired models are automatically excluded by filtering against
+ * MODEL_REGISTRY.isLegacy at module load time. Adding `isLegacy: true`
+ * to any model in lib/config/models.ts is sufficient to remove it from
+ * sitemap, static params, and footer links.
  *
  * This is the single source of truth consumed by:
  *  - app/sitemap.ts (Phase 4)
@@ -17,7 +19,7 @@
  *  - Matches the human-recognisable model name (not the internal API id)
  */
 
-import type { ModelType } from "@/lib/config/models";
+import { MODEL_REGISTRY, type ModelType } from "@/lib/config/models";
 
 // ============================================================================
 // Types
@@ -41,25 +43,35 @@ export interface ModelSlugEntry {
 }
 
 // ============================================================================
-// Registry
+// SEO Metadata (static, per-model)
 // ============================================================================
 
 /**
- * Complete mapping of all 9 active models to their SEO slugs and page categories.
+ * Hand-maintained SEO metadata for every model that *could* appear in the slug
+ * registry. Each entry maps a MODEL_REGISTRY key to its URL slug, display name
+ * override, and supported page categories.
  *
  * Rules:
  *  - Every model gets "create" and "features"
  *  - Image models with supportsReferenceImage additionally get "edit"
  *  - Video models do NOT get "edit" (no pixel-level editing workflow)
  *
- * Legacy models are excluded — only actively available models belong here.
+ * This is intentionally a flat array so ordering is explicit and reviewable.
+ * Legacy filtering happens below when building MODEL_SEO_SLUGS.
  */
-export const MODEL_SEO_SLUGS: readonly ModelSlugEntry[] = [
-  // ── Image Models (7) ──────────────────────────────────────────────────
+const SEO_METADATA: readonly ModelSlugEntry[] = [
+  // ── Image Models ──────────────────────────────────────────────────────
   {
     modelId: "flux",
     slug: "flux-schnell",
     displayName: "Flux Schnell",
+    type: "image",
+    categories: ["create", "features"],
+  },
+  {
+    modelId: "flux-2-dev",
+    slug: "flux-2-dev",
+    displayName: "FLUX.2 Dev",
     type: "image",
     categories: ["create", "features"],
   },
@@ -106,7 +118,7 @@ export const MODEL_SEO_SLUGS: readonly ModelSlugEntry[] = [
     categories: ["create", "features"],
   },
 
-  // ── Video Models (2) ──────────────────────────────────────────────────
+  // ── Video Models ──────────────────────────────────────────────────────
   {
     modelId: "seedance",
     slug: "seedance",
@@ -121,7 +133,23 @@ export const MODEL_SEO_SLUGS: readonly ModelSlugEntry[] = [
     type: "video",
     categories: ["create", "features"],
   },
-] as const;
+];
+
+// ============================================================================
+// Registry (derived — legacy models automatically excluded)
+// ============================================================================
+
+/**
+ * Active-only model SEO slug entries, derived by filtering SEO_METADATA against
+ * MODEL_REGISTRY.isLegacy. This guarantees the active-only invariant: marking a
+ * model as legacy in one place (lib/config/models.ts) is sufficient.
+ */
+export const MODEL_SEO_SLUGS: readonly ModelSlugEntry[] = SEO_METADATA.filter(
+  (entry) => {
+    const model = MODEL_REGISTRY[entry.modelId];
+    return model != null && !model.isLegacy;
+  },
+);
 
 // ============================================================================
 // Lookup Helpers

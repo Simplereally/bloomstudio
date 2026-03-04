@@ -7,10 +7,10 @@ import { NsfwBadge } from "./nsfw-badge";
 import { ScrollReveal } from "./scroll-reveal";
 
 function ModelBadgeDetailed({ model }: { model: ModelDefinition }) {
-  const isAlpha = model.modelPricing.isAlpha === true;
+  const isAlpha = model.modelPricing?.isAlpha === true;
 
   return (
-    <div className="group relative flex items-center gap-3 p-3 px-4 rounded-xl bg-white/[0.06] border border-white/10 transition-all duration-300">
+    <div className="group relative flex items-center gap-2 p-2 px-3 sm:p-3 sm:px-4 rounded-xl bg-white/[0.06] border border-white/10 transition-all duration-300">
       {model.logo ? (
         <div className="relative w-6 h-6 flex-shrink-0">
           <Image src={model.logo} alt={`${model.displayName} logo`} fill sizes="24px" className={cn("object-contain", isMonochromeLogo(model.logo) && "dark:invert")} />
@@ -19,11 +19,31 @@ function ModelBadgeDetailed({ model }: { model: ModelDefinition }) {
         <Sparkles className="h-5 w-5 text-primary flex-shrink-0" />
       )}
       <div className="min-w-0 flex-1">
-        <span className="text-[14px] font-bold font-brand text-foreground uppercase tracking-tight truncate block">{model.displayName}</span>
+        <span className="text-[13px] sm:text-[14px] font-bold font-brand text-foreground uppercase tracking-tight truncate block">{model.displayName}</span>
       </div>
 
-      {isAlpha && <AlphaBadge />}
-      {model.isUnrestricted && <NsfwBadge />}
+      {(isAlpha || model.isUnrestricted) && (
+        <div className="flex shrink-0 items-center gap-1.5">
+          {isAlpha && model.isUnrestricted ? (
+            <div className="relative inline-flex shrink-0 items-stretch overflow-hidden rounded-[7px] p-[1px] bg-gradient-to-r from-amber-500/30 via-white/10 to-pink-500/30 shadow-sm transition-all duration-300 group-hover:from-amber-500/50 group-hover:to-pink-500/50">
+              <div className="flex items-stretch overflow-hidden rounded-[6px] bg-[#0A0A0A]/90 backdrop-blur-md">
+                <span className="flex items-center justify-center bg-amber-500/15 px-1.5 py-0.5 text-[8px] sm:text-[9px] font-bold uppercase leading-none tracking-wider text-amber-400">
+                  Alpha
+                </span>
+                <div className="w-[1px] bg-white/10" />
+                <span className="flex items-center justify-center bg-pink-600/15 px-1.5 py-0.5 text-[8px] sm:text-[9px] font-bold uppercase leading-none tracking-wider text-pink-400">
+                  18+
+                </span>
+              </div>
+            </div>
+          ) : (
+            <>
+              {isAlpha && <AlphaBadge />}
+              {model.isUnrestricted && <NsfwBadge />}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

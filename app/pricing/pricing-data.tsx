@@ -1,5 +1,6 @@
 import { Crown, Sparkles, type LucideIcon } from "lucide-react"
 import Link from "next/link"
+import { ACTIVE_MODEL_COUNT } from "@/lib/config/models"
 
 
 export type TierName = "Starter" | "Pro"
@@ -48,7 +49,7 @@ export const pricingTiers: PricingTier[] = [
         features: [
             "Up to 5,000 daily generations",
             "Daily resets",
-            "8 AI models included (Flux, GPT Image, Z-Image, Klein, Grok Imagine, Grok Video, and more)",
+            `${ACTIVE_MODEL_COUNT} AI models included (Flux Schnell, FLUX.2 Dev, GPT Image, Z-Image, Klein, Grok Imagine, Grok Video, and more)`,
             "Advanced prompt enhancement",
             "Custom prompt library",
             "1,000 image batch queue",
@@ -73,7 +74,7 @@ export const pricingFaqs = [
         question: "What AI models are included?",
         answer: (
             <span>
-                We offer 8 high-quality AI models including Flux Schnell, GPT Image, Z-Image Turbo, FLUX.2 Klein, Imagen 4, Grok Imagine, and Grok Video. Both Free and Pro users get access to all active models.{" "}
+                We offer {ACTIVE_MODEL_COUNT} high-quality AI models including Flux Schnell, FLUX.2 Dev, GPT Image, Z-Image Turbo, FLUX.2 Klein, Imagen 4, Grok Imagine, and Grok Video. Both Free and Pro users get access to all active models.{" "}
                 <Link href="/#models" className="text-primary hover:underline font-medium">
                     View the full list of supported models here.
                 </Link>
@@ -91,6 +92,8 @@ export const pricingFaqs = [
             "Yes, cancel anytime with no questions asked. Your subscription runs until the end of the billing period, then you won't be charged again.",
     },
 ]
+
+const modelCountStr = String(ACTIVE_MODEL_COUNT)
 
 export const featureComparison = [
     { feature: "Daily images", starter: "5,000+", pro: "5,000+" },
@@ -110,7 +113,7 @@ export const featureComparison = [
         },
     },
     { feature: "Batch queue size", starter: "1,000", pro: "1,000" },
-    { feature: "AI Models", starter: "8", pro: "8" },
+    { feature: "AI Models", starter: modelCountStr, pro: modelCountStr },
     { feature: "Prompt library", starter: true, pro: true },
     { feature: "Prompt enhancement", starter: true, pro: true },
     { feature: "Private gallery", starter: false, pro: true },

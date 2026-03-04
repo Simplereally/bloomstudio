@@ -25,6 +25,9 @@ describe("useStudioUI", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseIsMobile.mockReturnValue(false);
+    // Clear localStorage to prevent cross-test state contamination
+    // (useLocalStorage persists showLeftSidebar/showGallery between tests)
+    window.localStorage.clear();
   });
 
   describe("Desktop behavior (default)", () => {

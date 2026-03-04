@@ -57,6 +57,9 @@ function renderWithProviders(props: Partial<PromptSectionProps> = {}) {
 describe("PromptSection", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    // Clear localStorage to prevent cross-test state contamination
+    // (usePromptInput persists prompt values that affect hasNegativeContent)
+    window.localStorage.clear();
   });
 
   it("renders the prompt section", () => {

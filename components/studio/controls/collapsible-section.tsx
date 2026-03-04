@@ -78,11 +78,11 @@ export const CollapsibleSection = React.memo(function CollapsibleSection({
             aria-disabled={disabled}
         >
             <Collapsible open={isExpanded} onOpenChange={disabled ? undefined : handleOpenChange}>
-                {/* Header row: using bg-black/20 for darker header */}
-                {/* Fixed: Moved 'group' here so it only triggers when hovering header, not content */}
+                {/* Header row */}
                 <div className={cn(
-                    "h-[50px] group/header flex items-center gap-1 p-0 transition-colors cursor-pointer bg-black/20",
-                    isExpanded && "border-b border-border/40"
+                    "h-[46px] group/header flex items-center gap-1 p-0 transition-all duration-200 cursor-pointer",
+                    "bg-muted/40 hover:bg-muted/60 dark:bg-muted/20 dark:hover:bg-muted/30",
+                    isExpanded && "border-b border-border/50 shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
                 )}>
                     <CollapsibleTrigger
                         className={cn(
@@ -92,8 +92,8 @@ export const CollapsibleSection = React.memo(function CollapsibleSection({
                         data-testid={testId ? `${testId}-trigger` : undefined}
                         disabled={disabled}
                     >
-                        {icon && <span className="text-foreground group-hover/header:text-primary transition-colors shrink-0">{icon}</span>}
-                        <span className="text-[13px] uppercase tracking-wider font-semibold text-foreground group-hover/header:text-primary transition-colors truncate">
+                        {icon && <span className="text-foreground/80 group-hover/header:text-primary transition-colors shrink-0">{icon}</span>}
+                        <span className="text-[13px] uppercase tracking-wider font-semibold text-foreground/80 group-hover/header:text-primary transition-colors truncate">
                             {title}
                         </span>
                     </CollapsibleTrigger>
@@ -160,8 +160,8 @@ export const CollapsibleSection = React.memo(function CollapsibleSection({
                     data-testid={testId ? `${testId}-content` : undefined}
                     forceMount={forceMount || undefined}
                 >
-                    {/* Content area: using lighter background */}
-                    <div className="px-1.5 pb-1.5 pt-1.5 bg-card/10">
+                    {/* Content area: recessed well */}
+                    <div className="px-1.5 py-1.5 bg-black/[0.02] dark:bg-black/[0.25] shadow-inner">
                         {children}
                     </div>
                 </CollapsibleContent>

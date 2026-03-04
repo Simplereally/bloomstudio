@@ -97,7 +97,6 @@ export const MediaPlayer = React.memo(function MediaPlayer({
         url,
         isVideo,
         autoPlay,
-        muted,
         controls,
         onLoad,
         onError,

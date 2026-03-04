@@ -141,6 +141,45 @@ export function LightboxPane({
 	// Show overlay when hovering pane and not zoomed
 	const showOverlay = isHoveringPane && !isZoomed;
 
+	// Measure the pane container so images can be reliably constrained.
+	// CSS percentage-based max-height doesn't propagate through auto-height
+	// intermediaries (button, group div), so we compute pixel bounds from the
+	// pane element itself and pass them as inline max-width / max-height on the
+	// images. This keeps the image aspect-ratio accurate while filling the pane.
+	const [paneSize, setPaneSize] = React.useState<{
+		width: number;
+		height: number;
+	} | null>(null);
+
+	React.useEffect(() => {
+		const el = scrollContainerRef.current;
+		if (!el) return;
+
+		const observer = new ResizeObserver((entries) => {
+			for (const entry of entries) {
+				const width = Math.round(entry.contentRect.width);
+				const height = Math.round(entry.contentRect.height);
+				setPaneSize((prev) => {
+					if (prev && prev.width === width && prev.height === height)
+						return prev;
+					return { width, height };
+				});
+			}
+		});
+
+		observer.observe(el);
+		return () => observer.disconnect();
+	}, [scrollContainerRef]);
+
+	// Padding inside the pane (p-2 = 0.5rem × 2 = 1rem total each axis)
+	const imageMaxWidth = paneSize ? Math.max(0, paneSize.width - 16) : undefined;
+	const imageMaxHeight = paneSize ? Math.max(0, paneSize.height - 16) : undefined;
+
+	const imageConstraintStyle: React.CSSProperties | undefined =
+		!isZoomed && imageMaxWidth && imageMaxHeight
+			? { maxWidth: imageMaxWidth, maxHeight: imageMaxHeight }
+			: undefined;
+
 	return (
 		<div
 			ref={scrollContainerRef}
@@ -202,7 +241,7 @@ export function LightboxPane({
 								flexShrink: 0,
 								margin: "auto",
 							}
-						: undefined
+						: imageConstraintStyle
 				}
 				onMouseEnter={() => setIsHoveringPane(true)}
 				onMouseLeave={() => {
@@ -238,8 +277,9 @@ export function LightboxPane({
 							height={image.height || image.params?.height || 1000}
 							priority
 							unoptimized={thumbnailUrl.startsWith("http")}
+							style={imageConstraintStyle}
 							className={cn(
-								"h-auto w-auto max-h-full max-w-full select-none object-contain transition-all duration-500",
+								"h-auto w-auto select-none object-contain transition-all duration-500",
 								!isThumbnailLoaded ? "opacity-0" : "opacity-100",
 								isFullResLoaded
 									? "opacity-0 pointer-events-none absolute inset-0"
@@ -262,8 +302,9 @@ export function LightboxPane({
 						height={image.height || image.params?.height || 1000}
 						priority
 						unoptimized={fullResUrl.startsWith("http")}
+						style={imageConstraintStyle}
 						className={cn(
-							"h-auto w-auto max-h-full max-w-full select-none object-contain transition-all duration-500",
+							"h-auto w-auto select-none object-contain transition-all duration-500",
 							hasSeparateThumbnail
 								? isFullResLoaded
 									? "opacity-100"

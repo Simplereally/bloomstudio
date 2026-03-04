@@ -1,7 +1,7 @@
 /**
  * Cloudflare R2 Storage Client
  *
- * S3-compatible client for uploading and managing images in R2.
+ * S3-compatible client for uploading and managing files in R2.
  */
 
 import {
@@ -43,10 +43,10 @@ function getClient(): S3Client {
 const BUCKET_NAME = () => getEnvVar("R2_BUCKET_NAME")
 const PUBLIC_URL = () => getEnvVar("R2_PUBLIC_URL")
 
-export interface UploadImageOptions {
-    /** The image data as a Buffer */
+export interface UploadFileOptions {
+    /** The file data as a Buffer */
     data: Buffer
-    /** MIME type (e.g., 'image/jpeg') */
+    /** MIME type (e.g., 'image/jpeg', 'audio/mpeg') */
     contentType: string
     /** Object key (path) in the bucket */
     key: string
@@ -57,16 +57,16 @@ export interface UploadImageOptions {
 export interface UploadResult {
     /** The R2 object key */
     key: string
-    /** The public URL to access the image */
+    /** The public URL to access the file */
     url: string
     /** Size in bytes */
     sizeBytes: number
 }
 
 /**
- * Upload an image to R2
+ * Upload a file to R2
  */
-export async function uploadImage(options: UploadImageOptions): Promise<UploadResult> {
+export async function uploadFile(options: UploadFileOptions): Promise<UploadResult> {
     return withRetry(
         async () => {
             const { data, contentType, key, cacheControl = "public, max-age=31536000, immutable" } = options
@@ -164,7 +164,7 @@ export function generateImageKey(
     const ext = contentType.split("/")[1] || "jpg"
     const timestamp = Date.now()
     const randomId = crypto.randomUUID()
-    const userHash = crypto.createHash("sha256").update(userId).digest("hex")
+    const userHash = crypto.createHash("sha256").update(userId).digest("hex").slice(0, 12)
 
     return `${type}/${userHash}/${timestamp}-${randomId}.${ext}`
 }

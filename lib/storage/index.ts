@@ -1,16 +1,16 @@
 /**
  * Storage Module Exports
  *
- * Re-exports R2 client functions for image storage operations.
+ * Re-exports R2 client functions for file storage operations.
  */
 
 export {
-    uploadImage,
+    uploadFile,
     deleteImage,
     deleteImages,
     imageExists,
     generateImageKey,
     getPublicUrl,
-    type UploadImageOptions,
+    type UploadFileOptions,
     type UploadResult,
 } from "./r2-client"

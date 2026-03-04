@@ -6,9 +6,41 @@ import { Drawer as DrawerPrimitive } from "vaul"
 import { cn } from "@/lib/utils"
 
 function Drawer({
+  noBodyStyles = true,
+  shouldScaleBackground = false,
+  onOpenChange,
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Root>) {
-  return <DrawerPrimitive.Root data-slot="drawer" {...props} />
+  // Wrap onOpenChange to defensively clean up orphaned pointer-events on body.
+  // This addresses the Radix DismissableLayer bug where pointer-events: none
+  // persists on <body> after the drawer unmounts.
+  const handleOpenChange = React.useCallback(
+    (open: boolean) => {
+      if (!open) {
+        // Allow Radix/Vaul internals to finish cleanup, then verify body is usable
+        requestAnimationFrame(() => {
+          const hasOpenModal = document.querySelector(
+            '[data-state="open"][role="dialog"], [data-state="open"][role="alertdialog"]'
+          );
+          if (!hasOpenModal && document.body.style.pointerEvents === "none") {
+            document.body.style.pointerEvents = "";
+          }
+        });
+      }
+      onOpenChange?.(open);
+    },
+    [onOpenChange]
+  );
+
+  return (
+    <DrawerPrimitive.Root
+      data-slot="drawer"
+      noBodyStyles={noBodyStyles}
+      shouldScaleBackground={shouldScaleBackground}
+      onOpenChange={handleOpenChange}
+      {...props}
+    />
+  );
 }
 
 function DrawerTrigger({

@@ -154,6 +154,20 @@ export const IMAGE_MODEL_PRICING: Record<string, ModelPricingDefinition> = {
     },
 
     /**
+     * FLUX.2 Dev - Next-gen Flux via api.airforce
+     * Good efficiency: 1000 images per pollen
+     */
+    "flux-2-dev": {
+        modelId: "flux-2-dev",
+        type: "image",
+        approximatePerPollen: 1000,
+        supportsReferenceImage: false,
+        imagePricing: {
+            perImage: 0.001, // 1 pollen / 1000 images
+        },
+    },
+
+    /**
      * Z-Image Turbo - Fast with upscaling
      * Very efficient: 5000 images per pollen
      */
