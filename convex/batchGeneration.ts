@@ -457,7 +457,6 @@ export const getBatchJob = query({
         }
 
         // Filter out apiKey to prevent exposing sensitive data to clients
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { apiKey: _, ...safeBatchJob } = batchJob
         return safeBatchJob
     },

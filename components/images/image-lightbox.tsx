@@ -304,7 +304,6 @@ export function ImageLightbox({
 	}, []);
 
 	/** Noop: each pane handles clipboard copy + feedback internally */
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	const handlePaneCopyPrompt = React.useCallback((_prompt: string) => {
 		// Intentional no-op — pane already copies to clipboard and manages its own feedback
 	}, []);

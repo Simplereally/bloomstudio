@@ -4,35 +4,40 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Light mode (default) - cream and warm neutrals with orange ember accents */
-  --background: oklch(0.96 0.01 60);
-  --foreground: oklch(0.18 0.015 30);
+  /* Light mode (default) - Crisp cool-neutral grays (Hue 260°) with orange ember accents */
+  /* Matches dark mode's cool-neutral aesthetic for seamless theme switching */
 
-  --card: oklch(0.99 0.003 60);
-  --card-foreground: oklch(0.18 0.015 30);
+  /* Surfaces — Cool-tinted whites; cards pure-white to lift off background */
+  --background: oklch(0.98 0.002 260);
+  --foreground: oklch(0.15 0.01 260);
 
-  --popover: oklch(0.995 0.003 60);
-  --popover-foreground: oklch(0.18 0.015 30);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.15 0.01 260);
 
-  /* Primary: Orange ember for energy and creativity */
+  --popover: oklch(0.99 0.002 260);
+  --popover-foreground: oklch(0.15 0.01 260);
+
+  /* Primary: Orange ember — untouched, the brand anchor */
   --primary: oklch(0.58 0.18 45);
   --primary-foreground: oklch(0.99 0.005 45);
 
-  --secondary: oklch(0.94 0.01 50);
-  --secondary-foreground: oklch(0.25 0.015 40);
+  /* Secondary / Muted: Subtle cool-grays for recessed UI */
+  --secondary: oklch(0.95 0.004 260);
+  --secondary-foreground: oklch(0.25 0.01 260);
 
-  --muted: oklch(0.95 0.008 50);
-  --muted-foreground: oklch(0.35 0.015 30);
+  --muted: oklch(0.94 0.004 260);
+  --muted-foreground: oklch(0.40 0.01 260);
 
-  /* Accent: Warm-tinted highlight for interactive selection hovers */
-  --accent: oklch(0.91 0.045 50);
-  --accent-foreground: oklch(0.18 0.015 30);
+  /* Accent: Very light cool-violet tint — warm-enough to harmonise with orange primary */
+  --accent: oklch(0.92 0.02 260);
+  --accent-foreground: oklch(0.15 0.01 260);
 
   --destructive: oklch(0.5 0.22 20);
   --destructive-foreground: oklch(0.99 0.005 20);
 
-  --border: oklch(0.88 0.01 50);
-  --input: oklch(0.92 0.008 50);
+  /* Edges — Soft definition, enough contrast without harshness */
+  --border: oklch(0.90 0.004 260);
+  --input: oklch(0.91 0.004 260);
   --ring: oklch(0.58 0.18 45);
 
   --chart-1: oklch(0.58 0.18 45);
@@ -43,58 +48,61 @@
 
   --radius: 0.75rem;
 
-  --sidebar: oklch(0.95 0.01 55);
-  --sidebar-foreground: oklch(0.18 0.015 30);
+  /* Sidebar: Slightly heavier cool-gray — visually recessed panel */
+  --sidebar: oklch(0.96 0.005 260);
+  --sidebar-foreground: oklch(0.15 0.01 260);
   --sidebar-primary: oklch(0.58 0.18 45);
   --sidebar-primary-foreground: oklch(0.99 0.005 45);
-  --sidebar-accent: oklch(0.94 0.01 50);
-  --sidebar-accent-foreground: oklch(0.25 0.015 40);
-  --sidebar-border: oklch(0.88 0.01 50);
+  --sidebar-accent: oklch(0.93 0.005 260);
+  --sidebar-accent-foreground: oklch(0.25 0.01 260);
+  --sidebar-border: oklch(0.90 0.004 260);
   --sidebar-ring: oklch(0.58 0.18 45);
 
-  /* Canvas texture */
-  --canvas-bg: oklch(0.94 0.008 50);
-  --canvas-dot: oklch(0.5 0.01 50 / 0.1);
+  /* Canvas texture — faint cool-gray grid */
+  --canvas-bg: oklch(0.96 0.003 260);
+  --canvas-dot: oklch(0.5 0.005 260 / 0.1);
 }
 
 .dark {
-  --background: oklch(0.14 0.015 30);
+  /* Background: Deep neutral gray with very slight cool undertone */
+  /* Eliminates warm brown cast; subtle blue-gray makes orange primary pop via complementary contrast */
+  --background: oklch(0.14 0.005 260);
   --foreground: oklch(0.97 0.005 50);
-  --card: oklch(0.19 0.018 35);
+  --card: oklch(0.18 0.005 260);
   --card-foreground: oklch(0.97 0.005 50);
-  --popover: oklch(0.18 0.02 33);
+  --popover: oklch(0.17 0.006 260);
   --popover-foreground: oklch(0.97 0.005 50);
   --primary: oklch(0.68 0.18 45);
-  --primary-foreground: oklch(0.14 0.015 45);
-  --secondary: oklch(0.28 0.02 40);
+  --primary-foreground: oklch(0.14 0.005 260);
+  --secondary: oklch(0.22 0.006 260);
   --secondary-foreground: oklch(0.95 0.005 40);
-  --muted: oklch(0.25 0.015 35);
+  --muted: oklch(0.20 0.005 260);
   --muted-foreground: oklch(0.7 0.01 50);
   /* Accent: Warm-tinted highlight for interactive selection hovers */
-  --accent: oklch(0.28 0.045 45);
+  --accent: oklch(0.24 0.03 45);
   --accent-foreground: oklch(0.95 0.005 40);
   --destructive: oklch(0.55 0.22 15);
   --destructive-foreground: oklch(0.98 0.005 15);
-  --border: oklch(0.32 0.02 38);
-  --input: oklch(0.29 0.02 35);
+  --border: oklch(0.26 0.006 260);
+  --input: oklch(0.23 0.005 260);
   --ring: oklch(0.68 0.18 45);
   --chart-1: oklch(0.68 0.18 45);
   --chart-2: oklch(0.62 0.22 35);
   --chart-3: oklch(0.55 0.15 50);
   --chart-4: oklch(0.48 0.12 38);
   --chart-5: oklch(0.72 0.16 48);
-  --sidebar: oklch(0.17 0.018 35);
+  --sidebar: oklch(0.12 0.005 260);
   --sidebar-foreground: oklch(0.97 0.005 50);
   --sidebar-primary: oklch(0.68 0.18 45);
-  --sidebar-primary-foreground: oklch(0.14 0.015 45);
-  --sidebar-accent: oklch(0.28 0.02 40);
+  --sidebar-primary-foreground: oklch(0.14 0.005 260);
+  --sidebar-accent: oklch(0.22 0.006 260);
   --sidebar-accent-foreground: oklch(0.95 0.005 40);
-  --sidebar-border: oklch(0.32 0.02 38);
+  --sidebar-border: oklch(0.26 0.006 260);
   --sidebar-ring: oklch(0.68 0.18 45);
 
-  /* Canvas texture - much darker in dark mode */
-  --canvas-bg: oklch(0.1 0.01 30);
-  --canvas-dot: oklch(0.4 0.01 45 / 0.15);
+  /* Canvas texture - deep dark with cool undertone */
+  --canvas-bg: oklch(0.10 0.005 260);
+  --canvas-dot: oklch(0.4 0.005 260 / 0.15);
 }
 
 @theme inline {
@@ -362,6 +370,72 @@
     to {
       height: 0;
       opacity: 0;
+    }
+  }
+
+  @keyframes musicBar {
+    0% {
+      height: 15%;
+    }
+    50% {
+      height: 85%;
+    }
+    100% {
+      height: 15%;
+    }
+  }
+
+  /* Music Studio — Waveform bar pulse (active playback) */
+  --animate-waveform-pulse: waveform-pulse 1.4s ease-in-out infinite;
+
+  @keyframes waveform-pulse {
+    0%,
+    100% {
+      opacity: 0.7;
+      transform: scaleY(0.85);
+    }
+    50% {
+      opacity: 1;
+      transform: scaleY(1);
+    }
+  }
+
+  /* Music Studio — Soft radial breathing for background glow */
+  --animate-ember-breathe: ember-breathe 4s ease-in-out infinite;
+
+  @keyframes ember-breathe {
+    0%,
+    100% {
+      opacity: 0.04;
+      transform: translate(-50%, -50%) scale(0.92);
+    }
+    50% {
+      opacity: 0.09;
+      transform: translate(-50%, -50%) scale(1.08);
+    }
+  }
+
+  /* Music Studio — Vinyl-spin for generating state */
+  --animate-disc-spin: disc-spin 3s linear infinite;
+
+  @keyframes disc-spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* Music Studio — Subtle progress shimmer on the track bar */
+  --animate-progress-shimmer: progress-shimmer 2s ease-in-out infinite;
+
+  @keyframes progress-shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
     }
   }
 }

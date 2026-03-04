@@ -16,7 +16,6 @@ import {
   Crown,
   CheckCircle,
   Maximize,
-  Shield,
 } from "lucide-react";
 
 // ============================================================================

@@ -317,13 +317,13 @@ export function StudioShell({
            // For video models, use the first frame as the reference image (image-to-video);
            // for image models, use the standard reference image (image-to-image).
            image: generationSettings.isVideoModel
-             ? generationSettings.videoReferenceImages.firstFrame
+             ? generationSettings.videoReferenceImages[0]
              : generationSettings.referenceImage,
            // Video-specific parameters
            duration: generationSettings.videoSettings.duration,
            audio: generationSettings.videoSettings.audio,
            aspectRatio: generationSettings.aspectRatio,
-           lastFrameImage: generationSettings.videoReferenceImages.lastFrame,
+           lastFrameImage: generationSettings.videoReferenceImages[1],
          },
         batchMode.batchSettings.count,
       );
@@ -349,7 +349,7 @@ export function StudioShell({
       // For video models, use the first frame as the reference image (image-to-video);
       // for image models, use the standard reference image (image-to-image).
       image: generationSettings.isVideoModel
-        ? generationSettings.videoReferenceImages.firstFrame
+        ? generationSettings.videoReferenceImages[0]
         : generationSettings.referenceImage,
     };
 
@@ -368,7 +368,7 @@ export function StudioShell({
         duration: generationSettings.videoSettings.duration,
         audio: generationSettings.videoSettings.audio,
         aspectRatio: videoAspectRatio,
-        lastFrameImage: generationSettings.videoReferenceImages.lastFrame,
+        lastFrameImage: generationSettings.videoReferenceImages[1],
       };
       generate(params);
       return;

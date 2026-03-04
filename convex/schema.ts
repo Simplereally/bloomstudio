@@ -406,4 +406,36 @@ export default defineSchema({
         /** Maximum requests allowed in the window (if known) */
         requestLimit: v.optional(v.number()),
     }).index("by_provider", ["provider"]),
+
+    /**
+     * Music generations - AI-generated music tracks from the music studio
+     * Persists generation history with reaction tracking (like/dislike).
+     */
+    musicGenerations: defineTable({
+        /** Clerk user ID who owns this generation */
+        ownerId: v.string(),
+        /** The prompt used to generate the track */
+        prompt: v.string(),
+        /** Model used for generation (e.g. "suno-v5", "suno-v4.5", "elevenmusic") */
+        model: v.string(),
+        /** Whether instrumental mode was used */
+        instrumental: v.boolean(),
+        /** Optional lyrics provided by the user */
+        lyrics: v.optional(v.string()),
+        /** Estimated track duration in seconds (parsed from response blob size) */
+        estimatedDuration: v.optional(v.number()),
+        /** R2 object key for the audio file */
+        r2Key: v.optional(v.string()),
+        /** Public URL for the persisted audio file (served from R2 CDN) */
+        audioUrl: v.optional(v.string()),
+        /** Audio file size in bytes */
+        audioSizeBytes: v.optional(v.number()),
+        /** User reaction: "like", "dislike", or null (no reaction) */
+        reaction: v.optional(v.union(v.literal("like"), v.literal("dislike"))),
+        /** Timestamp of creation */
+        createdAt: v.number(),
+    })
+        .index("by_owner", ["ownerId", "createdAt"])
+        .index("by_owner_reaction", ["ownerId", "reaction", "createdAt"]),
+
 })

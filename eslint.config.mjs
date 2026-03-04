@@ -13,6 +13,19 @@ const config = [
   },
   ...coreWebVitals,
   ...nextTypescript,
+  // Respect underscore prefix convention for intentionally unused variables
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
+    },
+  },
   // Override rules for test files
   {
     files: ["**/*.test.ts", "**/*.test.tsx"],

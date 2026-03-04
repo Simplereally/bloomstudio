@@ -91,7 +91,9 @@ export function useMediaPlayer({
     url,
     isVideo,
     autoPlay = false,
-    muted = true,
+    // `muted` is accepted for API compatibility but currently unused.
+    // Chrome autoplay policy requires starting muted; see autoplay effect below.
+    muted: _muted = true,
     controls = true,
     onLoad,
     onError,

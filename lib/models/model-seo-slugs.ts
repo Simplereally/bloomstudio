@@ -4,7 +4,7 @@
  * Maps MODEL_REGISTRY keys to SEO-friendly URL slugs and declares
  * which page categories each model participates in.
  *
- * 9 active models: 7 image + 2 video.
+ * 10 active models: 8 image + 2 video.
  * Legacy/retired models are intentionally excluded.
  *
  * This is the single source of truth consumed by:
@@ -45,7 +45,7 @@ export interface ModelSlugEntry {
 // ============================================================================
 
 /**
- * Complete mapping of all 9 active models to their SEO slugs and page categories.
+ * Complete mapping of all 10 active models to their SEO slugs and page categories.
  *
  * Rules:
  *  - Every model gets "create" and "features"
@@ -55,11 +55,18 @@ export interface ModelSlugEntry {
  * Legacy models are excluded — only actively available models belong here.
  */
 export const MODEL_SEO_SLUGS: readonly ModelSlugEntry[] = [
-  // ── Image Models (7) ──────────────────────────────────────────────────
+  // ── Image Models (8) ──────────────────────────────────────────────────
   {
     modelId: "flux",
     slug: "flux-schnell",
     displayName: "Flux Schnell",
+    type: "image",
+    categories: ["create", "features"],
+  },
+  {
+    modelId: "flux-2-dev",
+    slug: "flux-2-dev",
+    displayName: "FLUX.2 Dev",
     type: "image",
     categories: ["create", "features"],
   },

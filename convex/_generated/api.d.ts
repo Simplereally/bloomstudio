@@ -34,6 +34,7 @@ import type * as lib_subscription from "../lib/subscription.js";
 import type * as lib_videoPreview from "../lib/videoPreview.js";
 import type * as lib_videoThumbnail from "../lib/videoThumbnail.js";
 import type * as lib_visionAnalysis from "../lib/visionAnalysis.js";
+import type * as musicGenerations from "../musicGenerations.js";
 import type * as orphanCleanup from "../orphanCleanup.js";
 import type * as orphanCleanupQueries from "../orphanCleanupQueries.js";
 import type * as promptInference from "../promptInference.js";
@@ -85,6 +86,7 @@ declare const fullApi: ApiFromModules<{
   "lib/videoPreview": typeof lib_videoPreview;
   "lib/videoThumbnail": typeof lib_videoThumbnail;
   "lib/visionAnalysis": typeof lib_visionAnalysis;
+  musicGenerations: typeof musicGenerations;
   orphanCleanup: typeof orphanCleanup;
   orphanCleanupQueries: typeof orphanCleanupQueries;
   promptInference: typeof promptInference;

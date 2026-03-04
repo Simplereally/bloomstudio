@@ -215,7 +215,6 @@ export function HistoryClient({ initialPage }: HistoryClientProps) {
     const showAbsoluteEmpty = !hasActiveFilters && isExhausted && items.length === 0
 
     /** Handle selection change from ImageCard */
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleSelectionChange = React.useCallback((id: string, _selected: boolean) => {
         // Note: _selected parameter is provided by ImageCard but we use toggle behavior
         toggleSelection(id)

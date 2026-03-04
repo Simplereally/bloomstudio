@@ -18,22 +18,22 @@ export function ClerkThemeProvider({ children }: { children: React.ReactNode }) 
       appearance={{
         baseTheme: resolvedTheme === "dark" ? dark : undefined,
         variables: {
-          // Match our brand colors from globals.css
+          // Match our brand colors from globals.css (cool-neutral Hue 260°)
           colorPrimary: resolvedTheme === "dark" 
             ? "oklch(0.68 0.18 45)"   // Dark mode --primary (orange ember)
             : "oklch(0.58 0.18 45)",  // Light mode --primary
           colorBackground: resolvedTheme === "dark"
-            ? "oklch(0.14 0.015 30)"  // Dark mode --background
-            : "oklch(0.98 0.005 60)", // Light mode --background
+            ? "oklch(0.14 0.005 260)" // Dark mode --background
+            : "oklch(0.98 0.002 260)", // Light mode --background
           colorInputBackground: resolvedTheme === "dark"
-            ? "oklch(0.29 0.02 35)"   // Dark mode --input
-            : "oklch(0.92 0.008 50)", // Light mode --input
+            ? "oklch(0.23 0.005 260)" // Dark mode --input
+            : "oklch(0.91 0.004 260)", // Light mode --input
           colorText: resolvedTheme === "dark"
             ? "oklch(0.97 0.005 50)"  // Dark mode --foreground
-            : "oklch(0.18 0.015 30)", // Light mode --foreground
+            : "oklch(0.15 0.01 260)", // Light mode --foreground
           colorTextSecondary: resolvedTheme === "dark"
-            ? "oklch(0.58 0.01 40)"   // Dark mode --muted-foreground
-            : "oklch(0.45 0.015 40)", // Light mode --muted-foreground
+            ? "oklch(0.7 0.01 50)"    // Dark mode --muted-foreground
+            : "oklch(0.40 0.01 260)", // Light mode --muted-foreground
           colorDanger: resolvedTheme === "dark"
             ? "oklch(0.55 0.22 15)"   // Dark mode --destructive
             : "oklch(0.50 0.22 20)",  // Light mode --destructive
@@ -44,11 +44,11 @@ export function ClerkThemeProvider({ children }: { children: React.ReactNode }) 
           // Additional element-level styling for consistency
           card: {
             backgroundColor: resolvedTheme === "dark"
-              ? "oklch(0.19 0.018 35)"  // Dark mode --card
-              : "oklch(0.99 0.003 60)", // Light mode --card
+              ? "oklch(0.18 0.005 260)" // Dark mode --card
+              : "oklch(1 0 0)",          // Light mode --card
             borderColor: resolvedTheme === "dark"
-              ? "oklch(0.32 0.02 38)"   // Dark mode --border
-              : "oklch(0.88 0.01 50)",  // Light mode --border
+              ? "oklch(0.26 0.006 260)" // Dark mode --border
+              : "oklch(0.90 0.004 260)", // Light mode --border
           },
           formButtonPrimary: {
             backgroundColor: resolvedTheme === "dark"

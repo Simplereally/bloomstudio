@@ -67,6 +67,17 @@ const KLEIN_9B_CONSTRAINTS: ModelConstraints = {
     supportedTiers: ["sd", "hd"],
 }
 
+const FLUX_2_DEV_CONSTRAINTS: ModelConstraints = {
+    maxPixels: 1_048_576, // 1MP - same as Klein 9B / Flux Schnell
+    minPixels: 65_536,
+    minDimension: 256,
+    maxDimension: 1600,
+    step: 16,
+    defaultDimensions: { width: 1024, height: 1024 },
+    dimensionsEnabled: true,
+    supportedTiers: ["sd", "hd"],
+}
+
 describe("Resolution Tier Configuration", () => {
     describe("RESOLUTION_TIERS", () => {
         it("should have all expected tiers", () => {
@@ -188,6 +199,66 @@ describe("calculateDimensionsForTier", () => {
         // Should be ~1000x1000 (tier target), not 4096x4096 (model max)
         expect(dims.width * dims.height).toBeLessThanOrEqual(1_100_000)
     })
+
+    it("should calculate FLUX.2 Dev SD dimensions (identical to Klein 9B)", () => {
+        const dims = calculateDimensionsForTier(
+            { widthRatio: 16, heightRatio: 9 },
+            "sd",
+            FLUX_2_DEV_CONSTRAINTS
+        )
+        expect(dims.width * dims.height).toBeLessThanOrEqual(600_000)
+        expect(dims.width * dims.height).toBeGreaterThan(400_000)
+        expect(dims.width).toBeGreaterThanOrEqual(FLUX_2_DEV_CONSTRAINTS.minDimension)
+        expect(dims.width % FLUX_2_DEV_CONSTRAINTS.step).toBe(0)
+        expect(dims.height % FLUX_2_DEV_CONSTRAINTS.step).toBe(0)
+    })
+
+    it("should calculate FLUX.2 Dev HD 1:1 = 1024x1024 (uses model maxPixels within 10%)", () => {
+        // FLUX.2 Dev has identical constraints to Klein 9B (1,048,576 maxPixels)
+        // HD tier targets 1.0MP, model maxPixels is within 10%, so should use full budget
+        const dims = calculateDimensionsForTier(
+            { widthRatio: 1, heightRatio: 1 },
+            "hd",
+            FLUX_2_DEV_CONSTRAINTS
+        )
+        expect(dims.width).toBe(1024)
+        expect(dims.height).toBe(1024)
+        expect(dims.width * dims.height).toBe(1_048_576)
+    })
+
+    it("should calculate FLUX.2 Dev HD 16:9 within pixel budget", () => {
+        const dims = calculateDimensionsForTier(
+            { widthRatio: 16, heightRatio: 9 },
+            "hd",
+            FLUX_2_DEV_CONSTRAINTS
+        )
+        expect(dims.width * dims.height).toBeLessThanOrEqual(FLUX_2_DEV_CONSTRAINTS.maxPixels)
+        expect(dims.width).toBeLessThanOrEqual(FLUX_2_DEV_CONSTRAINTS.maxDimension)
+        expect(dims.height).toBeLessThanOrEqual(FLUX_2_DEV_CONSTRAINTS.maxDimension)
+        expect(dims.width % FLUX_2_DEV_CONSTRAINTS.step).toBe(0)
+        expect(dims.height % FLUX_2_DEV_CONSTRAINTS.step).toBe(0)
+        // Width should be greater than height for landscape 16:9
+        expect(dims.width).toBeGreaterThan(dims.height)
+    })
+
+    it("should produce identical dimensions for FLUX.2 Dev and Klein 9B", () => {
+        // Both models share the exact same constraints, so all outputs must match
+        const ratios = [
+            { widthRatio: 1, heightRatio: 1 },
+            { widthRatio: 16, heightRatio: 9 },
+            { widthRatio: 9, heightRatio: 16 },
+            { widthRatio: 4, heightRatio: 3 },
+        ] as const
+        const tiers = ["sd", "hd"] as const
+
+        for (const ratio of ratios) {
+            for (const tier of tiers) {
+                const flux2DevDims = calculateDimensionsForTier(ratio, tier, FLUX_2_DEV_CONSTRAINTS)
+                const klein9bDims = calculateDimensionsForTier(ratio, tier, KLEIN_9B_CONSTRAINTS)
+                expect(flux2DevDims).toEqual(klein9bDims)
+            }
+        }
+    })
 })
 
 describe("getTierForPixelCount", () => {
@@ -219,6 +290,11 @@ describe("getSupportedTiersForModel", () => {
         expect(tiers).toEqual(["sd", "hd"])
     })
 
+    it("should return explicitly defined tiers for FLUX.2 Dev", () => {
+        const tiers = getSupportedTiersForModel(FLUX_2_DEV_CONSTRAINTS)
+        expect(tiers).toEqual(["sd", "hd"])
+    })
+
     it("should infer tiers from maxPixels when not defined", () => {
         const constraintsWithoutTiers: ModelConstraints = {
             maxPixels: 4_000_000,
@@ -243,6 +319,16 @@ describe("isTierSupportedByModel", () => {
         expect(isTierSupportedByModel("hd", KONTEXT_CONSTRAINTS)).toBe(true)
     })
 
+    it("should return true for FLUX.2 Dev SD and HD tiers", () => {
+        expect(isTierSupportedByModel("sd", FLUX_2_DEV_CONSTRAINTS)).toBe(true)
+        expect(isTierSupportedByModel("hd", FLUX_2_DEV_CONSTRAINTS)).toBe(true)
+    })
+
+    it("should return false for FLUX.2 Dev 2k and 4k tiers", () => {
+        expect(isTierSupportedByModel("2k", FLUX_2_DEV_CONSTRAINTS)).toBe(false)
+        expect(isTierSupportedByModel("4k", FLUX_2_DEV_CONSTRAINTS)).toBe(false)
+    })
+
     it("should return false for unsupported tiers", () => {
         expect(isTierSupportedByModel("2k", KONTEXT_CONSTRAINTS)).toBe(false)
         expect(isTierSupportedByModel("4k", KONTEXT_CONSTRAINTS)).toBe(false)
@@ -255,12 +341,20 @@ describe("getMaxTierForModel", () => {
         expect(getMaxTierForModel(SEEDREAM_CONSTRAINTS)).toBe("4k")
         expect(getMaxTierForModel(TURBO_CONSTRAINTS)).toBe("sd")
     })
+
+    it("should return HD as max tier for FLUX.2 Dev", () => {
+        expect(getMaxTierForModel(FLUX_2_DEV_CONSTRAINTS)).toBe("hd")
+    })
 })
 
 describe("getDefaultTierForModel", () => {
     it("should prefer HD if available", () => {
         expect(getDefaultTierForModel(KONTEXT_CONSTRAINTS)).toBe("hd")
         expect(getDefaultTierForModel(SEEDREAM_CONSTRAINTS)).toBe("hd")
+    })
+
+    it("should prefer HD for FLUX.2 Dev", () => {
+        expect(getDefaultTierForModel(FLUX_2_DEV_CONSTRAINTS)).toBe("hd")
     })
 
     it("should return first tier if HD not available", () => {

@@ -44,6 +44,13 @@ const MODEL_VALUE_DATA: ModelValueData[] = [
         type: "image",
     },
     {
+        id: "flux-2-dev",
+        displayName: "FLUX.2 Dev",
+        logo: "/image-models/flux.svg",
+        monthlyQuota: 30_000,
+        type: "image",
+    },
+    {
         id: "klein",
         displayName: "FLUX.2 Klein 4B",
         logo: "/image-models/flux.svg",

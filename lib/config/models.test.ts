@@ -7,8 +7,11 @@
 import { describe, expect, it } from "vitest";
 import {
     ALL_MODEL_IDS,
+    ACTIVE_IMAGE_MODEL_IDS,
     IMAGE_MODEL_IDS,
+    LEGACY_MODEL_IDS,
     MODEL_REGISTRY,
+    UNRESTRICTED_MODEL_IDS,
     VIDEO_MODEL_IDS,
     getModel,
     getModelAspectRatios,
@@ -34,6 +37,7 @@ describe("Model Registry", () => {
                 "klein-large",
                 "imagen-4",
                 "grok-imagine",
+                "flux-2-dev",
             ]
 
             for (const modelId of expectedImageModels) {
@@ -71,6 +75,7 @@ describe("Model Registry", () => {
             expect(MODEL_REGISTRY["imagen-4"].displayName).toBe("Imagen 4")
             expect(MODEL_REGISTRY["grok-imagine"].displayName).toBe("Grok Imagine")
             expect(MODEL_REGISTRY["grok-video"].displayName).toBe("Grok Video")
+            expect(MODEL_REGISTRY["flux-2-dev"].displayName).toBe("FLUX.2 Dev")
         })
 
         it("should have valid constraints for all models", () => {
@@ -103,11 +108,24 @@ describe("Model Registry", () => {
             expect(zimage?.displayName).toBe("Z-Image-Turbo")
         })
 
+        it("should return model definition for flux-2-dev", () => {
+            const model = getModel("flux-2-dev")
+            expect(model).toBeDefined()
+            expect(model?.id).toBe("flux-2-dev")
+            expect(model?.displayName).toBe("FLUX.2 Dev")
+            expect(model?.type).toBe("image")
+        })
+
         it("should be case-insensitive", () => {
             expect(getModel("ZIMAGE")).toBeDefined()
             expect(getModel("Zimage")).toBeDefined()
             expect(getModel("gptimage-large")).toBeDefined()
             expect(getModel("GPTIMAGE-LARGE")).toBeDefined()
+        })
+
+        it("should be case-insensitive for flux-2-dev", () => {
+            expect(getModel("FLUX-2-DEV")).toBeDefined()
+            expect(getModel("Flux-2-Dev")).toBeDefined()
         })
 
         it("should return undefined for unknown models", () => {
@@ -122,6 +140,15 @@ describe("Model Registry", () => {
             // Updated for SPAN upscaler limit (768×768 base × 2 = 1536×1536 max)
             expect(zimageConstraints!.maxPixels).toBe(2_359_296)
             expect(zimageConstraints!.step).toBe(8)
+        })
+
+        it("should return constraints for flux-2-dev", () => {
+            const constraints = getModelConstraints("flux-2-dev")
+            expect(constraints).toBeDefined()
+            expect(constraints!.maxPixels).toBe(1_048_576)
+            expect(constraints!.step).toBe(16)
+            expect(constraints!.minDimension).toBe(256)
+            expect(constraints!.maxDimension).toBe(1600)
         })
 
         it("should return undefined for unknown models", () => {
@@ -160,17 +187,18 @@ describe("Model Registry", () => {
 
     describe("Model Lists", () => {
         it("should have all model IDs", () => {
-            expect(ALL_MODEL_IDS.length).toBe(19)
+            expect(ALL_MODEL_IDS.length).toBe(20)
         })
 
         it("should have correct image model IDs", () => {
-            expect(IMAGE_MODEL_IDS.length).toBe(14)
+            expect(IMAGE_MODEL_IDS.length).toBe(15)
             expect(IMAGE_MODEL_IDS).toContain("zimage")
             expect(IMAGE_MODEL_IDS).toContain("gptimage")
             expect(IMAGE_MODEL_IDS).toContain("flux")
             expect(IMAGE_MODEL_IDS).toContain("klein")
             expect(IMAGE_MODEL_IDS).toContain("imagen-4")
             expect(IMAGE_MODEL_IDS).toContain("grok-imagine")
+            expect(IMAGE_MODEL_IDS).toContain("flux-2-dev")
             expect(IMAGE_MODEL_IDS).not.toContain("veo")
         })
 
@@ -181,6 +209,20 @@ describe("Model Registry", () => {
             expect(VIDEO_MODEL_IDS).toContain("wan")
             expect(VIDEO_MODEL_IDS).toContain("grok-video")
             expect(VIDEO_MODEL_IDS).not.toContain("zimage")
+        })
+    })
+
+    describe("Active / Legacy / Unrestricted Model Lists", () => {
+        it("should include flux-2-dev in ACTIVE_IMAGE_MODEL_IDS (not legacy)", () => {
+            expect(ACTIVE_IMAGE_MODEL_IDS).toContain("flux-2-dev")
+        })
+
+        it("should NOT include flux-2-dev in LEGACY_MODEL_IDS", () => {
+            expect(LEGACY_MODEL_IDS).not.toContain("flux-2-dev")
+        })
+
+        it("should include flux-2-dev in UNRESTRICTED_MODEL_IDS (isUnrestricted: true)", () => {
+            expect(UNRESTRICTED_MODEL_IDS.has("flux-2-dev")).toBe(true)
         })
     })
 })
@@ -333,6 +375,98 @@ describe("Model Constraints", () => {
                 // All presets should be at or under the limit
                 expect(pixels).toBeLessThanOrEqual(maxPixels)
                 // All dimensions should be aligned to step 16
+                expect(ratio.width % step).toBe(0)
+                expect(ratio.height % step).toBe(0)
+            }
+        })
+    })
+
+    describe("FLUX.2 Dev", () => {
+        it("should have 1MP pixel limit (matches Flux Schnell)", () => {
+            const model = getModel("flux-2-dev")!
+            expect(model.constraints.maxPixels).toBe(1_048_576)
+            expect(model.constraints.maxDimension).toBe(1600)
+        })
+
+        it("should have step 16 for dimension alignment", () => {
+            const model = getModel("flux-2-dev")!
+            expect(model.constraints.step).toBe(16)
+        })
+
+        it("should NOT support negative prompts (unlike Flux Schnell)", () => {
+            const model = getModel("flux-2-dev")!
+            expect(model.supportsNegativePrompt).toBe(false)
+        })
+
+        it("should support SD and HD tiers", () => {
+            const model = getModel("flux-2-dev")!
+            expect(model.constraints.supportedTiers).toEqual(["sd", "hd"])
+        })
+
+        it("should have correct minimum dimension and pixel constraints", () => {
+            const model = getModel("flux-2-dev")!
+            expect(model.constraints.minDimension).toBe(256)
+            expect(model.constraints.minPixels).toBe(65_536)
+        })
+
+        it("should have default dimensions of 1024x1024", () => {
+            const model = getModel("flux-2-dev")!
+            expect(model.constraints.defaultDimensions).toEqual({ width: 1024, height: 1024 })
+        })
+
+        it("should have maxSeed of int32 max", () => {
+            const model = getModel("flux-2-dev")!
+            expect(model.constraints.maxSeed).toBe(2_147_483_647)
+        })
+
+        it("should have outputCertainty of likely", () => {
+            const model = getModel("flux-2-dev")!
+            expect(model.constraints.outputCertainty).toBe("likely")
+        })
+
+        it("should be unrestricted (isUnrestricted: true)", () => {
+            const model = getModel("flux-2-dev")!
+            expect(model.isUnrestricted).toBe(true)
+        })
+
+        it("should NOT be legacy", () => {
+            const model = getModel("flux-2-dev")!
+            expect(model.isLegacy).toBeUndefined()
+        })
+
+        it("should have correct provider metadata", () => {
+            const model = getModel("flux-2-dev")!
+            expect(model.icon).toBe("zap")
+            expect(model.logo).toBe("/image-models/flux.svg")
+        })
+
+        it("should share aspect ratios with Flux Schnell", () => {
+            const fluxRatios = getModelAspectRatios("flux")!
+            const flux2DevRatios = getModelAspectRatios("flux-2-dev")!
+            expect(flux2DevRatios).toEqual(fluxRatios)
+        })
+
+        it("should share constraints with Flux Schnell (except supportsNegativePrompt)", () => {
+            const flux = getModel("flux")!
+            const flux2Dev = getModel("flux-2-dev")!
+            // Constraints objects should be identical
+            expect(flux2Dev.constraints.maxPixels).toBe(flux.constraints.maxPixels)
+            expect(flux2Dev.constraints.minPixels).toBe(flux.constraints.minPixels)
+            expect(flux2Dev.constraints.minDimension).toBe(flux.constraints.minDimension)
+            expect(flux2Dev.constraints.maxDimension).toBe(flux.constraints.maxDimension)
+            expect(flux2Dev.constraints.step).toBe(flux.constraints.step)
+            expect(flux2Dev.constraints.defaultDimensions).toEqual(flux.constraints.defaultDimensions)
+            expect(flux2Dev.constraints.supportedTiers).toEqual(flux.constraints.supportedTiers)
+        })
+
+        it("should have all presets under 1MP pixel limit and step-aligned to 16", () => {
+            const ratios = getModelAspectRatios("flux-2-dev")!
+            const step = 16
+            const maxPixels = 1_048_576
+
+            for (const ratio of ratios) {
+                const pixels = ratio.width * ratio.height
+                expect(pixels).toBeLessThanOrEqual(maxPixels)
                 expect(ratio.width % step).toBe(0)
                 expect(ratio.height % step).toBe(0)
             }
@@ -560,6 +694,26 @@ describe("Aspect Ratio Presets", () => {
         }
     })
 
+    it("should have FLUX.2 Dev presets identical to Flux Schnell (uses FLUX_SCHNELL_ASPECT_RATIOS)", () => {
+        const fluxRatios = getModelAspectRatios("flux")!
+        const flux2DevRatios = getModelAspectRatios("flux-2-dev")!
+        expect(flux2DevRatios).toEqual(fluxRatios)
+    })
+
+    it("should have FLUX.2 Dev presets under 1MP and aligned to step 16", () => {
+        const ratios = getModelAspectRatios("flux-2-dev")!
+        expect(ratios).not.toBeNull()
+        expect(ratios.length).toBeGreaterThan(0)
+        for (const ratio of ratios) {
+            if (ratio.value !== "custom") {
+                const pixels = ratio.width * ratio.height
+                expect(pixels).toBeLessThanOrEqual(1_048_576)
+                expect(ratio.width % 16).toBe(0)
+                expect(ratio.height % 16).toBe(0)
+            }
+        }
+    })
+
     it("should have Imagen 4 limited to 3 presets (no custom) with DALL-E 3 standard dimensions", () => {
         const ratios = getModelAspectRatios("imagen-4")!
         expect(ratios.length).toBe(3)
@@ -663,6 +817,11 @@ describe("Video Model Properties", () => {
             expect(model.supportsAudio).toBe(true)
             expect(model.supportsReferenceImage).toBe(true)
         })
+
+        it("should not have referenceFrameCount (legacy model)", () => {
+            const model = getModel("wan")!
+            expect(model.referenceFrameCount).toBeUndefined()
+        })
     })
 
     describe("Grok Video", () => {
@@ -678,6 +837,11 @@ describe("Video Model Properties", () => {
         it("should support reference image (image-to-video)", () => {
             const model = getModel("grok-video")!
             expect(model.supportsReferenceImage).toBe(true)
+        })
+
+        it("should support 2 reference frames", () => {
+            const model = getModel("grok-video")!
+            expect(model.referenceFrameCount).toBe(2)
         })
 
         it("should not support audio", () => {

@@ -29,6 +29,7 @@ import {
   type GenerationOptions,
   VideoSettingsPanel,
   VideoReferenceImagePicker,
+  VideoReferenceFramesPicker,
   type VideoSettings,
   type VideoReferenceImages,
 } from "@/components/studio";
@@ -98,11 +99,16 @@ export interface ControlsViewProps {
   isVideoModel?: boolean
   videoSettings?: VideoSettings
   onVideoSettingsChange?: (settings: VideoSettings) => void
-  videoReferenceImages?: VideoReferenceImages
-  onVideoReferenceImagesChange?: (images: VideoReferenceImages) => void
+  videoReferenceImages?: string[]
+  onVideoReferenceImagesChange?: (images: string[]) => void
+  /** For interpolation-capable video models (first/last frame) */
+  videoInterpolationImages?: VideoReferenceImages
+  onVideoInterpolationImagesChange?: (images: VideoReferenceImages) => void
   durationConstraints?: VideoDurationConstraints
   supportsAudio?: boolean
   supportsInterpolation?: boolean
+  /** Maximum number of reference frames allowed for the current model */
+  maxReferenceFrames?: number
 
   // History images (threaded from gallery for reference image browser)
   historyImages?: ThumbnailData[]
@@ -165,9 +171,12 @@ export const ControlsView = React.memo(function ControlsView({
   onVideoSettingsChange,
   videoReferenceImages,
   onVideoReferenceImagesChange,
+  videoInterpolationImages,
+  onVideoInterpolationImagesChange,
   durationConstraints,
   supportsAudio = false,
   supportsInterpolation = false,
+  maxReferenceFrames = 2,
 
   // History images
   historyImages,
@@ -175,7 +184,9 @@ export const ControlsView = React.memo(function ControlsView({
   const [modelExpanded, setModelExpanded] = React.useState(true);
 
   // Calculate frame count for video reference display
-  const videoFrameCount = (videoReferenceImages?.firstFrame ? 1 : 0) + (videoReferenceImages?.lastFrame ? 1 : 0)
+  const videoFrameCount = supportsInterpolation
+    ? (videoInterpolationImages?.firstFrame ? 1 : 0) + (videoInterpolationImages?.lastFrame ? 1 : 0)
+    : (videoReferenceImages?.length ?? 0)
 
   const handleModelChange = React.useCallback(
     (newModel: string) => {
@@ -252,8 +263,8 @@ export const ControlsView = React.memo(function ControlsView({
         />
       </CollapsibleSection>
 
-      {/* Video Frames (video models only) */}
-      {isVideoModel && videoReferenceImages && onVideoReferenceImagesChange && (
+      {/* Video Frames (video models only) — non-interpolation models use array-based picker */}
+      {isVideoModel && !supportsInterpolation && videoReferenceImages && onVideoReferenceImagesChange && (
           <CollapsibleSection
               title="Video Frames"
               icon={<Video className="h-3.5 w-3.5" />}
@@ -270,7 +281,45 @@ export const ControlsView = React.memo(function ControlsView({
                       <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => onVideoReferenceImagesChange({ firstFrame: undefined, lastFrame: undefined })}
+                          onClick={() => onVideoReferenceImagesChange([])}
+                          className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-destructive flex items-center gap-1"
+                      >
+                          <X className="h-3 w-3" />
+                          Clear
+                      </Button>
+                  )
+              }
+          >
+              <VideoReferenceFramesPicker
+                  frames={videoReferenceImages}
+                  onFramesChange={onVideoReferenceImagesChange}
+                  maxFrames={maxReferenceFrames}
+                  disabled={isGenerating}
+                  hideHeader
+                  historyImages={historyImages}
+              />
+          </CollapsibleSection>
+      )}
+
+      {/* Video Frames (video models only) — interpolation models use first/last frame picker */}
+      {isVideoModel && supportsInterpolation && videoInterpolationImages && onVideoInterpolationImagesChange && (
+          <CollapsibleSection
+              title="Video Frames"
+              icon={<Video className="h-3.5 w-3.5" />}
+              testId="video-frames-section"
+              collapsedContent={
+                  videoFrameCount > 0 ? (
+                      <span className={cn(badgeClassName, "tabular-nums")}>
+                          {videoFrameCount} frame{videoFrameCount !== 1 ? "s" : ""}
+                      </span>
+                  ) : undefined
+              }
+              rightContent={
+                  videoFrameCount > 0 && (
+                      <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onVideoInterpolationImagesChange({ firstFrame: undefined, lastFrame: undefined })}
                           className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-destructive flex items-center gap-1"
                       >
                           <X className="h-3 w-3" />
@@ -280,8 +329,8 @@ export const ControlsView = React.memo(function ControlsView({
               }
           >
               <VideoReferenceImagePicker
-                  selectedImages={videoReferenceImages}
-                  onImagesChange={onVideoReferenceImagesChange}
+                  selectedImages={videoInterpolationImages}
+                  onImagesChange={onVideoInterpolationImagesChange}
                   supportsInterpolation={supportsInterpolation}
                   disabled={isGenerating}
                   hideHeader

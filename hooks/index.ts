@@ -89,3 +89,15 @@ export type {
   UseApiCardStateReturn,
   ConnectionStatus,
 } from "./use-api-card-state";
+
+// Media player hook
+export { useMediaPlayer } from "./use-media-player";
+export type { UseMediaPlayerProps, UseMediaPlayerReturn } from "./use-media-player";
+
+// Music generation hook
+export { useMusicGeneration } from "./use-music-generation";
+export type {
+  MusicGenerationStatus,
+  MusicGenerationState,
+  UseMusicGenerationReturn,
+} from "./use-music-generation";

@@ -3,7 +3,7 @@ import { internalQuery, internalMutation } from "./_generated/server";
 
 export const getSystemTime = internalQuery({
     args: {},
-    handler: async (ctx) => {
+    handler: async (_ctx) => {
         return {
             now: Date.now(),
             iso: new Date().toISOString()
