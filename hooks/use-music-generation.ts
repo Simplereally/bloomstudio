@@ -28,6 +28,7 @@ import {
   DEFAULT_MUSIC_MODEL,
   ELEVENMUSIC_DEFAULT_DURATION,
 } from "@/lib/music-api"
+import { deriveTitleFromPrompt } from "@/lib/music-utils"
 import * as React from "react"
 import { usePollenApiKey, usePollenAuthActions } from "@/lib/pollen-auth"
 import { useMutation, useQuery } from "convex/react"
@@ -152,6 +153,8 @@ export interface UseMusicGenerationReturn extends MusicGenerationState {
   setOptions: (options: Partial<MusicGenerationOptions>) => void
   /** Set a reaction (like/dislike) on a track — toggles if same reaction */
   setReaction: (trackId: string, reaction: "like" | "dislike") => void
+  /** Rename a track's title */
+  renameTrack: (trackId: string, title: string) => void
 }
 
 // ============================================================================
@@ -166,6 +169,7 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
   // Convex mutations for persistence
   const createGeneration = useMutation(api.musicGenerations.create)
   const setReactionMutation = useMutation(api.musicGenerations.setReaction)
+  const updateTitleMutation = useMutation(api.musicGenerations.updateTitle)
 
   // Fetch historical generations from Convex (newest first)
   const historicalGenerations = useQuery(api.musicGenerations.listByOwner, {})
@@ -202,6 +206,11 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
   // Entries are flushed in persistPromise.then() once the convexId is known.
   const pendingReactionsRef = React.useRef<Map<string, "like" | "dislike">>(new Map())
 
+  // Pending title renames for tracks whose convexId hasn't arrived yet.
+  // Maps trackId → the latest title set by the user.
+  // Entries are flushed in persistPromise.then() once the convexId is known.
+  const pendingTitlesRef = React.useRef<Map<string, string>>(new Map())
+
   // Merge in-session tracks with historical Convex records.
   // Session tracks (those with audio blobs) take priority over Convex records.
   // Historical tracks appear after session tracks, deduplicated by convexId.
@@ -235,6 +244,7 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
       .map((doc) => ({
         id: doc._id,
         prompt: doc.prompt,
+        title: doc.title ?? undefined,
         audioUrl: doc.audioUrl!,
         audioBlob: new Blob(),
         timestamp: doc.createdAt,
@@ -322,9 +332,11 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
     // Create a placeholder "generating" track immediately
     const { model, duration, instrumental } = optionsRef.current
     const trimmedLyrics = lyrics?.trim() || undefined
+    const autoTitle = deriveTitleFromPrompt(prompt)
     const placeholder: MusicGenerationResult = {
       id: trackId,
       prompt: prompt.trim(),
+      title: autoTitle || undefined,
       audioUrl: "",
       audioBlob: new Blob(),
       timestamp: Date.now(),
@@ -390,6 +402,7 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
           // Create Convex record with audio URL
           return await createGeneration({
             prompt: result.prompt,
+            title: autoTitle || undefined,
             model: result.model,
             instrumental: result.instrumental,
             lyrics: result.lyrics,
@@ -408,6 +421,7 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
       const completedTrack: MusicGenerationResult = {
         ...result,
         id: trackId, // keep the same ID so we replace the placeholder
+        title: autoTitle || undefined,
         status: "done",
       }
 
@@ -474,6 +488,31 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
               })
             }
           }
+
+          // Flush any pending title rename that was queued before convexId arrived.
+          const pendingTitle = pendingTitlesRef.current.get(trackId)
+          if (pendingTitle) {
+            pendingTitlesRef.current.delete(trackId)
+            const generationId = asConvexId(id)
+            if (generationId) {
+              updateTitleMutation({ generationId, title: pendingTitle }).catch(() => {
+                // Revert optimistic update on failure — fall back to auto-derived title
+                const fallback = deriveTitleFromPrompt(
+                  mergedTracksRef.current.find((t) => t.id === trackId)?.prompt ?? ""
+                ) || undefined
+                setState((prev) => ({
+                  ...prev,
+                  tracks: prev.tracks.map((t) =>
+                    t.id === trackId ? { ...t, title: fallback } : t
+                  ),
+                  currentTrack:
+                    prev.currentTrack?.id === trackId
+                      ? { ...prev.currentTrack, title: fallback }
+                      : prev.currentTrack,
+                }))
+              })
+            }
+          }
         }
       })
     } catch (err) {
@@ -518,7 +557,7 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
         isGenerating: inFlightRef.current.size > 0,
       }))
     }
-  }, [apiKey, authorize, createGeneration, setReactionMutation])
+  }, [apiKey, authorize, createGeneration, setReactionMutation, updateTitleMutation])
 
   const cancel = React.useCallback((trackId?: string) => {
     let wasInFlight = false
@@ -570,6 +609,9 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
     // Clear any pending reaction for this track
     pendingReactionsRef.current.delete(trackId)
 
+    // Clear any pending title rename for this track
+    pendingTitlesRef.current.delete(trackId)
+
     // Dismiss by convexId so historical records don't reappear via mergedTracks.
     // For session tracks, the convexId may differ from trackId; for historical
     // tracks the trackId IS the convexId (set in mergedTracks mapping).
@@ -610,6 +652,9 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
 
     // Clear all pending reactions
     pendingReactionsRef.current.clear()
+
+    // Clear all pending title renames
+    pendingTitlesRef.current.clear()
 
     // Dismiss all currently-visible tracks so historical records don't
     // reappear in mergedTracks after state.tracks is emptied.
@@ -706,6 +751,48 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
     }
   }, [setReactionMutation])
 
+  const renameTrack = React.useCallback((trackId: string, title: string) => {
+    const trimmed = title.trim()
+    if (!trimmed) return
+
+    // Optimistic update for session + historical tracks
+    setState((prev) => ({
+      ...prev,
+      tracks: prev.tracks.map((t) =>
+        t.id === trackId ? { ...t, title: trimmed } : t
+      ),
+      currentTrack:
+        prev.currentTrack?.id === trackId
+          ? { ...prev.currentTrack, title: trimmed }
+          : prev.currentTrack,
+    }))
+
+    // Find the track from merged tracks (includes both session + historical)
+    const track = mergedTracksRef.current.find((t) => t.id === trackId)
+    const generationId = track ? asConvexId(track.convexId) : undefined
+
+    if (track && generationId) {
+      const previousTitle = track.title
+      updateTitleMutation({ generationId, title: trimmed }).catch(() => {
+        // Revert optimistic update on failure
+        setState((prev) => ({
+          ...prev,
+          tracks: prev.tracks.map((t) =>
+            t.id === trackId ? { ...t, title: previousTitle } : t
+          ),
+          currentTrack:
+            prev.currentTrack?.id === trackId
+              ? { ...prev.currentTrack, title: previousTitle }
+              : prev.currentTrack,
+        }))
+      })
+    } else if (track) {
+      // No convexId yet — queue the title so it's applied once the
+      // convexId arrives via persistPromise.then().
+      pendingTitlesRef.current.set(trackId, trimmed)
+    }
+  }, [updateTitleMutation])
+
   return {
     ...state,
     tracks: mergedTracks,
@@ -716,5 +803,6 @@ export function useMusicGeneration(): UseMusicGenerationReturn {
     clearTracks,
     setOptions,
     setReaction,
+    renameTrack,
   }
 }

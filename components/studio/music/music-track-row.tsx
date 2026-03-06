@@ -3,7 +3,8 @@
  *
  * Displays a single track with:
  * - Animated generating state (pulsing bars + shimmer)
- * - Completed state with play button, prompt excerpt, model badge, duration
+ * - Completed state with play button, title, model badge, duration
+ * - Inline title editing with edit/save/cancel icon actions
  * - Error state with retry affordance
  * - Lyrics indicator badge when custom lyrics are present
  * - Like/dislike reaction buttons + inline download on hover
@@ -15,11 +16,18 @@
 
 import { Button } from "@/components/ui/button"
 import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group"
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
+import { deriveTitleFromPrompt } from "@/lib/music-utils"
 import {
   formatMusicDuration,
   MUSIC_MODEL_META,
@@ -27,13 +35,15 @@ import {
 } from "@/lib/music-api"
 import {
   AlertCircle,
+  Check,
   Download,
   Loader2,
   Mic,
-  Pause,
+  Pencil,
   Play,
   ThumbsDown,
   ThumbsUp,
+  X,
 } from "lucide-react"
 import * as React from "react"
 
@@ -54,6 +64,8 @@ export interface MusicTrackRowProps {
   onReaction: (trackId: string, reaction: "like" | "dislike") => void
   /** Remove this track */
   onRemove: (trackId: string) => void
+  /** Rename this track's title */
+  onRename?: (trackId: string, title: string) => void
 }
 
 // ============================================================================
@@ -212,7 +224,12 @@ export function MusicTrackRow({
   onSelect,
   onReaction,
   onRemove,
+  onRename,
 }: MusicTrackRowProps) {
+  const [isEditing, setIsEditing] = React.useState(false)
+  const [editValue, setEditValue] = React.useState("")
+  const inputRef = React.useRef<HTMLInputElement>(null)
+
   // Delegate to sub-components for non-"done" states
   if (track.status === "generating") {
     return <GeneratingRow track={track} />
@@ -221,6 +238,8 @@ export function MusicTrackRow({
     return <ErrorRow track={track} onRemove={onRemove} />
   }
 
+  // Resolve display title: stored title → fallback derived from prompt
+  const displayTitle = track.title || deriveTitleFromPrompt(track.prompt)
   const modelLabel = MUSIC_MODEL_META[track.model]?.label ?? track.model
   const hasLyrics = Boolean(track.lyrics)
 
@@ -234,12 +253,48 @@ export function MusicTrackRow({
     document.body.removeChild(a)
   }
 
+  const handleStartEdit = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setEditValue(displayTitle)
+    setIsEditing(true)
+    // Focus input on next tick after render
+    requestAnimationFrame(() => inputRef.current?.focus())
+  }
+
+  const handleSave = (e?: React.MouseEvent | React.FormEvent) => {
+    e?.stopPropagation()
+    const trimmed = editValue.trim()
+    if (trimmed && trimmed !== displayTitle) {
+      onRename?.(track.id, trimmed)
+    }
+    setIsEditing(false)
+  }
+
+  const handleCancel = (e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    setIsEditing(false)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    e.stopPropagation()
+    if (e.key === "Enter") {
+      e.preventDefault()
+      handleSave()
+    } else if (e.key === "Escape") {
+      e.preventDefault()
+      handleCancel()
+    }
+  }
+
   return (
     <div
       role="button"
       tabIndex={0}
-      onClick={() => onSelect(track)}
+      onClick={() => {
+        if (!isEditing) onSelect(track)
+      }}
       onKeyDown={(e) => {
+        if (isEditing) return
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault()
           onSelect(track)
@@ -263,7 +318,7 @@ export function MusicTrackRow({
         )}
       >
         {isActive && isPlaying ? (
-          <div className="flex items-end gap-[2px] h-4">
+          <div className="flex items-end gap-[2px] h-4" data-testid="equalizer-bars">
             {[0, 1, 2].map((i) => (
               <div
                 key={i}
@@ -275,7 +330,7 @@ export function MusicTrackRow({
             ))}
           </div>
         ) : isActive ? (
-          <Pause className="h-4 w-4" />
+          <Play className="h-4 w-4 ml-0.5" />
         ) : (
           <Play className="h-4 w-4 ml-0.5" />
         )}
@@ -283,9 +338,59 @@ export function MusicTrackRow({
 
       {/* Track info */}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground leading-snug line-clamp-1 tracking-tight">
-          {track.prompt}
-        </p>
+        {/* Title row: display or inline edit */}
+        {isEditing ? (
+          <div
+            className="mb-0.5"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            <InputGroup className="h-7 text-sm">
+              <InputGroupInput
+                ref={inputRef}
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="h-7 text-sm px-2"
+                aria-label="Track title"
+                maxLength={100}
+              />
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton
+                  size="icon-xs"
+                  onClick={handleSave}
+                  aria-label="Save title"
+                  disabled={!editValue.trim()}
+                >
+                  <Check className="h-3 w-3" />
+                </InputGroupButton>
+                <InputGroupButton
+                  size="icon-xs"
+                  onClick={handleCancel}
+                  aria-label="Cancel editing"
+                >
+                  <X className="h-3 w-3" />
+                </InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 group/title">
+            <p className="text-sm font-medium text-foreground leading-snug line-clamp-1 tracking-tight">
+              {displayTitle}
+            </p>
+            {onRename && (
+              <button
+                type="button"
+                onClick={handleStartEdit}
+                className="opacity-0 group-hover/title:opacity-100 focus-visible:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted/40"
+                aria-label="Edit title"
+              >
+                <Pencil className="h-3 w-3 text-muted-foreground/60" />
+              </button>
+            )}
+          </div>
+        )}
         <div className="flex items-center gap-1.5 mt-0.5">
           {/* Model badge — with lyrics indicator */}
           <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold bg-muted/30 text-muted-foreground/70">
@@ -383,3 +488,4 @@ export function MusicTrackRow({
     </div>
   )
 }
+

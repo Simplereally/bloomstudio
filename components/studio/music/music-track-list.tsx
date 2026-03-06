@@ -30,6 +30,8 @@ export interface MusicTrackListProps {
   onReaction: (trackId: string, reaction: "like" | "dislike") => void
   /** Remove a track */
   onRemoveTrack: (trackId: string) => void
+  /** Rename a track's title */
+  onRenameTrack?: (trackId: string, title: string) => void
   /** Additional class names */
   className?: string
 }
@@ -45,6 +47,7 @@ export function MusicTrackList({
   onSelectTrack,
   onReaction,
   onRemoveTrack,
+  onRenameTrack,
   className,
 }: MusicTrackListProps) {
   if (tracks.length === 0) {
@@ -79,6 +82,7 @@ export function MusicTrackList({
             onSelect={onSelectTrack}
             onReaction={onReaction}
             onRemove={onRemoveTrack}
+            onRename={onRenameTrack}
           />
         ))}
       </div>
