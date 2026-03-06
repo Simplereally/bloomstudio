@@ -268,7 +268,7 @@ export const processGeneration = internalAction({
             // (thumbnail extraction + preview transcode). This runs AFTER the
             // generation is already "completed" — failures here are non-fatal.
             if (contentType.startsWith("video/")) {
-                await ctx.scheduler.runAfter(0, internal.secondaryAssets.processSecondaryAssets, {
+                await ctx.scheduler.runAfter(0, internal.secondaryAssetsProcessor.processSecondaryAssets, {
                     imageId,
                     videoUrl: uploadResult.url,
                     r2Key,
