@@ -283,30 +283,30 @@ export async function generateAndUploadThumbnail(
 // Parallel Upload with Thumbnail
 // ============================================================
 
-/** Result of parallel media upload with thumbnail and preview */
+/** Result of media upload with optional thumbnail (synchronous assets only) */
 export interface MediaUploadResult {
     /** Main media upload result */
     media: R2UploadResult
-    /** Thumbnail upload result (null if generation/upload failed) */
+    /** Thumbnail upload result (null for videos — handled asynchronously) */
     thumbnail: R2UploadResult | null
-    /** Video preview upload result (null for images or if generation failed) */
+    /** Video preview upload result (always null here — handled asynchronously for videos) */
     preview: R2UploadResult | null
 }
 
 /**
- * Upload media to R2 and generate/upload thumbnail in parallel
+ * Upload media to R2 with thumbnail generation
  * 
- * For videos: Runs video upload and thumbnail extraction concurrently,
- * then uploads thumbnail once extracted. This reduces total time by
- * ~1-2 seconds compared to sequential processing.
+ * **Videos:** Only the R2 upload is awaited (critical path). Thumbnail extraction
+ * and preview generation are NOT performed here — they are deferred to a scheduled
+ * background action (`secondaryAssets.processSecondaryAssets`) to avoid blocking
+ * the generation completion by ~30-40s of ffmpeg transcoding.
  * 
- * For images: Falls back to sequential processing (thumbnail generation
- * is fast enough that parallelization overhead isn't worth it).
+ * **Images:** Thumbnail is generated synchronously (jimp is fast, <1s).
  * 
  * @param buffer - Media data as a Buffer
  * @param r2Key - R2 key for the main media file
  * @param contentType - MIME type of the media
- * @returns Upload results for both media and thumbnail
+ * @returns Upload result for media (and thumbnail for images only)
  */
 export async function uploadMediaWithThumbnail(
     buffer: Buffer,
@@ -317,41 +317,13 @@ export async function uploadMediaWithThumbnail(
     const isVideo = contentType.startsWith("video/")
 
     if (isVideo) {
-        // For videos: run upload, thumbnail extraction, and preview generation in parallel
-        const generatePreview = shouldGeneratePreview(buffer.length)
-        
-        const [mediaResult, thumbnailBuffer, previewResult] = await Promise.all([
-            uploadToR2(buffer, r2Key, contentType),
-            extractVideoThumbnail(buffer),
-            // Only generate preview for larger videos (>5MB)
-            generatePreview ? generateVideoPreview(buffer) : Promise.resolve(null),
-        ])
+        // For videos: ONLY upload the video to R2.
+        // Thumbnail and preview are deferred to a background action
+        // (scheduled by the caller) to avoid blocking generation completion.
+        const mediaResult = await uploadToR2(buffer, r2Key, contentType)
+        console.log(`[Upload] Video uploaded: ${mediaResult.url} — thumbnail/preview deferred to background`)
 
-        console.log(`[Upload] Video uploaded: ${mediaResult.url}`)
-
-        // Upload thumbnail (if extraction succeeded)
-        let thumbnailUploadResult: R2UploadResult | null = null
-        if (thumbnailBuffer) {
-            const thumbnailKey = generateThumbnailKey(r2Key)
-            thumbnailUploadResult = await uploadToR2(thumbnailBuffer, thumbnailKey, "image/jpeg")
-            console.log(`[Upload] Thumbnail uploaded: ${thumbnailUploadResult.url}`)
-        } else {
-            console.log("[Upload] Thumbnail extraction failed, skipping upload")
-        }
-
-        // Upload preview (if generation succeeded)
-        let previewUploadResult: R2UploadResult | null = null
-        if (previewResult?.buffer) {
-            const previewKey = generatePreviewKey(r2Key)
-            previewUploadResult = await uploadToR2(previewResult.buffer, previewKey, "video/mp4")
-            console.log(`[Upload] Preview uploaded: ${previewUploadResult.url} (${previewResult.compressionRatio.toFixed(1)}% reduction)`)
-        } else if (generatePreview) {
-            console.log("[Upload] Preview generation failed, skipping upload")
-        } else {
-            console.log(`[Upload] Video too small for preview (${(buffer.length / 1024 / 1024).toFixed(2)}MB < 5MB threshold)`)
-        }
-
-        return { media: mediaResult, thumbnail: thumbnailUploadResult, preview: previewUploadResult }
+        return { media: mediaResult, thumbnail: null, preview: null }
     } else {
         // For images: sequential is fine (jimp is fast), no preview needed
         
@@ -361,4 +333,61 @@ export async function uploadMediaWithThumbnail(
         
         return { media: mediaResult, thumbnail: thumbnailResult, preview: null }
     }
+}
+
+// ============================================================
+// Secondary Asset Generation (for background processing)
+// ============================================================
+
+/**
+ * Generate and upload all secondary assets for a video.
+ * 
+ * Called by the `secondaryAssets.processSecondaryAssets` action after
+ * the generation has already been marked as completed. Failures here
+ * are logged but never propagate — they cannot fail a generation.
+ * 
+ * @param buffer - Video data as a Buffer
+ * @param r2Key - R2 key of the original video
+ * @returns Object with thumbnail and preview upload results (each may be null)
+ */
+export async function generateAndUploadVideoSecondaryAssets(
+    buffer: Buffer,
+    r2Key: string,
+): Promise<{ thumbnail: R2UploadResult | null; preview: R2UploadResult | null }> {
+    let thumbnailUploadResult: R2UploadResult | null = null
+    let previewUploadResult: R2UploadResult | null = null
+
+    // --- Thumbnail ---
+    try {
+        const thumbnailBuffer = await extractVideoThumbnail(buffer)
+        if (thumbnailBuffer) {
+            const thumbnailKey = generateThumbnailKey(r2Key)
+            thumbnailUploadResult = await uploadToR2(thumbnailBuffer, thumbnailKey, "image/jpeg")
+            console.log(`[SecondaryAssets] Thumbnail uploaded: ${thumbnailUploadResult.url}`)
+        } else {
+            console.warn("[SecondaryAssets] Thumbnail extraction returned null")
+        }
+    } catch (error) {
+        console.error("[SecondaryAssets] Thumbnail extraction/upload failed (non-fatal):", error)
+    }
+
+    // --- Preview ---
+    try {
+        if (shouldGeneratePreview(buffer.length)) {
+            const previewResult = await generateVideoPreview(buffer)
+            if (previewResult?.buffer) {
+                const previewKey = generatePreviewKey(r2Key)
+                previewUploadResult = await uploadToR2(previewResult.buffer, previewKey, "video/mp4")
+                console.log(`[SecondaryAssets] Preview uploaded: ${previewUploadResult.url} (${previewResult.compressionRatio.toFixed(1)}% reduction)`)
+            } else {
+                console.warn("[SecondaryAssets] Preview generation returned null")
+            }
+        } else {
+            console.log(`[SecondaryAssets] Video too small for preview (${(buffer.length / 1024 / 1024).toFixed(2)}MB < 5MB threshold)`)
+        }
+    } catch (error) {
+        console.error("[SecondaryAssets] Preview generation/upload failed (non-fatal):", error)
+    }
+
+    return { thumbnail: thumbnailUploadResult, preview: previewUploadResult }
 }
