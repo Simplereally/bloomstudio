@@ -22,7 +22,6 @@ import {
     classifyApiError,
     generateR2Key,
     generateThumbnailKey,
-    generatePreviewKey,
     uploadMediaWithThumbnail,
     fetchWithRetry,
     type RetryConfig,
@@ -192,11 +191,11 @@ export const processBatchItem = internalAction({
             const imageBuffer = Buffer.from(await response.arrayBuffer())
             const contentType = response.headers.get("content-type") || "image/jpeg"
 
-            // Upload to R2 and generate thumbnail in parallel (for videos)
+            // Upload to R2 (and thumbnail for images — videos defer secondary assets)
             const r2Key = generateR2Key(batchJob.ownerId, contentType)
             console.log(`${logger} Uploading to R2: ${r2Key}`)
 
-            const { media: uploadResult, thumbnail: thumbnailResult, preview: previewResult } = await uploadMediaWithThumbnail(
+            const { media: uploadResult, thumbnail: thumbnailResult } = await uploadMediaWithThumbnail(
                 imageBuffer,
                 r2Key,
                 contentType
@@ -206,19 +205,17 @@ export const processBatchItem = internalAction({
             if (thumbnailResult) {
                 console.log(`${logger} Thumbnail complete: ${thumbnailResult.url} (${thumbnailResult.sizeBytes} bytes)`)
             }
-            if (previewResult) {
-                console.log(`${logger} Preview complete: ${previewResult.url} (${previewResult.sizeBytes} bytes)`)
-            }
 
-            // Store the image in Convex database
+            // Store the image in Convex database — immediately, without waiting for secondary assets
             const imageId = await ctx.runMutation(internal.batchGeneration.storeGeneratedImage, {
                 ownerId: batchJob.ownerId,
                 r2Key,
                 url: uploadResult.url,
                 thumbnailR2Key: thumbnailResult?.url ? generateThumbnailKey(r2Key) : undefined,
                 thumbnailUrl: thumbnailResult?.url,
-                previewR2Key: previewResult?.url ? generatePreviewKey(r2Key) : undefined,
-                previewUrl: previewResult?.url,
+                // Preview is always deferred for videos; not applicable for images
+                previewR2Key: undefined,
+                previewUrl: undefined,
                 prompt: batchJob.generationParams.prompt,
                 width: batchJob.generationParams.width ?? 1024,
                 height: batchJob.generationParams.height ?? 1024,
@@ -243,6 +240,18 @@ export const processBatchItem = internalAction({
                 imageId,
                 retryCount: result.attemptsMade > 1 ? result.attemptsMade - 1 : undefined,
             })
+
+            // Schedule background secondary asset processing for videos
+            // (thumbnail extraction + preview transcode). This runs AFTER the
+            // batch item is already recorded as successful — failures here are non-fatal.
+            if (contentType.startsWith("video/")) {
+                await ctx.scheduler.runAfter(0, internal.secondaryAssets.processSecondaryAssets, {
+                    imageId,
+                    videoUrl: uploadResult.url,
+                    r2Key,
+                })
+                console.log(`${logger} Scheduled background secondary asset processing for ${imageId}`)
+            }
 
         } catch (error) {
             console.error(`${logger} Error processing item ${args.itemIndex}:`, error)
