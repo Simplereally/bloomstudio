@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { useStudioUI } from "./use-studio-ui";
 import { createMockImage } from "@/lib/test-utils";
@@ -282,6 +282,155 @@ describe("useStudioUI", () => {
       });
 
       expect(result.current.lightboxImage).toEqual(mockImage);
+    });
+  });
+
+  describe("Mobile lightbox – drawer close sequencing (bug fix)", () => {
+    beforeEach(() => {
+      mockUseIsMobile.mockReturnValue(true);
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    /**
+     * Regression test: opening lightbox while the history drawer is open must
+     * close the drawer first and only open the lightbox after the drawer's
+     * close animation completes (300ms).  Previously both state updates were
+     * batched in the same render, leaving two concurrent dismissable-layer
+     * instances that corrupted body pointer-events / aria-hidden state.
+     */
+    it("delays lightbox open until after drawer close animation when gallery is open", () => {
+      const { result } = renderHook(() => useStudioUI());
+
+      // Simulate user opening the history drawer
+      act(() => {
+        result.current.setShowGallery(true);
+      });
+      expect(result.current.showGallery).toBe(true);
+
+      // User clicks an image inside the history drawer
+      act(() => {
+        result.current.openLightbox(mockImage);
+      });
+
+      // Drawer must close immediately
+      expect(result.current.showGallery).toBe(false);
+
+      // Lightbox must NOT be open yet (waiting for animation to complete)
+      expect(result.current.isFullscreen).toBe(false);
+      expect(result.current.lightboxImage).toBeNull();
+
+      // Advance past the 300ms delay
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
+
+      // Now the lightbox should be open
+      expect(result.current.isFullscreen).toBe(true);
+      expect(result.current.lightboxImage).toEqual(mockImage);
+    });
+
+    it("delays lightbox open until after drawer close animation when sidebar is open", () => {
+      const { result } = renderHook(() => useStudioUI());
+
+      // Simulate user opening the sidebar
+      act(() => {
+        result.current.setShowLeftSidebar(true);
+      });
+      expect(result.current.showLeftSidebar).toBe(true);
+
+      act(() => {
+        result.current.openLightbox(mockImage);
+      });
+
+      // Sidebar must close immediately
+      expect(result.current.showLeftSidebar).toBe(false);
+      // Lightbox not yet open
+      expect(result.current.isFullscreen).toBe(false);
+
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
+
+      expect(result.current.isFullscreen).toBe(true);
+      expect(result.current.lightboxImage).toEqual(mockImage);
+    });
+
+    it("opens lightbox immediately on mobile when no drawer is open", () => {
+      const { result } = renderHook(() => useStudioUI());
+
+      // Both drawers closed (default on mobile after init effect)
+      expect(result.current.showGallery).toBe(false);
+      expect(result.current.showLeftSidebar).toBe(false);
+
+      act(() => {
+        result.current.openLightbox(mockImage);
+      });
+
+      // No delay needed – opens immediately
+      expect(result.current.isFullscreen).toBe(true);
+      expect(result.current.lightboxImage).toEqual(mockImage);
+    });
+
+    it("cancels pending lightbox open when closeLightbox is called before the timer fires", () => {
+      const { result } = renderHook(() => useStudioUI());
+
+      act(() => {
+        result.current.setShowGallery(true);
+      });
+
+      // Queue a delayed open
+      act(() => {
+        result.current.openLightbox(mockImage);
+      });
+      expect(result.current.isFullscreen).toBe(false);
+
+      // Close (e.g., user presses Escape) before the timer fires
+      act(() => {
+        result.current.closeLightbox();
+      });
+
+      // Advance past the delay
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
+
+      // The lightbox should NOT have opened
+      expect(result.current.isFullscreen).toBe(false);
+    });
+
+    it("closeLightbox resets stuck body pointer-events after 300ms", () => {
+      const { result } = renderHook(() => useStudioUI());
+
+      // Simulate the body getting stuck with pointer-events:none
+      document.body.style.pointerEvents = "none";
+
+      act(() => {
+        result.current.openLightbox(mockImage);
+        vi.advanceTimersByTime(300);
+      });
+
+      act(() => {
+        result.current.closeLightbox();
+      });
+
+      // Before 300ms the body is still stuck
+      act(() => {
+        vi.advanceTimersByTime(150);
+      });
+      expect(document.body.style.pointerEvents).toBe("none");
+
+      // After 300ms the cleanup has run
+      act(() => {
+        vi.advanceTimersByTime(150);
+      });
+      expect(document.body.style.pointerEvents).toBe("");
+
+      // Restore
+      document.body.style.pointerEvents = "";
     });
   });
 
