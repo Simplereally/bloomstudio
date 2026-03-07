@@ -115,39 +115,119 @@ export function useStudioUI(): UseStudioUIReturn {
   // ========================================
   // Lightbox Handlers
   //
-  // IMPORTANT: On mobile, vaul drawers and the Radix Dialog lightbox use
-  // separate instances of @radix-ui/react-dismissable-layer (v1.1.3 in vaul
-  // vs v1.1.11 at top-level). Each instance independently manages
-  // body.style.pointerEvents. When both are open simultaneously, the close
-  // order can leave body stuck with pointer-events:none, making the entire
-  // page unresponsive. The fix: close drawers before opening the lightbox
-  // and defensively reset pointer-events on lightbox close.
+  // IMPORTANT: On mobile, vaul drawers and the Radix Dialog lightbox share
+  // the same @radix-ui/react-dismissable-layer but their close sequences can
+  // race. When both are active simultaneously (drawer animating out while
+  // dialog opens), the cleanup order leaves body.style.pointerEvents:"none"
+  // and/or aria-hidden/inert stuck on elements, making the entire page
+  // unresponsive. The fix:
+  //   1. Close drawers first, THEN open the lightbox after the drawer's
+  //      close animation completes (300ms > 200ms animation duration).
+  //   2. After the lightbox closes, defensively reset body attributes once
+  //      Radix's own close-animation cleanup has fully run (setTimeout > rAF).
   // ========================================
+
+  // Pending-lightbox refs: used to delay the open on mobile until drawer
+  // animation completes.
+  const pendingLightboxTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingLightboxRef = React.useRef<{ pending: boolean; image: LightboxImage | null }>({
+    pending: false,
+    image: null,
+  });
+
+  // Cancel any pending timer when the hook unmounts
+  React.useEffect(() => {
+    return () => {
+      if (pendingLightboxTimerRef.current !== null) {
+        clearTimeout(pendingLightboxTimerRef.current);
+      }
+    };
+  }, []);
+
   const openLightbox = React.useCallback(
     (image: LightboxImage | null) => {
-      // Close mobile drawers first to avoid the pointer-events race condition
-      // between vaul's and Radix Dialog's dismissable-layer instances
-      if (isMobile) {
+      const hasOpenDrawer = isMobile && (showGallery || showLeftSidebar);
+
+      // Cancel any previous pending open
+      if (pendingLightboxTimerRef.current !== null) {
+        clearTimeout(pendingLightboxTimerRef.current);
+        pendingLightboxTimerRef.current = null;
+      }
+
+      if (hasOpenDrawer) {
+        // Close drawers first, then wait for the drawer close animation to
+        // finish (200ms CSS transition + 100ms safety margin = 300ms) before
+        // opening the lightbox. This prevents concurrent dismissable-layer
+        // instances from corrupting body pointer-events / aria-hidden state.
         setShowLeftSidebar(false);
         setShowGallery(false);
+
+        pendingLightboxRef.current = { pending: true, image };
+        pendingLightboxTimerRef.current = setTimeout(() => {
+          pendingLightboxTimerRef.current = null;
+          if (pendingLightboxRef.current.pending) {
+            const { image: pendingImage } = pendingLightboxRef.current;
+            pendingLightboxRef.current = { pending: false, image: null };
+            setLightboxImage(pendingImage);
+            setIsFullscreen(true);
+          }
+        }, 300);
+      } else {
+        setLightboxImage(image);
+        setIsFullscreen(true);
       }
-      setLightboxImage(image);
-      setIsFullscreen(true);
     },
-    [isMobile, setShowLeftSidebar, setShowGallery],
+    [isMobile, showGallery, showLeftSidebar, setShowLeftSidebar, setShowGallery],
   );
+
+  // Ref for the closeLightbox cleanup timer so it can be cancelled on unmount
+  const closeLightboxTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (closeLightboxTimerRef.current !== null) {
+        clearTimeout(closeLightboxTimerRef.current);
+      }
+    };
+  }, []);
 
   const closeLightbox = React.useCallback(() => {
     setIsFullscreen(false);
-    // Defensive cleanup: ensure body pointer-events are restored.
-    // The dual dismissable-layer instances can leave pointer-events:none
-    // on the body after the lightbox closes. We use rAF to run after
-    // Radix's own cleanup microtask.
-    requestAnimationFrame(() => {
-      if (document.body.style.pointerEvents === "none") {
-        document.body.style.pointerEvents = "";
+
+    // Cancel any pending lightbox open (in case the user closes while one is
+    // queued, e.g. via keyboard shortcut)
+    if (pendingLightboxTimerRef.current !== null) {
+      clearTimeout(pendingLightboxTimerRef.current);
+      pendingLightboxTimerRef.current = null;
+      pendingLightboxRef.current = { pending: false, image: null };
+    }
+
+    // Defensive cleanup: run AFTER Radix Dialog's close animation (75ms via
+    // !duration-75 class) and its aria-hidden / react-remove-scroll teardown.
+    // A single rAF (~16ms) is too early; use 300ms to be well clear of all
+    // async cleanup paths. Only resets attributes when no other modal is open.
+    if (closeLightboxTimerRef.current !== null) {
+      clearTimeout(closeLightboxTimerRef.current);
+    }
+    closeLightboxTimerRef.current = setTimeout(() => {
+      closeLightboxTimerRef.current = null;
+      const openModal = document.querySelector(
+        '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]',
+      );
+      if (!openModal) {
+        if (document.body.style.pointerEvents === "none") {
+          document.body.style.pointerEvents = "";
+        }
+        // Remove any stuck aria-hidden / inert from direct body children that
+        // Radix/vaul may have left behind when concurrent modals raced on close.
+        document
+          .querySelectorAll("body > [aria-hidden], body > [inert]")
+          .forEach((el) => {
+            el.removeAttribute("aria-hidden");
+            el.removeAttribute("inert");
+          });
       }
-    });
+    }, 300);
   }, []);
 
   // ========================================
