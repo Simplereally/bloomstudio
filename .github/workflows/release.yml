@@ -69,7 +69,7 @@ jobs:
           echo "New version: $NEW_VERSION"
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
-      - name: Verify release is not ahead of main
+      - name: Merge any release-only commits back into main
         run: |
           git fetch origin release:release || true
           
@@ -78,9 +78,15 @@ jobs:
             # Check if release has commits not in main
             AHEAD=$(git rev-list --count main..release)
             if [ "$AHEAD" -gt 0 ]; then
-              echo "❌ Error: release branch is $AHEAD commit(s) ahead of main"
-              echo "This should never happen. Please investigate."
-              exit 1
+              echo "⚠️ release branch is $AHEAD commit(s) ahead of main (hotfixes pushed directly to release)"
+              echo "Merging release commits back into main to preserve them..."
+              if ! git merge release --no-edit -m "chore: merge release hotfixes back into main"; then
+                echo "❌ Merge failed due to conflicts. Resolve conflicts manually, then re-run this workflow."
+                git merge --abort
+                exit 1
+              fi
+              git push origin main
+              echo "✅ Successfully merged $AHEAD release commit(s) into main"
             fi
           fi
 
