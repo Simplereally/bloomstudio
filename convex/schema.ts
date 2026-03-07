@@ -416,6 +416,8 @@ export default defineSchema({
         ownerId: v.string(),
         /** The prompt used to generate the track */
         prompt: v.string(),
+        /** User-editable track title (auto-derived from prompt on creation) */
+        title: v.optional(v.string()),
         /** Model used for generation (e.g. "suno-v5", "suno-v4.5", "elevenmusic") */
         model: v.string(),
         /** Whether instrumental mode was used */

@@ -21,7 +21,6 @@ import {
     classifyApiError,
     generateR2Key,
     generateThumbnailKey,
-    generatePreviewKey,
     uploadMediaWithThumbnail,
     deleteR2Objects,
     fetchWithRetry,
@@ -200,11 +199,11 @@ export const processGeneration = internalAction({
             const imageBuffer = Buffer.from(await response.arrayBuffer())
             const contentType = response.headers.get("content-type") || "image/jpeg"
 
-            // Upload to R2 and generate thumbnail in parallel (for videos)
+            // Upload to R2 (and thumbnail for images — videos defer secondary assets)
             const r2Key = generateR2Key(generation.ownerId, contentType)
             console.log(`${logger} Uploading to R2: ${r2Key}`)
 
-            const { media: uploadResult, thumbnail: thumbnailResult, preview: previewResult } = await uploadMediaWithThumbnail(
+            const { media: uploadResult, thumbnail: thumbnailResult } = await uploadMediaWithThumbnail(
                 imageBuffer,
                 r2Key,
                 contentType
@@ -213,11 +212,8 @@ export const processGeneration = internalAction({
             console.log(`${logger} Upload complete: ${uploadResult.url}`)
             if (thumbnailResult) {
                 console.log(`${logger} Thumbnail complete: ${thumbnailResult.url} (${thumbnailResult.sizeBytes} bytes)`)
-            } else {
+            } else if (!contentType.startsWith("video/")) {
                 console.log(`${logger} Thumbnail generation skipped or failed`)
-            }
-            if (previewResult) {
-                console.log(`${logger} Preview complete: ${previewResult.url} (${previewResult.sizeBytes} bytes)`)
             }
 
             if (await isCancelled()) {
@@ -225,7 +221,6 @@ export const processGeneration = internalAction({
                 // Best-effort R2 cleanup to avoid orphan objects
                 const keysToDelete = [r2Key]
                 if (thumbnailResult?.url) keysToDelete.push(generateThumbnailKey(r2Key))
-                if (previewResult?.url) keysToDelete.push(generatePreviewKey(r2Key))
                 try {
                     await deleteR2Objects(keysToDelete)
                     console.log(`${logger} R2 cleanup succeeded for generation ${args.generationId}`)
@@ -235,15 +230,16 @@ export const processGeneration = internalAction({
                 return
             }
 
-            // Store the image in Convex database
+            // Store the image in Convex database — immediately, without waiting for secondary assets
             const imageId = await ctx.runMutation(internal.singleGeneration.storeGeneratedImage, {
                 ownerId: generation.ownerId,
                 r2Key,
                 url: uploadResult.url,
                 thumbnailR2Key: thumbnailResult?.url ? generateThumbnailKey(r2Key) : undefined,
                 thumbnailUrl: thumbnailResult?.url,
-                previewR2Key: previewResult?.url ? generatePreviewKey(r2Key) : undefined,
-                previewUrl: previewResult?.url,
+                // Preview is always deferred for videos; not applicable for images
+                previewR2Key: undefined,
+                previewUrl: undefined,
                 prompt: params.prompt,
                 width: params.width ?? 1024,
                 height: params.height ?? 1024,
@@ -260,13 +256,25 @@ export const processGeneration = internalAction({
 
             console.log(`${logger} Generation ${args.generationId} completed successfully`)
 
-            // Update generation status to completed
+            // Update generation status to completed — user sees result NOW
             await ctx.runMutation(internal.singleGeneration.updateGenerationStatus, {
                 generationId: args.generationId,
                 status: "completed",
                 imageId,
                 retryCount: result.attemptsMade > 1 ? result.attemptsMade - 1 : undefined,
             })
+
+            // Schedule background secondary asset processing for videos
+            // (thumbnail extraction + preview transcode). This runs AFTER the
+            // generation is already "completed" — failures here are non-fatal.
+            if (contentType.startsWith("video/")) {
+                await ctx.scheduler.runAfter(0, internal.secondaryAssetsProcessor.processSecondaryAssets, {
+                    imageId,
+                    videoUrl: uploadResult.url,
+                    r2Key,
+                })
+                console.log(`${logger} Scheduled background secondary asset processing for ${imageId}`)
+            }
 
         } catch (error) {
             console.error(`${logger} Error processing generation:`, error)

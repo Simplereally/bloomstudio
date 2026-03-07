@@ -111,6 +111,8 @@ export interface MusicGenerationResult {
   id: string
   /** The prompt used to generate the track */
   prompt: string
+  /** User-editable track title (auto-derived from prompt if not set) */
+  title?: string
   /**
    * Object URL for the audio blob (for playback).
    *

@@ -145,6 +145,14 @@ export function MusicPlayerBar({
   const [isSeeking, setIsSeeking] = React.useState(false)
   const [showLyrics, setShowLyrics] = React.useState(false)
 
+  // Refs for values read inside stable audio-event handlers so that the
+  // listener effect never needs to re-run (and therefore never tears down /
+  // re-attaches listeners, which could drop events like `ended`).
+  const isSeekingRef = React.useRef(false)
+  React.useEffect(() => {
+    isSeekingRef.current = isSeeking
+  }, [isSeeking])
+
   // Close lyrics panel when track changes
   const prevTrackIdRef = React.useRef<string | null>(null)
 
@@ -186,7 +194,7 @@ export function MusicPlayerBar({
     }
   }, [isSeeking, duration])
 
-  // Auto-play when a new track arrives
+  // Auto-play when a new track arrives — reset time/duration for the new source
   React.useEffect(() => {
     if (track && track.status === "done" && track.id !== prevTrackIdRef.current) {
       // Close lyrics panel on track change
@@ -194,6 +202,9 @@ export function MusicPlayerBar({
       prevTrackIdRef.current = track.id
       const audio = audioRef.current
       if (audio) {
+        // Reset playback state for the new track
+        setCurrentTime(0)
+        setDuration(0)
         audio.src = track.audioUrl
         audio.load()
         audio.play().then(() => setIsPlaying(true)).catch(() => {
@@ -203,17 +214,22 @@ export function MusicPlayerBar({
     }
   }, [track])
 
-  // Time update handler
+  // Attach audio-element event listeners once and keep them stable.
+  // Uses refs for mutable values (isSeeking) so the effect has no
+  // changing dependencies beyond the initial mount.
   React.useEffect(() => {
     const audio = audioRef.current
     if (!audio) return
 
     const onTimeUpdate = () => {
-      if (!isSeeking) {
+      if (!isSeekingRef.current) {
         setCurrentTime(audio.currentTime)
       }
     }
-    const onDurationChange = () => setDuration(audio.duration || 0)
+    const onDurationChange = () => {
+      const d = audio.duration
+      setDuration(Number.isFinite(d) ? d : 0)
+    }
     const onEnded = () => setIsPlaying(false)
     const onPlay = () => setIsPlaying(true)
     const onPause = () => setIsPlaying(false)
@@ -233,7 +249,7 @@ export function MusicPlayerBar({
       audio.removeEventListener("play", onPlay)
       audio.removeEventListener("pause", onPause)
     }
-  }, [isSeeking])
+  }, [])
 
   const togglePlayPause = React.useCallback(() => {
     const audio = audioRef.current
@@ -382,6 +398,7 @@ export function MusicPlayerBar({
         onKeyDown={handleProgressKeyDown}
       >
         <div
+          data-testid="progress-fill"
           className="absolute inset-y-0 left-0 bg-primary transition-all"
           style={{ width: `${progress}%` }}
         />

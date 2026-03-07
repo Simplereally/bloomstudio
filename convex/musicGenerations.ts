@@ -14,6 +14,7 @@ import { mutation, query } from "./_generated/server"
 export const create = mutation({
     args: {
         prompt: v.string(),
+        title: v.optional(v.string()),
         model: v.string(),
         instrumental: v.boolean(),
         lyrics: v.optional(v.string()),
@@ -31,6 +32,7 @@ export const create = mutation({
         const id = await ctx.db.insert("musicGenerations", {
             ownerId: identity.subject,
             prompt: args.prompt,
+            title: args.title ?? undefined,
             model: args.model,
             instrumental: args.instrumental,
             lyrics: args.lyrics ?? undefined,
@@ -76,6 +78,41 @@ export const setReaction = mutation({
         await ctx.db.patch(args.generationId, { reaction: args.reaction })
 
         return { reaction: args.reaction ?? null }
+    },
+})
+
+/**
+ * Update the title of a music generation.
+ * Validates that the caller owns the record.
+ */
+export const updateTitle = mutation({
+    args: {
+        generationId: v.id("musicGenerations"),
+        title: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity()
+        if (!identity) {
+            throw new Error("Not authenticated")
+        }
+
+        const generation = await ctx.db.get(args.generationId)
+        if (!generation) {
+            throw new Error("Music generation not found")
+        }
+
+        if (generation.ownerId !== identity.subject) {
+            throw new Error("Not authorized to modify this generation")
+        }
+
+        const trimmed = args.title.trim()
+        if (!trimmed) {
+            throw new Error("Title cannot be empty")
+        }
+
+        await ctx.db.patch(args.generationId, { title: trimmed })
+
+        return { title: trimmed }
     },
 })
 

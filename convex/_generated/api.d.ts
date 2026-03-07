@@ -41,6 +41,8 @@ import type * as promptInference from "../promptInference.js";
 import type * as promptLibrary from "../promptLibrary.js";
 import type * as rateLimits from "../rateLimits.js";
 import type * as referenceImages from "../referenceImages.js";
+import type * as secondaryAssets from "../secondaryAssets.js";
+import type * as secondaryAssetsProcessor from "../secondaryAssetsProcessor.js";
 import type * as sensitivityMigration from "../sensitivityMigration.js";
 import type * as singleGeneration from "../singleGeneration.js";
 import type * as singleGenerationProcessor from "../singleGenerationProcessor.js";
@@ -93,6 +95,8 @@ declare const fullApi: ApiFromModules<{
   promptLibrary: typeof promptLibrary;
   rateLimits: typeof rateLimits;
   referenceImages: typeof referenceImages;
+  secondaryAssets: typeof secondaryAssets;
+  secondaryAssetsProcessor: typeof secondaryAssetsProcessor;
   sensitivityMigration: typeof sensitivityMigration;
   singleGeneration: typeof singleGeneration;
   singleGenerationProcessor: typeof singleGenerationProcessor;

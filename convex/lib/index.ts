@@ -31,6 +31,7 @@ export {
     deleteR2Objects,
     generateAndUploadThumbnail,
     uploadMediaWithThumbnail,
+    generateAndUploadVideoSecondaryAssets,
     type R2UploadResult,
     type MediaUploadResult,
 } from "./r2"

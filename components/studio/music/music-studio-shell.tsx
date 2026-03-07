@@ -49,6 +49,7 @@ export function MusicStudioShell() {
     clearTracks,
     setOptions,
     setReaction,
+    renameTrack,
   } = useMusicGeneration()
 
   const [filter, setFilter] = React.useState<TrackFilter>("all")
@@ -235,6 +236,7 @@ export function MusicStudioShell() {
               onSelectTrack={selectTrack}
               onReaction={setReaction}
               onRemoveTrack={removeTrack}
+              onRenameTrack={renameTrack}
             />
           </div>
         </div>
