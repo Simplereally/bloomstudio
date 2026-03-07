@@ -128,15 +128,12 @@ export function useStudioUI(): UseStudioUIReturn {
   // ========================================
 
   // Pending-lightbox refs: used to delay the open on mobile until drawer
-  // animation completes, keeping openLightbox's dep array stable.
+  // animation completes.
   const pendingLightboxTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingLightboxRef = React.useRef<{ pending: boolean; image: LightboxImage | null }>({
     pending: false,
     image: null,
   });
-  // Latest drawer state, read inside openLightbox without adding to deps
-  const drawerOpenRef = React.useRef({ showGallery, showLeftSidebar });
-  drawerOpenRef.current = { showGallery, showLeftSidebar };
 
   // Cancel any pending timer when the hook unmounts
   React.useEffect(() => {
@@ -149,9 +146,7 @@ export function useStudioUI(): UseStudioUIReturn {
 
   const openLightbox = React.useCallback(
     (image: LightboxImage | null) => {
-      const { showGallery: isGalleryOpen, showLeftSidebar: isSidebarOpen } =
-        drawerOpenRef.current;
-      const hasOpenDrawer = isMobile && (isGalleryOpen || isSidebarOpen);
+      const hasOpenDrawer = isMobile && (showGallery || showLeftSidebar);
 
       // Cancel any previous pending open
       if (pendingLightboxTimerRef.current !== null) {
@@ -182,7 +177,7 @@ export function useStudioUI(): UseStudioUIReturn {
         setIsFullscreen(true);
       }
     },
-    [isMobile, setShowLeftSidebar, setShowGallery],
+    [isMobile, showGallery, showLeftSidebar, setShowLeftSidebar, setShowGallery],
   );
 
   // Ref for the closeLightbox cleanup timer so it can be cancelled on unmount
