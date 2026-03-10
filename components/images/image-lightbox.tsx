@@ -29,6 +29,7 @@ import {
 	type LightboxImage,
 	useImageLightbox,
 } from "@/hooks/use-image-lightbox";
+import { useVerticalSwipeNavigation } from "@/hooks/use-vertical-swipe-navigation";
 import { getModelConstraints } from "@/lib/config/models";
 import type { GeneratedImage } from "@/lib/schemas/pollinations.schema";
 import {
@@ -47,6 +48,12 @@ interface ImageLightboxProps {
 	image: LightboxImage | null;
 	isOpen: boolean;
 	onClose: () => void;
+	mediaNavigation?: {
+		hasNext: boolean;
+		hasPrevious: boolean;
+		onNext: () => void;
+		onPrevious: () => void;
+	};
 	/** Optional callback when a prompt is inserted from the library (used to update prompt input) */
 	onInsertPrompt?: (content: string) => void;
 }
@@ -55,6 +62,7 @@ export function ImageLightbox({
 	image,
 	isOpen,
 	onClose,
+	mediaNavigation,
 	onInsertPrompt,
 }: ImageLightboxProps) {
 	// Fetch full image details if we only have thumbnail data (no prompt)
@@ -119,6 +127,7 @@ export function ImageLightbox({
 
 	// Zoom state for single-image mode (updated via callback from LightboxMediaDisplay)
 	const [singleModeZoomed, setSingleModeZoomed] = React.useState(false);
+	const suppressBackdropClickRef = React.useRef(false);
 	const resetEditSessionState = React.useCallback(() => {
 		setEditChain([]);
 		setSelectedVersionIndex(0);
@@ -129,11 +138,13 @@ export function ImageLightbox({
 
 	React.useEffect(() => {
 		// Reset local-only edit state whenever the opened image changes.
+		suppressBackdropClickRef.current = false;
 		resetEditSessionState();
 	}, [imageSessionKey, resetEditSessionState]);
 
 	React.useEffect(() => {
 		if (!isOpen) {
+			suppressBackdropClickRef.current = false;
 			resetEditSessionState();
 		}
 	}, [isOpen, resetEditSessionState]);
@@ -246,6 +257,15 @@ export function ImageLightbox({
 		setShowCloseConfirm(false);
 		onClose();
 	}, [onClose]);
+
+	const handleBackdropCloseAttempt = React.useCallback(() => {
+		if (suppressBackdropClickRef.current) {
+			suppressBackdropClickRef.current = false;
+			return;
+		}
+
+		handleCloseAttempt();
+	}, [handleCloseAttempt]);
 
 	// ==========================================
 	// Pane action handlers (used in compare mode)
@@ -392,6 +412,34 @@ export function ImageLightbox({
 		outputHeight,
 	]);
 
+	const isSwipeNavigationEnabled =
+		isOpen &&
+		!hasEdits &&
+		!isZoomed &&
+		!isEditPanelOpen &&
+		Boolean(mediaNavigation) &&
+		(mediaNavigation?.hasNext === true || mediaNavigation?.hasPrevious === true);
+
+	const swipeNavigationHandlers = useVerticalSwipeNavigation({
+		enabled: isSwipeNavigationEnabled,
+		onSwipeUp: mediaNavigation?.hasNext
+			? () => {
+				suppressBackdropClickRef.current = true;
+				mediaNavigation.onNext();
+			}
+			: undefined,
+		onSwipeDown: mediaNavigation?.hasPrevious
+			? () => {
+				suppressBackdropClickRef.current = true;
+				mediaNavigation.onPrevious();
+			}
+			: undefined,
+	});
+	const {
+		touchAction: swipeTouchAction,
+		...swipeGestureHandlers
+	} = swipeNavigationHandlers;
+
 	return (
 		<>
 			<Dialog open={isOpen} onOpenChange={handleDialogOpenChange}>
@@ -411,29 +459,36 @@ export function ImageLightbox({
 						<div className="w-full h-full bg-black/80 backdrop-blur-md cursor-default flex items-center justify-center animate-in fade-in duration-150">
 							<div className="relative w-full h-full">
 								{isVideo ? (
-									<div className="relative w-full h-full flex items-center justify-center p-4">
-										<button
-											type="button"
-											aria-label="Close lightbox"
-											className="absolute inset-0 cursor-default"
-											onClick={handleCloseAttempt}
-											onMouseEnter={() => setIsHovering(true)}
-											onMouseLeave={() => setIsHovering(false)}
-											onFocus={() => setIsHovering(true)}
-											onBlur={() => setIsHovering(false)}
-										/>
-										<div className="relative shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-sm group/video z-10">
-											<MediaPlayer
-												url={displayImage.url}
+									<div
+										className="relative w-full h-full"
+										data-testid="lightbox-swipe-region"
+										style={{ touchAction: swipeTouchAction }}
+										{...swipeGestureHandlers}
+									>
+										<div className="relative w-full h-full flex items-center justify-center p-4">
+											<button
+												type="button"
+												aria-label="Close lightbox"
+												className="absolute inset-0 cursor-default"
+												onClick={handleBackdropCloseAttempt}
+												onMouseEnter={() => setIsHovering(true)}
+												onMouseLeave={() => setIsHovering(false)}
+												onFocus={() => setIsHovering(true)}
+												onBlur={() => setIsHovering(false)}
+											/>
+											<div className="relative shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-sm group/video z-10">
+												<MediaPlayer
+													url={displayImage.url}
 												alt={displayImage.prompt || "Generated video"}
 												contentType={displayImage.contentType}
 												controls={true}
 												autoPlay={true}
-												loop={true}
-												muted={false}
-												className="w-auto h-auto max-w-full max-h-full object-contain select-none"
-												draggable={false}
-											/>
+													loop={true}
+													muted={false}
+													className="w-auto h-auto max-w-full max-h-full object-contain select-none"
+													draggable={false}
+												/>
+											</div>
 										</div>
 									</div>
 								) : hasEdits ? (
@@ -456,15 +511,22 @@ export function ImageLightbox({
 										/>
 									</div>
 								) : (
-									<LightboxMediaDisplay
-										image={activeImage}
-										isOpen={isOpen}
-										isLoadingDetails={isLoadingDetails}
-										isGenerating={isGenerating}
-										onHoverChange={setIsHovering}
-										onBackdropClick={handleCloseAttempt}
-										onZoomChange={setSingleModeZoomed}
-									/>
+									<div
+										className="w-full h-full"
+										data-testid="lightbox-swipe-region"
+										style={{ touchAction: swipeTouchAction }}
+										{...swipeGestureHandlers}
+									>
+										<LightboxMediaDisplay
+											image={activeImage}
+											isOpen={isOpen}
+											isLoadingDetails={isLoadingDetails}
+											isGenerating={isGenerating}
+											onHoverChange={setIsHovering}
+											onBackdropClick={handleBackdropCloseAttempt}
+											onZoomChange={setSingleModeZoomed}
+										/>
+									</div>
 								)}
 
 								{/* Bottom hover zone to trigger overlay (only in single mode) */}
