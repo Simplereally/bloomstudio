@@ -35,7 +35,7 @@ export interface UseMediaPlayerReturn {
     /** Handler for media load events */
     handleLoad: (e: React.SyntheticEvent<HTMLImageElement | HTMLVideoElement>) => void
     /** Handler for media error events */
-    handleError: () => void
+    handleError: (e?: React.SyntheticEvent<HTMLImageElement | HTMLVideoElement>) => void
     /** Handler for video metadata availability */
     handleVideoLoadedMetadata: (e: React.SyntheticEvent<HTMLVideoElement>) => void
     /** Handler for video-specific loadeddata event */
@@ -92,6 +92,7 @@ export function useMediaPlayer({
     const autoplayAttemptVersionRef = React.useRef(0)
     const hasDispatchedLoadRef = React.useRef(false)
     const retryTimeoutRef = React.useRef<number | null>(null)
+    const errorTimeoutRef = React.useRef<number | null>(null)
 
     currentUrlRef.current = url
 
@@ -99,6 +100,13 @@ export function useMediaPlayer({
         if (retryTimeoutRef.current !== null) {
             window.clearTimeout(retryTimeoutRef.current)
             retryTimeoutRef.current = null
+        }
+    }, [])
+
+    const clearErrorTimeout = React.useCallback(() => {
+        if (errorTimeoutRef.current !== null) {
+            window.clearTimeout(errorTimeoutRef.current)
+            errorTimeoutRef.current = null
         }
     }, [])
 
@@ -116,13 +124,15 @@ export function useMediaPlayer({
         hasDispatchedLoadRef.current = false
         autoplayAttemptVersionRef.current += 1
         clearRetryTimeout()
-    }, [clearRetryTimeout, url])
+        clearErrorTimeout()
+    }, [clearErrorTimeout, clearRetryTimeout, url])
 
     React.useEffect(() => {
         return () => {
             clearRetryTimeout()
+            clearErrorTimeout()
         }
-    }, [clearRetryTimeout])
+    }, [clearErrorTimeout, clearRetryTimeout])
 
     const dispatchLoad = React.useCallback((e: React.SyntheticEvent<HTMLImageElement | HTMLVideoElement>) => {
         const element = e.currentTarget as HTMLImageElement | HTMLVideoElement | null
@@ -130,29 +140,65 @@ export function useMediaPlayer({
             return
         }
 
+        clearErrorTimeout()
+        if (hasError) {
+            setHasError(false)
+        }
         setIsLoading(false)
 
         if (!hasDispatchedLoadRef.current) {
             hasDispatchedLoadRef.current = true
             onLoad?.(e)
         }
-    }, [isCurrentMediaElement, onLoad])
+    }, [clearErrorTimeout, hasError, isCurrentMediaElement, onLoad])
 
     const handleLoad = React.useCallback((e: React.SyntheticEvent<HTMLImageElement | HTMLVideoElement>) => {
         dispatchLoad(e)
     }, [dispatchLoad])
 
-    const handleError = React.useCallback(() => {
-        const video = videoRef.current
-        if (video && !isCurrentMediaElement(video)) {
+    const handleError = React.useCallback((e?: React.SyntheticEvent<HTMLImageElement | HTMLVideoElement>) => {
+        const element = (e?.currentTarget as HTMLImageElement | HTMLVideoElement | undefined) ?? videoRef.current
+
+        if (element && !isCurrentMediaElement(element)) {
             return
         }
 
         clearRetryTimeout()
+
+        if (isVideo) {
+            const video = (element instanceof HTMLVideoElement ? element : videoRef.current)
+            if (!video) {
+                return
+            }
+
+            clearErrorTimeout()
+            errorTimeoutRef.current = window.setTimeout(() => {
+                errorTimeoutRef.current = null
+
+                if (!isCurrentMediaElement(video)) {
+                    return
+                }
+
+                const hasPersistentVideoError =
+                    video.error !== null ||
+                    video.networkState === HTMLMediaElement.NETWORK_NO_SOURCE
+
+                if (!hasPersistentVideoError) {
+                    return
+                }
+
+                setIsLoading(false)
+                setHasError(true)
+                onError?.()
+            }, 450)
+            return
+        }
+
+        clearErrorTimeout()
         setIsLoading(false)
         setHasError(true)
         onError?.()
-    }, [clearRetryTimeout, isCurrentMediaElement, onError])
+    }, [clearErrorTimeout, clearRetryTimeout, isCurrentMediaElement, isVideo, onError])
 
     const handleVideoLoadedMetadata = React.useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
         dispatchLoad(e)

@@ -51,6 +51,7 @@ interface ImageLightboxProps {
 	mediaNavigation?: {
 		hasNext: boolean;
 		hasPrevious: boolean;
+		hideVideoControls?: boolean;
 		onNext: () => void;
 		onPrevious: () => void;
 	};
@@ -269,6 +270,15 @@ export function ImageLightbox({
 		handleCloseAttempt();
 	}, [handleCloseAttempt]);
 
+	const handleLightboxSurfaceClick = React.useCallback(
+		(event: React.MouseEvent<HTMLDivElement>) => {
+			if (event.target === event.currentTarget) {
+				handleBackdropCloseAttempt();
+			}
+		},
+		[handleBackdropCloseAttempt],
+	);
+
 	// ==========================================
 	// Pane action handlers (used in compare mode)
 	// ==========================================
@@ -448,9 +458,17 @@ export function ImageLightbox({
 		...swipeGestureHandlers
 	} = swipeNavigationHandlers;
 	const isSwipeInteractionActive = isSwipeDragging || isSwipeAnimating;
+	const showMobileSwipeVideoControls = mediaNavigation?.hideVideoControls !== true;
 	const lightboxBackdropStyle = isSwipeNavigationEnabled
 		? swipeOverlayStyle
 		: { backgroundColor: "rgba(0, 0, 0, 0.8)" };
+	const lightboxSwipeRegionProps = isSwipeNavigationEnabled
+		? {
+				"data-testid": "lightbox-swipe-region",
+				style: { touchAction: swipeTouchAction as React.CSSProperties["touchAction"] },
+				...swipeGestureHandlers,
+			}
+		: {};
 
 	return (
 		<>
@@ -472,14 +490,14 @@ export function ImageLightbox({
 							className="w-full h-full backdrop-blur-md cursor-default flex items-center justify-center animate-in fade-in duration-150"
 							style={lightboxBackdropStyle}
 						>
-							<div className="relative w-full h-full">
+							<div
+								className="relative w-full h-full"
+								data-testid="lightbox-surface"
+								onClick={handleLightboxSurfaceClick}
+								{...lightboxSwipeRegionProps}
+							>
 								{isVideo ? (
-									<div
-										className="relative w-full h-full"
-										data-testid="lightbox-swipe-region"
-										style={{ touchAction: swipeTouchAction }}
-										{...swipeGestureHandlers}
-									>
+									<div className="relative w-full h-full">
 										<button
 											type="button"
 											aria-label="Close lightbox"
@@ -501,7 +519,7 @@ export function ImageLightbox({
 													url={displayImage.url}
 													alt={displayImage.prompt || "Generated video"}
 													contentType={displayImage.contentType}
-													controls={true}
+													controls={showMobileSwipeVideoControls}
 													autoPlay={true}
 													loop={true}
 													muted={true}
@@ -531,12 +549,7 @@ export function ImageLightbox({
 										/>
 									</div>
 								) : (
-									<div
-										className="w-full h-full"
-										data-testid="lightbox-swipe-region"
-										style={{ touchAction: swipeTouchAction }}
-										{...swipeGestureHandlers}
-									>
+									<div className="w-full h-full">
 										<div
 											className="w-full h-full"
 											style={swipeMediaStyle}
