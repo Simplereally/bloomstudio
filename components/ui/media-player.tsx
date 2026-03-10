@@ -91,7 +91,10 @@ export const MediaPlayer = React.memo(function MediaPlayer({
         videoRef,
         handleLoad,
         handleError,
+        handleVideoLoadedMetadata,
         handleVideoLoadedData,
+        handleVideoCanPlay,
+        handleVideoPlaying,
         handleVideoClick,
     } = useMediaPlayer({
         url,
@@ -122,8 +125,9 @@ export const MediaPlayer = React.memo(function MediaPlayer({
             <div className={cn("relative", className)}>
                 {/*
                   * Chrome autoplay compatibility notes:
-                  * - No `autoPlay` attribute: the useMediaPlayer hook handles
-                  *   programmatic play() with a muted-start strategy.
+                  * - `autoPlay` stays enabled so remounted videos can resume
+                  *   quickly after swipe navigation, while the hook still calls
+                  *   `play()` programmatically to recover from source-change races.
                   * - `preload="auto"` when autoPlay is requested: ensures Chrome
                   *   buffers enough data for immediate playback instead of just
                   *   fetching metadata headers.
@@ -141,6 +145,7 @@ export const MediaPlayer = React.memo(function MediaPlayer({
                     ref={videoRef}
                     src={url}
                     poster={poster}
+                    autoPlay={autoPlay}
                     controls={controls}
                     loop={loop}
                     muted={autoPlay ? true : muted}
@@ -152,7 +157,10 @@ export const MediaPlayer = React.memo(function MediaPlayer({
                         isLoading && "opacity-0"
                     )}
                     onClick={handleVideoClick}
+                    onLoadedMetadata={handleVideoLoadedMetadata}
                     onLoadedData={handleVideoLoadedData}
+                    onCanPlay={handleVideoCanPlay}
+                    onPlaying={handleVideoPlaying}
                     onError={handleError}
                     draggable={draggable}
                     data-testid="media-video"

@@ -36,54 +36,43 @@ export interface UseMediaPlayerReturn {
     handleLoad: (e: React.SyntheticEvent<HTMLImageElement | HTMLVideoElement>) => void
     /** Handler for media error events */
     handleError: () => void
+    /** Handler for video metadata availability */
+    handleVideoLoadedMetadata: (e: React.SyntheticEvent<HTMLVideoElement>) => void
     /** Handler for video-specific loadeddata event */
     handleVideoLoadedData: (e: React.SyntheticEvent<HTMLVideoElement>) => void
+    /** Handler for video canplay event */
+    handleVideoCanPlay: (e: React.SyntheticEvent<HTMLVideoElement>) => void
+    /** Handler for video playing event */
+    handleVideoPlaying: (e: React.SyntheticEvent<HTMLVideoElement>) => void
     /**
      * Handler for video click events - safely toggles play/pause.
      * Returns undefined when native controls handle play/pause.
-     * 
-     * Properly handles the async nature of video.play() to prevent
-     * "The play() request was interrupted by a call to pause()" errors.
      */
     handleVideoClick: ((e: React.MouseEvent) => Promise<void>) | undefined
 }
 
+const AUTOPLAY_RETRY_DELAYS_MS = [180, 520]
+
+function getMediaSource(element: HTMLImageElement | HTMLVideoElement | null) {
+    if (!element) return ""
+
+    if (element instanceof HTMLVideoElement) {
+        return element.currentSrc || element.src
+    }
+
+    return element.src
+}
+
+function normalizeMediaUrl(src: string) {
+    try {
+        return new URL(src, window.location.origin).href
+    } catch {
+        return src
+    }
+}
+
 /**
  * Custom hook for managing media player state and video playback.
- * 
- * Handles:
- * - Loading and error states with synchronous URL tracking to prevent flicker
- * - Video element ref management
- * - Safe play/pause toggling that prevents race conditions
- * - Chrome-compatible autoplay (stays muted; user unmutes via controls)
- * 
- * The video play/pause logic properly handles the asynchronous nature of
- * video.play() to prevent "The play() request was interrupted by a call
- * to pause()" errors.
- * 
- * Chrome autoplay policy: When autoplay is requested, the video is
- * force-muted before the initial play() call (always allowed by Chrome).
- * The user can unmute via native controls. The `muted` attribute on the
- * `<video>` element itself is the caller's responsibility (see MediaPlayer
- * component, which sets `muted={autoPlay ? true : muted}`).
- * 
- * Native controls: When `controls` is true, `handleVideoClick` is undefined
- * to prevent double-toggling playback (the browser's native controls already
- * handle play/pause on click).
- * 
- * @see https://developer.chrome.com/blog/play-request-was-interrupted
- * @see https://developer.chrome.com/blog/autoplay
- * 
- * @example
- * ```tsx
- * const { isLoading, hasError, videoRef, handleVideoClick } = useMediaPlayer({
- *   url: videoUrl,
- *   isVideo: true,
- *   autoPlay: true,
- *   controls: true,
- *   onLoad: () => console.log('Loaded!'),
- * });
- * ```
  */
 export function useMediaPlayer({
     url,
@@ -97,151 +86,201 @@ export function useMediaPlayer({
     const [isLoading, setIsLoading] = React.useState(true)
     const [hasError, setHasError] = React.useState(false)
     const videoRef = React.useRef<HTMLVideoElement | null>(null)
-    
-    // Track pending play operation to prevent race conditions
-    // This prevents the "play() interrupted by pause()" error
+
     const playPromiseRef = React.useRef<Promise<void> | null>(null)
-
-    // Track whether we've already attempted autoplay for this URL
-    const autoPlayAttemptedRef = React.useRef<string | null>(null)
-
-    // Synchronously track the current URL to prevent stale error/load callbacks
-    // from firing for a previous URL. The useEffect reset runs asynchronously
-    // (after render), so without this ref, handleError from a previous URL's
-    // <video> can set hasError=true for the new URL, causing the "Failed to load
-    // media" flash.
     const currentUrlRef = React.useRef(url)
+    const autoplayAttemptVersionRef = React.useRef(0)
+    const hasDispatchedLoadRef = React.useRef(false)
+    const retryTimeoutRef = React.useRef<number | null>(null)
+
     currentUrlRef.current = url
 
-    // Reset loading state and cancel pending operations when URL changes
+    const clearRetryTimeout = React.useCallback(() => {
+        if (retryTimeoutRef.current !== null) {
+            window.clearTimeout(retryTimeoutRef.current)
+            retryTimeoutRef.current = null
+        }
+    }, [])
+
+    const isCurrentMediaElement = React.useCallback((element: HTMLImageElement | HTMLVideoElement | null) => {
+        const src = getMediaSource(element)
+        if (!src) return true
+
+        return normalizeMediaUrl(src) === normalizeMediaUrl(currentUrlRef.current)
+    }, [])
+
     React.useEffect(() => {
         setIsLoading(true)
         setHasError(false)
-        // Clear any pending play promise reference on URL change
         playPromiseRef.current = null
-        autoPlayAttemptedRef.current = null
-    }, [url])
+        hasDispatchedLoadRef.current = false
+        autoplayAttemptVersionRef.current += 1
+        clearRetryTimeout()
+    }, [clearRetryTimeout, url])
 
-    const handleLoad = React.useCallback((e: React.SyntheticEvent<HTMLImageElement | HTMLVideoElement>) => {
-        // Ignore load events from a stale URL (previous video/image still firing).
-        // e.currentTarget may be null during teardown, so guard defensively.
-        const el = e.currentTarget as HTMLVideoElement | HTMLImageElement | null
-        if (el) {
-            const elSrc = el instanceof HTMLVideoElement
-                ? el.currentSrc || el.src
-                : (el as HTMLImageElement).src
-            if (elSrc && !elSrc.includes(currentUrlRef.current)) return
+    React.useEffect(() => {
+        return () => {
+            clearRetryTimeout()
+        }
+    }, [clearRetryTimeout])
+
+    const dispatchLoad = React.useCallback((e: React.SyntheticEvent<HTMLImageElement | HTMLVideoElement>) => {
+        const element = e.currentTarget as HTMLImageElement | HTMLVideoElement | null
+        if (!isCurrentMediaElement(element)) {
+            return
         }
 
         setIsLoading(false)
-        onLoad?.(e)
-    }, [onLoad])
+
+        if (!hasDispatchedLoadRef.current) {
+            hasDispatchedLoadRef.current = true
+            onLoad?.(e)
+        }
+    }, [isCurrentMediaElement, onLoad])
+
+    const handleLoad = React.useCallback((e: React.SyntheticEvent<HTMLImageElement | HTMLVideoElement>) => {
+        dispatchLoad(e)
+    }, [dispatchLoad])
 
     const handleError = React.useCallback(() => {
-        // Ignore error events from a stale URL.
-        // When the URL changes, the old <video>/<img> may fire an error as it's
-        // torn down. Without this guard the error sets hasError=true for the new
-        // URL, causing the "Failed to load media" flash.
         const video = videoRef.current
-        if (video) {
-            const src = video.currentSrc || video.src
-            if (src && !src.includes(currentUrlRef.current)) return
+        if (video && !isCurrentMediaElement(video)) {
+            return
         }
 
+        clearRetryTimeout()
         setIsLoading(false)
         setHasError(true)
         onError?.()
-    }, [onError])
+    }, [clearRetryTimeout, isCurrentMediaElement, onError])
 
-    // Handle video-specific load event
+    const handleVideoLoadedMetadata = React.useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
+        dispatchLoad(e)
+    }, [dispatchLoad])
+
     const handleVideoLoadedData = React.useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
-        handleLoad(e)
-    }, [handleLoad])
+        dispatchLoad(e)
+    }, [dispatchLoad])
 
-    /**
-     * Programmatic autoplay — muted-start strategy.
-     * 
-     * Chrome's autoplay policy (since Chrome 66) blocks unmuted autoplay unless
-     * the user has a high Media Engagement Index (MEI) for the site. The HTML
-     * `autoplay` attribute is particularly unreliable because Chrome processes it
-     * at element mount time, when the user gesture token from the original click
-     * may already be consumed by intermediate UI (Dialog/Modal opening).
-     * 
-     * Strategy:
-     * 1. Force muted before play() to guarantee autoplay succeeds in all
-     *    browsers.
-     * 2. Leave the video muted — the user can unmute via native controls.
-     * 
-     * Previous versions tried to unmute programmatically after play() succeeded.
-     * This caused Chrome to re-evaluate its autoplay policy and pause the video
-     * after ~1 second, resulting in the "1-second stall" regression.
-     */
+    const handleVideoCanPlay = React.useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
+        dispatchLoad(e)
+    }, [dispatchLoad])
+
+    const handleVideoPlaying = React.useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
+        clearRetryTimeout()
+        dispatchLoad(e)
+    }, [clearRetryTimeout, dispatchLoad])
+
     React.useEffect(() => {
-        if (!isVideo || !autoPlay) return
-        
-        const video = videoRef.current
-        if (!video) return
+        if (!isVideo || !autoPlay) {
+            return
+        }
 
-        // Only attempt autoplay once per URL
-        if (autoPlayAttemptedRef.current === url) return
-        autoPlayAttemptedRef.current = url
+        const video = videoRef.current
+        if (!video || !isCurrentMediaElement(video)) {
+            return
+        }
+
+        const attemptVersion = autoplayAttemptVersionRef.current
+        let cancelled = false
+        let retryCount = 0
 
         const attemptAutoplay = async () => {
+            if (cancelled || attemptVersion !== autoplayAttemptVersionRef.current) {
+                return
+            }
+
+            const currentVideo = videoRef.current
+            if (!currentVideo || !isCurrentMediaElement(currentVideo)) {
+                return
+            }
+
+            if (currentVideo.paused === false && !currentVideo.ended) {
+                setIsLoading(false)
+                clearRetryTimeout()
+                return
+            }
+
+            currentVideo.defaultMuted = true
+            currentVideo.muted = true
+
             try {
-                // Force muted to guarantee autoplay succeeds per Chrome's
-                // autoplay policy. The user can unmute via native controls.
-                video.muted = true
-                const playPromise = video.play()
+                const playPromise = currentVideo.play()
                 playPromiseRef.current = playPromise
                 await playPromise
-                playPromiseRef.current = null
+
+                if (!cancelled && attemptVersion === autoplayAttemptVersionRef.current) {
+                    setIsLoading(false)
+                    clearRetryTimeout()
+                }
             } catch (error) {
-                playPromiseRef.current = null
-                // AbortError is expected if the element was removed during play()
-                if (error instanceof Error && error.name !== 'AbortError') {
-                    console.error('Video autoplay failed:', error)
+                if (cancelled || attemptVersion !== autoplayAttemptVersionRef.current) {
+                    return
+                }
+
+                if (error instanceof Error && error.name === "AbortError") {
+                    return
+                }
+
+                if (error instanceof Error && error.name === "NotAllowedError") {
+                    setIsLoading(false)
+                    clearRetryTimeout()
+                    return
+                }
+
+                if (retryCount < AUTOPLAY_RETRY_DELAYS_MS.length) {
+                    const delay = AUTOPLAY_RETRY_DELAYS_MS[retryCount]
+                    retryCount += 1
+                    clearRetryTimeout()
+                    retryTimeoutRef.current = window.setTimeout(() => {
+                        void attemptAutoplay()
+                    }, delay)
+                    return
+                }
+
+                if (error instanceof Error) {
+                    console.error("Video autoplay failed:", error)
+                }
+
+                setIsLoading(false)
+            } finally {
+                if (playPromiseRef.current) {
+                    playPromiseRef.current = null
                 }
             }
         }
 
-        // If the video already has data, attempt immediately
-        // readyState >= 2 (HAVE_CURRENT_DATA) means enough data to play
-        if (video.readyState >= 2) {
-            attemptAutoplay()
-        } else {
-            // Wait for enough data before attempting playback
-            const onCanPlay = () => {
-                attemptAutoplay()
-            }
-            video.addEventListener("canplay", onCanPlay, { once: true })
-            return () => {
-                video.removeEventListener("canplay", onCanPlay)
-            }
+        const handleCanPlay = () => {
+            void attemptAutoplay()
         }
-    }, [isVideo, autoPlay, url])
 
-    /**
-     * Safely toggle video play/pause state.
-     * 
-     * Only used when native controls are disabled (controls=false).
-     * When native controls are enabled, the browser handles play/pause
-     * via its built-in UI, and adding our own click handler would cause
-     * a double-toggle.
-     * 
-     * The video.play() method returns a Promise that resolves when playback starts.
-     * If pause() is called before that Promise resolves, the browser throws an AbortError.
-     * 
-     * This handler:
-     * 1. Tracks pending play() Promises via a ref
-     * 2. Waits for pending play() to resolve before calling pause()
-     * 3. Catches and ignores AbortError (expected when rapidly clicking)
-     */
+        const handlePlaying = () => {
+            setIsLoading(false)
+            clearRetryTimeout()
+        }
+
+        video.addEventListener("canplay", handleCanPlay)
+        video.addEventListener("playing", handlePlaying)
+
+        if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
+            void attemptAutoplay()
+        }
+
+        return () => {
+            cancelled = true
+            clearRetryTimeout()
+            video.removeEventListener("canplay", handleCanPlay)
+            video.removeEventListener("playing", handlePlaying)
+        }
+    }, [autoPlay, clearRetryTimeout, isCurrentMediaElement, isVideo, url])
+
     const handleVideoClick = React.useCallback(async (e: React.MouseEvent) => {
         e.preventDefault()
         if (!isVideo) {
             onClick?.(e)
             return
         }
+
         const video = videoRef.current
         if (!video) {
             onClick?.(e)
@@ -249,39 +288,33 @@ export function useMediaPlayer({
         }
 
         if (video.paused) {
-            // Start playback and track the Promise
             const playPromise = video.play()
             playPromiseRef.current = playPromise
-            
+
             try {
                 await playPromise
             } catch (error) {
-                // AbortError is expected if pause() was called while play() was pending
-                // This can happen with rapid clicking or component unmount
-                if (error instanceof Error && error.name !== 'AbortError') {
-                    console.error('Video playback error:', error)
+                if (error instanceof Error && error.name !== "AbortError") {
+                    console.error("Video playback error:", error)
                 }
             } finally {
-                // Clear the ref once resolved/rejected
                 if (playPromiseRef.current === playPromise) {
                     playPromiseRef.current = null
                 }
             }
         } else {
-            // Before pausing, wait for any pending play() to resolve
-            // This prevents the "interrupted by pause()" error
             const pendingPlay = playPromiseRef.current
             if (pendingPlay) {
                 try {
                     await pendingPlay
                 } catch {
-                    // Ignore - play was already aborted or failed
+                    // Ignore - play was already aborted or failed.
                 }
                 playPromiseRef.current = null
             }
             video.pause()
         }
-        
+
         onClick?.(e)
     }, [isVideo, onClick])
 
@@ -291,10 +324,10 @@ export function useMediaPlayer({
         videoRef,
         handleLoad,
         handleError,
+        handleVideoLoadedMetadata,
         handleVideoLoadedData,
-        // When native controls are enabled, don't attach our click handler
-        // to avoid double-toggling playback. The browser's native controls
-        // already handle play/pause on click.
+        handleVideoCanPlay,
+        handleVideoPlaying,
         handleVideoClick: controls ? undefined : handleVideoClick,
     }
 }
