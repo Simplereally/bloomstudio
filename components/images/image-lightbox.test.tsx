@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ButtonHTMLAttributes, ReactEventHandler, ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -815,5 +815,127 @@ describe("ImageLightbox - State Reset", () => {
 		// Should be in single mode (no comparison labels)
 		expect(screen.queryByText("Original")).not.toBeInTheDocument();
 		expect(screen.queryByText("Current")).not.toBeInTheDocument();
+	});
+});
+
+describe("ImageLightbox - Mobile Swipe Navigation", () => {
+	const mockImage = {
+		url: "https://example.com/test-image.jpg",
+		prompt: "A beautiful landscape",
+		model: "test-model",
+		width: 1024,
+		height: 1024,
+	};
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it("navigates to the next media on upward touch swipe", () => {
+		const onNext = vi.fn();
+
+		render(
+			<ImageLightbox
+				image={mockImage}
+				isOpen={true}
+				onClose={vi.fn()}
+				mediaNavigation={{
+					hasNext: true,
+					hasPrevious: true,
+					onNext,
+					onPrevious: vi.fn(),
+				}}
+			/>,
+		);
+
+		const swipeRegion = screen.getByTestId("lightbox-swipe-region");
+		fireEvent.pointerDown(swipeRegion, {
+			pointerId: 1,
+			pointerType: "touch",
+			isPrimary: true,
+			clientX: 120,
+			clientY: 300,
+		});
+		fireEvent.pointerUp(swipeRegion, {
+			pointerId: 1,
+			pointerType: "touch",
+			isPrimary: true,
+			clientX: 118,
+			clientY: 180,
+		});
+
+		expect(onNext).toHaveBeenCalledTimes(1);
+	});
+
+	it("navigates to the previous media on downward touch swipe", () => {
+		const onPrevious = vi.fn();
+
+		render(
+			<ImageLightbox
+				image={mockImage}
+				isOpen={true}
+				onClose={vi.fn()}
+				mediaNavigation={{
+					hasNext: true,
+					hasPrevious: true,
+					onNext: vi.fn(),
+					onPrevious,
+				}}
+			/>,
+		);
+
+		const swipeRegion = screen.getByTestId("lightbox-swipe-region");
+		fireEvent.pointerDown(swipeRegion, {
+			pointerId: 1,
+			pointerType: "touch",
+			isPrimary: true,
+			clientX: 120,
+			clientY: 180,
+		});
+		fireEvent.pointerUp(swipeRegion, {
+			pointerId: 1,
+			pointerType: "touch",
+			isPrimary: true,
+			clientX: 122,
+			clientY: 320,
+		});
+
+		expect(onPrevious).toHaveBeenCalledTimes(1);
+	});
+
+	it("ignores short touch drags", () => {
+		const onNext = vi.fn();
+
+		render(
+			<ImageLightbox
+				image={mockImage}
+				isOpen={true}
+				onClose={vi.fn()}
+				mediaNavigation={{
+					hasNext: true,
+					hasPrevious: false,
+					onNext,
+					onPrevious: vi.fn(),
+				}}
+			/>,
+		);
+
+		const swipeRegion = screen.getByTestId("lightbox-swipe-region");
+		fireEvent.pointerDown(swipeRegion, {
+			pointerId: 1,
+			pointerType: "touch",
+			isPrimary: true,
+			clientX: 120,
+			clientY: 240,
+		});
+		fireEvent.pointerUp(swipeRegion, {
+			pointerId: 1,
+			pointerType: "touch",
+			isPrimary: true,
+			clientX: 118,
+			clientY: 200,
+		});
+
+		expect(onNext).not.toHaveBeenCalled();
 	});
 });

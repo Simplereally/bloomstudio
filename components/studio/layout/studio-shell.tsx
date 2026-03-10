@@ -62,6 +62,7 @@ import { useSubscriptionStatus } from "@/hooks/use-subscription-status";
 import { getModel, getModelSupportsNegativePrompt } from "@/lib/config/models";
 import { showAuthRequiredToast, showErrorToast } from "@/lib/errors";
 import type {
+  GeneratedImage,
   ImageGenerationParams,
   VideoGenerationParams,
   VideoModel,
@@ -446,16 +447,6 @@ export function StudioShell({
   }, [handleGenerateClick]);
 
   // ========================================
-  // Gallery Image Selection Handler
-  // ========================================
-  const handleSelectGalleryImage = React.useCallback(
-    (image: ThumbnailData) => {
-      studioUI.openLightbox(image);
-    },
-    [studioUI],
-  );
-
-  // ========================================
   // Gallery Images for Reference Image Pickers
   // ========================================
   // Subscribe to image history directly so thumbnails are available immediately,
@@ -508,6 +499,94 @@ export function StudioShell({
     extendedGalleryImages && extendedGalleryImages.length > 0
       ? extendedGalleryImages
       : baseGalleryImages;
+
+  const [lightboxUsesGalleryNavigation, setLightboxUsesGalleryNavigation] =
+    React.useState(false);
+
+  // ========================================
+  // Gallery Image Selection Handler
+  // ========================================
+  const handleSelectGalleryImage = React.useCallback(
+    (image: ThumbnailData) => {
+      setLightboxUsesGalleryNavigation(true);
+      studioUI.openLightbox(image);
+    },
+    [studioUI],
+  );
+
+  const currentLightboxGalleryIndex = React.useMemo(() => {
+    if (!lightboxUsesGalleryNavigation || !studioUI.lightboxImage) {
+      return -1;
+    }
+
+    const lightboxImageId =
+      studioUI.lightboxImage._id ?? studioUI.lightboxImage.id ?? null;
+
+    if (lightboxImageId) {
+      return galleryImages.findIndex(
+        (image) => image.id === lightboxImageId || image._id === lightboxImageId,
+      );
+    }
+
+    const lightboxImageUrl =
+      studioUI.lightboxImage.originalUrl ?? studioUI.lightboxImage.url;
+
+    return galleryImages.findIndex(
+      (image) =>
+        image.originalUrl === lightboxImageUrl || image.url === lightboxImageUrl,
+    );
+  }, [galleryImages, lightboxUsesGalleryNavigation, studioUI.lightboxImage]);
+
+  const handleNextLightboxMedia = React.useCallback(() => {
+    const nextImage = galleryImages[currentLightboxGalleryIndex + 1];
+    if (!nextImage) {
+      return;
+    }
+
+    studioUI.setLightboxImage(nextImage);
+  }, [currentLightboxGalleryIndex, galleryImages, studioUI]);
+
+  const handlePreviousLightboxMedia = React.useCallback(() => {
+    const previousImage = galleryImages[currentLightboxGalleryIndex - 1];
+    if (!previousImage) {
+      return;
+    }
+
+    studioUI.setLightboxImage(previousImage);
+  }, [currentLightboxGalleryIndex, galleryImages, studioUI]);
+
+  const lightboxMediaNavigation = React.useMemo(() => {
+    if (!isMobile || !lightboxUsesGalleryNavigation || currentLightboxGalleryIndex < 0) {
+      return undefined;
+    }
+
+    return {
+      hasNext: currentLightboxGalleryIndex < galleryImages.length - 1,
+      hasPrevious: currentLightboxGalleryIndex > 0,
+      onNext: handleNextLightboxMedia,
+      onPrevious: handlePreviousLightboxMedia,
+    };
+  }, [
+    currentLightboxGalleryIndex,
+    galleryImages.length,
+    handleNextLightboxMedia,
+    handlePreviousLightboxMedia,
+    isMobile,
+    lightboxUsesGalleryNavigation,
+  ]);
+
+  const handleCanvasLightboxOpen = React.useCallback(
+    (image: GeneratedImage | null) => {
+      setLightboxUsesGalleryNavigation(false);
+      studioUI.openLightbox(image);
+    },
+    [studioUI],
+  );
+
+  const handleLightboxClose = React.useCallback(() => {
+    setLightboxUsesGalleryNavigation(false);
+    studioUI.closeLightbox();
+  }, [studioUI]);
 
   // ========================================
   // Regenerate Handler
@@ -706,7 +785,7 @@ export function StudioShell({
             : 0
           : undefined
       }
-      onOpenLightbox={studioUI.openLightbox}
+      onOpenLightbox={handleCanvasLightboxOpen}
       onRegenerate={handleRegenerate}
     />
   );
@@ -764,7 +843,8 @@ export function StudioShell({
       <ImageLightbox
         image={studioUI.lightboxImage}
         isOpen={studioUI.isFullscreen}
-        onClose={studioUI.closeLightbox}
+        onClose={handleLightboxClose}
+        mediaNavigation={lightboxMediaNavigation}
         onInsertPrompt={(content) => {
           // Insert the prompt into the prompt section via the manager's ref
           promptManager.promptSectionRef.current?.setPrompt(content);
