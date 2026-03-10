@@ -512,6 +512,7 @@ export function ImageLightbox({
 											className="relative w-full h-full flex items-center justify-center p-4"
 											style={swipeMediaStyle}
 											data-testid="lightbox-swipe-motion"
+											onClick={handleLightboxSurfaceClick}
 										>
 											<div className="relative shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-sm group/video z-10">
 												<MediaPlayer

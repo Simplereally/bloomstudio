@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ReferenceImagesBrowserModal } from "./reference-images-browser-modal";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -222,6 +222,12 @@ describe("ReferenceImagesBrowserModal", () => {
   });
 
   describe("content type filtering", () => {
+    it("queries full history by default and filters image media client-side", () => {
+      render(<ReferenceImagesBrowserModal open={true} {...defaultProps} />);
+
+      expect(mockUseImageHistory).toHaveBeenCalledWith();
+    });
+
     it("filters out video content by default in history tab", () => {
       render(<ReferenceImagesBrowserModal open={true} {...defaultProps} />);
       // Default tab is history with allowVideo=false
@@ -242,6 +248,52 @@ describe("ReferenceImagesBrowserModal", () => {
       const historyPanel = screen.getByTestId("history-tab-content");
       const images = within(historyPanel).getAllByTestId("reference-image-item");
       expect(images).toHaveLength(4); // All 4 generated images including video
+    });
+
+    it("auto-loads more when current history page has only videos", async () => {
+      mockUseImageHistory.mockReturnValue({
+        results: [mockHistoryConvexResults[2]],
+        status: "CanLoadMore",
+        loadMore: mockLoadMore,
+      });
+
+      render(<ReferenceImagesBrowserModal open={true} {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(mockLoadMore).toHaveBeenCalledWith(20);
+      });
+    });
+
+    it("does not hide images from legacy or unknown models", () => {
+      mockUseImageHistory.mockReturnValue({
+        results: [
+          {
+            _id: "legacy-image",
+            _creationTime: Date.now(),
+            url: "https://example.com/legacy-image.jpg",
+            contentType: "image/jpeg",
+            visibility: "public" as const,
+            model: "flux-pro",
+          },
+          {
+            _id: "recent-video",
+            _creationTime: Date.now(),
+            url: "https://example.com/recent-video.mp4",
+            contentType: "video/mp4",
+            visibility: "public" as const,
+            model: "grok-video",
+          },
+        ],
+        status: "Exhausted",
+        loadMore: mockLoadMore,
+      });
+
+      render(<ReferenceImagesBrowserModal open={true} {...defaultProps} />);
+
+      const historyPanel = screen.getByTestId("history-tab-content");
+      const images = within(historyPanel).getAllByTestId("reference-image-item");
+      expect(images).toHaveLength(1);
+      expect(screen.getByTestId("select-image-legacy-image")).toBeInTheDocument();
     });
   });
 

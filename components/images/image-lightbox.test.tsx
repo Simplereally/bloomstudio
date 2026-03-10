@@ -547,6 +547,17 @@ describe("ImageLightbox - Prompt Library Integration", () => {
 			expect(screen.queryByText("🔍")).not.toBeInTheDocument();
 		});
 
+		it("closes when video whitespace is clicked", async () => {
+			const user = userEvent.setup();
+			const onClose = vi.fn();
+
+			render(<ImageLightbox image={mockVideo} isOpen={true} onClose={onClose} />);
+
+			await user.click(screen.getByTestId("lightbox-swipe-motion"));
+
+			expect(onClose).toHaveBeenCalledTimes(1);
+		});
+
 		it("prioritizes full video URL from details over thumbnail URL", async () => {
 			// Setup useImageDetails to return a different URL (the original video)
 			const mockFullDetails = {

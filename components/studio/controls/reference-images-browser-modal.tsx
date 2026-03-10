@@ -306,7 +306,7 @@ const VirtualizedHistoryGrid = memo(function VirtualizedHistoryGrid({
     }, [onLoadMore, canLoadMore, isLoadingMore])
 
     // Loading state
-    if (isLoading) {
+    if (isLoading || (isLoadingMore && items.length === 0)) {
         return (
             <div className="flex items-center justify-center h-full min-h-[200px]" role="status">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -431,6 +431,9 @@ const VirtualizedHistoryGrid = memo(function VirtualizedHistoryGrid({
 // ────────────────────────────────────────────────────────────────────────────
 
 function useModalHistoryData(open: boolean, allowVideo: boolean) {
+    // Query the user's full history and filter by media type client-side.
+    // Using model IDs as a proxy for "image" hides older/unknown image models.
+    // The auto-load logic below keeps paging until we find renderable images.
     // Convex reactive query — provides instant updates for new generations
     const convexQuery = useImageHistory()
     const convexResults = convexQuery.results
@@ -535,6 +538,14 @@ function useModalHistoryData(open: boolean, allowVideo: boolean) {
             }
         }
     }, [convexStatus, convexQuery, cachedCursor, cachedIsDone, isLoadingCached])
+
+    useEffect(() => {
+        if (!open || isLoading || isLoadingMore || filteredResults.length > 0 || !canLoadMore) {
+            return
+        }
+
+        void handleLoadMore()
+    }, [open, isLoading, isLoadingMore, filteredResults.length, canLoadMore, handleLoadMore])
 
     return {
         items: filteredResults,
@@ -741,7 +752,7 @@ export function ReferenceImagesBrowserModal({
                 {/* Footer with count */}
                 <div className="flex items-center justify-between pt-2 border-t">
                     <span className="text-sm text-muted-foreground" data-testid="image-count">
-                        {isLoadingUploads || history.isLoading
+                        {isLoadingUploads || history.isLoading || (history.isLoadingMore && history.totalCount === 0)
                             ? "Loading..."
                             : `${totalFilteredCount} image${totalFilteredCount !== 1 ? "s" : ""} available`}
                     </span>
