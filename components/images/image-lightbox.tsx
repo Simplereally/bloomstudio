@@ -127,7 +127,10 @@ export function ImageLightbox({
 
 	// Zoom state for single-image mode (updated via callback from LightboxMediaDisplay)
 	const [singleModeZoomed, setSingleModeZoomed] = React.useState(false);
-	const suppressBackdropClickRef = React.useRef(false);
+	const suppressBackdropClickUntilRef = React.useRef(0);
+	const suppressBackdropClick = React.useCallback(() => {
+		suppressBackdropClickUntilRef.current = Date.now() + 180;
+	}, []);
 	const resetEditSessionState = React.useCallback(() => {
 		setEditChain([]);
 		setSelectedVersionIndex(0);
@@ -138,13 +141,13 @@ export function ImageLightbox({
 
 	React.useEffect(() => {
 		// Reset local-only edit state whenever the opened image changes.
-		suppressBackdropClickRef.current = false;
+		suppressBackdropClickUntilRef.current = 0;
 		resetEditSessionState();
 	}, [imageSessionKey, resetEditSessionState]);
 
 	React.useEffect(() => {
 		if (!isOpen) {
-			suppressBackdropClickRef.current = false;
+			suppressBackdropClickUntilRef.current = 0;
 			resetEditSessionState();
 		}
 	}, [isOpen, resetEditSessionState]);
@@ -259,8 +262,7 @@ export function ImageLightbox({
 	}, [onClose]);
 
 	const handleBackdropCloseAttempt = React.useCallback(() => {
-		if (suppressBackdropClickRef.current) {
-			suppressBackdropClickRef.current = false;
+		if (Date.now() < suppressBackdropClickUntilRef.current) {
 			return;
 		}
 
@@ -422,23 +424,33 @@ export function ImageLightbox({
 
 	const swipeNavigationHandlers = useVerticalSwipeNavigation({
 		enabled: isSwipeNavigationEnabled,
+		itemKey: imageSessionKey ? String(imageSessionKey) : null,
+		onSwipeIntent: suppressBackdropClick,
 		onSwipeUp: mediaNavigation?.hasNext
 			? () => {
-				suppressBackdropClickRef.current = true;
+				suppressBackdropClick();
 				mediaNavigation.onNext();
 			}
 			: undefined,
 		onSwipeDown: mediaNavigation?.hasPrevious
 			? () => {
-				suppressBackdropClickRef.current = true;
+				suppressBackdropClick();
 				mediaNavigation.onPrevious();
 			}
 			: undefined,
 	});
 	const {
 		touchAction: swipeTouchAction,
+		overlayStyle: swipeOverlayStyle,
+		mediaStyle: swipeMediaStyle,
+		isDragging: isSwipeDragging,
+		isAnimating: isSwipeAnimating,
 		...swipeGestureHandlers
 	} = swipeNavigationHandlers;
+	const isSwipeInteractionActive = isSwipeDragging || isSwipeAnimating;
+	const lightboxBackdropStyle = isSwipeNavigationEnabled
+		? swipeOverlayStyle
+		: { backgroundColor: "rgba(0, 0, 0, 0.8)" };
 
 	return (
 		<>
@@ -456,7 +468,10 @@ export function ImageLightbox({
 					</VisuallyHidden>
 
 					{displayImage && activeImage && (
-						<div className="w-full h-full bg-black/80 backdrop-blur-md cursor-default flex items-center justify-center animate-in fade-in duration-150">
+						<div
+							className="w-full h-full backdrop-blur-md cursor-default flex items-center justify-center animate-in fade-in duration-150"
+							style={lightboxBackdropStyle}
+						>
 							<div className="relative w-full h-full">
 								{isVideo ? (
 									<div
@@ -465,26 +480,31 @@ export function ImageLightbox({
 										style={{ touchAction: swipeTouchAction }}
 										{...swipeGestureHandlers}
 									>
-										<div className="relative w-full h-full flex items-center justify-center p-4">
-											<button
-												type="button"
-												aria-label="Close lightbox"
-												className="absolute inset-0 cursor-default"
-												onClick={handleBackdropCloseAttempt}
-												onMouseEnter={() => setIsHovering(true)}
-												onMouseLeave={() => setIsHovering(false)}
-												onFocus={() => setIsHovering(true)}
-												onBlur={() => setIsHovering(false)}
-											/>
+										<button
+											type="button"
+											aria-label="Close lightbox"
+											className="absolute inset-0 cursor-default"
+											onClick={handleBackdropCloseAttempt}
+											onMouseEnter={() => setIsHovering(true)}
+											onMouseLeave={() => setIsHovering(false)}
+											onFocus={() => setIsHovering(true)}
+											onBlur={() => setIsHovering(false)}
+										/>
+										<div
+											className="relative w-full h-full flex items-center justify-center p-4"
+											style={swipeMediaStyle}
+											data-testid="lightbox-swipe-motion"
+										>
 											<div className="relative shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-sm group/video z-10">
 												<MediaPlayer
+													key={displayImage.url}
 													url={displayImage.url}
-												alt={displayImage.prompt || "Generated video"}
-												contentType={displayImage.contentType}
-												controls={true}
-												autoPlay={true}
+													alt={displayImage.prompt || "Generated video"}
+													contentType={displayImage.contentType}
+													controls={true}
+													autoPlay={true}
 													loop={true}
-													muted={false}
+													muted={true}
 													className="w-auto h-auto max-w-full max-h-full object-contain select-none"
 													draggable={false}
 												/>
@@ -517,20 +537,26 @@ export function ImageLightbox({
 										style={{ touchAction: swipeTouchAction }}
 										{...swipeGestureHandlers}
 									>
-										<LightboxMediaDisplay
-											image={activeImage}
-											isOpen={isOpen}
-											isLoadingDetails={isLoadingDetails}
-											isGenerating={isGenerating}
-											onHoverChange={setIsHovering}
-											onBackdropClick={handleBackdropCloseAttempt}
-											onZoomChange={setSingleModeZoomed}
-										/>
+										<div
+											className="w-full h-full"
+											style={swipeMediaStyle}
+											data-testid="lightbox-swipe-motion"
+										>
+											<LightboxMediaDisplay
+												image={activeImage}
+												isOpen={isOpen}
+												isLoadingDetails={isLoadingDetails}
+												isGenerating={isGenerating}
+												onHoverChange={setIsHovering}
+												onBackdropClick={handleBackdropCloseAttempt}
+												onZoomChange={setSingleModeZoomed}
+											/>
+										</div>
 									</div>
 								)}
 
 								{/* Bottom hover zone to trigger overlay (only in single mode) */}
-								{!hasEdits && !isZoomed && (
+								{!hasEdits && !isZoomed && !isSwipeInteractionActive && (
 									<button
 										type="button"
 										aria-hidden="true"
@@ -548,7 +574,7 @@ export function ImageLightbox({
 									<LightboxInfoOverlay
 										image={activeImage}
 										isLoadingDetails={isLoadingDetails}
-										isVisible={!isZoomed && isHovering}
+										isVisible={!isZoomed && isHovering && !isSwipeInteractionActive}
 										onHoverChange={setIsHovering}
 										footer={
 											<LightboxVersionStrip

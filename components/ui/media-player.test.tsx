@@ -81,6 +81,7 @@ describe("MediaPlayer", () => {
         render(<MediaPlayer url={videoUrl} autoPlay={true} contentType="video/mp4" />)
         const video = screen.getByTestId("media-video")
         expect(video).toHaveAttribute("preload", "auto")
+        expect(video).toHaveAttribute("autoplay")
     })
 
     it("uses preload=metadata when autoPlay is false", () => {
@@ -108,6 +109,17 @@ describe("MediaPlayer", () => {
         const video = screen.getByTestId("media-video")
         fireEvent(video, new Event("loadeddata"))
         expect(handleLoad).toHaveBeenCalled()
+    })
+
+    it("removes the loading spinner when canplay fires for video", () => {
+        render(<MediaPlayer url={videoUrl} contentType="video/mp4" />)
+        const video = screen.getByTestId("media-video")
+
+        expect(video.parentElement?.querySelector(".animate-spin")).toBeInTheDocument()
+
+        fireEvent(video, new Event("canplay"))
+
+        expect(video.parentElement?.querySelector(".animate-spin")).not.toBeInTheDocument()
     })
 
     it("calls onLoad when image loads", () => {

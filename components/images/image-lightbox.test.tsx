@@ -864,7 +864,9 @@ describe("ImageLightbox - Mobile Swipe Navigation", () => {
 			clientY: 180,
 		});
 
-		expect(onNext).toHaveBeenCalledTimes(1);
+		return waitFor(() => {
+			expect(onNext).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	it("navigates to the previous media on downward touch swipe", () => {
@@ -900,7 +902,140 @@ describe("ImageLightbox - Mobile Swipe Navigation", () => {
 			clientY: 320,
 		});
 
-		expect(onPrevious).toHaveBeenCalledTimes(1);
+		return waitFor(() => {
+			expect(onPrevious).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	it("drags the media with the finger before release", () => {
+		render(
+			<ImageLightbox
+				image={mockImage}
+				isOpen={true}
+				onClose={vi.fn()}
+				mediaNavigation={{
+					hasNext: true,
+					hasPrevious: true,
+					onNext: vi.fn(),
+					onPrevious: vi.fn(),
+				}}
+			/>,
+		);
+
+		const swipeRegion = screen.getByTestId("lightbox-swipe-region");
+		const swipeMotion = screen.getByTestId("lightbox-swipe-motion");
+		const initialTransform = swipeMotion.style.transform;
+
+		fireEvent.pointerDown(swipeRegion, {
+			pointerId: 1,
+			pointerType: "touch",
+			isPrimary: true,
+			clientX: 120,
+			clientY: 180,
+		});
+		fireEvent.pointerMove(swipeRegion, {
+			pointerId: 1,
+			pointerType: "touch",
+			isPrimary: true,
+			clientX: 122,
+			clientY: 300,
+		});
+
+		expect(swipeMotion.style.transform).not.toBe(initialTransform);
+		expect(swipeMotion.style.transform).toContain("translate3d");
+	});
+
+	it("ignores mostly horizontal drags", async () => {
+		const onNext = vi.fn();
+		const onPrevious = vi.fn();
+
+		render(
+			<ImageLightbox
+				image={mockImage}
+				isOpen={true}
+				onClose={vi.fn()}
+				mediaNavigation={{
+					hasNext: true,
+					hasPrevious: true,
+					onNext,
+					onPrevious,
+				}}
+			/>,
+		);
+
+		const swipeRegion = screen.getByTestId("lightbox-swipe-region");
+		fireEvent.pointerDown(swipeRegion, {
+			pointerId: 1,
+			pointerType: "touch",
+			isPrimary: true,
+			clientX: 120,
+			clientY: 180,
+		});
+		fireEvent.pointerMove(swipeRegion, {
+			pointerId: 1,
+			pointerType: "touch",
+			isPrimary: true,
+			clientX: 280,
+			clientY: 210,
+		});
+		fireEvent.pointerUp(swipeRegion, {
+			pointerId: 1,
+			pointerType: "touch",
+			isPrimary: true,
+			clientX: 280,
+			clientY: 210,
+		});
+
+		await waitFor(() => {
+			expect(onNext).not.toHaveBeenCalled();
+			expect(onPrevious).not.toHaveBeenCalled();
+		});
+	});
+
+	it("snaps back when swiping beyond a gallery boundary", async () => {
+		render(
+			<ImageLightbox
+				image={mockImage}
+				isOpen={true}
+				onClose={vi.fn()}
+				mediaNavigation={{
+					hasNext: false,
+					hasPrevious: false,
+					onNext: vi.fn(),
+					onPrevious: vi.fn(),
+				}}
+			/>,
+		);
+
+		const swipeRegion = screen.getByTestId("lightbox-swipe-region");
+		const swipeMotion = screen.getByTestId("lightbox-swipe-motion");
+		const initialTransform = swipeMotion.style.transform;
+
+		fireEvent.pointerDown(swipeRegion, {
+			pointerId: 1,
+			pointerType: "touch",
+			isPrimary: true,
+			clientX: 120,
+			clientY: 240,
+		});
+		fireEvent.pointerMove(swipeRegion, {
+			pointerId: 1,
+			pointerType: "touch",
+			isPrimary: true,
+			clientX: 120,
+			clientY: 80,
+		});
+		fireEvent.pointerUp(swipeRegion, {
+			pointerId: 1,
+			pointerType: "touch",
+			isPrimary: true,
+			clientX: 120,
+			clientY: 80,
+		});
+
+		await waitFor(() => {
+			expect(swipeMotion.style.transform).toBe(initialTransform);
+		});
 	});
 
 	it("ignores short touch drags", () => {

@@ -143,6 +143,29 @@ describe("useMediaPlayer", () => {
             expect(result.current.hasError).toBe(false)
             expect(onError).not.toHaveBeenCalled()
         })
+
+        it("treats refreshed signed URLs as distinct media sources", () => {
+            const onError = vi.fn()
+            const { result, rerender } = renderHook(
+                ({ url }) => useMediaPlayer({ url, isVideo: true, onError }),
+                { initialProps: { url: "https://example.com/video.mp4?token=old" } }
+            )
+
+            const mockVideo = {
+                src: "https://example.com/video.mp4?token=old",
+                currentSrc: "https://example.com/video.mp4?token=old",
+            } as unknown as HTMLVideoElement
+            ;(result.current.videoRef as React.MutableRefObject<HTMLVideoElement | null>).current = mockVideo
+
+            rerender({ url: "https://example.com/video.mp4?token=new" })
+
+            act(() => {
+                result.current.handleError()
+            })
+
+            expect(result.current.hasError).toBe(false)
+            expect(onError).not.toHaveBeenCalled()
+        })
     })
 
     describe("handleVideoLoadedData", () => {
@@ -163,6 +186,51 @@ describe("useMediaPlayer", () => {
 
             expect(result.current.isLoading).toBe(false)
             expect(onLoad).toHaveBeenCalledWith(mockEvent)
+        })
+
+        it("clears loading when metadata becomes available", () => {
+            const onLoad = vi.fn()
+            const { result } = renderHook(() =>
+                useMediaPlayer({
+                    url: "https://example.com/video.mp4",
+                    isVideo: true,
+                    onLoad,
+                })
+            )
+
+            const mockEvent = {
+                currentTarget: {
+                    currentSrc: "https://example.com/video.mp4",
+                    src: "https://example.com/video.mp4",
+                },
+            } as unknown as React.SyntheticEvent<HTMLVideoElement>
+
+            act(() => {
+                result.current.handleVideoLoadedMetadata(mockEvent)
+            })
+
+            expect(result.current.isLoading).toBe(false)
+            expect(onLoad).toHaveBeenCalledWith(mockEvent)
+        })
+
+        it("clears loading when canplay fires", () => {
+            const { result } = renderHook(() =>
+                useMediaPlayer({
+                    url: "https://example.com/video.mp4",
+                    isVideo: true,
+                })
+            )
+
+            act(() => {
+                result.current.handleVideoCanPlay({
+                    currentTarget: {
+                        currentSrc: "https://example.com/video.mp4",
+                        src: "https://example.com/video.mp4",
+                    },
+                } as unknown as React.SyntheticEvent<HTMLVideoElement>)
+            })
+
+            expect(result.current.isLoading).toBe(false)
         })
     })
 
@@ -394,7 +462,7 @@ describe("useMediaPlayer", () => {
 
             // Start playing (async)
             let playClickPromise: Promise<void>
-            act(() => {
+            await act(async () => {
                 playClickPromise = result.current.handleVideoClick!(mockEvent)
             })
 
@@ -402,9 +470,7 @@ describe("useMediaPlayer", () => {
             Object.defineProperty(mockVideo, "paused", { value: false, writable: true })
 
             // Click again to pause while play() is still pending
-            const pauseClickPromise = act(async () => {
-                await result.current.handleVideoClick!(mockEvent)
-            })
+            const pauseClickPromise = result.current.handleVideoClick!(mockEvent)
 
             // Resolve the play promise
             await act(async () => {
@@ -428,6 +494,7 @@ describe("useMediaPlayer", () => {
                 muted: false,
                 play: vi.fn().mockResolvedValue(undefined),
                 pause: vi.fn(),
+                load: vi.fn(),
                 addEventListener: vi.fn(),
                 removeEventListener: vi.fn(),
             } as unknown as HTMLVideoElement
@@ -459,6 +526,7 @@ describe("useMediaPlayer", () => {
                     return Promise.resolve(undefined)
                 }),
                 pause: vi.fn(),
+                load: vi.fn(),
                 addEventListener: vi.fn(),
                 removeEventListener: vi.fn(),
             } as unknown as HTMLVideoElement
@@ -497,6 +565,7 @@ describe("useMediaPlayer", () => {
                 muted: true,
                 play: vi.fn().mockResolvedValue(undefined),
                 pause: vi.fn(),
+                load: vi.fn(),
                 addEventListener: addEventListenerSpy,
                 removeEventListener: removeEventListenerSpy,
             } as unknown as HTMLVideoElement
@@ -519,6 +588,7 @@ describe("useMediaPlayer", () => {
                 muted: false,
                 play: vi.fn().mockResolvedValue(undefined),
                 pause: vi.fn(),
+                load: vi.fn(),
                 addEventListener: vi.fn(),
                 removeEventListener: vi.fn(),
             } as unknown as HTMLVideoElement
@@ -575,7 +645,10 @@ describe("useMediaPlayer", () => {
             const firstRender = {
                 handleLoad: result.current.handleLoad,
                 handleError: result.current.handleError,
+                handleVideoLoadedMetadata: result.current.handleVideoLoadedMetadata,
                 handleVideoLoadedData: result.current.handleVideoLoadedData,
+                handleVideoCanPlay: result.current.handleVideoCanPlay,
+                handleVideoPlaying: result.current.handleVideoPlaying,
                 handleVideoClick: result.current.handleVideoClick,
             }
 
@@ -584,7 +657,10 @@ describe("useMediaPlayer", () => {
             // Callbacks should be referentially stable (memoized with useCallback)
             expect(result.current.handleLoad).toBe(firstRender.handleLoad)
             expect(result.current.handleError).toBe(firstRender.handleError)
+            expect(result.current.handleVideoLoadedMetadata).toBe(firstRender.handleVideoLoadedMetadata)
             expect(result.current.handleVideoLoadedData).toBe(firstRender.handleVideoLoadedData)
+            expect(result.current.handleVideoCanPlay).toBe(firstRender.handleVideoCanPlay)
+            expect(result.current.handleVideoPlaying).toBe(firstRender.handleVideoPlaying)
             expect(result.current.handleVideoClick).toBe(firstRender.handleVideoClick)
         })
 
