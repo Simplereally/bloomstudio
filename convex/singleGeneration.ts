@@ -14,7 +14,7 @@
 
 import { ConvexError, v } from "convex/values"
 import { internal } from "./_generated/api"
-import { internalMutation, internalQuery, mutation, query } from "./_generated/server"
+import { action, internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server"
 import { analyzePromptForNSFW } from "./lib/nsfwDetection"
 import { canUserGenerate } from "./lib/subscription"
 
@@ -39,6 +39,9 @@ const generationParamsValidator = v.object({
     lastFrameImage: v.optional(v.string()),
     quality: v.optional(v.string()),
 })
+
+/** Delay before the server-side recovery path kicks in if client dispatch never arrives. */
+const SINGLE_GENERATION_RECOVERY_DELAY_MS = 30 * 1000
 
 // ============================================================
 // Public Mutations & Queries
@@ -89,13 +92,44 @@ export const startGeneration = mutation({
             updatedAt: now,
         })
 
-        // Schedule the processing action to run immediately with the API key
-        await ctx.scheduler.runAfter(0, internal.singleGenerationProcessor.processGeneration, {
+        // Schedule a delayed recovery path so the generation still starts if the
+        // client disconnects before it can dispatch the action.
+        await ctx.scheduler.runAfter(SINGLE_GENERATION_RECOVERY_DELAY_MS, internal.singleGeneration.recoverPendingGeneration, {
             generationId,
             apiKey: args.apiKey,
         })
 
         return generationId
+    },
+})
+
+/**
+ * Dispatch a persisted generation immediately via a normal action.
+ * This avoids the scheduled-function concurrency bottleneck on the hot path.
+ */
+export const dispatchGeneration = action({
+    args: {
+        generationId: v.id("pendingGenerations"),
+        apiKey: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity()
+        if (!identity) {
+            throw new Error("Not authenticated")
+        }
+
+        const generation = await ctx.runQuery(internal.singleGeneration.getGenerationInternal, {
+            generationId: args.generationId,
+        })
+
+        if (!generation || generation.ownerId !== identity.subject) {
+            throw new Error("Generation not found")
+        }
+
+        await ctx.runAction(internal.singleGenerationProcessor.processGeneration, {
+            generationId: args.generationId,
+            apiKey: args.apiKey,
+        })
     },
 })
 
@@ -291,6 +325,30 @@ export const cleanupStuckGenerations = internalMutation({
 })
 
 /**
+ * Recovery path for persisted generations whose client-side dispatch never ran.
+ */
+export const recoverPendingGeneration = internalAction({
+    args: {
+        generationId: v.id("pendingGenerations"),
+        apiKey: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const generation = await ctx.runQuery(internal.singleGeneration.getGenerationInternal, {
+            generationId: args.generationId,
+        })
+
+        if (!generation || generation.status !== "pending") {
+            return
+        }
+
+        await ctx.runAction(internal.singleGenerationProcessor.processGeneration, {
+            generationId: args.generationId,
+            apiKey: args.apiKey,
+        })
+    },
+})
+
+/**
  * Internal query to get generation record.
  */
 export const getGenerationInternal = internalQuery({
@@ -299,6 +357,32 @@ export const getGenerationInternal = internalQuery({
     },
     handler: async (ctx, args) => {
         return await ctx.db.get(args.generationId)
+    },
+})
+
+/**
+ * Atomically claims a pending generation for processing.
+ * Only the first dispatcher to claim it should proceed.
+ */
+export const claimPendingGeneration = internalMutation({
+    args: {
+        generationId: v.id("pendingGenerations"),
+    },
+    returns: v.object({
+        claimed: v.boolean(),
+    }),
+    handler: async (ctx, args) => {
+        const generation = await ctx.db.get(args.generationId)
+        if (!generation || generation.status !== "pending") {
+            return { claimed: false }
+        }
+
+        await ctx.db.patch(args.generationId, {
+            status: "processing",
+            updatedAt: Date.now(),
+        })
+
+        return { claimed: true }
     },
 })
 

@@ -83,24 +83,23 @@ export const processGeneration = internalAction({
             return current?.status === "cancelled"
         }
 
-        // Get the generation record
-        const generation = await getGeneration()
-
-        if (!generation) {
-            console.error(`${logger} Generation ${args.generationId} not found`)
-            return
-        }
-
-        if (generation.status !== "pending") {
-            console.log(`${logger} Generation ${args.generationId} status is ${generation.status}, skipping`)
-            return
-        }
-
-        // Update status to processing
-        await ctx.runMutation(internal.singleGeneration.updateGenerationStatus, {
+        const claimResult = await ctx.runMutation(internal.singleGeneration.claimPendingGeneration, {
             generationId: args.generationId,
-            status: "processing",
         })
+        if (!claimResult.claimed) {
+            const current = await getGeneration()
+            console.log(
+                `${logger} Generation ${args.generationId} status is ${current?.status ?? "missing"}, skipping`
+            )
+            return
+        }
+
+        // Get the generation record after the claim succeeds.
+        const generation = await getGeneration()
+        if (!generation) {
+            console.error(`${logger} Generation ${args.generationId} disappeared after claim`)
+            return
+        }
 
         console.log(`${logger} Processing generation ${args.generationId}`)
 
