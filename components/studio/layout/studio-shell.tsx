@@ -563,6 +563,7 @@ export function StudioShell({
     return {
       hasNext: currentLightboxGalleryIndex < galleryImages.length - 1,
       hasPrevious: currentLightboxGalleryIndex > 0,
+      hideVideoControls: true,
       onNext: handleNextLightboxMedia,
       onPrevious: handlePreviousLightboxMedia,
     };

@@ -176,12 +176,14 @@ vi.mock("@/components/ui/media-player", () => ({
 		url,
 		alt,
 		contentType,
+		controls = true,
 		onLoadedMetadata,
 		onLoad,
 	}: {
 		url: string;
 		alt: string;
 		contentType?: string;
+		controls?: boolean;
 		onLoadedMetadata?: ReactEventHandler<HTMLVideoElement>;
 		onLoad?: ReactEventHandler<HTMLImageElement>;
 	}) => {
@@ -193,6 +195,8 @@ vi.mock("@/components/ui/media-player", () => ({
 					src={url}
 					aria-label={alt}
 					data-testid="video-player"
+					data-controls={controls ? "true" : "false"}
+					controls={controls}
 					onLoadedMetadata={onLoadedMetadata}
 				/>
 			);
@@ -426,6 +430,17 @@ describe("ImageLightbox - Prompt Library Integration", () => {
 
 		// The lightbox's onClose should have been called (via onInsertComplete)
 		expect(onClose).toHaveBeenCalled();
+	});
+
+	it("closes when the lightbox whitespace is clicked", async () => {
+		const user = userEvent.setup();
+		const onClose = vi.fn();
+
+		render(<ImageLightbox image={mockImage} isOpen={true} onClose={onClose} />);
+
+		await user.click(screen.getByTestId("lightbox-surface"));
+
+		expect(onClose).toHaveBeenCalledTimes(1);
 	});
 
 	it("passes onClose as onInsertComplete to PromptLibrary", async () => {
@@ -869,6 +884,44 @@ describe("ImageLightbox - Mobile Swipe Navigation", () => {
 		});
 	});
 
+	it("accepts swipe gestures from the outer lightbox area", () => {
+		const onNext = vi.fn();
+
+		render(
+			<ImageLightbox
+				image={mockImage}
+				isOpen={true}
+				onClose={vi.fn()}
+				mediaNavigation={{
+					hasNext: true,
+					hasPrevious: true,
+					onNext,
+					onPrevious: vi.fn(),
+				}}
+			/>,
+		);
+
+		const swipeRegion = screen.getByTestId("lightbox-swipe-region");
+		fireEvent.pointerDown(swipeRegion, {
+			pointerId: 1,
+			pointerType: "touch",
+			isPrimary: true,
+			clientX: 24,
+			clientY: 120,
+		});
+		fireEvent.pointerUp(swipeRegion, {
+			pointerId: 1,
+			pointerType: "touch",
+			isPrimary: true,
+			clientX: 20,
+			clientY: 0,
+		});
+
+		return waitFor(() => {
+			expect(onNext).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	it("navigates to the previous media on downward touch swipe", () => {
 		const onPrevious = vi.fn();
 
@@ -905,6 +958,35 @@ describe("ImageLightbox - Mobile Swipe Navigation", () => {
 		return waitFor(() => {
 			expect(onPrevious).toHaveBeenCalledTimes(1);
 		});
+	});
+
+	it("hides native video controls during mobile swipe navigation", () => {
+		const mockVideo = {
+			url: "https://example.com/test-video.mp4",
+			prompt: "A beautiful video",
+			model: "veo",
+			contentType: "video/mp4",
+		};
+
+		render(
+			<ImageLightbox
+				image={mockVideo}
+				isOpen={true}
+				onClose={vi.fn()}
+				mediaNavigation={{
+					hasNext: true,
+					hasPrevious: true,
+					hideVideoControls: true,
+					onNext: vi.fn(),
+					onPrevious: vi.fn(),
+				}}
+			/>,
+		);
+
+		expect(screen.getByTestId("video-player")).toHaveAttribute(
+			"data-controls",
+			"false",
+		);
 	});
 
 	it("drags the media with the finger before release", () => {
@@ -1000,7 +1082,7 @@ describe("ImageLightbox - Mobile Swipe Navigation", () => {
 				onClose={vi.fn()}
 				mediaNavigation={{
 					hasNext: false,
-					hasPrevious: false,
+					hasPrevious: true,
 					onNext: vi.fn(),
 					onPrevious: vi.fn(),
 				}}

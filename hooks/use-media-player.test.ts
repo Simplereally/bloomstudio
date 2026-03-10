@@ -87,7 +87,7 @@ describe("useMediaPlayer", () => {
     describe("handleError", () => {
         it("sets hasError to true on error", () => {
             const { result } = renderHook(() =>
-                useMediaPlayer({ url: "https://example.com/video.mp4", isVideo: true })
+                useMediaPlayer({ url: "https://example.com/image.jpg", isVideo: false })
             )
 
             expect(result.current.hasError).toBe(false)
@@ -104,8 +104,8 @@ describe("useMediaPlayer", () => {
             const onError = vi.fn()
             const { result } = renderHook(() =>
                 useMediaPlayer({
-                    url: "https://example.com/video.mp4",
-                    isVideo: true,
+                    url: "https://example.com/image.jpg",
+                    isVideo: false,
                     onError,
                 })
             )
@@ -165,6 +165,80 @@ describe("useMediaPlayer", () => {
 
             expect(result.current.hasError).toBe(false)
             expect(onError).not.toHaveBeenCalled()
+        })
+
+        it("does not surface transient video errors during source swaps", async () => {
+            vi.useFakeTimers()
+
+            const onError = vi.fn()
+            const { result } = renderHook(() =>
+                useMediaPlayer({
+                    url: "https://example.com/video.mp4",
+                    isVideo: true,
+                    onError,
+                })
+            )
+
+            const mockVideo = {
+                src: "https://example.com/video.mp4",
+                currentSrc: "https://example.com/video.mp4",
+                error: null,
+                networkState: HTMLMediaElement.NETWORK_LOADING,
+            } as unknown as HTMLVideoElement
+            ;(result.current.videoRef as React.MutableRefObject<HTMLVideoElement | null>).current = mockVideo
+
+            act(() => {
+                result.current.handleError({
+                    currentTarget: mockVideo,
+                } as unknown as React.SyntheticEvent<HTMLVideoElement>)
+            })
+
+            expect(result.current.hasError).toBe(false)
+
+            await act(async () => {
+                vi.advanceTimersByTime(500)
+            })
+
+            expect(result.current.hasError).toBe(false)
+            expect(onError).not.toHaveBeenCalled()
+            vi.useRealTimers()
+        })
+
+        it("surfaces persistent video errors after a grace period", async () => {
+            vi.useFakeTimers()
+
+            const onError = vi.fn()
+            const { result } = renderHook(() =>
+                useMediaPlayer({
+                    url: "https://example.com/video.mp4",
+                    isVideo: true,
+                    onError,
+                })
+            )
+
+            const mockVideo = {
+                src: "https://example.com/video.mp4",
+                currentSrc: "https://example.com/video.mp4",
+                error: { code: 4 } as MediaError,
+                networkState: HTMLMediaElement.NETWORK_NO_SOURCE,
+            } as unknown as HTMLVideoElement
+            ;(result.current.videoRef as React.MutableRefObject<HTMLVideoElement | null>).current = mockVideo
+
+            act(() => {
+                result.current.handleError({
+                    currentTarget: mockVideo,
+                } as unknown as React.SyntheticEvent<HTMLVideoElement>)
+            })
+
+            expect(result.current.hasError).toBe(false)
+
+            await act(async () => {
+                vi.advanceTimersByTime(500)
+            })
+
+            expect(result.current.hasError).toBe(true)
+            expect(onError).toHaveBeenCalledTimes(1)
+            vi.useRealTimers()
         })
     })
 
