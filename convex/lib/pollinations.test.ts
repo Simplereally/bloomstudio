@@ -10,12 +10,31 @@
 
 import { describe, it, expect } from "vitest"
 import {
+    buildPollinationsUrl,
     classifyHttpError,
     classifyApiError,
     isFluxModelUnavailable,
     matchNonRetryablePattern,
     NON_RETRYABLE_ERROR_PATTERNS,
 } from "./pollinations"
+
+describe("buildPollinationsUrl", () => {
+    it("encodes grok-video reference image through the image query param only", () => {
+        const url = buildPollinationsUrl({
+            prompt: "test prompt",
+            model: "grok-video",
+            image: "https://example.com/first.jpg",
+            lastFrameImage: "https://example.com/second.jpg",
+            duration: 5,
+            aspectRatio: "16:9",
+        })
+
+        const parsed = new URL(url)
+
+        expect(parsed.searchParams.get("image")).toBe("https://example.com/first.jpg")
+        expect(parsed.searchParams.get("image_urls")).toBeNull()
+    })
+})
 
 // ============================================================
 // classifyHttpError — pure status-code classification

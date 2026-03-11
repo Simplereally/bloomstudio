@@ -15,6 +15,7 @@ vi.mock("@/hooks/use-random-seed", () => ({
 describe("useGenerationSettings", () => {
     beforeEach(() => {
         vi.clearAllMocks()
+        window.localStorage.clear()
     })
 
     it("initializes with default values", () => {
@@ -174,6 +175,36 @@ describe("useGenerationSettings", () => {
         })
 
         expect(result.current.model).toBe("flux-realism")
+    })
+
+    it("limits grok-video reference frames to a single image from persisted state", () => {
+        window.localStorage.setItem("ps:gen:model", JSON.stringify("grok-video"))
+        window.localStorage.setItem(
+            "ps:gen:videoReferenceFrames",
+            JSON.stringify(["https://example.com/first.jpg", "https://example.com/second.jpg"])
+        )
+
+        const { result } = renderHook(() => useGenerationSettings())
+
+        expect(result.current.model).toBe("grok-video")
+        expect(result.current.videoReferenceImages).toEqual(["https://example.com/first.jpg"])
+    })
+
+    it("limits grok-video reference frame updates to a single image", () => {
+        const { result } = renderHook(() => useGenerationSettings())
+
+        act(() => {
+            result.current.handleModelChange("grok-video")
+        })
+
+        act(() => {
+            result.current.setVideoReferenceImages([
+                "https://example.com/first.jpg",
+                "https://example.com/second.jpg",
+            ])
+        })
+
+        expect(result.current.videoReferenceImages).toEqual(["https://example.com/first.jpg"])
     })
 
     it("provides aspectRatios based on model", () => {

@@ -25,7 +25,7 @@
 
 import { tmpdir } from "os"
 import { join } from "path"
-import { writeFile, unlink, mkdir } from "fs/promises"
+import { writeFile, unlink, mkdir, chmod } from "fs/promises"
 import { randomUUID } from "crypto"
 
 // ============================================================
@@ -73,6 +73,7 @@ function getFfmpeg(): Promise<typeof Ffmpeg> {
                 throw new Error("ffmpeg-static binary not found")
             }
 
+            await chmod(ffmpegStatic, 0o755).catch(() => undefined)
             ffmpegModule.default.setFfmpegPath(ffmpegStatic)
             return ffmpegModule.default
         })()

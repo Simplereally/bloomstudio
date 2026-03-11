@@ -104,13 +104,20 @@ export function buildPollinationsUrl(params: PollinationsUrlParams): string {
     // Video-specific parameters - only include for video models
     const isVideoModel = params.model && VIDEO_MODELS.includes(params.model as typeof VIDEO_MODELS[number])
     if (isVideoModel) {
-        // Reference image(s): for models that support interpolation (two reference images),
-        // join both URLs with "|" in a single `image` param so the Pollinations gateway
-        // splits them into the upstream `image_urls` array.
-        if (params.image && params.lastFrameImage) {
-            queryParams.append("image", `${params.image}|${params.lastFrameImage}`)
-        } else if (params.image) {
-            queryParams.append("image", params.image)
+        // Reference image(s): handle different formats for different video models
+        if (params.model === "grok-video") {
+            if (params.image) {
+                queryParams.append("image", params.image)
+            }
+        } else {
+            // Other video models: for models that support interpolation (two reference images),
+            // join both URLs with "|" in a single `image` param so the Pollinations gateway
+            // splits them into the upstream `image_urls` array.
+            if (params.image && params.lastFrameImage) {
+                queryParams.append("image", `${params.image}|${params.lastFrameImage}`)
+            } else if (params.image) {
+                queryParams.append("image", params.image)
+            }
         }
 
         if (params.duration !== undefined && params.duration > 0) {
