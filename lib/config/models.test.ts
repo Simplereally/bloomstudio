@@ -187,17 +187,18 @@ describe("Model Registry", () => {
 
     describe("Model Lists", () => {
         it("should have all model IDs", () => {
-            expect(ALL_MODEL_IDS.length).toBe(20)
+            expect(ALL_MODEL_IDS.length).toBe(IMAGE_MODEL_IDS.length + VIDEO_MODEL_IDS.length)
         })
 
         it("should have correct image model IDs", () => {
-            expect(IMAGE_MODEL_IDS.length).toBe(15)
+            expect(IMAGE_MODEL_IDS.length).toBe(16)
             expect(IMAGE_MODEL_IDS).toContain("zimage")
             expect(IMAGE_MODEL_IDS).toContain("gptimage")
             expect(IMAGE_MODEL_IDS).toContain("flux")
             expect(IMAGE_MODEL_IDS).toContain("klein")
             expect(IMAGE_MODEL_IDS).toContain("imagen-4")
             expect(IMAGE_MODEL_IDS).toContain("grok-imagine")
+            expect(IMAGE_MODEL_IDS).toContain("dirtberry")
             expect(IMAGE_MODEL_IDS).toContain("flux-2-dev")
             expect(IMAGE_MODEL_IDS).not.toContain("veo")
         })
