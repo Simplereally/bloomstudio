@@ -523,6 +523,35 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     modelPricing: IMAGE_MODEL_PRICING["grok-imagine"],
   },
 
+  dirtberry: {
+    id: "dirtberry",
+    displayName: "Dirtberry",
+    type: "image",
+    icon: "sparkles",
+    logo: "/image-models/flux.svg",
+    description: "Quick realistic image generation via api.airforce",
+    constraints: {
+      maxPixels: Infinity,
+      minPixels: 0,
+      minDimension: 1024,
+      maxDimension: 1792,
+      step: 1,
+      defaultDimensions: { width: 1024, height: 1024 },
+      dimensionsEnabled: false,
+      // Seed not supported: api.airforce buildRequestBody only sends model, prompt, n, size.
+      // See: image.pollinations.ai/src/models/airforceModel.ts
+      supportsSeed: false,
+      supportedTiers: ["hd"],
+      outputCertainty: "exact",
+      dimensionWarning: "Dimensions are fixed for this model",
+    },
+    aspectRatios: DALLE3_STANDARD_ASPECT_RATIOS,
+    supportsNegativePrompt: false,
+    supportsReferenceImage: false,
+    // Dirtberry is kept safe-only in Bloom Studio (no NSFW/unrestricted flag)
+    modelPricing: IMAGE_MODEL_PRICING["dirtberry"],
+  },
+
   "gptimage-large": {
     id: "gptimage-large",
     displayName: "GPT 1.5",

@@ -349,6 +349,21 @@ export const IMAGE_MODEL_PRICING: Record<string, ModelPricingDefinition> = {
             perImage: 0.0025, // completionImageTokens from API
         },
     },
+
+    /**
+     * Dirtberry - Quick realistic image generation via api.airforce
+     * Good efficiency: ~1000 images per pollen (same as FLUX.2 Dev)
+     */
+    dirtberry: {
+        modelId: "dirtberry",
+        type: "image",
+        approximatePerPollen: 1000,
+        supportsReferenceImage: false,
+        isAlpha: true,
+        imagePricing: {
+            perImage: 0.001, // completionImageTokens from API (~free tier)
+        },
+    },
 } as const;
 
 // ============================================================================
