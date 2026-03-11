@@ -14,7 +14,7 @@
 
 import { ConvexError, v } from "convex/values"
 import { internal } from "./_generated/api"
-import { action, internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server"
+import { internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server"
 import { analyzePromptForNSFW } from "./lib/nsfwDetection"
 import { canUserGenerate } from "./lib/subscription"
 
@@ -100,36 +100,6 @@ export const startGeneration = mutation({
         })
 
         return generationId
-    },
-})
-
-/**
- * Dispatch a persisted generation immediately via a normal action.
- * This avoids the scheduled-function concurrency bottleneck on the hot path.
- */
-export const dispatchGeneration = action({
-    args: {
-        generationId: v.id("pendingGenerations"),
-        apiKey: v.string(),
-    },
-    handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity()
-        if (!identity) {
-            throw new Error("Not authenticated")
-        }
-
-        const generation = await ctx.runQuery(internal.singleGeneration.getGenerationInternal, {
-            generationId: args.generationId,
-        })
-
-        if (!generation || generation.ownerId !== identity.subject) {
-            throw new Error("Generation not found")
-        }
-
-        await ctx.runAction(internal.singleGenerationProcessor.processGeneration, {
-            generationId: args.generationId,
-            apiKey: args.apiKey,
-        })
     },
 })
 
@@ -389,7 +359,7 @@ export const recoverPendingGeneration = internalAction({
             return
         }
 
-        await ctx.runAction(internal.singleGenerationProcessor.processGeneration, {
+        await ctx.runAction(internal.singleGenerationProcessor.processGenerationInternal, {
             generationId: args.generationId,
             apiKey: args.apiKey,
         })

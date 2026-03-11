@@ -1,5 +1,6 @@
+import "@testing-library/jest-dom/vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
-import { describe, it, expect, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import { BatchActionButton } from "./batch-action-button"
 
 describe("BatchActionButton", () => {
@@ -51,6 +52,25 @@ describe("BatchActionButton", () => {
         fireEvent.click(screen.getByRole("button", { name: /resume/i }))
         
         expect(onResume).toHaveBeenCalledTimes(1)
+    })
+
+    it("disables resume while paused items are still in flight", () => {
+        const onResume = vi.fn()
+        render(
+            <BatchActionButton
+                {...defaultProps}
+                isPaused={true}
+                inFlightCount={2}
+                onResume={onResume}
+            />
+        )
+
+        const resumeButton = screen.getByRole("button", { name: /resume/i })
+        expect(resumeButton).toBeDisabled()
+
+        fireEvent.click(resumeButton)
+
+        expect(onResume).not.toHaveBeenCalled()
     })
 
     it("calls onCancel when cancel button is clicked", () => {

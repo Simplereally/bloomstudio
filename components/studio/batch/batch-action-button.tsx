@@ -45,6 +45,7 @@ export const BatchActionButton = React.memo(function BatchActionButton({
     className,
 }: BatchActionButtonProps) {
     const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
+    const isResumeDisabled = isPaused && inFlightCount > 0
     
     // Show in-flight indicator when paused and items are still processing
     const showInFlightIndicator = isPaused && inFlightCount > 0
@@ -94,6 +95,7 @@ export const BatchActionButton = React.memo(function BatchActionButton({
                     {/* The actual button - positioned above progress */}
                     <Button
                         onClick={isPaused ? onResume : onPause}
+                        disabled={isResumeDisabled}
                         variant="ghost"
                         size="lg"
                         className={cn(
@@ -102,11 +104,13 @@ export const BatchActionButton = React.memo(function BatchActionButton({
                             "border border-border/40 hover:border-border/60",
                             "rounded-lg overflow-hidden",
                             "transition-all duration-300",
+                            isResumeDisabled && "cursor-not-allowed opacity-70",
                             // Text color based on state
                             isPaused 
                                 ? "text-amber-600 dark:text-amber-400" 
                                 : "text-emerald-700 dark:text-emerald-300"
                         )}
+                        title={isResumeDisabled ? "Wait for in-flight images to finish before resuming" : undefined}
                     >
                         {/* Icon with subtle animation */}
                         <span className={cn(

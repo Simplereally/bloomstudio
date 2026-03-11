@@ -303,6 +303,7 @@ export function useBatchMode({
                 await resumeBatch(effectiveBatchId)
             } catch (error) {
                 console.error("Failed to resume batch:", error)
+                showErrorToast(error as Error)
             }
         }
     }, [effectiveBatchId, resumeBatch])

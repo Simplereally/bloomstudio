@@ -23,6 +23,10 @@ import {
     mutation,
     query
 } from "./_generated/server"
+import {
+    buildRecordBatchItemResultTransition,
+    getResumeBatchDecision,
+} from "./lib/batchGenerationState"
 import { analyzePromptForNSFW } from "./lib/nsfwDetection"
 import { canUserGenerate } from "./lib/subscription"
 
@@ -34,6 +38,10 @@ const MIN_BATCH_SIZE = 1
 
 /** Base delay between generations in milliseconds (100ms = 10 req/s) */
 const BASE_RATE_LIMIT_DELAY_MS = 100
+const MAX_ADAPTIVE_DELAY_MS = 2_000
+const THROTTLE_BACKOFF_MULTIPLIER = 1.5
+const TRANSIENT_BACKOFF_MULTIPLIER = 1.25
+const SUCCESS_RECOVERY_MULTIPLIER = 0.9
 
 /** Min jitter to add (20ms) */
 const MIN_JITTER_MS = 20
@@ -54,6 +62,7 @@ type BatchJobSummary = {
     failedCount: number
     currentIndex: number
     inFlightCount?: number
+    adaptiveDelayMs?: number
     createdAt: number
     updatedAt: number
     lastErrorCode?: number
@@ -74,6 +83,7 @@ function toBatchJobSummary(job: Doc<"batchJobs">): BatchJobSummary {
         failedCount: job.failedCount,
         currentIndex: job.currentIndex,
         inFlightCount: job.inFlightCount,
+        adaptiveDelayMs: job.adaptiveDelayMs,
         createdAt: job.createdAt,
         updatedAt: job.updatedAt,
         lastErrorCode: job.lastErrorCode,
@@ -152,9 +162,11 @@ export const startBatchJob = mutation({
             failedCount: 0,
             currentIndex: 0,
             inFlightCount: 1,
+            adaptiveDelayMs: BASE_RATE_LIMIT_DELAY_MS,
             generationParams: args.generationParams,
             apiKey: args.apiKey, // Store the API key for use by processor actions
             imageIds: [],
+            settledItemIndexes: [],
             createdAt: now,
             updatedAt: now,
         })
@@ -310,10 +322,14 @@ export const scheduleNextBatchItem = internalMutation({
             })
         }
 
-        // Calculate delay with jitter
-        // 100ms base + 20-100ms jitter
+        // Calculate delay with jitter.
+        // Delay dynamically adapts based on recent provider pressure.
+        const baseDelay = Math.min(
+            MAX_ADAPTIVE_DELAY_MS,
+            Math.max(BASE_RATE_LIMIT_DELAY_MS, batchJob.adaptiveDelayMs ?? BASE_RATE_LIMIT_DELAY_MS)
+        )
         const jitter = Math.floor(Math.random() * (MAX_JITTER_MS - MIN_JITTER_MS + 1)) + MIN_JITTER_MS
-        const delay = BASE_RATE_LIMIT_DELAY_MS + jitter
+        const delay = baseDelay + jitter
 
         await ctx.scheduler.runAfter(delay, internal.batchProcessor.processBatchItem, {
             batchJobId: args.batchJobId,
@@ -321,6 +337,55 @@ export const scheduleNextBatchItem = internalMutation({
         })
 
         return { seeded: true, nextIndex, delay }
+    },
+})
+
+/**
+ * Adaptive throttling signal from the batch processor.
+ * Speeds up slowly after success and backs off quickly on provider pressure.
+ */
+export const adjustAdaptiveDelay = internalMutation({
+    args: {
+        batchJobId: v.id("batchJobs"),
+        outcome: v.union(
+            v.literal("success"),
+            v.literal("throttle"),
+            v.literal("transient_error")
+        ),
+    },
+    handler: async (ctx, args) => {
+        const batchJob = await ctx.db.get(args.batchJobId)
+        if (!batchJob) return
+
+        const currentDelay = Math.min(
+            MAX_ADAPTIVE_DELAY_MS,
+            Math.max(BASE_RATE_LIMIT_DELAY_MS, batchJob.adaptiveDelayMs ?? BASE_RATE_LIMIT_DELAY_MS)
+        )
+
+        let nextDelay = currentDelay
+        if (args.outcome === "throttle") {
+            nextDelay = Math.min(
+                MAX_ADAPTIVE_DELAY_MS,
+                Math.round(currentDelay * THROTTLE_BACKOFF_MULTIPLIER)
+            )
+        } else if (args.outcome === "transient_error") {
+            nextDelay = Math.min(
+                MAX_ADAPTIVE_DELAY_MS,
+                Math.round(currentDelay * TRANSIENT_BACKOFF_MULTIPLIER)
+            )
+        } else {
+            nextDelay = Math.max(
+                BASE_RATE_LIMIT_DELAY_MS,
+                Math.round(currentDelay * SUCCESS_RECOVERY_MULTIPLIER)
+            )
+        }
+
+        if (nextDelay !== (batchJob.adaptiveDelayMs ?? BASE_RATE_LIMIT_DELAY_MS)) {
+            await ctx.db.patch(args.batchJobId, {
+                adaptiveDelayMs: nextDelay,
+                updatedAt: Date.now(),
+            })
+        }
     },
 })
 
@@ -349,54 +414,29 @@ export const recordBatchItemResult = internalMutation({
 
         const now = Date.now()
 
-        // Prepare updates
+        const transition = buildRecordBatchItemResultTransition(batchJob, {
+            itemIndex: args.itemIndex,
+            success: args.success,
+            imageId: args.imageId,
+            errorCode: args.errorCode,
+            retryCount: args.retryCount,
+        })
+
         const updates: Partial<Doc<"batchJobs">> = {
+            ...transition.updates,
             updatedAt: now,
-            // Reset retry count for the next item logic isn't relevant here anymore
-            // as we track retries per item in memory during action
         }
 
-        if (args.success) {
-            updates.completedCount = batchJob.completedCount + 1
-            if (args.imageId) {
-                updates.imageIds = [...batchJob.imageIds, args.imageId]
-            }
-        } else {
-            updates.failedCount = batchJob.failedCount + 1
-            // Store the HTTP error code for client-side detection (401=auth, 402=budget, 403=access)
-            if (args.errorCode !== undefined) {
-                updates.lastErrorCode = args.errorCode
-            }
-        }
-
-        // Track the retry count for the completed item (for metrics/debugging)
-        // We might want to store this better but for now overwriting is "okay" as a last-seen metric
-        if (args.retryCount !== undefined && args.retryCount > 0) {
-            updates.currentItemRetryCount = args.retryCount
-        }
-
-        // Decrement in-flight count (this item is now done)
-        const currentInFlight = batchJob.inFlightCount ?? 1
-        updates.inFlightCount = Math.max(0, currentInFlight - 1)
-
-        // Check completion status
-        // Note: Since we have parallel processing, we can't just check if `nextIndex >= totalCount`
-        // We should check if `completedCount + failedCount >= totalCount`
-        const totalProcessed = (updates.completedCount ?? batchJob.completedCount) + (updates.failedCount ?? batchJob.failedCount)
-
-        if (totalProcessed >= batchJob.totalCount) {
+        if (transition.shouldDelete) {
             // Job complete - delete the record ("nuke" policy)
             // This removes the API key from the database immediately
             await ctx.db.delete(args.batchJobId)
-            return { success: true }
-        } else if (batchJob.status === "pending") {
-            // If this was the first result, ensure we are "processing"
-            updates.status = "processing"
+            return { success: true, duplicate: transition.isDuplicate }
         }
 
         await ctx.db.patch(args.batchJobId, updates)
 
-        return { success: true }
+        return { success: true, duplicate: transition.isDuplicate }
     },
 })
 
@@ -661,9 +701,21 @@ export const resumeBatchJob = mutation({
             throw new Error("Batch job is not paused")
         }
 
+        const resumeDecision = getResumeBatchDecision(batchJob)
+        if (!resumeDecision.canSchedule) {
+            if (resumeDecision.reason === "in_flight") {
+                throw new ConvexError({
+                    code: "BATCH_STILL_DRAINING",
+                    message: "Wait for in-flight batch items to finish before resuming.",
+                })
+            }
+            return { success: true }
+        }
+
         // Update status to processing
         await ctx.db.patch(args.batchJobId, {
             status: "processing",
+            inFlightCount: resumeDecision.nextInFlightCount,
             updatedAt: Date.now(),
         })
 

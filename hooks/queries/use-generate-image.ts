@@ -158,7 +158,7 @@ export function useGenerateImage(
 ): UseGenerateImageReturn {
     const startGeneration = useMutation(api.singleGeneration.startGeneration)
     const cancelGeneration = useMutation(api.singleGeneration.cancelGeneration)
-    const dispatchGeneration = useAction(api.singleGeneration.dispatchGeneration)
+    const processGeneration = useAction(api.singleGenerationProcessor.processGeneration)
 
     // Get API key from BYOP context
     const apiKey = usePollenApiKey()
@@ -205,7 +205,7 @@ export function useGenerateImage(
             }
 
             void Promise.resolve(
-                dispatchGeneration({
+                processGeneration({
                     generationId: next.generationId,
                     apiKey: next.apiKey,
                 })
@@ -220,7 +220,7 @@ export function useGenerateImage(
         }
 
         flushNext()
-    }, [dispatchGeneration])
+    }, [processGeneration])
 
     const enqueueGenerationDispatch = React.useCallback(
         (entry: PendingDispatchEntry) => {

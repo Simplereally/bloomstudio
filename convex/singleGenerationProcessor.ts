@@ -14,11 +14,13 @@
  */
 
 import { v } from "convex/values"
+import type { Id } from "./_generated/dataModel"
 import { internal } from "./_generated/api"
-import { internalAction } from "./_generated/server"
+import { action, internalAction, type ActionCtx } from "./_generated/server"
 import {
     buildPollinationsUrl,
     classifyApiError,
+    calculateBackoffDelay,
     cropDirtberryImageBuffer,
     getDirtberrySourceDimensions,
     isDirtberryModel,
@@ -26,7 +28,6 @@ import {
     generateThumbnailKey,
     uploadMediaWithThumbnail,
     deleteR2Objects,
-    fetchWithRetry,
     type RetryConfig,
 } from "./lib"
 
@@ -40,6 +41,19 @@ const POLLINATIONS_RETRY_CONFIG: RetryConfig = {
     baseDelayMs: 2000,
     maxDelayMs: 30000,
 }
+const POLLINATIONS_FETCH_TIMEOUT_MS = 45_000
+const MAX_POLLINATIONS_ATTEMPTS = POLLINATIONS_RETRY_CONFIG.maxRetries + 1
+
+/**
+ * Dev-only cost safety valve.
+ * When enabled, image requests complete with a tiny placeholder image
+ * instead of hitting Pollinations. This keeps UX flow intact while
+ * eliminating provider compute/bandwidth during local dev.
+ */
+const ENABLE_DEV_GENERATION_MOCK = process.env.CONVEX_ENABLE_DEV_GENERATION_MOCK === "true"
+const MOCK_PNG_BASE64 =
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7k6xwAAAAASUVORK5CYII="
+const MOCK_IMAGE_BUFFER = Buffer.from(MOCK_PNG_BASE64, "base64")
 
 /**
  * Determine if an API error should be retried based on status and response.
@@ -58,34 +72,127 @@ function shouldRetryPollinationsError(status: number, errorText: string): boolea
     return classification.isRetryable
 }
 
-// ============================================================
-// Internal Action
-// ============================================================
+type ProcessGenerationArgs = {
+    generationId: Id<"pendingGenerations">
+    apiKey: string
+    attempt?: number
+}
 
-/**
- * Internal action to process a single image generation.
- * Receives the API key directly from the mutation (BYOP flow).
- * Includes retry logic with exponential backoff for transient failures.
- */
-export const processGeneration = internalAction({
-    args: {
-        generationId: v.id("pendingGenerations"),
-        /** The Pollinations API key passed from the client (BYOP flow) */
-        apiKey: v.string(),
-    },
-    handler: async (ctx, args) => {
-        const logger = "[SingleGeneration]"
+type PollinationsAttemptResult =
+    | { success: true; response: Response }
+    | {
+        success: false
+        errorMessage: string
+        statusCode?: number
+        retryable: boolean
+    }
 
-        const getGeneration = async () =>
-            ctx.runQuery(internal.singleGeneration.getGenerationInternal, {
-                generationId: args.generationId,
-            })
+function formatApiErrorText(rawErrorText: string): string {
+    try {
+        const parseRecursive = (input: unknown): unknown => {
+            if (typeof input !== "string") return input
+            try {
+                const parsed = JSON.parse(input)
+                if (parsed && typeof parsed === "object") {
+                    for (const key in parsed) {
+                        ;(parsed as Record<string, unknown>)[key] = parseRecursive(
+                            (parsed as Record<string, unknown>)[key]
+                        )
+                    }
+                }
+                return parsed
+            } catch {
+                return input
+            }
+        }
+        const parsed = parseRecursive(rawErrorText)
+        return typeof parsed === "string" ? parsed : JSON.stringify(parsed, null, 2)
+    } catch {
+        return rawErrorText
+    }
+}
 
-        const isCancelled = async () => {
-            const current = await getGeneration()
-            return current?.status === "cancelled"
+async function fetchPollinationsWithTimeout(
+    url: string,
+    apiKey: string,
+    timeoutMs: number,
+    logger: string
+): Promise<PollinationsAttemptResult> {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+    try {
+        const response = await fetch(url, {
+            method: "GET",
+            headers: {
+                Authorization: `Bearer ${apiKey}`,
+            },
+            signal: controller.signal,
+        })
+
+        if (response.ok) {
+            return { success: true, response }
         }
 
+        const rawErrorText = await response.text()
+        const displayError = formatApiErrorText(rawErrorText)
+        const errorMessage = `HTTP ${response.status}: ${displayError}`
+        const retryable = shouldRetryPollinationsError(response.status, rawErrorText)
+
+        return {
+            success: false,
+            errorMessage,
+            statusCode: response.status,
+            retryable,
+        }
+    } catch (error) {
+        const isAbort = error instanceof Error && error.name === "AbortError"
+        const errorMessage = isAbort
+            ? `Pollinations request timed out after ${timeoutMs}ms`
+            : error instanceof Error
+              ? error.message
+              : "Unknown network error"
+        console.error(`${logger} Pollinations fetch failed: ${errorMessage}`)
+        return {
+            success: false,
+            errorMessage,
+            retryable: true,
+        }
+    } finally {
+        clearTimeout(timeoutId)
+    }
+}
+
+function shouldUseDevGenerationMock(isVideoRequest: boolean): boolean {
+    const deployment = process.env.CONVEX_DEPLOYMENT ?? ""
+    const isDevDeployment = deployment.startsWith("dev:")
+    return ENABLE_DEV_GENERATION_MOCK && isDevDeployment && !isVideoRequest
+}
+
+async function runGenerationProcessor(
+    ctx: ActionCtx,
+    args: ProcessGenerationArgs,
+    expectedOwnerId?: string
+): Promise<void> {
+    const logger = "[SingleGeneration]"
+    const attempt = args.attempt ?? 1
+
+    const getGeneration = async () =>
+        ctx.runQuery(internal.singleGeneration.getGenerationInternal, {
+            generationId: args.generationId,
+        })
+
+    const isCancelled = async () => {
+        const current = await getGeneration()
+        return current?.status === "cancelled"
+    }
+
+    const initialGeneration = await getGeneration()
+    if (!initialGeneration || (expectedOwnerId && initialGeneration.ownerId !== expectedOwnerId)) {
+        throw new Error("Generation not found")
+    }
+
+    if (attempt === 1) {
         const claimResult = await ctx.runMutation(internal.singleGeneration.claimPendingGeneration, {
             generationId: args.generationId,
         })
@@ -96,45 +203,62 @@ export const processGeneration = internalAction({
             )
             return
         }
+    } else if (initialGeneration.status !== "processing") {
+        console.log(
+            `${logger} Generation ${args.generationId} status is ${initialGeneration.status}, skipping retry attempt ${attempt}`
+        )
+        return
+    }
 
-        // Get the generation record after the claim succeeds.
-        const generation = await getGeneration()
-        if (!generation) {
-            console.error(`${logger} Generation ${args.generationId} disappeared after claim`)
+    const generation = await getGeneration()
+    if (!generation) {
+        console.error(`${logger} Generation ${args.generationId} disappeared before processing`)
+        return
+    }
+
+    console.log(
+        `${logger} Processing generation ${args.generationId} (attempt ${attempt}/${MAX_POLLINATIONS_ATTEMPTS})`
+    )
+
+    const pollinationsApiKey = args.apiKey
+    if (!pollinationsApiKey || pollinationsApiKey.trim().length === 0) {
+        console.error(`${logger} No Pollinations API key provided`)
+        await ctx.runMutation(internal.singleGeneration.updateGenerationStatus, {
+            generationId: args.generationId,
+            status: "failed",
+            errorMessage: "No Pollinations API key provided. Please connect to Pollinations first.",
+        })
+        return
+    }
+
+    try {
+        const params = generation.generationParams
+        const shouldCropDirtberry = isDirtberryModel(params.model)
+        const dirtberrySourceDimensions = shouldCropDirtberry ? getDirtberrySourceDimensions() : null
+        const INT32_MAX = 2147483647
+        const rawSeed = params.seed ?? Math.floor(Math.random() * INT32_MAX)
+        const seed = Math.min(rawSeed, INT32_MAX)
+        const isVideoRequest =
+            params.duration !== undefined ||
+            params.audio !== undefined ||
+            params.aspectRatio !== undefined ||
+            params.lastFrameImage !== undefined
+
+        if (await isCancelled()) {
+            console.log(`${logger} Generation ${args.generationId} was cancelled before provider request`)
             return
         }
 
-        console.log(`${logger} Processing generation ${args.generationId}`)
+        let imageBuffer: Buffer
+        let contentType: string
 
-        // Use the API key passed from the client (BYOP flow)
-        const pollinationsApiKey = args.apiKey
-
-        // Validate API key
-        if (!pollinationsApiKey || pollinationsApiKey.trim().length === 0) {
-            console.error(`${logger} No Pollinations API key provided`)
-            await ctx.runMutation(internal.singleGeneration.updateGenerationStatus, {
-                generationId: args.generationId,
-                status: "failed",
-                errorMessage: "No Pollinations API key provided. Please connect to Pollinations first.",
-            })
-            return
-        }
-
-        try {
-            const params = generation.generationParams
-            const shouldCropDirtberry = isDirtberryModel(params.model)
-            const dirtberrySourceDimensions = shouldCropDirtberry ? getDirtberrySourceDimensions() : null
-            // Pollinations API only accepts seeds up to int32 max (2147483647)
-            const INT32_MAX = 2147483647
-            const rawSeed = params.seed ?? Math.floor(Math.random() * INT32_MAX)
-            const seed = Math.min(rawSeed, INT32_MAX)
-
-            if (await isCancelled()) {
-                console.log(`${logger} Generation ${args.generationId} was cancelled before provider request`)
-                return
-            }
-
-            // Build the generation URL
+        if (shouldUseDevGenerationMock(isVideoRequest)) {
+            imageBuffer = Buffer.from(MOCK_IMAGE_BUFFER)
+            contentType = "image/png"
+            console.log(
+                `${logger} Dev mock enabled, using placeholder image for generation ${args.generationId}`
+            )
+        } else {
             const generationUrl = buildPollinationsUrl({
                 prompt: params.prompt,
                 negativePrompt: params.negativePrompt,
@@ -146,184 +270,228 @@ export const processGeneration = internalAction({
                 private: params.private,
                 safe: params.safe,
                 image: params.image,
-                // Video-specific parameters
                 duration: params.duration,
                 audio: params.audio,
                 aspectRatio: params.aspectRatio,
                 lastFrameImage: params.lastFrameImage,
-                quality: params.quality ?? "high"
+                quality: params.quality ?? "high",
             })
 
             console.log(`${logger} Calling Pollinations: ${generationUrl}`)
-
-            // Call Pollinations API with retry logic
-            const result = await fetchWithRetry(
+            const pollinationsAttempt = await fetchPollinationsWithTimeout(
                 generationUrl,
-                {
-                    method: "GET",
-                    headers: {
-                        Authorization: `Bearer ${pollinationsApiKey}`,
-                    },
-                },
-                shouldRetryPollinationsError,
-                POLLINATIONS_RETRY_CONFIG,
+                pollinationsApiKey,
+                POLLINATIONS_FETCH_TIMEOUT_MS,
                 logger
             )
 
-            // Update retry count in the database
-            if (result.attemptsMade > 1) {
-                await ctx.runMutation(internal.singleGeneration.updateGenerationStatus, {
-                    generationId: args.generationId,
-                    status: "processing",
-                    retryCount: result.attemptsMade - 1,
-                })
-            }
+            if (!pollinationsAttempt.success) {
+                const canRetry =
+                    pollinationsAttempt.retryable &&
+                    attempt < MAX_POLLINATIONS_ATTEMPTS &&
+                    !(await isCancelled())
 
-            if (!result.success || !result.data) {
-                console.error(`${logger} Pollinations API error after ${result.attemptsMade} attempts:`, result.error)
+                if (canRetry) {
+                    const delayMs = Math.round(
+                        calculateBackoffDelay(
+                            attempt - 1,
+                            POLLINATIONS_RETRY_CONFIG.baseDelayMs,
+                            POLLINATIONS_RETRY_CONFIG.maxDelayMs
+                        )
+                    )
+
+                    await ctx.runMutation(internal.singleGeneration.updateGenerationStatus, {
+                        generationId: args.generationId,
+                        status: "processing",
+                        retryCount: attempt,
+                    })
+
+                    await ctx.scheduler.runAfter(
+                        delayMs,
+                        internal.singleGenerationProcessor.processGenerationInternal,
+                        {
+                            generationId: args.generationId,
+                            apiKey: pollinationsApiKey,
+                            attempt: attempt + 1,
+                        }
+                    )
+
+                    console.error(
+                        `${logger} Pollinations call failed (attempt ${attempt}/${MAX_POLLINATIONS_ATTEMPTS}), retrying in ${delayMs}ms: ${pollinationsAttempt.errorMessage}`
+                    )
+                    return
+                }
+
                 await ctx.runMutation(internal.singleGeneration.updateGenerationStatus, {
                     generationId: args.generationId,
                     status: "failed",
-                    errorMessage: result.error ?? "Generation failed after retries",
-                    // Include HTTP status code for client-side error detection (401=auth, 402=budget, 403=access)
-                    errorCode: result.lastStatus,
-                    retryCount: result.attemptsMade - 1,
+                    errorMessage: pollinationsAttempt.errorMessage,
+                    errorCode: pollinationsAttempt.statusCode,
+                    retryCount: attempt > 1 ? attempt - 1 : undefined,
                 })
                 return
             }
 
-            const response = result.data
+            const response = pollinationsAttempt.response
+            imageBuffer = Buffer.from(await response.arrayBuffer())
+            contentType = response.headers.get("content-type") || "image/jpeg"
+        }
 
-            if (await isCancelled()) {
-                console.log(`${logger} Generation ${args.generationId} was cancelled after provider response`)
-                return
-            }
+        if (await isCancelled()) {
+            console.log(`${logger} Generation ${args.generationId} was cancelled after provider response`)
+            return
+        }
 
-            // Get the image data
-            const imageBuffer = Buffer.from(await response.arrayBuffer())
-            const contentType = response.headers.get("content-type") || "image/jpeg"
+        let uploadBuffer = imageBuffer
+        let outputWidth = params.width ?? 1024
+        let outputHeight = params.height ?? 1024
 
-            let uploadBuffer = imageBuffer
-            let outputWidth = params.width ?? 1024
-            let outputHeight = params.height ?? 1024
+        if (shouldCropDirtberry) {
+            try {
+                const cropped = await cropDirtberryImageBuffer(imageBuffer)
+                uploadBuffer = Buffer.from(cropped.buffer)
+                outputWidth = cropped.width
+                outputHeight = cropped.height
 
-            // Crop Dirtberry outputs before upload/persistence so every surface
-            // (canvas, gallery, downloads, lightbox) uses the same native asset.
-            if (shouldCropDirtberry) {
-                try {
-                    const cropped = await cropDirtberryImageBuffer(imageBuffer)
-                    uploadBuffer = Buffer.from(cropped.buffer)
-                    outputWidth = cropped.width
-                    outputHeight = cropped.height
-
-                    if (cropped.wasCropped) {
-                        console.log(
-                            `${logger} Applied Dirtberry crop (${cropped.processor}): ${cropped.inputWidth}x${cropped.inputHeight} -> ${cropped.width}x${cropped.height} (trim=${cropped.trimPixels}px)`
-                        )
-                    } else {
-                        console.log(
-                            `${logger} Dirtberry crop skipped: source=${cropped.inputWidth}x${cropped.inputHeight} (image too small to trim safely)`
-                        )
-                    }
-                } catch (cropError) {
-                    console.error(
-                        `${logger} Dirtberry crop failed, falling back to original image:`,
-                        cropError
+                if (cropped.wasCropped) {
+                    console.log(
+                        `${logger} Applied Dirtberry crop (${cropped.processor}): ${cropped.inputWidth}x${cropped.inputHeight} -> ${cropped.width}x${cropped.height} (trim=${cropped.trimPixels}px)`
+                    )
+                } else {
+                    console.log(
+                        `${logger} Dirtberry crop skipped: source=${cropped.inputWidth}x${cropped.inputHeight} (image too small to trim safely)`
                     )
                 }
+            } catch (cropError) {
+                console.error(
+                    `${logger} Dirtberry crop failed, falling back to original image:`,
+                    cropError
+                )
             }
-
-            // Upload to R2 (and thumbnail for images — videos defer secondary assets)
-            const r2Key = generateR2Key(generation.ownerId, contentType)
-            console.log(`${logger} Uploading to R2: ${r2Key}`)
-
-            const { media: uploadResult, thumbnail: thumbnailResult } = await uploadMediaWithThumbnail(
-                uploadBuffer,
-                r2Key,
-                contentType
-            )
-
-            console.log(`${logger} Upload complete: ${uploadResult.url}`)
-            if (thumbnailResult) {
-                console.log(`${logger} Thumbnail complete: ${thumbnailResult.url} (${thumbnailResult.sizeBytes} bytes)`)
-            } else if (!contentType.startsWith("video/")) {
-                console.log(`${logger} Thumbnail generation skipped or failed`)
-            }
-
-            if (await isCancelled()) {
-                console.log(`${logger} Generation ${args.generationId} was cancelled before persistence, cleaning up R2 objects`)
-                // Best-effort R2 cleanup to avoid orphan objects
-                const keysToDelete = [r2Key]
-                if (thumbnailResult?.url) keysToDelete.push(generateThumbnailKey(r2Key))
-                try {
-                    await deleteR2Objects(keysToDelete)
-                    console.log(`${logger} R2 cleanup succeeded for generation ${args.generationId}`)
-                } catch (err) {
-                    console.error(`${logger} R2 cleanup failed for generation ${args.generationId}:`, err)
-                }
-                return
-            }
-
-            // Store the image in Convex database — immediately, without waiting for secondary assets
-            const imageId = await ctx.runMutation(internal.singleGeneration.storeGeneratedImage, {
-                ownerId: generation.ownerId,
-                r2Key,
-                url: uploadResult.url,
-                thumbnailR2Key: thumbnailResult?.url ? generateThumbnailKey(r2Key) : undefined,
-                thumbnailUrl: thumbnailResult?.url,
-                // Preview is always deferred for videos; not applicable for images
-                previewR2Key: undefined,
-                previewUrl: undefined,
-                prompt: params.prompt,
-                width: outputWidth,
-                height: outputHeight,
-                model: params.model ?? "flux",
-                seed,
-                contentType,
-                sizeBytes: uploadResult.sizeBytes,
-                generationParams: shouldCropDirtberry
-                    ? {
-                        ...params,
-                        seed,
-                        width: outputWidth,
-                        height: outputHeight,
-                    }
-                    : {
-                        ...params,
-                        seed,
-                    },
-                visibility: params.private ? "unlisted" : "public",
-            })
-
-            console.log(`${logger} Generation ${args.generationId} completed successfully`)
-
-            // Update generation status to completed — user sees result NOW
-            await ctx.runMutation(internal.singleGeneration.updateGenerationStatus, {
-                generationId: args.generationId,
-                status: "completed",
-                imageId,
-                retryCount: result.attemptsMade > 1 ? result.attemptsMade - 1 : undefined,
-            })
-
-            // Schedule background secondary asset processing for videos
-            // (thumbnail extraction + preview transcode). This runs AFTER the
-            // generation is already "completed" — failures here are non-fatal.
-            if (contentType.startsWith("video/")) {
-                await ctx.scheduler.runAfter(0, internal.secondaryAssetsProcessor.processSecondaryAssets, {
-                    imageId,
-                    videoUrl: uploadResult.url,
-                    r2Key,
-                })
-                console.log(`${logger} Scheduled background secondary asset processing for ${imageId}`)
-            }
-
-        } catch (error) {
-            console.error(`${logger} Error processing generation:`, error)
-            await ctx.runMutation(internal.singleGeneration.updateGenerationStatus, {
-                generationId: args.generationId,
-                status: "failed",
-                errorMessage: error instanceof Error ? error.message : "Unknown error",
-            })
         }
+
+        const r2Key = generateR2Key(generation.ownerId, contentType)
+        console.log(`${logger} Uploading to R2: ${r2Key}`)
+
+        const { media: uploadResult, thumbnail: thumbnailResult } = await uploadMediaWithThumbnail(
+            uploadBuffer,
+            r2Key,
+            contentType
+        )
+
+        console.log(`${logger} Upload complete: ${uploadResult.url}`)
+        if (thumbnailResult) {
+            console.log(
+                `${logger} Thumbnail complete: ${thumbnailResult.url} (${thumbnailResult.sizeBytes} bytes)`
+            )
+        } else if (!contentType.startsWith("video/")) {
+            console.log(`${logger} Thumbnail generation skipped or failed`)
+        }
+
+        if (await isCancelled()) {
+            console.log(
+                `${logger} Generation ${args.generationId} was cancelled before persistence, cleaning up R2 objects`
+            )
+            const keysToDelete = [r2Key]
+            if (thumbnailResult?.url) keysToDelete.push(generateThumbnailKey(r2Key))
+            try {
+                await deleteR2Objects(keysToDelete)
+                console.log(`${logger} R2 cleanup succeeded for generation ${args.generationId}`)
+            } catch (err) {
+                console.error(`${logger} R2 cleanup failed for generation ${args.generationId}:`, err)
+            }
+            return
+        }
+
+        const imageId = await ctx.runMutation(internal.singleGeneration.storeGeneratedImage, {
+            ownerId: generation.ownerId,
+            r2Key,
+            url: uploadResult.url,
+            thumbnailR2Key: thumbnailResult?.url ? generateThumbnailKey(r2Key) : undefined,
+            thumbnailUrl: thumbnailResult?.url,
+            previewR2Key: undefined,
+            previewUrl: undefined,
+            prompt: params.prompt,
+            width: outputWidth,
+            height: outputHeight,
+            model: params.model ?? "flux",
+            seed,
+            contentType,
+            sizeBytes: uploadResult.sizeBytes,
+            generationParams: shouldCropDirtberry
+                ? {
+                    ...params,
+                    seed,
+                    width: outputWidth,
+                    height: outputHeight,
+                }
+                : {
+                    ...params,
+                    seed,
+                },
+            visibility: params.private ? "unlisted" : "public",
+        })
+
+        console.log(`${logger} Generation ${args.generationId} completed successfully`)
+
+        await ctx.runMutation(internal.singleGeneration.updateGenerationStatus, {
+            generationId: args.generationId,
+            status: "completed",
+            imageId,
+            retryCount: attempt > 1 ? attempt - 1 : undefined,
+        })
+
+        if (contentType.startsWith("video/")) {
+            await ctx.scheduler.runAfter(0, internal.secondaryAssetsProcessor.processSecondaryAssets, {
+                imageId,
+                videoUrl: uploadResult.url,
+                r2Key,
+            })
+            console.log(`${logger} Scheduled background secondary asset processing for ${imageId}`)
+        }
+    } catch (error) {
+        console.error(`${logger} Error processing generation:`, error)
+        await ctx.runMutation(internal.singleGeneration.updateGenerationStatus, {
+            generationId: args.generationId,
+            status: "failed",
+            errorMessage: error instanceof Error ? error.message : "Unknown error",
+            retryCount: attempt > 1 ? attempt - 1 : undefined,
+        })
+    }
+}
+
+// ============================================================
+// Public + Internal Actions
+// ============================================================
+
+/**
+ * Public entrypoint used by clients to immediately start processing
+ * a persisted generation without an intermediate wrapper action.
+ */
+export const processGeneration = action({
+    args: {
+        generationId: v.id("pendingGenerations"),
+        apiKey: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity()
+        if (!identity) {
+            throw new Error("Not authenticated")
+        }
+        await runGenerationProcessor(ctx, args, identity.subject)
+    },
+})
+
+/**
+ * Internal entrypoint used for scheduled recovery/retries.
+ */
+export const processGenerationInternal = internalAction({
+    args: {
+        generationId: v.id("pendingGenerations"),
+        apiKey: v.string(),
+        attempt: v.optional(v.number()),
+    },
+    handler: async (ctx, args) => {
+        await runGenerationProcessor(ctx, args)
     },
 })
