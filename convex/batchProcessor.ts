@@ -18,6 +18,7 @@ import { v } from "convex/values"
 import { internal } from "./_generated/api"
 import { internalAction } from "./_generated/server"
 import {
+    POLLINATIONS_FETCH_TIMEOUT_MS,
     buildPollinationsUrl,
     calculateBackoffDelay,
     cropDirtberryImageBuffer,
@@ -40,7 +41,6 @@ const POLLINATIONS_RETRY_CONFIG: RetryConfig = {
     baseDelayMs: 2000,
     maxDelayMs: 30000,
 }
-const POLLINATIONS_FETCH_TIMEOUT_MS = 45_000
 const MAX_POLLINATIONS_ATTEMPTS = POLLINATIONS_RETRY_CONFIG.maxRetries + 1
 const ENABLE_DEV_GENERATION_MOCK = process.env.CONVEX_ENABLE_DEV_GENERATION_MOCK === "true"
 const MOCK_PNG_BASE64 =
