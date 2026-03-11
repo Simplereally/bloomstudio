@@ -535,7 +535,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     displayName: "Dirtberry",
     type: "image",
     icon: "sparkles",
-    logo: "/image-models/flux.svg",
+    logo: "/icon.png",
     description: "Quick realistic image generation via api.airforce",
     constraints: {
       maxPixels: Infinity,
