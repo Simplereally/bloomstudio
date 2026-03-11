@@ -120,8 +120,6 @@ const QueueCardGrid = React.memo(function QueueCardGrid({
     items: QueueItem[]
     onCancel?: (id: string) => void
 }) {
-    if (items.length === 0) return null
-
     const cardRefs = React.useRef(new Map<string, HTMLDivElement>())
     const previousRectsRef = React.useRef(new Map<string, DOMRect>())
     const scrollRegionRef = React.useRef<HTMLDivElement>(null)
@@ -208,6 +206,8 @@ const QueueCardGrid = React.memo(function QueueCardGrid({
 
         previousRectsRef.current = nextRects
     }, [items])
+
+    if (items.length === 0) return null
 
     return (
         <div
