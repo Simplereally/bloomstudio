@@ -38,7 +38,6 @@ describe("Model Registry", () => {
                 "imagen-4",
                 "grok-imagine",
                 "flux-2-dev",
-                "dirtberry",
             ]
 
             for (const modelId of expectedImageModels) {
@@ -77,7 +76,6 @@ describe("Model Registry", () => {
             expect(MODEL_REGISTRY["grok-imagine"].displayName).toBe("Grok Imagine")
             expect(MODEL_REGISTRY["grok-video"].displayName).toBe("Grok Video")
             expect(MODEL_REGISTRY["flux-2-dev"].displayName).toBe("FLUX.2 Dev")
-            expect(MODEL_REGISTRY["dirtberry"].displayName).toBe("Dirtberry")
         })
 
         it("should have valid constraints for all models", () => {
@@ -189,11 +187,11 @@ describe("Model Registry", () => {
 
     describe("Model Lists", () => {
         it("should have all model IDs", () => {
-            expect(ALL_MODEL_IDS.length).toBe(21)
+            expect(ALL_MODEL_IDS.length).toBe(20)
         })
 
         it("should have correct image model IDs", () => {
-            expect(IMAGE_MODEL_IDS.length).toBe(16)
+            expect(IMAGE_MODEL_IDS.length).toBe(15)
             expect(IMAGE_MODEL_IDS).toContain("zimage")
             expect(IMAGE_MODEL_IDS).toContain("gptimage")
             expect(IMAGE_MODEL_IDS).toContain("flux")
@@ -201,7 +199,6 @@ describe("Model Registry", () => {
             expect(IMAGE_MODEL_IDS).toContain("imagen-4")
             expect(IMAGE_MODEL_IDS).toContain("grok-imagine")
             expect(IMAGE_MODEL_IDS).toContain("flux-2-dev")
-            expect(IMAGE_MODEL_IDS).toContain("dirtberry")
             expect(IMAGE_MODEL_IDS).not.toContain("veo")
         })
 
@@ -226,12 +223,6 @@ describe("Model Registry", () => {
 
         it("should include flux-2-dev in UNRESTRICTED_MODEL_IDS (isUnrestricted: true)", () => {
             expect(UNRESTRICTED_MODEL_IDS.has("flux-2-dev")).toBe(true)
-        })
-
-        it("should include dirtberry in ACTIVE_IMAGE_MODEL_IDS and not in LEGACY_MODEL_IDS or UNRESTRICTED_MODEL_IDS", () => {
-            expect(ACTIVE_IMAGE_MODEL_IDS).toContain("dirtberry")
-            expect(LEGACY_MODEL_IDS).not.toContain("dirtberry")
-            expect(UNRESTRICTED_MODEL_IDS.has("dirtberry")).toBe(false)
         })
     })
 })
@@ -585,36 +576,6 @@ describe("Model Constraints", () => {
             expect(model.constraints.supportedTiers).toEqual(["hd"])
         })
     })
-
-    describe("Dirtberry", () => {
-        it("should have fixed portrait-only dimensions", () => {
-            const model = getModel("dirtberry")!
-            expect(model.constraints.dimensionsEnabled).toBe(false)
-            expect(model.constraints.outputCertainty).toBe("exact")
-            expect(model.constraints.minDimension).toBe(832)
-            expect(model.constraints.maxDimension).toBe(1144)
-            expect(model.constraints.defaultDimensions).toEqual({ width: 832, height: 1144 })
-        })
-
-        it("should not support negative prompts or reference images", () => {
-            const model = getModel("dirtberry")!
-            expect(model.supportsNegativePrompt).toBe(false)
-            expect(model.supportsReferenceImage).toBe(false)
-        })
-
-        it("should have correct provider metadata", () => {
-            const model = getModel("dirtberry")!
-            expect(model.icon).toBe("sparkles")
-            expect(model.logo).toBe("/image-models/flux.svg")
-            expect(model.isLegacy).toBeUndefined()
-            expect(model.isUnrestricted).toBeUndefined()
-        })
-
-        it("should only support HD tier", () => {
-            const model = getModel("dirtberry")!
-            expect(model.constraints.supportedTiers).toEqual(["hd"])
-        })
-    })
 })
 
 describe("Aspect Ratio Presets", () => {
@@ -793,16 +754,6 @@ describe("Aspect Ratio Presets", () => {
         const imagenRatios = getModelAspectRatios("imagen-4")!
         const grokRatios = getModelAspectRatios("grok-imagine")!
         expect(imagenRatios).toEqual(grokRatios)
-    })
-
-    it("should have Dirtberry limited to a single portrait preset", () => {
-        const ratios = getModelAspectRatios("dirtberry")!
-        expect(ratios.length).toBe(1)
-        expect(ratios.every(r => r.value !== "custom")).toBe(true)
-
-        const portrait = ratios.find(r => r.value === "9:16")
-        expect(portrait?.width).toBe(832)
-        expect(portrait?.height).toBe(1144)
     })
 })
 
