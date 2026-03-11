@@ -24,6 +24,11 @@ import { CanvasWave } from "./canvas-wave"
 
 // Premium easing: Expo out for satisfying deceleration
 const EXPO_OUT = [0.22, 1, 0.36, 1] as const
+const QUEUE_SHIFT_EASING = "cubic-bezier(0.22, 1, 0.36, 1)"
+const QUEUE_SHIFT_DURATION_MS = 220
+const QUEUE_CARD_MIN_WIDTH_PX = 156
+const QUEUE_CARD_MAX_WIDTH_PX = 188
+const QUEUE_GRID_GAP_PX = 20
 
 // --- Animation Variants ---
 
@@ -117,31 +122,135 @@ const QueueCardGrid = React.memo(function QueueCardGrid({
 }) {
     if (items.length === 0) return null
 
-    const count = items.length
-    // Responsive grid columns based on count — single item gets centered solo
-    const cols = count === 1 ? 1 : count <= 4 ? 2 : count <= 6 ? 3 : 4
+    const cardRefs = React.useRef(new Map<string, HTMLDivElement>())
+    const previousRectsRef = React.useRef(new Map<string, DOMRect>())
+    const scrollRegionRef = React.useRef<HTMLDivElement>(null)
+    const [gridMetrics, setGridMetrics] = React.useState({
+        columnCount: 1,
+        cardWidth: QUEUE_CARD_MAX_WIDTH_PX,
+    })
+
+    React.useLayoutEffect(() => {
+        const node = scrollRegionRef.current
+        if (!node) return
+
+        const updateGridMetrics = () => {
+            const regionWidth = node.clientWidth - 24
+            if (regionWidth <= 0) return
+
+            const maxColumns = Math.max(
+                1,
+                Math.min(
+                    items.length,
+                    Math.floor((regionWidth + QUEUE_GRID_GAP_PX) / (QUEUE_CARD_MIN_WIDTH_PX + QUEUE_GRID_GAP_PX))
+                )
+            )
+
+            const columnCount = Math.max(1, maxColumns)
+            const availableWidth = regionWidth - QUEUE_GRID_GAP_PX * (columnCount - 1)
+            const cardWidth = Math.max(
+                QUEUE_CARD_MIN_WIDTH_PX,
+                Math.min(QUEUE_CARD_MAX_WIDTH_PX, Math.floor(availableWidth / columnCount))
+            )
+
+            setGridMetrics((current) => {
+                if (current.columnCount === columnCount && current.cardWidth === cardWidth) {
+                    return current
+                }
+                return { columnCount, cardWidth }
+            })
+        }
+
+        updateGridMetrics()
+
+        const observer = new ResizeObserver(() => {
+            updateGridMetrics()
+        })
+        observer.observe(node)
+
+        return () => observer.disconnect()
+    }, [items.length])
+
+    React.useLayoutEffect(() => {
+        const nextRects = new Map<string, DOMRect>()
+
+        for (const item of items) {
+            const node = cardRefs.current.get(item.id)
+            if (!node) continue
+            nextRects.set(item.id, node.getBoundingClientRect())
+        }
+
+        for (const item of items) {
+            const node = cardRefs.current.get(item.id)
+            const previousRect = previousRectsRef.current.get(item.id)
+            const nextRect = nextRects.get(item.id)
+
+            if (!node || !previousRect || !nextRect) continue
+
+            const deltaX = previousRect.left - nextRect.left
+            const deltaY = previousRect.top - nextRect.top
+
+            if (Math.abs(deltaX) < 1 && Math.abs(deltaY) < 1) {
+                continue
+            }
+
+            node.animate(
+                [
+                    { transform: `translate3d(${deltaX}px, ${deltaY}px, 0)` },
+                    { transform: "translate3d(0, 0, 0)" },
+                ],
+                {
+                    duration: QUEUE_SHIFT_DURATION_MS,
+                    easing: QUEUE_SHIFT_EASING,
+                }
+            )
+        }
+
+        previousRectsRef.current = nextRects
+    }, [items])
 
     return (
         <div
-            className="absolute inset-0 z-20 pointer-events-none p-6 md:p-12"
+            className="absolute inset-0 z-20 p-3 md:p-5"
             data-testid="queue-card-grid"
         >
             <div
-                className="w-full h-full grid gap-4 md:gap-6 place-content-center place-items-center"
+                ref={scrollRegionRef}
+                className="relative h-full w-full overflow-auto overscroll-contain rounded-[1.75rem] border border-white/6 bg-background/[0.08] px-3 py-6 backdrop-blur-[2px] [scrollbar-gutter:stable] [scrollbar-width:thin]"
+                data-testid="queue-card-scroll-region"
                 style={{
-                    gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-                    gridTemplateRows: `repeat(${Math.ceil(count / cols)}, minmax(0, 1fr))`,
+                    maskImage:
+                        "linear-gradient(to bottom, transparent 0, black 2.75rem, black calc(100% - 2.75rem), transparent 100%)",
+                    WebkitMaskImage:
+                        "linear-gradient(to bottom, transparent 0, black 2.75rem, black calc(100% - 2.75rem), transparent 100%)",
                 }}
             >
-                <AnimatePresence mode="popLayout">
+                <div className="pointer-events-none sticky top-0 z-10 -mt-6 h-8 bg-gradient-to-b from-background/75 via-background/35 to-transparent" />
+                <div
+                    className="grid min-h-full auto-rows-max justify-center gap-4 pb-6 pt-1 md:gap-5"
+                    style={{
+                        gap: `${QUEUE_GRID_GAP_PX}px`,
+                        gridTemplateColumns: `repeat(${gridMetrics.columnCount}, minmax(0, ${gridMetrics.cardWidth}px))`,
+                    }}
+                >
                     {items.map((item) => (
                         <QueueCard
                             key={item.id}
                             item={item}
                             onCancel={onCancel}
+                            cardWidth={gridMetrics.cardWidth}
+                            registerCard={(node) => {
+                                if (node) {
+                                    cardRefs.current.set(item.id, node)
+                                } else {
+                                    cardRefs.current.delete(item.id)
+                                    previousRectsRef.current.delete(item.id)
+                                }
+                            }}
                         />
                     ))}
-                </AnimatePresence>
+                </div>
+                <div className="pointer-events-none sticky bottom-0 z-10 -mb-6 h-8 bg-gradient-to-t from-background/75 via-background/35 to-transparent" />
             </div>
         </div>
     )
@@ -205,86 +314,100 @@ function ElapsedTimer({
 const QueueCard = React.memo(function QueueCard({
     item,
     onCancel,
+    cardWidth,
+    registerCard,
 }: {
     item: QueueItem
     onCancel?: (id: string) => void
+    cardWidth: number
+    registerCard: (node: HTMLDivElement | null) => void
 }) {
     const isProcessing = item.status === "processing"
     const statusLabel = isProcessing ? "Generating" : "Queued"
 
     const raw = item.aspectRatio
     const aspectRatio = Number.isFinite(raw) && raw > 0 ? raw : 1
+    const displayAspectRatio = Math.min(1.28, Math.max(0.74, aspectRatio))
     const isTall = aspectRatio < 1
 
     return (
-        <motion.div
-            layout
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            className="w-full h-full flex items-center justify-center min-w-0 min-h-0 pointer-events-none"
+        <div
+            ref={registerCard}
+            className="pointer-events-none flex w-full items-start justify-center animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-2 duration-200"
         >
             <div
                 className={cn(
-                    "relative rounded-xl border shadow-lg overflow-hidden pointer-events-auto transition-all duration-300",
+                    "relative overflow-hidden rounded-[1.4rem] border shadow-lg pointer-events-auto transition-[transform,box-shadow,border-color,background-color] duration-200 ease-out transform-gpu will-change-transform",
                     "bg-background/80 backdrop-blur-xl",
                     isProcessing
-                        ? "border-primary/40 ring-2 ring-primary/20 shadow-primary/10"
-                        : "border-primary/15 shadow-black/40"
+                        ? "border-primary/40 ring-2 ring-primary/20 shadow-[0_12px_30px_-16px_hsl(var(--primary)/0.6)]"
+                        : "border-white/10 shadow-black/40"
                 )}
                 style={{
-                    aspectRatio,
-                    width: isTall ? "auto" : "100%",
-                    height: isTall ? "100%" : "auto",
-                    maxWidth: "100%",
-                    maxHeight: "100%",
+                    aspectRatio: displayAspectRatio,
+                    width: "100%",
+                    maxWidth: isTall
+                        ? `${Math.min(cardWidth, QUEUE_CARD_MIN_WIDTH_PX)}px`
+                        : `${cardWidth}px`,
                 }}
                 data-testid="queue-card"
             >
-            {/* Subtle gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.04] via-transparent to-transparent" />
-
-            {/* Content: spinner + elapsed + label */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-2">
-                <Loader2
+                <div
                     className={cn(
-                        "h-5 w-5 animate-spin",
-                        isProcessing ? "text-primary" : "text-muted-foreground/60"
+                        "absolute inset-0",
+                        isProcessing
+                            ? "bg-[radial-gradient(circle_at_50%_100%,hsl(var(--primary)/0.22),transparent_58%),linear-gradient(180deg,hsl(var(--background)/0.9),hsl(var(--background)/0.76))]"
+                            : "bg-[linear-gradient(180deg,hsl(var(--background)/0.92),hsl(var(--background)/0.8))]"
                     )}
                 />
-                <ElapsedTimer startMs={item.createdAt} isProcessing={isProcessing} />
-                <span
-                    className={cn(
-                        "text-[10px] font-medium leading-tight text-center",
-                        isProcessing ? "text-primary/90" : "text-muted-foreground/70"
-                    )}
-                >
-                    {statusLabel}
-                </span>
-            </div>
+                <div className="absolute inset-x-[9%] top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+                <div className="absolute inset-y-[10%] left-0 w-px bg-gradient-to-b from-transparent via-white/8 to-transparent" />
+                <div className="absolute inset-y-[10%] right-0 w-px bg-gradient-to-b from-transparent via-white/8 to-transparent" />
 
-            {/* Per-card Stop button — top-right corner */}
-            {onCancel && (
-                <button
-                    type="button"
-                    onClick={() => onCancel(item.id)}
-                    className={cn(
-                        "absolute top-1 right-1 z-10 pointer-events-auto",
-                        "flex items-center justify-center",
-                        "rounded-full p-1.5",
-                        "bg-background/80 backdrop-blur-sm border border-white/10",
-                        "text-muted-foreground hover:text-destructive hover:bg-destructive/10",
-                        "transition-colors duration-150",
-                        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-destructive"
-                    )}
-                    aria-label={`Stop generation ${item.labelIndex}`}
-                    data-testid="queue-card-stop"
-                >
-                    <X className="h-3 w-3" />
-                </button>
-            )}
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-3 pb-4 pt-5">
+                    <div className="relative flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-background/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                        <div
+                            className={cn(
+                                "absolute inset-[3px] rounded-full border border-white/5",
+                                isProcessing && "shadow-[0_0_0_1px_hsl(var(--primary)/0.12)]"
+                            )}
+                        />
+                        <Loader2
+                            className={cn(
+                                "h-4 w-4 animate-spin",
+                                isProcessing ? "text-primary" : "text-muted-foreground/60"
+                            )}
+                        />
+                    </div>
+                    <ElapsedTimer startMs={item.createdAt} isProcessing={isProcessing} />
+                    <span
+                        className={cn(
+                            "text-[11px] font-medium leading-tight text-center tracking-[0.02em]",
+                            isProcessing ? "text-primary/95" : "text-muted-foreground/78"
+                        )}
+                    >
+                        {statusLabel}
+                    </span>
+                </div>
+
+                {onCancel && (
+                    <button
+                        type="button"
+                        onClick={() => onCancel(item.id)}
+                        className={cn(
+                            "absolute right-2 top-2 z-10 pointer-events-auto flex items-center justify-center rounded-full border p-1.5",
+                            "bg-background/72 backdrop-blur-sm text-muted-foreground shadow-[0_6px_18px_-12px_rgba(0,0,0,0.75)]",
+                            "border-white/10 hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive",
+                            "transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-destructive"
+                        )}
+                        aria-label={`Stop generation ${item.labelIndex}`}
+                        data-testid="queue-card-stop"
+                    >
+                        <X className="h-3 w-3" />
+                    </button>
+                )}
             </div>
-        </motion.div>
+        </div>
     )
 })
 

@@ -143,6 +143,7 @@ describe("ImageCanvas", () => {
             const cards = screen.getAllByTestId("queue-card")
             expect(cards).toHaveLength(3)
             expect(screen.getByTestId("queue-card-grid")).toBeInTheDocument()
+            expect(screen.getByTestId("queue-card-scroll-region")).toBeInTheDocument()
         })
 
         it("does not render queue grid when queueItems is empty", () => {

@@ -254,6 +254,54 @@ export const cancelGeneration = mutation({
     },
 })
 
+/**
+ * Cancel all active generations for the current user.
+ * This is useful when many queued/processing items need to be cleared at once.
+ */
+export const cancelAllActiveGenerations = mutation({
+    args: {},
+    returns: v.object({
+        success: v.boolean(),
+        cancelledCount: v.number(),
+    }),
+    handler: async (ctx) => {
+        const identity = await ctx.auth.getUserIdentity()
+        if (!identity) {
+            throw new Error("Not authenticated")
+        }
+
+        const [pending, processing] = await Promise.all([
+            ctx.db
+                .query("pendingGenerations")
+                .withIndex("by_owner_status", (q) =>
+                    q.eq("ownerId", identity.subject).eq("status", "pending")
+                )
+                .collect(),
+            ctx.db
+                .query("pendingGenerations")
+                .withIndex("by_owner_status", (q) =>
+                    q.eq("ownerId", identity.subject).eq("status", "processing")
+                )
+                .collect(),
+        ])
+
+        const active = [...pending, ...processing]
+        const now = Date.now()
+
+        for (const generation of active) {
+            await ctx.db.patch(generation._id, {
+                status: "cancelled",
+                updatedAt: now,
+            })
+        }
+
+        return {
+            success: true,
+            cancelledCount: active.length,
+        }
+    },
+})
+
 // ============================================================
 // Internal Functions
 // ============================================================
