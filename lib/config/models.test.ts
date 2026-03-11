@@ -587,13 +587,13 @@ describe("Model Constraints", () => {
     })
 
     describe("Dirtberry", () => {
-        it("should have fixed dimensions (DALL-E 3 standard)", () => {
+        it("should have fixed portrait-only dimensions", () => {
             const model = getModel("dirtberry")!
             expect(model.constraints.dimensionsEnabled).toBe(false)
             expect(model.constraints.outputCertainty).toBe("exact")
-            expect(model.constraints.minDimension).toBe(1024)
-            expect(model.constraints.maxDimension).toBe(1792)
-            expect(model.constraints.defaultDimensions).toEqual({ width: 1024, height: 1024 })
+            expect(model.constraints.minDimension).toBe(832)
+            expect(model.constraints.maxDimension).toBe(1144)
+            expect(model.constraints.defaultDimensions).toEqual({ width: 832, height: 1144 })
         })
 
         it("should not support negative prompts or reference images", () => {
@@ -795,31 +795,14 @@ describe("Aspect Ratio Presets", () => {
         expect(imagenRatios).toEqual(grokRatios)
     })
 
-    it("should have Dirtberry limited to 3 presets (no custom) with DALL-E 3 standard dimensions", () => {
+    it("should have Dirtberry limited to a single portrait preset", () => {
         const ratios = getModelAspectRatios("dirtberry")!
-        expect(ratios.length).toBe(3)
+        expect(ratios.length).toBe(1)
         expect(ratios.every(r => r.value !== "custom")).toBe(true)
 
-        const square = ratios.find(r => r.value === "1:1")
-        expect(square?.width).toBe(1024)
-        expect(square?.height).toBe(1024)
-
-        const landscape = ratios.find(r => r.value === "16:9")
-        expect(landscape?.width).toBe(1792)
-        expect(landscape?.height).toBe(1024)
-
         const portrait = ratios.find(r => r.value === "9:16")
-        expect(portrait?.width).toBe(1024)
-        expect(portrait?.height).toBe(1792)
-    })
-
-    it("should have Dirtberry share identical aspect ratios with Imagen 4 and Grok Imagine", () => {
-        const imagenRatios = getModelAspectRatios("imagen-4")!
-        const dirtberryRatios = getModelAspectRatios("dirtberry")!
-        const grokRatios = getModelAspectRatios("grok-imagine")!
-
-        expect(dirtberryRatios).toEqual(imagenRatios)
-        expect(dirtberryRatios).toEqual(grokRatios)
+        expect(portrait?.width).toBe(832)
+        expect(portrait?.height).toBe(1144)
     })
 })
 

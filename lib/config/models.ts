@@ -200,6 +200,13 @@ const DALLE3_STANDARD_ASPECT_RATIOS: readonly AspectRatioOption[] = (
   ] as const
 ).map(withAspectRatioTags);
 
+/** Dirtberry fixed portrait-only preset */
+const DIRTBERRY_ASPECT_RATIOS: readonly AspectRatioOption[] = (
+  [
+    { label: "Portrait", value: "9:16", width: 832, height: 1144, icon: "rectangle-vertical", category: "portrait" },
+  ] as const
+).map(withAspectRatioTags);
+
 /** GPT 1.5 uses the same DALL-E 3 standard aspect ratios (1024², 1792×1024, 1024×1792) */
 const GPTIMAGE_LARGE_ASPECT_RATIOS = DALLE3_STANDARD_ASPECT_RATIOS;
 
@@ -533,10 +540,10 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
     constraints: {
       maxPixels: Infinity,
       minPixels: 0,
-      minDimension: 1024,
-      maxDimension: 1792,
+      minDimension: 832,
+      maxDimension: 1144,
       step: 1,
-      defaultDimensions: { width: 1024, height: 1024 },
+      defaultDimensions: { width: 832, height: 1144 },
       dimensionsEnabled: false,
       // Seed not supported: api.airforce buildRequestBody only sends model, prompt, n, size.
       // See: image.pollinations.ai/src/models/airforceModel.ts
@@ -545,7 +552,7 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
       outputCertainty: "exact",
       dimensionWarning: "Dimensions are fixed for this model",
     },
-    aspectRatios: DALLE3_STANDARD_ASPECT_RATIOS,
+    aspectRatios: DIRTBERRY_ASPECT_RATIOS,
     supportsNegativePrompt: false,
     supportsReferenceImage: false,
     // Dirtberry is kept safe-only in Bloom Studio (no NSFW/unrestricted flag)

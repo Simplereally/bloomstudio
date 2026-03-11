@@ -19,6 +19,7 @@ import type * as follows from "../follows.js";
 import type * as generatedImages from "../generatedImages.js";
 import type * as http from "../http.js";
 import type * as lib_crypto from "../lib/crypto.js";
+import type * as lib_dirtberryCrop from "../lib/dirtberryCrop.js";
 import type * as lib_groq from "../lib/groq.js";
 import type * as lib_index from "../lib/index.js";
 import type * as lib_nsfwDetection from "../lib/nsfwDetection.js";
@@ -73,6 +74,7 @@ declare const fullApi: ApiFromModules<{
   generatedImages: typeof generatedImages;
   http: typeof http;
   "lib/crypto": typeof lib_crypto;
+  "lib/dirtberryCrop": typeof lib_dirtberryCrop;
   "lib/groq": typeof lib_groq;
   "lib/index": typeof lib_index;
   "lib/nsfwDetection": typeof lib_nsfwDetection;

@@ -176,6 +176,19 @@ describe("useGenerationSettings", () => {
         expect(result.current.model).toBe("flux-realism")
     })
 
+    it("applies exact fixed dimensions for dirtberry model", () => {
+        const { result } = renderHook(() => useGenerationSettings())
+
+        act(() => {
+            result.current.handleModelChange("dirtberry")
+        })
+
+        expect(result.current.model).toBe("dirtberry")
+        expect(result.current.aspectRatio).toBe("9:16")
+        expect(result.current.width).toBe(832)
+        expect(result.current.height).toBe(1144)
+    })
+
     it("provides aspectRatios based on model", () => {
         const { result } = renderHook(() => useGenerationSettings())
 

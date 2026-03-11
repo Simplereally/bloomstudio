@@ -306,10 +306,17 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
         // For fixed-size models (dimensionsEnabled: false), use standard dimensions
         if (!newConstraints.dimensionsEnabled && ratios.length > 0) {
             const firstRatio = ratios[0]
-            // Use standard dimensions for this ratio at the tier
-            const standardDims = getStandardDimensionsWithFallback(firstRatio.value, tierToUse)
-            setWidth(standardDims.width)
-            setHeight(standardDims.height)
+            // Single-tier fixed models define exact output dimensions in the model preset.
+            // Multi-tier fixed models (e.g., video) still use tier-based standard dimensions.
+            const supportedTierCount = newConstraints.supportedTiers?.length ?? 1
+            if (supportedTierCount === 1) {
+                setWidth(firstRatio.width)
+                setHeight(firstRatio.height)
+            } else {
+                const standardDims = getStandardDimensionsWithFallback(firstRatio.value, tierToUse)
+                setWidth(standardDims.width)
+                setHeight(standardDims.height)
+            }
             setAspectRatio(firstRatio.value)
         } else {
             // For other models, try to preserve aspect ratio with standard dimensions
