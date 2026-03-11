@@ -840,9 +840,9 @@ describe("Video Model Properties", () => {
             expect(model.supportsReferenceImage).toBe(true)
         })
 
-        it("should support 2 reference frames", () => {
+        it("should support 1 reference frame", () => {
             const model = getModel("grok-video")!
-            expect(model.referenceFrameCount).toBe(2)
+            expect(model.referenceFrameCount).toBe(1)
         })
 
         it("should not support audio", () => {

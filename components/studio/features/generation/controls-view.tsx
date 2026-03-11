@@ -271,11 +271,15 @@ export const ControlsView = React.memo(function ControlsView({
   historyImages,
 }: ControlsViewProps) {
   const [modelExpanded, setModelExpanded] = React.useState(true);
+  const displayedVideoReferenceImages = React.useMemo(
+    () => videoReferenceImages?.slice(0, maxReferenceFrames) ?? [],
+    [maxReferenceFrames, videoReferenceImages]
+  );
 
   // Calculate frame count for video reference display
   const videoFrameCount = supportsInterpolation
     ? (videoInterpolationImages?.firstFrame ? 1 : 0) + (videoInterpolationImages?.lastFrame ? 1 : 0)
-    : (videoReferenceImages?.length ?? 0)
+    : displayedVideoReferenceImages.length
 
   const handleModelChange = React.useCallback(
     (newModel: string) => {
@@ -359,7 +363,7 @@ export const ControlsView = React.memo(function ControlsView({
       ) && (
         <VideoFramesSection
           isInterpolation={supportsInterpolation}
-          frames={videoReferenceImages}
+          frames={displayedVideoReferenceImages}
           onFramesChange={onVideoReferenceImagesChange}
           selectedImages={videoInterpolationImages}
           onImagesChange={onVideoInterpolationImagesChange}

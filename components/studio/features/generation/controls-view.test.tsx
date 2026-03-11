@@ -342,4 +342,21 @@ describe("ControlsView", () => {
     // Video settings section should NOT assume to be present if videoSettings is missing (but logic requires it as per current implementation)
     expect(screen.queryByTestId("video-settings-section")).not.toBeInTheDocument();
   });
+
+  it("limits non-interpolation video frames to maxReferenceFrames", () => {
+    render(
+      <ControlsView
+        {...defaultProps}
+        isVideoModel={true}
+        videoReferenceImages={["https://example.com/first.jpg", "https://example.com/second.jpg"]}
+        onVideoReferenceImagesChange={vi.fn()}
+        maxReferenceFrames={1}
+        videoSettings={undefined}
+        onVideoSettingsChange={undefined}
+      />
+    );
+
+    expect(screen.getByTestId("video-reference-frames-picker")).toHaveTextContent("Frames: 1");
+    expect(screen.getByTestId("video-frames-section-collapsed-content")).toHaveTextContent("1 frame");
+  });
 });

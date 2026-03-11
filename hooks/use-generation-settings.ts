@@ -190,13 +190,29 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
         duration: 5,
         audio: false,
     })
-    const [videoReferenceImages, setVideoReferenceImages] = useLocalStorage<string[]>("ps:gen:videoReferenceFrames", [])
+    const [videoReferenceImages, setStoredVideoReferenceImages] = useLocalStorage<string[]>("ps:gen:videoReferenceFrames", [])
 
     // ========================================
     // Model-specific Data (Memoized)
     // ========================================
     const modelDef = React.useMemo(() => getModel(model), [model])
     const isVideoModel = modelDef?.type === "video"
+    const maxVideoReferenceImages = React.useMemo(() => {
+        if (!modelDef) return undefined
+        return modelDef.supportsInterpolation ? 2 : modelDef.referenceFrameCount
+    }, [modelDef])
+    const normalizedVideoReferenceImages = React.useMemo(() => {
+        if (maxVideoReferenceImages === undefined) return videoReferenceImages
+        return videoReferenceImages.slice(0, maxVideoReferenceImages)
+    }, [maxVideoReferenceImages, videoReferenceImages])
+    const setVideoReferenceImages = React.useCallback<React.Dispatch<React.SetStateAction<string[]>>>((value) => {
+        setStoredVideoReferenceImages((prev) => {
+            const nextValue = value instanceof Function ? value(prev) : value
+            return maxVideoReferenceImages === undefined
+                ? nextValue
+                : nextValue.slice(0, maxVideoReferenceImages)
+        })
+    }, [maxVideoReferenceImages, setStoredVideoReferenceImages])
 
     const aspectRatios = React.useMemo(
         () => getModelAspectRatios(model) ?? [],
@@ -212,6 +228,12 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
         () => constraints ? getSupportedTiersForModel(constraints) : ["hd"] as const,
         [constraints]
     )
+
+    React.useEffect(() => {
+        if (maxVideoReferenceImages !== undefined && videoReferenceImages.length > maxVideoReferenceImages) {
+            setStoredVideoReferenceImages(videoReferenceImages.slice(0, maxVideoReferenceImages))
+        }
+    }, [maxVideoReferenceImages, setStoredVideoReferenceImages, videoReferenceImages])
 
     // ========================================
     // Resolution Tier Handler
@@ -434,7 +456,7 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
         isVideoModel,
         videoSettings,
         setVideoSettings,
-        videoReferenceImages,
+        videoReferenceImages: normalizedVideoReferenceImages,
         setVideoReferenceImages,
     }
 }
