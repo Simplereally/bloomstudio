@@ -18,6 +18,7 @@ import type { Id } from "./_generated/dataModel"
 import { internal } from "./_generated/api"
 import { action, internalAction, type ActionCtx } from "./_generated/server"
 import {
+    POLLINATIONS_FETCH_TIMEOUT_MS,
     buildPollinationsUrl,
     calculateBackoffDelay,
     cropDirtberryImageBuffer,
@@ -41,7 +42,6 @@ const POLLINATIONS_RETRY_CONFIG: RetryConfig = {
     baseDelayMs: 2000,
     maxDelayMs: 30000,
 }
-const POLLINATIONS_FETCH_TIMEOUT_MS = 45_000
 const MAX_POLLINATIONS_ATTEMPTS = POLLINATIONS_RETRY_CONFIG.maxRetries + 1
 
 /**

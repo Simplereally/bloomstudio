@@ -12,6 +12,7 @@
 
 /** Pollinations API base URL */
 export const POLLINATIONS_BASE_URL = "https://gen.pollinations.ai"
+export const POLLINATIONS_FETCH_TIMEOUT_MS = 10 * 60 * 1000
 
 /** Video model IDs - these are the only models that support duration, aspectRatio, audio, and lastFrameImage */
 const VIDEO_MODELS = ["veo", "seedance", "seedance-pro", "wan", "grok-video"] as const

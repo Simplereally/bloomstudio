@@ -12,6 +12,7 @@ export { decryptApiKey } from "./crypto"
 // Pollinations API utilities
 export {
     POLLINATIONS_BASE_URL,
+    POLLINATIONS_FETCH_TIMEOUT_MS,
     buildPollinationsUrl,
     classifyHttpError,
     classifyApiError,
