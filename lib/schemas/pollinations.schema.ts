@@ -19,6 +19,8 @@ export const KnownImageModelSchema = z.enum([
   "klein-large",
   "imagen-4",
   "grok-imagine",
+  "flux-2-dev",
+  "dirtberry",
 ]);
 
 export const ImageModelSchema = z.union([KnownImageModelSchema, z.string()]);

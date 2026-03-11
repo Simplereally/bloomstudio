@@ -22,6 +22,19 @@ export {
     type ErrorClassification,
 } from "./pollinations"
 
+// Dirtberry processing utilities
+export {
+    DIRTBERRY_TRIM_FRACTION,
+    DIRTBERRY_SOURCE_WIDTH,
+    DIRTBERRY_SOURCE_HEIGHT,
+    DIRTBERRY_OUTPUT_HEIGHT,
+    getDirtberrySourceDimensions,
+    isDirtberryModel,
+    calculateDirtberryCropRegion,
+    cropDirtberryImageBuffer,
+    type DirtberryCropResult,
+} from "./dirtberryCrop"
+
 // R2 storage utilities
 export {
     generateR2Key,

@@ -20,6 +20,9 @@ import { internalAction } from "./_generated/server"
 import {
     buildPollinationsUrl,
     classifyApiError,
+    cropDirtberryImageBuffer,
+    getDirtberrySourceDimensions,
+    isDirtberryModel,
     generateR2Key,
     generateThumbnailKey,
     uploadMediaWithThumbnail,
@@ -130,6 +133,8 @@ export const processBatchItem = internalAction({
         }
 
         try {
+            const shouldCropDirtberry = isDirtberryModel(batchJob.generationParams.model)
+            const dirtberrySourceDimensions = shouldCropDirtberry ? getDirtberrySourceDimensions() : null
             // Pollinations API only accepts seeds up to int32 max (2147483647)
             const INT32_MAX = 2147483647
             const rawSeed = batchJob.generationParams.seed ?? Math.floor(Math.random() * INT32_MAX)
@@ -140,8 +145,8 @@ export const processBatchItem = internalAction({
                 prompt: batchJob.generationParams.prompt,
                 negativePrompt: batchJob.generationParams.negativePrompt,
                 model: batchJob.generationParams.model,
-                width: batchJob.generationParams.width,
-                height: batchJob.generationParams.height,
+                width: dirtberrySourceDimensions?.width ?? batchJob.generationParams.width,
+                height: dirtberrySourceDimensions?.height ?? batchJob.generationParams.height,
                 seed,
                 enhance: batchJob.generationParams.enhance,
                 private: batchJob.generationParams.private,
@@ -191,12 +196,42 @@ export const processBatchItem = internalAction({
             const imageBuffer = Buffer.from(await response.arrayBuffer())
             const contentType = response.headers.get("content-type") || "image/jpeg"
 
+            let uploadBuffer = imageBuffer
+            let outputWidth = batchJob.generationParams.width ?? 1024
+            let outputHeight = batchJob.generationParams.height ?? 1024
+
+            // Crop Dirtberry outputs before upload/persistence so every surface
+            // (canvas, gallery, downloads, lightbox) uses the same native asset.
+            if (shouldCropDirtberry) {
+                try {
+                    const cropped = await cropDirtberryImageBuffer(imageBuffer)
+                    uploadBuffer = Buffer.from(cropped.buffer)
+                    outputWidth = cropped.width
+                    outputHeight = cropped.height
+
+                    if (cropped.wasCropped) {
+                        console.log(
+                            `${logger} Applied Dirtberry crop (${cropped.processor}): ${cropped.inputWidth}x${cropped.inputHeight} -> ${cropped.width}x${cropped.height} (trim=${cropped.trimPixels}px)`
+                        )
+                    } else {
+                        console.log(
+                            `${logger} Dirtberry crop skipped: source=${cropped.inputWidth}x${cropped.inputHeight} (image too small to trim safely)`
+                        )
+                    }
+                } catch (cropError) {
+                    console.error(
+                        `${logger} Dirtberry crop failed, falling back to original image:`,
+                        cropError
+                    )
+                }
+            }
+
             // Upload to R2 (and thumbnail for images — videos defer secondary assets)
             const r2Key = generateR2Key(batchJob.ownerId, contentType)
             console.log(`${logger} Uploading to R2: ${r2Key}`)
 
             const { media: uploadResult, thumbnail: thumbnailResult } = await uploadMediaWithThumbnail(
-                imageBuffer,
+                uploadBuffer,
                 r2Key,
                 contentType
             )
@@ -217,16 +252,23 @@ export const processBatchItem = internalAction({
                 previewR2Key: undefined,
                 previewUrl: undefined,
                 prompt: batchJob.generationParams.prompt,
-                width: batchJob.generationParams.width ?? 1024,
-                height: batchJob.generationParams.height ?? 1024,
+                width: outputWidth,
+                height: outputHeight,
                 model: batchJob.generationParams.model ?? "flux",
                 seed,
                 contentType,
                 sizeBytes: uploadResult.sizeBytes,
-                generationParams: {
-                    ...batchJob.generationParams,
-                    seed,
-                },
+                generationParams: shouldCropDirtberry
+                    ? {
+                        ...batchJob.generationParams,
+                        seed,
+                        width: outputWidth,
+                        height: outputHeight,
+                    }
+                    : {
+                        ...batchJob.generationParams,
+                        seed,
+                    },
                 visibility: batchJob.generationParams.private ? "unlisted" : "public",
             })
 

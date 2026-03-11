@@ -19,6 +19,9 @@ import { internalAction } from "./_generated/server"
 import {
     buildPollinationsUrl,
     classifyApiError,
+    cropDirtberryImageBuffer,
+    getDirtberrySourceDimensions,
+    isDirtberryModel,
     generateR2Key,
     generateThumbnailKey,
     uploadMediaWithThumbnail,
@@ -119,6 +122,8 @@ export const processGeneration = internalAction({
 
         try {
             const params = generation.generationParams
+            const shouldCropDirtberry = isDirtberryModel(params.model)
+            const dirtberrySourceDimensions = shouldCropDirtberry ? getDirtberrySourceDimensions() : null
             // Pollinations API only accepts seeds up to int32 max (2147483647)
             const INT32_MAX = 2147483647
             const rawSeed = params.seed ?? Math.floor(Math.random() * INT32_MAX)
@@ -134,8 +139,8 @@ export const processGeneration = internalAction({
                 prompt: params.prompt,
                 negativePrompt: params.negativePrompt,
                 model: params.model,
-                width: params.width,
-                height: params.height,
+                width: dirtberrySourceDimensions?.width ?? params.width,
+                height: dirtberrySourceDimensions?.height ?? params.height,
                 seed,
                 enhance: params.enhance,
                 private: params.private,
@@ -198,12 +203,42 @@ export const processGeneration = internalAction({
             const imageBuffer = Buffer.from(await response.arrayBuffer())
             const contentType = response.headers.get("content-type") || "image/jpeg"
 
+            let uploadBuffer = imageBuffer
+            let outputWidth = params.width ?? 1024
+            let outputHeight = params.height ?? 1024
+
+            // Crop Dirtberry outputs before upload/persistence so every surface
+            // (canvas, gallery, downloads, lightbox) uses the same native asset.
+            if (shouldCropDirtberry) {
+                try {
+                    const cropped = await cropDirtberryImageBuffer(imageBuffer)
+                    uploadBuffer = Buffer.from(cropped.buffer)
+                    outputWidth = cropped.width
+                    outputHeight = cropped.height
+
+                    if (cropped.wasCropped) {
+                        console.log(
+                            `${logger} Applied Dirtberry crop (${cropped.processor}): ${cropped.inputWidth}x${cropped.inputHeight} -> ${cropped.width}x${cropped.height} (trim=${cropped.trimPixels}px)`
+                        )
+                    } else {
+                        console.log(
+                            `${logger} Dirtberry crop skipped: source=${cropped.inputWidth}x${cropped.inputHeight} (image too small to trim safely)`
+                        )
+                    }
+                } catch (cropError) {
+                    console.error(
+                        `${logger} Dirtberry crop failed, falling back to original image:`,
+                        cropError
+                    )
+                }
+            }
+
             // Upload to R2 (and thumbnail for images — videos defer secondary assets)
             const r2Key = generateR2Key(generation.ownerId, contentType)
             console.log(`${logger} Uploading to R2: ${r2Key}`)
 
             const { media: uploadResult, thumbnail: thumbnailResult } = await uploadMediaWithThumbnail(
-                imageBuffer,
+                uploadBuffer,
                 r2Key,
                 contentType
             )
@@ -240,16 +275,23 @@ export const processGeneration = internalAction({
                 previewR2Key: undefined,
                 previewUrl: undefined,
                 prompt: params.prompt,
-                width: params.width ?? 1024,
-                height: params.height ?? 1024,
+                width: outputWidth,
+                height: outputHeight,
                 model: params.model ?? "flux",
                 seed,
                 contentType,
                 sizeBytes: uploadResult.sizeBytes,
-                generationParams: {
-                    ...params,
-                    seed,
-                },
+                generationParams: shouldCropDirtberry
+                    ? {
+                        ...params,
+                        seed,
+                        width: outputWidth,
+                        height: outputHeight,
+                    }
+                    : {
+                        ...params,
+                        seed,
+                    },
                 visibility: params.private ? "unlisted" : "public",
             })
 

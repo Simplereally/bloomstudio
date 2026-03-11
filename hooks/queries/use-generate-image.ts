@@ -361,11 +361,16 @@ export function useGenerateImage(
                                 callbacksRef.current.onSettled?.(undefined, err, entry.params)
                                 entry.reject?.(err)
                             } else if (generatedImage) {
+                                const entryParams = entry.params as GeneratedImage["params"]
                                 const image: GeneratedImage = {
                                     id: generatedImage._id,
                                     url: generatedImage.url,
                                     prompt: generatedImage.prompt,
-                                    params: entry.params as GeneratedImage["params"],
+                                    params: {
+                                        ...entryParams,
+                                        width: generatedImage.width ?? entryParams.width,
+                                        height: generatedImage.height ?? entryParams.height,
+                                    },
                                     timestamp: generatedImage.createdAt,
                                     r2Key: generatedImage.r2Key,
                                     sizeBytes: generatedImage.sizeBytes,
