@@ -50,6 +50,21 @@ function getConvexErrorCode(err: unknown): string | undefined {
     return undefined
 }
 
+function getDisplayErrorMessage(err: unknown): string {
+    if (err instanceof ConvexError) {
+        const data = err.data as { message?: string } | string
+        if (typeof data === "object" && data !== null && "message" in data && typeof data.message === "string") {
+            return data.message
+        }
+    }
+
+    if (err instanceof Error) {
+        return err.message
+    }
+
+    return String(err)
+}
+
 /**
  * Return type for useBatchMode hook
  */
@@ -260,7 +275,7 @@ export function useBatchMode({
             if (errorCode === ClientErrorCodeConst.TRIAL_EXPIRED) {
                 onTrialExpired?.()
             } else {
-                showErrorToast(error as Error)
+                showErrorToast(new Error(getDisplayErrorMessage(error)))
             }
         }
     }, [startBatch, onTrialExpired, apiKey, authorize])
@@ -302,8 +317,9 @@ export function useBatchMode({
             try {
                 await resumeBatch(effectiveBatchId)
             } catch (error) {
-                console.error("Failed to resume batch:", error)
-                showErrorToast(error as Error)
+                const message = getDisplayErrorMessage(error)
+                console.error("Failed to resume batch:", error, { message })
+                showErrorToast(new Error(message))
             }
         }
     }, [effectiveBatchId, resumeBatch])

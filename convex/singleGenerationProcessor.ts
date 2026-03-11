@@ -19,9 +19,9 @@ import { internal } from "./_generated/api"
 import { action, internalAction, type ActionCtx } from "./_generated/server"
 import {
     buildPollinationsUrl,
-    classifyApiError,
     calculateBackoffDelay,
     cropDirtberryImageBuffer,
+    fetchPollinationsWithTimeout,
     getDirtberrySourceDimensions,
     isDirtberryModel,
     generateR2Key,
@@ -55,112 +55,10 @@ const MOCK_PNG_BASE64 =
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7k6xwAAAAASUVORK5CYII="
 const MOCK_IMAGE_BUFFER = Buffer.from(MOCK_PNG_BASE64, "base64")
 
-/**
- * Determine if an API error should be retried based on status and response.
- * 
- * Retryable:
- * - 429 (Rate limit)
- * - 5xx (Server errors)
- * - Known transient errors (e.g., "No active flux servers available")
- * 
- * Non-retryable:
- * - 400 (Bad request - invalid parameters)
- * - 401, 403 (Auth errors)
- */
-function shouldRetryPollinationsError(status: number, errorText: string): boolean {
-    const classification = classifyApiError(status, errorText)
-    return classification.isRetryable
-}
-
 type ProcessGenerationArgs = {
     generationId: Id<"pendingGenerations">
     apiKey: string
     attempt?: number
-}
-
-type PollinationsAttemptResult =
-    | { success: true; response: Response }
-    | {
-        success: false
-        errorMessage: string
-        statusCode?: number
-        retryable: boolean
-    }
-
-function formatApiErrorText(rawErrorText: string): string {
-    try {
-        const parseRecursive = (input: unknown): unknown => {
-            if (typeof input !== "string") return input
-            try {
-                const parsed = JSON.parse(input)
-                if (parsed && typeof parsed === "object") {
-                    for (const key in parsed) {
-                        ;(parsed as Record<string, unknown>)[key] = parseRecursive(
-                            (parsed as Record<string, unknown>)[key]
-                        )
-                    }
-                }
-                return parsed
-            } catch {
-                return input
-            }
-        }
-        const parsed = parseRecursive(rawErrorText)
-        return typeof parsed === "string" ? parsed : JSON.stringify(parsed, null, 2)
-    } catch {
-        return rawErrorText
-    }
-}
-
-async function fetchPollinationsWithTimeout(
-    url: string,
-    apiKey: string,
-    timeoutMs: number,
-    logger: string
-): Promise<PollinationsAttemptResult> {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
-
-    try {
-        const response = await fetch(url, {
-            method: "GET",
-            headers: {
-                Authorization: `Bearer ${apiKey}`,
-            },
-            signal: controller.signal,
-        })
-
-        if (response.ok) {
-            return { success: true, response }
-        }
-
-        const rawErrorText = await response.text()
-        const displayError = formatApiErrorText(rawErrorText)
-        const errorMessage = `HTTP ${response.status}: ${displayError}`
-        const retryable = shouldRetryPollinationsError(response.status, rawErrorText)
-
-        return {
-            success: false,
-            errorMessage,
-            statusCode: response.status,
-            retryable,
-        }
-    } catch (error) {
-        const isAbort = error instanceof Error && error.name === "AbortError"
-        const errorMessage = isAbort
-            ? `Pollinations request timed out after ${timeoutMs}ms`
-            : error instanceof Error
-              ? error.message
-              : "Unknown network error"
-        console.error(`${logger} Pollinations fetch failed: ${errorMessage}`)
-        return {
-            success: false,
-            errorMessage,
-            retryable: true,
-        }
-    } finally {
-        clearTimeout(timeoutId)
-    }
 }
 
 function shouldUseDevGenerationMock(isVideoRequest: boolean): boolean {

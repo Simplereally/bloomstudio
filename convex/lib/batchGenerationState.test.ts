@@ -51,6 +51,22 @@ describe("getResumeBatchDecision", () => {
             reason: null,
         })
     })
+
+    it("handles sparse settled indexes correctly", () => {
+        expect(
+            getResumeBatchDecision({
+                currentIndex: 0,
+                totalCount: 10,
+                inFlightCount: 0,
+                settledItemIndexes: [0, 2],
+            })
+        ).toEqual({
+            canSchedule: true,
+            itemIndex: 1,
+            nextInFlightCount: 1,
+            reason: null,
+        })
+    })
 })
 
 describe("buildRecordBatchItemResultTransition", () => {

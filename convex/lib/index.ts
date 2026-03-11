@@ -15,10 +15,14 @@ export {
     buildPollinationsUrl,
     classifyHttpError,
     classifyApiError,
+    fetchPollinationsWithTimeout,
+    formatApiErrorText,
     isFluxModelUnavailable,
     matchNonRetryablePattern,
     NON_RETRYABLE_ERROR_PATTERNS,
+    type PollinationsAttemptResult,
     type PollinationsUrlParams,
+    type RetryKind,
     type ErrorClassification,
 } from "./pollinations"
 

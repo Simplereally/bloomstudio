@@ -123,9 +123,9 @@ vi.mock("@/convex/_generated/api", () => ({
             getGenerationsStatus: "singleGeneration.getGenerationsStatus",
             cancelGeneration: "singleGeneration.cancelGeneration",
         },
-            singleGenerationProcessor: {
-                processGeneration: "singleGenerationProcessor.processGeneration",
-            },
+        singleGenerationProcessor: {
+            processGeneration: "singleGenerationProcessor.processGeneration",
+        },
         generatedImages: {
             getById: "generatedImages.getById",
         },

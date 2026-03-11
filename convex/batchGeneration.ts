@@ -715,15 +715,16 @@ export const resumeBatchJob = mutation({
         // Update status to processing
         await ctx.db.patch(args.batchJobId, {
             status: "processing",
+            currentIndex: resumeDecision.itemIndex ?? batchJob.currentIndex,
             inFlightCount: resumeDecision.nextInFlightCount,
             updatedAt: Date.now(),
         })
 
         // Schedule the next item for processing
-        if (batchJob.currentIndex < batchJob.totalCount) {
+        if (resumeDecision.itemIndex !== null) {
             await ctx.scheduler.runAfter(0, internal.batchProcessor.processBatchItem, {
                 batchJobId: args.batchJobId,
-                itemIndex: batchJob.currentIndex,
+                itemIndex: resumeDecision.itemIndex,
             })
         }
 

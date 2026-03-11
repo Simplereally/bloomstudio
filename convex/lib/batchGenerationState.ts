@@ -24,10 +24,11 @@ export function getResumeBatchDecision(state: {
     }
 
     const settledItemIndexes = state.settledItemIndexes ?? []
-    const itemIndex =
-        settledItemIndexes.includes(state.currentIndex)
-            ? state.currentIndex + 1
-            : state.currentIndex
+    let itemIndex = state.currentIndex
+
+    while (settledItemIndexes.includes(itemIndex) && itemIndex < state.totalCount) {
+        itemIndex += 1
+    }
 
     if (itemIndex >= state.totalCount) {
         return {
