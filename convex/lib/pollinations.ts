@@ -50,6 +50,18 @@ export interface ErrorClassification {
     reason: string
 }
 
+export type RetryKind = "throttle" | "transient_error" | "permanent"
+
+export type PollinationsAttemptResult =
+    | { success: true; response: Response }
+    | {
+        success: false
+        errorMessage: string
+        statusCode?: number
+        retryable: boolean
+        retryKind?: RetryKind
+    }
+
 // ============================================================
 // URL Building
 // ============================================================
@@ -318,4 +330,89 @@ export function classifyApiError(status: number, errorText: string): ErrorClassi
 
     // 3. Fall back to HTTP status classification
     return classifyHttpError(status)
+}
+
+export function formatApiErrorText(rawErrorText: string): string {
+    try {
+        const parseRecursive = (input: unknown): unknown => {
+            if (typeof input !== "string") return input
+            try {
+                const parsed = JSON.parse(input)
+                if (parsed && typeof parsed === "object") {
+                    for (const key in parsed) {
+                        ;(parsed as Record<string, unknown>)[key] = parseRecursive(
+                            (parsed as Record<string, unknown>)[key]
+                        )
+                    }
+                }
+                return parsed
+            } catch {
+                return input
+            }
+        }
+
+        const parsed = parseRecursive(rawErrorText)
+        return typeof parsed === "string" ? parsed : JSON.stringify(parsed, null, 2)
+    } catch {
+        return rawErrorText
+    }
+}
+
+export async function fetchPollinationsWithTimeout(
+    url: string,
+    apiKey: string,
+    timeoutMs: number,
+    logger: string,
+    includeRetryKind = false
+): Promise<PollinationsAttemptResult> {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+    try {
+        const response = await fetch(url, {
+            method: "GET",
+            headers: {
+                Authorization: `Bearer ${apiKey}`,
+            },
+            signal: controller.signal,
+        })
+
+        if (response.ok) {
+            return { success: true, response }
+        }
+
+        const rawErrorText = await response.text()
+        const displayError = formatApiErrorText(rawErrorText)
+        const errorMessage = `HTTP ${response.status}: ${displayError}`
+        const retryable = classifyApiError(response.status, rawErrorText).isRetryable
+        const retryKind: RetryKind = !retryable
+            ? "permanent"
+            : response.status === 429
+              ? "throttle"
+              : "transient_error"
+
+        return {
+            success: false,
+            errorMessage,
+            statusCode: response.status,
+            retryable,
+            ...(includeRetryKind ? { retryKind } : {}),
+        }
+    } catch (error) {
+        const isAbort = error instanceof Error && error.name === "AbortError"
+        const errorMessage = isAbort
+            ? `Pollinations request timed out after ${timeoutMs}ms`
+            : error instanceof Error
+              ? error.message
+              : "Unknown network error"
+        console.error(`${logger} Pollinations fetch failed: ${errorMessage}`)
+        return {
+            success: false,
+            errorMessage,
+            retryable: true,
+            ...(includeRetryKind ? { retryKind: "transient_error" as const } : {}),
+        }
+    } finally {
+        clearTimeout(timeoutId)
+    }
 }

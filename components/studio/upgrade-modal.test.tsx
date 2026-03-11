@@ -57,7 +57,7 @@ describe("UpgradeModal", () => {
 		expect(
 			screen.getByText("generations / day"),
 		).toBeInTheDocument();
-		expect(screen.getByText("9")).toBeInTheDocument();
+		expect(screen.getByText("10")).toBeInTheDocument();
 		expect(screen.getByText("AI models included")).toBeInTheDocument();
 		expect(screen.getByText("Daily")).toBeInTheDocument();
 	});

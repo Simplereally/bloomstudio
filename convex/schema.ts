@@ -307,12 +307,15 @@ export default defineSchema({
          * This helps track requests that will still complete after pause/cancel.
          */
         inFlightCount: v.optional(v.number()),
+        /** Adaptive inter-item delay (ms) used to reduce provider retry pressure. */
+        adaptiveDelayMs: v.optional(v.number()),
         /** Shared generation parameters for all images */
         generationParams: v.any(),
         /** Pollinations API key for BYOP flow (passed from client, stored for processor actions) */
         apiKey: v.optional(v.string()),
         /** IDs of successfully generated images */
         imageIds: v.array(v.id("generatedImages")),
+        settledItemIndexes: v.optional(v.array(v.number())),
         /** Number of retry attempts for current item (for transient failures) */
         currentItemRetryCount: v.optional(v.number()),
         /** Last HTTP error code from Pollinations API (401=auth, 402=budget, 403=access) */

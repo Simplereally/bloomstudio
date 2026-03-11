@@ -32,7 +32,7 @@ const mockGeneratedImagesById = new Map<string, {
 // Mock mutation functions
 const mockStartGeneration = vi.fn()
 const mockCancelGeneration = vi.fn()
-const mockDispatchGeneration = vi.fn()
+const mockProcessGeneration = vi.fn()
 
 // Map mutation references to their mock implementations
 const mutationMocks: Record<string, ReturnType<typeof vi.fn>> = {
@@ -74,8 +74,8 @@ vi.mock("convex/react", () => ({
         }),
     }),
     useAction: (actionRef: string) => {
-        if (actionRef === "singleGeneration.dispatchGeneration") {
-            return mockDispatchGeneration
+        if (actionRef === "singleGenerationProcessor.processGeneration") {
+            return mockProcessGeneration
         }
         return vi.fn()
     },
@@ -119,10 +119,12 @@ vi.mock("@/convex/_generated/api", () => ({
     api: {
         singleGeneration: {
             startGeneration: "singleGeneration.startGeneration",
-            dispatchGeneration: "singleGeneration.dispatchGeneration",
             getGenerationStatus: "singleGeneration.getGenerationStatus",
             getGenerationsStatus: "singleGeneration.getGenerationsStatus",
             cancelGeneration: "singleGeneration.cancelGeneration",
+        },
+        singleGenerationProcessor: {
+            processGeneration: "singleGenerationProcessor.processGeneration",
         },
         generatedImages: {
             getById: "generatedImages.getById",
@@ -142,8 +144,8 @@ describe("useGenerateImage", () => {
         mockGeneratedImagesById.clear()
         mockStartGeneration.mockReset()
         mockCancelGeneration.mockReset()
-        mockDispatchGeneration.mockReset()
-        mockDispatchGeneration.mockResolvedValue(undefined)
+        mockProcessGeneration.mockReset()
+        mockProcessGeneration.mockResolvedValue(undefined)
         mockAuthorize.mockReset()
     })
 
@@ -178,7 +180,7 @@ describe("useGenerateImage", () => {
             },
             apiKey: mockApiKey,
         })
-        expect(mockDispatchGeneration).toHaveBeenCalledWith({
+        expect(mockProcessGeneration).toHaveBeenCalledWith({
             generationId,
             apiKey: mockApiKey,
         })

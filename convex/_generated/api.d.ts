@@ -18,6 +18,7 @@ import type * as favorites from "../favorites.js";
 import type * as follows from "../follows.js";
 import type * as generatedImages from "../generatedImages.js";
 import type * as http from "../http.js";
+import type * as lib_batchGenerationState from "../lib/batchGenerationState.js";
 import type * as lib_crypto from "../lib/crypto.js";
 import type * as lib_dirtberryCrop from "../lib/dirtberryCrop.js";
 import type * as lib_groq from "../lib/groq.js";
@@ -73,6 +74,7 @@ declare const fullApi: ApiFromModules<{
   follows: typeof follows;
   generatedImages: typeof generatedImages;
   http: typeof http;
+  "lib/batchGenerationState": typeof lib_batchGenerationState;
   "lib/crypto": typeof lib_crypto;
   "lib/dirtberryCrop": typeof lib_dirtberryCrop;
   "lib/groq": typeof lib_groq;

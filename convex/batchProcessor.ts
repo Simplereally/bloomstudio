@@ -19,14 +19,14 @@ import { internal } from "./_generated/api"
 import { internalAction } from "./_generated/server"
 import {
     buildPollinationsUrl,
-    classifyApiError,
+    calculateBackoffDelay,
     cropDirtberryImageBuffer,
+    fetchPollinationsWithTimeout,
     getDirtberrySourceDimensions,
     isDirtberryModel,
     generateR2Key,
     generateThumbnailKey,
     uploadMediaWithThumbnail,
-    fetchWithRetry,
     type RetryConfig,
 } from "./lib"
 
@@ -40,22 +40,17 @@ const POLLINATIONS_RETRY_CONFIG: RetryConfig = {
     baseDelayMs: 2000,
     maxDelayMs: 30000,
 }
+const POLLINATIONS_FETCH_TIMEOUT_MS = 45_000
+const MAX_POLLINATIONS_ATTEMPTS = POLLINATIONS_RETRY_CONFIG.maxRetries + 1
+const ENABLE_DEV_GENERATION_MOCK = process.env.CONVEX_ENABLE_DEV_GENERATION_MOCK === "true"
+const MOCK_PNG_BASE64 =
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7k6xwAAAAASUVORK5CYII="
+const MOCK_IMAGE_BUFFER = Buffer.from(MOCK_PNG_BASE64, "base64")
 
-/**
- * Determine if an API error should be retried based on status and response.
- * 
- * Retryable:
- * - 429 (Rate limit)
- * - 5xx (Server errors)
- * - Known transient errors (e.g., "No active flux servers available")
- * 
- * Non-retryable:
- * - 400 (Bad request - invalid parameters)
- * - 401, 403 (Auth errors)
- */
-function shouldRetryPollinationsError(status: number, errorText: string): boolean {
-    const classification = classifyApiError(status, errorText)
-    return classification.isRetryable
+function shouldUseDevGenerationMock(isVideoRequest: boolean): boolean {
+    const deployment = process.env.CONVEX_DEPLOYMENT ?? ""
+    const isDevDeployment = deployment.startsWith("dev:")
+    return ENABLE_DEV_GENERATION_MOCK && isDevDeployment && !isVideoRequest
 }
 
 // ============================================================
@@ -76,21 +71,24 @@ export const processBatchItem = internalAction({
     args: {
         batchJobId: v.id("batchJobs"),
         itemIndex: v.number(),
+        attempt: v.optional(v.number()),
     },
     handler: async (ctx, args) => {
         const logger = `[BatchProcessor]`
+        const attempt = args.attempt ?? 1
 
-        // 1. Fire-and-forget scheduling of the NEXT item immediately
-        // This ensures high throughput (10 req/s) by pipelining requests
-        // independent of how long the current generation takes.
-        try {
-            await ctx.runMutation(internal.batchGeneration.scheduleNextBatchItem, {
-                batchJobId: args.batchJobId,
-                currentItemIndex: args.itemIndex,
-            })
-        } catch (error) {
-            console.error(`${logger} Failed to schedule next item:`, error)
-            // Continue processing current item even if scheduling next fails
+        // Fire-and-forget scheduling of the NEXT item immediately, but only
+        // for the first attempt of this item (retries should not fan out).
+        if (attempt === 1) {
+            try {
+                await ctx.runMutation(internal.batchGeneration.scheduleNextBatchItem, {
+                    batchJobId: args.batchJobId,
+                    currentItemIndex: args.itemIndex,
+                })
+            } catch (error) {
+                console.error(`${logger} Failed to schedule next item:`, error)
+                // Continue processing current item even if scheduling next fails
+            }
         }
 
         // Get the batch job to check status and get params
@@ -115,7 +113,9 @@ export const processBatchItem = internalAction({
             return
         }
 
-        console.log(`${logger} Processing item ${args.itemIndex + 1}/${batchJob.totalCount} for batch ${args.batchJobId}`)
+        console.log(
+            `${logger} Processing item ${args.itemIndex + 1}/${batchJob.totalCount} for batch ${args.batchJobId} (attempt ${attempt}/${MAX_POLLINATIONS_ATTEMPTS})`
+        )
 
         // Use the API key stored in the batch job (BYOP flow)
         const pollinationsApiKey = batchJob.apiKey
@@ -128,6 +128,7 @@ export const processBatchItem = internalAction({
                 itemIndex: args.itemIndex,
                 success: false,
                 errorMessage: "No Pollinations API key configured. Please connect to Pollinations first.",
+                retryCount: attempt > 1 ? attempt - 1 : undefined,
             })
             return
         }
@@ -139,62 +140,99 @@ export const processBatchItem = internalAction({
             const INT32_MAX = 2147483647
             const rawSeed = batchJob.generationParams.seed ?? Math.floor(Math.random() * INT32_MAX)
             const seed = Math.min(rawSeed, INT32_MAX)
+            const isVideoRequest =
+                batchJob.generationParams.duration !== undefined ||
+                batchJob.generationParams.audio !== undefined ||
+                batchJob.generationParams.aspectRatio !== undefined ||
+                batchJob.generationParams.lastFrameImage !== undefined
 
-            // Build the generation URL
-            const generationUrl = buildPollinationsUrl({
-                prompt: batchJob.generationParams.prompt,
-                negativePrompt: batchJob.generationParams.negativePrompt,
-                model: batchJob.generationParams.model,
-                width: dirtberrySourceDimensions?.width ?? batchJob.generationParams.width,
-                height: dirtberrySourceDimensions?.height ?? batchJob.generationParams.height,
-                seed,
-                enhance: batchJob.generationParams.enhance,
-                private: batchJob.generationParams.private,
-                safe: batchJob.generationParams.safe,
-                image: batchJob.generationParams.image,
-                // Video-specific parameters
-                duration: batchJob.generationParams.duration,
-                audio: batchJob.generationParams.audio,
-                aspectRatio: batchJob.generationParams.aspectRatio,
-                lastFrameImage: batchJob.generationParams.lastFrameImage,
-            })
+            let imageBuffer: Buffer
+            let contentType: string
 
-            // Log generation request without prompt (which may contain PII)
-            console.log(`${logger} Generating with model=${batchJob.generationParams.model}, size=${batchJob.generationParams.width}x${batchJob.generationParams.height}, seed=${seed}`)
-
-            // Call Pollinations API with retry logic
-            const result = await fetchWithRetry(
-                generationUrl,
-                {
-                    method: "GET",
-                    headers: {
-                        Authorization: `Bearer ${pollinationsApiKey}`,
-                    },
-                },
-                shouldRetryPollinationsError,
-                POLLINATIONS_RETRY_CONFIG,
-                `${logger} Item ${args.itemIndex + 1}`
-            )
-
-            if (!result.success || !result.data) {
-                console.error(`${logger} Pollinations API error after ${result.attemptsMade} attempts:`, result.error)
-                await ctx.runMutation(internal.batchGeneration.recordBatchItemResult, {
-                    batchJobId: args.batchJobId,
-                    itemIndex: args.itemIndex,
-                    success: false,
-                    errorMessage: result.error ?? "Generation failed after retries",
-                    // Include HTTP status code for client-side error detection (401=auth, 402=budget, 403=access)
-                    errorCode: result.lastStatus,
-                    retryCount: result.attemptsMade - 1,
+            if (shouldUseDevGenerationMock(isVideoRequest)) {
+                imageBuffer = Buffer.from(MOCK_IMAGE_BUFFER)
+                contentType = "image/png"
+                console.log(
+                    `${logger} Dev mock enabled, using placeholder image for batch ${args.batchJobId} item ${args.itemIndex + 1}`
+                )
+            } else {
+                // Build the generation URL
+                const generationUrl = buildPollinationsUrl({
+                    prompt: batchJob.generationParams.prompt,
+                    negativePrompt: batchJob.generationParams.negativePrompt,
+                    model: batchJob.generationParams.model,
+                    width: dirtberrySourceDimensions?.width ?? batchJob.generationParams.width,
+                    height: dirtberrySourceDimensions?.height ?? batchJob.generationParams.height,
+                    seed,
+                    enhance: batchJob.generationParams.enhance,
+                    private: batchJob.generationParams.private,
+                    safe: batchJob.generationParams.safe,
+                    image: batchJob.generationParams.image,
+                    // Video-specific parameters
+                    duration: batchJob.generationParams.duration,
+                    audio: batchJob.generationParams.audio,
+                    aspectRatio: batchJob.generationParams.aspectRatio,
+                    lastFrameImage: batchJob.generationParams.lastFrameImage,
                 })
-                return
+
+                console.log(
+                    `${logger} Generating with model=${batchJob.generationParams.model}, size=${batchJob.generationParams.width}x${batchJob.generationParams.height}, seed=${seed}`
+                )
+
+                const pollinationsAttempt = await fetchPollinationsWithTimeout(
+                    generationUrl,
+                    pollinationsApiKey,
+                    POLLINATIONS_FETCH_TIMEOUT_MS,
+                    `${logger} Item ${args.itemIndex + 1}`,
+                    true
+                )
+
+                if (!pollinationsAttempt.success) {
+                    const canRetry =
+                        pollinationsAttempt.retryable && attempt < MAX_POLLINATIONS_ATTEMPTS
+
+                    if (canRetry) {
+                        await ctx.runMutation(internal.batchGeneration.adjustAdaptiveDelay, {
+                            batchJobId: args.batchJobId,
+                            outcome:
+                                pollinationsAttempt.retryKind === "throttle"
+                                    ? "throttle"
+                                    : "transient_error",
+                        })
+
+                        const delayMs = Math.round(
+                            calculateBackoffDelay(
+                                attempt - 1,
+                                POLLINATIONS_RETRY_CONFIG.baseDelayMs,
+                                POLLINATIONS_RETRY_CONFIG.maxDelayMs
+                            )
+                        )
+                        await ctx.scheduler.runAfter(delayMs, internal.batchProcessor.processBatchItem, {
+                            batchJobId: args.batchJobId,
+                            itemIndex: args.itemIndex,
+                            attempt: attempt + 1,
+                        })
+                        console.error(
+                            `${logger} Item ${args.itemIndex + 1} failed (attempt ${attempt}/${MAX_POLLINATIONS_ATTEMPTS}), retrying in ${delayMs}ms: ${pollinationsAttempt.errorMessage}`
+                        )
+                        return
+                    }
+
+                    await ctx.runMutation(internal.batchGeneration.recordBatchItemResult, {
+                        batchJobId: args.batchJobId,
+                        itemIndex: args.itemIndex,
+                        success: false,
+                        errorMessage: pollinationsAttempt.errorMessage,
+                        errorCode: pollinationsAttempt.statusCode,
+                        retryCount: attempt > 1 ? attempt - 1 : undefined,
+                    })
+                    return
+                }
+
+                const response = pollinationsAttempt.response
+                imageBuffer = Buffer.from(await response.arrayBuffer())
+                contentType = response.headers.get("content-type") || "image/jpeg"
             }
-
-            const response = result.data
-
-            // Get the image data
-            const imageBuffer = Buffer.from(await response.arrayBuffer())
-            const contentType = response.headers.get("content-type") || "image/jpeg"
 
             let uploadBuffer = imageBuffer
             let outputWidth = batchJob.generationParams.width ?? 1024
@@ -272,7 +310,13 @@ export const processBatchItem = internalAction({
                 visibility: batchJob.generationParams.private ? "unlisted" : "public",
             })
 
-            console.log(`${logger} Item ${args.itemIndex + 1} completed successfully${result.attemptsMade > 1 ? ` (after ${result.attemptsMade} attempts)` : ""}`)
+            console.log(
+                `${logger} Item ${args.itemIndex + 1} completed successfully${attempt > 1 ? ` (after ${attempt} attempts)` : ""}`
+            )
+            await ctx.runMutation(internal.batchGeneration.adjustAdaptiveDelay, {
+                batchJobId: args.batchJobId,
+                outcome: "success",
+            })
 
             // Record the result
             await ctx.runMutation(internal.batchGeneration.recordBatchItemResult, {
@@ -280,7 +324,7 @@ export const processBatchItem = internalAction({
                 itemIndex: args.itemIndex,
                 success: true,
                 imageId,
-                retryCount: result.attemptsMade > 1 ? result.attemptsMade - 1 : undefined,
+                retryCount: attempt > 1 ? attempt - 1 : undefined,
             })
 
             // Schedule background secondary asset processing for videos
@@ -302,6 +346,7 @@ export const processBatchItem = internalAction({
                 itemIndex: args.itemIndex,
                 success: false,
                 errorMessage: error instanceof Error ? error.message : "Unknown error",
+                retryCount: attempt > 1 ? attempt - 1 : undefined,
             })
         }
     },

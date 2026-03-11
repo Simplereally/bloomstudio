@@ -44,7 +44,7 @@ export function LimitTester() {
     const [naturalDimensions, setNaturalDimensions] = useState<{ w: number; h: number } | null>(null)
 
     const startGeneration = useMutation(api.singleGeneration.startGeneration)
-    const dispatchGeneration = useAction(api.singleGeneration.dispatchGeneration)
+    const processGeneration = useAction(api.singleGenerationProcessor.processGeneration)
     
     // BYOP context for API key
     const apiKey = usePollenApiKey()
@@ -81,7 +81,7 @@ export function LimitTester() {
                 apiKey,
             })
             setCurrentGenId(id)
-            void Promise.resolve(dispatchGeneration({ generationId: id, apiKey })).catch((dispatchError) => {
+            void Promise.resolve(processGeneration({ generationId: id, apiKey })).catch((dispatchError) => {
                 console.error("Immediate dispatch failed; recovery path will retry:", dispatchError)
             })
         } catch (error) {
