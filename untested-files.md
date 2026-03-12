@@ -21,7 +21,6 @@
 > Backend mutations, queries, and actions
 
 **`convex/`**
-- [x] `batchProcessor.ts`
 - [x] `crons.ts` <!-- Agent 2 -->
 - [x] `favorites.ts`
 - [x] `follows.ts`
@@ -35,10 +34,7 @@
 - [ ] `schema.ts`
 - [x] `sensitivityMigration.ts` <!-- Agent 4 -->
 - [x] `singleGeneration.ts`
-- [x] `singleGenerationProcessor.ts` <!-- Agent 6 -->
 - [x] `stripe.ts`
-- [x] `thumbnailMigration.ts` <!-- Agent 5 -->
-- [x] `thumbnailMigrationActions.ts` <!-- Agent 6 -->
 - [x] `users.ts`
 
 ### Convex Libraries (5 files)
@@ -48,8 +44,6 @@
 - [ ] `index.ts`
 - [x] `providerHealthFunctions.ts` <!-- Agent 4 -->
 - [x] `subscription.ts` <!-- Agent 5 -->
-- [x] `videoPreview.ts` <!-- Agent 4 -->
-- [x] `videoThumbnail.ts` <!-- Agent 5 -->
 
 ### Hooks (10 files)
 > Custom React hooks
@@ -410,7 +404,6 @@
 
 **`scripts/`**
 - [ ] `audit-tests.ts`
-- [ ] `migrate-local.ts`
 - [ ] `optimize-solutions.ts`
 
 ### Types (1 files)

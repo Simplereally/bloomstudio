@@ -2,6 +2,8 @@
 
 import * as React from "react"
 
+const readyMediaUrls = new Set<string>()
+
 /**
  * Props for the useMediaPlayer hook
  */
@@ -71,6 +73,20 @@ function normalizeMediaUrl(src: string) {
     }
 }
 
+export function markMediaUrlReady(src: string) {
+    if (!src) return
+    readyMediaUrls.add(normalizeMediaUrl(src))
+}
+
+export function isMediaUrlReady(src: string) {
+    if (!src) return false
+    return readyMediaUrls.has(normalizeMediaUrl(src))
+}
+
+export function resetReadyMediaUrlsForTest() {
+    readyMediaUrls.clear()
+}
+
 /**
  * Custom hook for managing media player state and video playback.
  */
@@ -83,18 +99,22 @@ export function useMediaPlayer({
     onError,
     onClick,
 }: UseMediaPlayerProps): UseMediaPlayerReturn {
-    const [isLoading, setIsLoading] = React.useState(true)
-    const [hasError, setHasError] = React.useState(false)
+    const [isLoadingState, setIsLoading] = React.useState(() => !isMediaUrlReady(url))
+    const [hasErrorState, setHasError] = React.useState(false)
     const videoRef = React.useRef<HTMLVideoElement | null>(null)
 
     const playPromiseRef = React.useRef<Promise<void> | null>(null)
     const currentUrlRef = React.useRef(url)
+    const committedUrlRef = React.useRef(url)
     const autoplayAttemptVersionRef = React.useRef(0)
     const hasDispatchedLoadRef = React.useRef(false)
     const retryTimeoutRef = React.useRef<number | null>(null)
     const errorTimeoutRef = React.useRef<number | null>(null)
 
     currentUrlRef.current = url
+    const hasPendingUrlChange = committedUrlRef.current !== url
+    const isLoading = hasPendingUrlChange ? !isMediaUrlReady(url) : isLoadingState
+    const hasError = hasPendingUrlChange ? false : hasErrorState
 
     const clearRetryTimeout = React.useCallback(() => {
         if (retryTimeoutRef.current !== null) {
@@ -118,7 +138,8 @@ export function useMediaPlayer({
     }, [])
 
     React.useEffect(() => {
-        setIsLoading(true)
+        committedUrlRef.current = url
+        setIsLoading(!isMediaUrlReady(url))
         setHasError(false)
         playPromiseRef.current = null
         hasDispatchedLoadRef.current = false
@@ -144,6 +165,7 @@ export function useMediaPlayer({
         if (hasError) {
             setHasError(false)
         }
+        markMediaUrlReady(getMediaSource(element) || currentUrlRef.current)
         setIsLoading(false)
 
         if (!hasDispatchedLoadRef.current) {

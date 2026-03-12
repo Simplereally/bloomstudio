@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import { MediaPlayer, isVideoContent } from "./media-player"
 import * as React from "react"
+import { resetReadyMediaUrlsForTest } from "@/hooks/use-media-player"
 
 // Mock next/image
 vi.mock("next/image", () => ({
@@ -43,6 +44,7 @@ describe("MediaPlayer", () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
+        resetReadyMediaUrlsForTest()
     })
 
     it("renders an image by default", () => {
@@ -90,6 +92,20 @@ describe("MediaPlayer", () => {
         expect(video).toHaveAttribute("preload", "metadata")
     })
 
+    it("shows the loading spinner for videos even when a poster is available", () => {
+        render(
+            <MediaPlayer
+                url={videoUrl}
+                poster="https://example.com/poster.jpg"
+                contentType="video/mp4"
+            />,
+        )
+
+        const video = screen.getByTestId("media-video")
+        expect(video).toHaveAttribute("poster", "https://example.com/poster.jpg")
+        expect(video.parentElement?.querySelector(".animate-spin")).toBeInTheDocument()
+    })
+
     it("renders video muted when autoPlay is true regardless of muted prop", () => {
         render(<MediaPlayer url={videoUrl} autoPlay={true} muted={false} contentType="video/mp4" />)
         const video = screen.getByTestId("media-video") as HTMLVideoElement
@@ -120,6 +136,38 @@ describe("MediaPlayer", () => {
         fireEvent(video, new Event("canplay"))
 
         expect(video.parentElement?.querySelector(".animate-spin")).not.toBeInTheDocument()
+    })
+
+    it("does not show the loading spinner again for a previously loaded video URL", () => {
+        const firstRender = render(<MediaPlayer url={videoUrl} contentType="video/mp4" />)
+        const firstVideo = screen.getByTestId("media-video")
+
+        fireEvent(firstVideo, new Event("canplay"))
+        firstRender.unmount()
+
+        render(<MediaPlayer url={videoUrl} contentType="video/mp4" />)
+        const secondVideo = screen.getByTestId("media-video")
+
+        expect(secondVideo.parentElement?.querySelector(".animate-spin")).not.toBeInTheDocument()
+    })
+
+    it("shows the loading spinner immediately when switching to a different unloaded video URL", () => {
+        const { rerender } = render(<MediaPlayer url={videoUrl} contentType="video/mp4" />)
+        const firstVideo = screen.getByTestId("media-video")
+
+        fireEvent(firstVideo, new Event("canplay"))
+        expect(firstVideo.parentElement?.querySelector(".animate-spin")).not.toBeInTheDocument()
+
+        rerender(
+            <MediaPlayer
+                url="https://example.com/video-2.mp4"
+                contentType="video/mp4"
+            />,
+        )
+
+        const secondVideo = screen.getByTestId("media-video")
+        expect(secondVideo).toHaveAttribute("src", "https://example.com/video-2.mp4")
+        expect(secondVideo.parentElement?.querySelector(".animate-spin")).toBeInTheDocument()
     })
 
     it("calls onLoad when image loads", () => {

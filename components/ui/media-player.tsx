@@ -22,10 +22,10 @@
  */
 
 import { cn } from "@/lib/utils"
-import { Loader2 } from "lucide-react"
 import Image from "next/image"
 import * as React from "react"
 import { useMediaPlayer } from "@/hooks/use-media-player"
+import { Spinner } from "@/components/ui/spinner"
 
 // Video file extensions to detect
 const VIDEO_EXTENSIONS = /\.(mp4|webm|mov|avi|mkv|m4v)(\?.*)?$/i
@@ -167,7 +167,7 @@ export const MediaPlayer = React.memo(function MediaPlayer({
                 />
                 {isLoading && (
                     <div className="absolute inset-0 flex items-center justify-center bg-background/20 backdrop-blur-sm pointer-events-none">
-                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                        <Spinner className="size-8 text-primary" />
                     </div>
                 )}
             </div>
@@ -194,7 +194,7 @@ export const MediaPlayer = React.memo(function MediaPlayer({
             />
             {isLoading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-background/20 backdrop-blur-sm pointer-events-none">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                    <Spinner className="size-8 text-primary" />
                 </div>
             )}
         </div>

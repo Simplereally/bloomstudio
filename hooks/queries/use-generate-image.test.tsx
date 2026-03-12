@@ -32,7 +32,6 @@ const mockGeneratedImagesById = new Map<string, {
 // Mock mutation functions
 const mockStartGeneration = vi.fn()
 const mockCancelGeneration = vi.fn()
-const mockProcessGeneration = vi.fn()
 
 // Map mutation references to their mock implementations
 const mutationMocks: Record<string, ReturnType<typeof vi.fn>> = {
@@ -73,12 +72,6 @@ vi.mock("convex/react", () => ({
             return null
         }),
     }),
-    useAction: (actionRef: string) => {
-        if (actionRef === "singleGenerationProcessor.processGeneration") {
-            return mockProcessGeneration
-        }
-        return vi.fn()
-    },
 }))
 
 // Mock BYOP pollen-auth hooks
@@ -123,9 +116,6 @@ vi.mock("@/convex/_generated/api", () => ({
             getGenerationsStatus: "singleGeneration.getGenerationsStatus",
             cancelGeneration: "singleGeneration.cancelGeneration",
         },
-        singleGenerationProcessor: {
-            processGeneration: "singleGenerationProcessor.processGeneration",
-        },
         generatedImages: {
             getById: "generatedImages.getById",
         },
@@ -144,8 +134,6 @@ describe("useGenerateImage", () => {
         mockGeneratedImagesById.clear()
         mockStartGeneration.mockReset()
         mockCancelGeneration.mockReset()
-        mockProcessGeneration.mockReset()
-        mockProcessGeneration.mockResolvedValue(undefined)
         mockAuthorize.mockReset()
     })
 
@@ -178,10 +166,6 @@ describe("useGenerateImage", () => {
                 aspectRatio: undefined,
                 lastFrameImage: undefined,
             },
-            apiKey: mockApiKey,
-        })
-        expect(mockProcessGeneration).toHaveBeenCalledWith({
-            generationId,
             apiKey: mockApiKey,
         })
         expect(result.current.isGenerating).toBe(true)

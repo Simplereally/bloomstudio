@@ -198,8 +198,8 @@ async function deleteR2ObjectsBatch(keys: string[]): Promise<{ deleted: number; 
  * Audit R2 storage to identify orphaned objects.
  * 
  * This action:
- * 1. Lists all R2 objects under "generated/" and "thumbnails/" prefixes
- * 2. Queries Convex for all r2Key and thumbnailR2Key references
+ * 1. Lists all R2 objects under generated, thumbnail, preview, and reference prefixes
+ * 2. Queries Convex for all known generated/reference R2 key references
  * 3. Identifies R2 objects with no matching Convex record
  * 
  * Non-destructive - only reports findings.
@@ -209,7 +209,7 @@ export const auditOrphanedR2Objects = internalAction({
     handler: async (ctx): Promise<OrphanAuditResult> => {
         const startTime = Date.now()
         const errors: string[] = []
-        const prefixes = ["generated/", "thumbnails/", "reference/"]
+        const prefixes = ["generated/", "thumbnails/", "previews/", "reference/"]
 
         console.log("[OrphanCleanup] Starting audit of orphaned R2 objects...")
 
@@ -229,7 +229,7 @@ export const auditOrphanedR2Objects = internalAction({
         console.log(`[OrphanCleanup] Total R2 objects found: ${allR2Objects.length}`)
 
         // Step 2: Get all Convex r2Keys in a single query
-        // This calls a query that collects all r2Keys from generatedImages
+        // This calls a query that collects all generated/reference R2 keys
         const convexKeys = await ctx.runQuery(internal.orphanCleanupQueries.getAllR2Keys)
         const convexKeySet = new Set(convexKeys)
 

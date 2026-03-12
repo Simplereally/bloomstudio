@@ -9,6 +9,10 @@ type GitHubStarButtonProps = {
   className?: string;
 };
 
+type GitHubRepoResponse = {
+  stargazers_count?: number;
+};
+
 export default function GitHubStarButton({ owner = "pollinations", repo = "pollinations", className }: GitHubStarButtonProps) {
   const [stars, setStars] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -19,9 +23,12 @@ export default function GitHubStarButton({ owner = "pollinations", repo = "polli
       try {
         const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
         if (!response.ok) throw new Error("Failed to fetch");
-        const data = await response.json();
+        const data = (await response.json()) as GitHubRepoResponse;
         // Format large numbers (e.g., 1234 -> 1.2k)
         const count = data.stargazers_count;
+        if (typeof count !== "number") {
+          throw new Error("Invalid GitHub response");
+        }
         if (count > 1000) {
           setStars((count / 1000).toFixed(1) + "k");
         } else {

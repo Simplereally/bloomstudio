@@ -1,0 +1,94 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "bloomstudio-worker",
+  "main": "workers/bloomstudio-worker/src/index.ts",
+  "account_id": "ce415c506cbaa434f3ba888295237d2d",
+  "compatibility_date": "2026-03-12",
+  "compatibility_flags": [
+    "nodejs_compat_v2"
+  ],
+  "workers_dev": true,
+  "observability": {
+    "enabled": false,
+    "head_sampling_rate": 1,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "persist": true,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": false,
+      "persist": true,
+      "head_sampling_rate": 1
+    }
+  },
+  "env": {
+    "development": {
+      "name": "bloomstudio-worker-dev",
+      "vars": {
+        "APP_ENV": "development",
+        "CONVEX_SITE_URL": "https://oceanic-ptarmigan-175.convex.site",
+        "R2_PUBLIC_URL": "https://pub-26b39ecf46a949a3ad2ca8830b2c6fee.r2.dev",
+        "MEDIA_TRANSFORMS_BASE_URL": "https://media.bloomstudio.fun"
+      },
+      "queues": {
+        "producers": [
+          {
+            "binding": "GENERATION_QUEUE",
+            "queue": "bloomstudio-dev-queue"
+          }
+        ],
+        "consumers": [
+          {
+            "queue": "bloomstudio-dev-queue",
+            "max_batch_size": 1,
+            "max_batch_timeout": 0,
+            "max_retries": 5,
+            "retry_delay": 2,
+            "dead_letter_queue": "bloomstudio-dev-dlq"
+          }
+        ]
+      },
+      "r2_buckets": [
+        {
+          "binding": "MEDIA_BUCKET",
+          "bucket_name": "pixelstream-images"
+        }
+      ]
+    },
+    "production": {
+      "name": "bloomstudio-worker",
+      "vars": {
+        "APP_ENV": "production",
+        "CONVEX_SITE_URL": "https://careful-buffalo-514.convex.site",
+        "R2_PUBLIC_URL": "https://pub-bb5851ee4cc640979680ac710a0dd683.r2.dev",
+        "MEDIA_TRANSFORMS_BASE_URL": "https://media.bloomstudio.fun"
+      },
+      "queues": {
+        "producers": [
+          {
+            "binding": "GENERATION_QUEUE",
+            "queue": "bloomstudio-prod-queue"
+          }
+        ],
+        "consumers": [
+          {
+            "queue": "bloomstudio-prod-queue",
+            "max_batch_size": 1,
+            "max_batch_timeout": 0,
+            "max_retries": 5,
+            "retry_delay": 2,
+            "dead_letter_queue": "bloomstudio-prod-dlq"
+          }
+        ]
+      },
+      "r2_buckets": [
+        {
+          "binding": "MEDIA_BUCKET",
+          "bucket_name": "bloomstudio-prod"
+        }
+      ]
+    }
+  }
+}

@@ -5,6 +5,10 @@
  * 
  * Provides configurable retry logic for handling transient failures
  * in external API calls (e.g., Pollinations, R2).
+ *
+ * Important: non-zero retry delays sleep inside the current action and therefore
+ * consume billed wall-clock time. For background action paths, prefer
+ * scheduler-driven retries instead of in-process backoff waits.
  */
 
 // ============================================================

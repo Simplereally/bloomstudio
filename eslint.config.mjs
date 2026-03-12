@@ -9,6 +9,7 @@ const config = [
       "**/dist/**",
       "**/build/**",
       "convex/_generated/**",
+      "worker-configuration.d.ts",
     ],
   },
   ...coreWebVitals,

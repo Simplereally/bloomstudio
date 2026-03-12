@@ -1,0 +1,10 @@
+# Copy to .dev.vars for local Worker development only.
+# Do not commit real secrets.
+
+CONVEX_SITE_URL=https://your-deployment.convex.site
+BLOOMSTUDIO_WORKER_SHARED_SECRET=replace-me
+R2_PUBLIC_URL=https://your-public-r2-url.r2.dev
+MEDIA_TRANSFORMS_BASE_URL=https://media.your-domain.com
+CEREBRAS_API_KEY=replace-me
+GROQ_API_KEY=replace-me
+OPENROUTER_API_KEY=replace-me

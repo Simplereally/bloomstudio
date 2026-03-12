@@ -9,6 +9,7 @@ import { auth } from "@clerk/nextjs/server"
 import { NextRequest, NextResponse } from "next/server"
 import { deleteImage } from "@/lib/storage"
 import crypto from "crypto"
+import { z } from "zod"
 
 interface DeleteResponse {
     success: true
@@ -21,6 +22,10 @@ interface DeleteError {
         message: string
     }
 }
+
+const deleteRequestSchema = z.object({
+    r2Key: z.string().min(1),
+})
 
 /**
  * Hash a userId the same way it's hashed when generating R2 keys.
@@ -42,14 +47,15 @@ export async function POST(
             )
         }
 
-        const { r2Key } = await request.json()
-
-        if (!r2Key || typeof r2Key !== "string") {
+        const parsed = deleteRequestSchema.safeParse(await request.json())
+        if (!parsed.success) {
             return NextResponse.json(
                 { success: false, error: { code: "MISSING_KEY", message: "Missing r2Key" } },
                 { status: 400 }
             )
         }
+
+        const { r2Key } = parsed.data
 
         /**
          * Security check: Ensure the key contains the user's hashed ID to prevent

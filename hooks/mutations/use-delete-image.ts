@@ -21,41 +21,24 @@ export function useDeleteGeneratedImage() {
 
             // Mutation throws on error, no need to check success
 
+            const keysToDelete = [result.r2Key, result.thumbnailR2Key, result.previewR2Key].filter(
+                (key): key is string => typeof key === "string" && key.length > 0
+            )
 
-            // Delete original image from R2 via API route
-            if (result.r2Key) {
+            for (const r2Key of keysToDelete) {
                 try {
                     const response = await fetch("/api/images/delete", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ r2Key: result.r2Key }),
+                        body: JSON.stringify({ r2Key }),
                     })
 
                     if (!response.ok) {
                         const error = await response.json()
                         console.error("[useDeleteGeneratedImage] Failed to delete from R2:", error)
-                        // Don't throw - Convex record is already deleted, so the UI should reflect that
                     }
                 } catch (error) {
                     console.error("[useDeleteGeneratedImage] Network error deleting from R2:", error)
-                }
-            }
-
-            // Delete thumbnail from R2 via API route (if exists)
-            if (result.thumbnailR2Key) {
-                try {
-                    const response = await fetch("/api/images/delete", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ r2Key: result.thumbnailR2Key }),
-                    })
-
-                    if (!response.ok) {
-                        const error = await response.json()
-                        console.error("[useDeleteGeneratedImage] Failed to delete thumbnail from R2:", error)
-                    }
-                } catch (error) {
-                    console.error("[useDeleteGeneratedImage] Network error deleting thumbnail from R2:", error)
                 }
             }
 
@@ -110,7 +93,7 @@ export function useBulkDeleteGeneratedImages() {
 
     return useMutation({
         mutationFn: async (imageIds: Id<"generatedImages">[]) => {
-            // Delete all from Convex in one call (returns r2Keys and thumbnailR2Keys)
+            // Delete all from Convex in one call (returns all referenced R2 keys)
             const result = await removeImages({ imageIds })
 
             // Handle potential legacy/test shape where 'error' string is returned
@@ -121,10 +104,11 @@ export function useBulkDeleteGeneratedImages() {
                 throw new Error(errors.join(", ") || `Failed to delete images. Success: ${result.successCount}/${imageIds.length}`)
             }
 
-            // Collect all keys to delete (both images and thumbnails)
+            // Collect all keys to delete (main media + derivatives)
             const allKeysToDelete: string[] = [
                 ...(result.r2Keys ?? []),
                 ...(result.thumbnailR2Keys ?? []),
+                ...(result.previewR2Keys ?? []),
             ]
 
             // Delete all R2 files in a single batch request

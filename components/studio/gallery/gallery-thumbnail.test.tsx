@@ -186,4 +186,16 @@ describe("GalleryThumbnail", () => {
         // Should still show play icon
         expect(container.querySelector(".bg-black\\/50")).toBeInTheDocument()
     })
+
+    it("renders Cloudflare media transform thumbnails as images for video rows", () => {
+        const transformedThumbnail = {
+            ...mockImage,
+            url: "https://media.bloomstudio.fun/cdn-cgi/media/mode=frame,time=1s,width=128,height=128,fit=cover,format=jpeg/https://pub.example.com/video.mp4",
+            contentType: "video/mp4",
+        }
+        const { container } = render(<GalleryThumbnail image={transformedThumbnail} />)
+
+        expect(container.querySelector("video")).not.toBeInTheDocument()
+        expect(container.querySelector("img")).toBeInTheDocument()
+    })
 })

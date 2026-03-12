@@ -24,8 +24,11 @@ export const GROQ_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 /** Timeout for Groq API requests in milliseconds */
 export const GROQ_FETCH_TIMEOUT_MS = 30_000
 
-/** Max retries before giving up */
-export const GROQ_MAX_RETRIES = 2
+/**
+ * Groq sits behind an OpenRouter fallback in the moderation pipeline, so we do
+ * not spend billed Convex action time sleeping on Groq backoff retries.
+ */
+export const GROQ_MAX_RETRIES = 0
 
 // =============================================================================
 // Types
@@ -33,6 +36,14 @@ export const GROQ_MAX_RETRIES = 2
 
 export interface GroqVisionResult {
     text: string
+}
+
+type GroqChatCompletionResponse = {
+    choices?: Array<{
+        message?: {
+            content?: string
+        }
+    }>
 }
 
 export type FetchFn = (...args: Parameters<typeof fetch>) => ReturnType<typeof fetch>
@@ -157,7 +168,7 @@ export async function analyzeImageWithGroqDeps(
                 )
             }
 
-            const data = await response.json()
+            const data = (await response.json()) as GroqChatCompletionResponse
             const content = data.choices?.[0]?.message?.content
 
             if (!content) {

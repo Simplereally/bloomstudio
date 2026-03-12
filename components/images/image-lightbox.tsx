@@ -2,9 +2,11 @@
 
 import { useAuth } from "@clerk/nextjs";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 import { PromptLibrary } from "@/components/studio/features/prompt-library";
+import { Button } from "@/components/ui/button";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -21,6 +23,7 @@ import {
 	DialogDescription,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import { api } from "@/convex/_generated/api";
 import { isVideoContent, MediaPlayer } from "@/components/ui/media-player";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useImageDetails } from "@/hooks/queries/use-image-history";
@@ -39,8 +42,11 @@ import {
 	LightboxInfoOverlay,
 	LightboxMediaDisplay,
 	LightboxVersionStrip,
+	markLightboxImageUrlReady,
 	type SourceImageDisplayInfo,
 } from "./lightbox";
+import { useConvex } from "convex/react";
+import { markMediaUrlReady } from "@/hooks/use-media-player";
 
 export type { LightboxImage };
 
@@ -52,8 +58,10 @@ interface ImageLightboxProps {
 		hasNext: boolean;
 		hasPrevious: boolean;
 		hideVideoControls?: boolean;
+		nextImage?: LightboxImage | null;
 		onNext: () => void;
 		onPrevious: () => void;
+		previousImage?: LightboxImage | null;
 	};
 	/** Optional callback when a prompt is inserted from the library (used to update prompt input) */
 	onInsertPrompt?: (content: string) => void;
@@ -66,44 +74,101 @@ export function ImageLightbox({
 	mediaNavigation,
 	onInsertPrompt,
 }: ImageLightboxProps) {
+	const convex = useConvex();
+
 	// Fetch full image details if we only have thumbnail data (no prompt)
 	// This happens when opening from gallery which now returns lightweight data
 	const imageId = image?._id as Id<"generatedImages"> | undefined;
 	const needsFullData = image && !image.prompt && imageId;
 	const fullImageData = useImageDetails(needsFullData ? imageId : null);
+	const [detailsCache, setDetailsCache] = React.useState<
+		Partial<Record<string, LightboxImage>>
+	>({});
+
+	React.useEffect(() => {
+		if (!imageId || !fullImageData) {
+			return;
+		}
+
+		setDetailsCache((prev) => {
+			if (prev[imageId]?.url === fullImageData.url && prev[imageId]?.prompt === fullImageData.prompt) {
+				return prev;
+			}
+
+			return {
+				...prev,
+				[imageId]: {
+					url: fullImageData.url,
+					originalUrl: fullImageData.url,
+					prompt: fullImageData.prompt,
+					model: fullImageData.model,
+					width: fullImageData.width,
+					height: fullImageData.height,
+					seed: fullImageData.seed,
+					contentType: fullImageData.contentType,
+					params: {
+						model: fullImageData.model,
+						width: fullImageData.width,
+						height: fullImageData.height,
+						seed: fullImageData.seed,
+					},
+				},
+			};
+		});
+	}, [fullImageData, imageId]);
+
+	const cachedImageDetails = imageId ? detailsCache[imageId] : undefined;
 
 	// Merge thumbnail data with full data when available
 	const displayImage: LightboxImage | null = React.useMemo(() => {
 		if (!image) return null;
 
+		const resolvedDetails = fullImageData ?? cachedImageDetails;
+		const resolvedOriginalUrl =
+			resolvedDetails?.url ?? image.originalUrl ?? image.url;
+		const resolvedContentType =
+			resolvedDetails?.contentType ?? image.contentType;
+		const resolvedIsVideo = isVideoContent(
+			resolvedContentType,
+			resolvedOriginalUrl,
+		);
+		const resolvedDisplayUrl = image.originalUrl
+				? image.url
+				: resolvedOriginalUrl;
+
 		return {
 			...image,
-			// Use full data if available, otherwise fall back to what we have
-			url: fullImageData?.url ?? image.url,
-			prompt: fullImageData?.prompt ?? image.prompt ?? "",
-			model: fullImageData?.model ?? image.model,
-			width: fullImageData?.width ?? image.width,
-			height: fullImageData?.height ?? image.height,
-			seed: fullImageData?.seed ?? image.seed,
-			contentType: fullImageData?.contentType ?? image.contentType,
+			// Keep thumbnail/original separation so images and videos can render immediately.
+			url: resolvedDisplayUrl,
+			originalUrl: resolvedOriginalUrl,
+			prompt: resolvedDetails?.prompt ?? image.prompt ?? "",
+			model: resolvedDetails?.model ?? image.model,
+			width: resolvedDetails?.width ?? image.width,
+			height: resolvedDetails?.height ?? image.height,
+			seed: resolvedDetails?.seed ?? image.seed,
+			contentType: resolvedContentType,
 			params:
 				image.params ??
-				(fullImageData
+				(resolvedDetails
 					? {
-							model: fullImageData.model,
-							width: fullImageData.width,
-							height: fullImageData.height,
-							seed: fullImageData.seed,
+							model: resolvedDetails.model,
+							width: resolvedDetails.width,
+							height: resolvedDetails.height,
+							seed: resolvedDetails.seed,
 						}
 					: undefined),
 		};
-	}, [image, fullImageData]);
+	}, [cachedImageDetails, fullImageData, image]);
 
 	const isVideo = displayImage
-		? isVideoContent(displayImage.contentType, displayImage.url)
+		? isVideoContent(
+				displayImage.contentType,
+				displayImage.originalUrl ?? displayImage.url,
+			)
 		: false;
 
-	const isLoadingDetails = !!needsFullData && fullImageData === undefined;
+	const isLoadingDetails =
+		!!needsFullData && cachedImageDetails === undefined && fullImageData === undefined;
 
 	const [editChain, setEditChain] = React.useState<LightboxImage[]>([]);
 	const [selectedVersionIndex, setSelectedVersionIndex] = React.useState(0);
@@ -462,6 +527,159 @@ export function ImageLightbox({
 	const lightboxBackdropStyle = isSwipeNavigationEnabled
 		? swipeOverlayStyle
 		: { backgroundColor: "rgba(0, 0, 0, 0.8)" };
+	const activeVideoUrl =
+		isVideo && displayImage ? displayImage.originalUrl ?? displayImage.url : null;
+	const canUseDesktopMediaNavigation =
+		isOpen &&
+		!hasEdits &&
+		!isZoomed &&
+		!isEditPanelOpen &&
+		Boolean(mediaNavigation);
+
+	React.useEffect(() => {
+		if (!isOpen || !mediaNavigation) {
+			return;
+		}
+
+		const warmCandidateDetails = (candidate: LightboxImage | null | undefined) => {
+			const candidateId = (candidate?._id ?? candidate?.id) as
+				| Id<"generatedImages">
+				| undefined;
+
+			if (!candidateId) {
+				return;
+			}
+
+			convex.prewarmQuery({
+				query: api.generatedImages.getById,
+				args: { imageId: candidateId },
+				extendSubscriptionFor: 30_000,
+			});
+		};
+
+		warmCandidateDetails(mediaNavigation.previousImage);
+		warmCandidateDetails(mediaNavigation.nextImage);
+	}, [
+		convex,
+		isOpen,
+		mediaNavigation,
+		mediaNavigation?.nextImage?._id,
+		mediaNavigation?.nextImage?.id,
+		mediaNavigation?.previousImage?._id,
+		mediaNavigation?.previousImage?.id,
+	]);
+
+	React.useEffect(() => {
+		if (!isOpen || !mediaNavigation || typeof window === "undefined") {
+			return;
+		}
+
+		const cleanup: Array<() => void> = [];
+
+		const warmCandidateMedia = (candidate: LightboxImage | null | undefined) => {
+			if (!candidate) {
+				return;
+			}
+
+			const candidateUrl = isVideoContent(
+				candidate.contentType,
+				candidate.originalUrl ?? candidate.url,
+			)
+				? candidate.originalUrl ?? candidate.url
+				: candidate.originalUrl ?? candidate.url;
+
+			if (!candidateUrl) {
+				return;
+			}
+
+			if (isVideoContent(candidate.contentType, candidateUrl)) {
+				const video = document.createElement("video");
+				video.preload = "auto";
+				video.muted = true;
+				video.playsInline = true;
+				video.addEventListener(
+					"loadedmetadata",
+					() => {
+						markMediaUrlReady(candidateUrl);
+					},
+					{ once: true },
+				);
+				video.src = candidateUrl;
+				video.load();
+				cleanup.push(() => {
+					video.pause();
+					video.removeAttribute("src");
+					video.load();
+				});
+				return;
+			}
+
+			const img = new window.Image();
+			img.decoding = "async";
+			img.onload = () => {
+				markLightboxImageUrlReady(candidateUrl);
+			};
+			img.src = candidateUrl;
+			img.decode?.().catch(() => {
+				// decode() rejection is non-fatal; the browser cache still warms on src assignment.
+			});
+		};
+
+		warmCandidateMedia(mediaNavigation.previousImage);
+		warmCandidateMedia(mediaNavigation.nextImage);
+
+		return () => {
+			cleanup.forEach((dispose) => dispose());
+		};
+	}, [
+		isOpen,
+		mediaNavigation,
+		mediaNavigation?.nextImage?.contentType,
+		mediaNavigation?.nextImage?.originalUrl,
+		mediaNavigation?.nextImage?.url,
+		mediaNavigation?.previousImage?.contentType,
+		mediaNavigation?.previousImage?.originalUrl,
+		mediaNavigation?.previousImage?.url,
+	]);
+
+	React.useEffect(() => {
+		if (!canUseDesktopMediaNavigation || !mediaNavigation) {
+			return;
+		}
+
+		const isTypingTarget = (target: EventTarget | null) => {
+			if (!(target instanceof HTMLElement)) {
+				return false;
+			}
+
+			const tagName = target.tagName;
+			return (
+				target.isContentEditable ||
+				tagName === "INPUT" ||
+				tagName === "TEXTAREA" ||
+				tagName === "SELECT"
+			);
+		};
+
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (event.defaultPrevented || isTypingTarget(event.target)) {
+				return;
+			}
+
+			if (event.key === "ArrowLeft" && mediaNavigation.hasPrevious) {
+				event.preventDefault();
+				mediaNavigation.onPrevious();
+			}
+
+			if (event.key === "ArrowRight" && mediaNavigation.hasNext) {
+				event.preventDefault();
+				mediaNavigation.onNext();
+			}
+		};
+
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [canUseDesktopMediaNavigation, mediaNavigation]);
 	const lightboxSwipeRegionProps = isSwipeNavigationEnabled
 		? {
 				"data-testid": "lightbox-swipe-region",
@@ -485,7 +703,7 @@ export function ImageLightbox({
 						</DialogDescription>
 					</VisuallyHidden>
 
-					{displayImage && activeImage && (
+								{displayImage && activeImage && (
 						<div
 							className="w-full h-full backdrop-blur-md cursor-default flex items-center justify-center animate-in fade-in duration-150"
 							style={lightboxBackdropStyle}
@@ -508,21 +726,20 @@ export function ImageLightbox({
 											onFocus={() => setIsHovering(true)}
 											onBlur={() => setIsHovering(false)}
 										/>
-										<div
-											className="relative w-full h-full flex items-center justify-center p-4"
-											style={swipeMediaStyle}
-											data-testid="lightbox-swipe-motion"
-											onClick={handleLightboxSurfaceClick}
-										>
-											<div className="relative shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-sm group/video z-10">
-												<MediaPlayer
-													key={displayImage.url}
-													url={displayImage.url}
-													alt={displayImage.prompt || "Generated video"}
-													contentType={displayImage.contentType}
-													controls={showMobileSwipeVideoControls}
-													autoPlay={true}
-													loop={true}
+											<div
+												className="relative w-full h-full flex items-center justify-center p-4"
+												style={swipeMediaStyle}
+												data-testid="lightbox-swipe-motion"
+												onClick={handleLightboxSurfaceClick}
+											>
+												<div className="relative shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-sm group/video z-10">
+													<MediaPlayer
+														url={activeVideoUrl ?? displayImage.url}
+														alt={displayImage.prompt || "Generated video"}
+														contentType={displayImage.contentType}
+														controls={showMobileSwipeVideoControls}
+														autoPlay={true}
+														loop={true}
 													muted={true}
 													className="w-auto h-auto max-w-full max-h-full object-contain select-none"
 													draggable={false}
@@ -696,6 +913,35 @@ export function ImageLightbox({
 											outputHeight={outputHeight}
 										/>
 									</div>
+								)}
+
+								{canUseDesktopMediaNavigation && mediaNavigation && (
+									<>
+										<Button
+											type="button"
+											variant="ghost"
+											size="icon"
+											aria-label="Show newer media"
+											className="absolute left-4 top-1/2 z-30 hidden h-11 w-11 -translate-y-1/2 rounded-full border border-white/10 bg-black/25 text-white/80 shadow-[0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur-sm transition hover:bg-black/40 hover:text-white disabled:pointer-events-none disabled:opacity-30 md:flex"
+											disabled={!mediaNavigation.hasPrevious}
+											onClick={mediaNavigation.onPrevious}
+											data-testid="lightbox-nav-newer"
+										>
+											<ChevronLeft className="h-5 w-5" />
+										</Button>
+										<Button
+											type="button"
+											variant="ghost"
+											size="icon"
+											aria-label="Show older media"
+											className="absolute right-4 top-1/2 z-30 hidden h-11 w-11 -translate-y-1/2 rounded-full border border-white/10 bg-black/25 text-white/80 shadow-[0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur-sm transition hover:bg-black/40 hover:text-white disabled:pointer-events-none disabled:opacity-30 md:flex"
+											disabled={!mediaNavigation.hasNext}
+											onClick={mediaNavigation.onNext}
+											data-testid="lightbox-nav-older"
+										>
+											<ChevronRight className="h-5 w-5" />
+										</Button>
+									</>
 								)}
 							</div>
 						</div>

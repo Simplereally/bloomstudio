@@ -32,6 +32,14 @@ export interface OpenRouterDeps {
     timeoutMs: number;
 }
 
+type OpenRouterChatCompletionResponse = {
+    choices?: Array<{
+        message?: {
+            content?: string;
+        };
+    }>;
+};
+
 /** Get default dependencies */
 const getDefaultDeps = (): OpenRouterDeps => ({
     apiKey: process.env.OPENROUTER_API_KEY,
@@ -114,7 +122,7 @@ Respond ONLY with valid JSON:
             throw new Error(`OpenRouter API error: ${response.status} ${response.statusText} - ${errorBody}`);
         }
 
-        const data = await response.json();
+        const data = (await response.json()) as OpenRouterChatCompletionResponse;
         const content = data.choices?.[0]?.message?.content;
 
         if (!content) {

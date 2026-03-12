@@ -89,6 +89,22 @@ export default defineSchema({
         /** Full public URL to the video preview */
         previewUrl: v.optional(v.string()),
 
+        /** Worker-plane secondary asset dispatch state for video derivatives. */
+        secondaryAssetsDispatchStatus: v.optional(v.union(
+            v.literal("pending"),
+            v.literal("dispatched"),
+            v.literal("processing"),
+            v.literal("completed"),
+            v.literal("failed"),
+            v.literal("cancelled")
+        )),
+        secondaryAssetsDispatchAttempts: v.optional(v.number()),
+        secondaryAssetsDispatchedAt: v.optional(v.number()),
+        secondaryAssetsLastDispatchError: v.optional(v.string()),
+        secondaryAssetsClaimToken: v.optional(v.string()),
+        secondaryAssetsWorkerAttempt: v.optional(v.number()),
+        secondaryAssetsUpdatedAt: v.optional(v.number()),
+
         /** Generated identifier */
         filename: v.string(),
 
@@ -134,6 +150,29 @@ export default defineSchema({
         /** Confidence score of the automated detection (0-1) */
         sensitiveConfidence: v.optional(v.number()),
 
+        /** Current moderation worker stage coordinating prompt inference vs vision analysis. */
+        moderationStage: v.optional(v.union(
+            v.literal("prompt_inference"),
+            v.literal("vision_analysis")
+        )),
+
+        /** Worker-plane moderation dispatch state. */
+        moderationDispatchStatus: v.optional(v.union(
+            v.literal("pending"),
+            v.literal("dispatched"),
+            v.literal("processing"),
+            v.literal("completed"),
+            v.literal("failed"),
+            v.literal("cancelled")
+        )),
+        moderationDispatchAttempts: v.optional(v.number()),
+        moderationDispatchedAt: v.optional(v.number()),
+        moderationLastDispatchError: v.optional(v.string()),
+        moderationClaimToken: v.optional(v.string()),
+        moderationWorkerAttempt: v.optional(v.number()),
+        moderationProviderRequestId: v.optional(v.string()),
+        moderationUpdatedAt: v.optional(v.number()),
+
         /** Timestamp of creation */
         createdAt: v.number(),
     })
@@ -147,7 +186,9 @@ export default defineSchema({
         // Index for "Block" preference (Safe only) or finding pending (isSensitive=null)
         .index("by_visibility_sensitive", ["visibility", "isSensitive", "createdAt"])
         // Index for scanning by sensitivity (e.g. finding pending)
-        .index("by_sensitivity", ["isSensitive", "createdAt"]),
+        .index("by_sensitivity", ["isSensitive", "createdAt"])
+        .index("by_moderation_dispatch_status", ["moderationDispatchStatus", "moderationUpdatedAt"])
+        .index("by_secondary_assets_dispatch_status", ["secondaryAssetsDispatchStatus", "secondaryAssetsUpdatedAt"]),
 
     /**
      * Generated Image Details - Heavy fields split from the main table (P0 Optimization)
@@ -269,6 +310,25 @@ export default defineSchema({
         imageId: v.optional(v.id("generatedImages")),
         /** Number of retry attempts made (for transient failures) */
         retryCount: v.optional(v.number()),
+        /**
+         * Worker-plane dispatch state.
+         * Kept separate from the user-facing lifecycle so Cloudflare handoff
+         * can be observed and retried without changing the UX contract.
+         */
+        dispatchStatus: v.optional(v.union(
+            v.literal("pending"),
+            v.literal("dispatched"),
+            v.literal("processing"),
+            v.literal("completed"),
+            v.literal("failed"),
+            v.literal("cancelled")
+        )),
+        dispatchAttempts: v.optional(v.number()),
+        dispatchedAt: v.optional(v.number()),
+        lastDispatchError: v.optional(v.string()),
+        claimToken: v.optional(v.string()),
+        workerAttempt: v.optional(v.number()),
+        providerRequestId: v.optional(v.string()),
         /** Timestamp of creation */
         createdAt: v.number(),
         /** Timestamp of last update */
@@ -276,6 +336,7 @@ export default defineSchema({
     })
         .index("by_owner", ["ownerId", "createdAt"])
         .index("by_status", ["status", "createdAt"])
+        .index("by_dispatch_status", ["dispatchStatus", "updatedAt"])
         // Optimization for getActiveGenerations (avoid .collect() scan)
         .index("by_owner_status", ["ownerId", "status", "createdAt"]),
 
@@ -329,6 +390,64 @@ export default defineSchema({
         .index("by_status", ["status", "createdAt"])
         // Optimization for getActiveGenerations (avoid .collect() scan)
         .index("by_owner_status", ["ownerId", "status", "createdAt"]),
+
+    /**
+     * Batch generation items - first-class rows for each item in a batch job.
+     * This avoids using the parent batch job doc as both aggregate state and queue state.
+     */
+    batchItems: defineTable({
+        /** Parent batch job */
+        batchJobId: v.id("batchJobs"),
+        /** Clerk user ID who owns this item */
+        ownerId: v.string(),
+        /** Zero-based item position within the batch */
+        itemIndex: v.number(),
+        /** Item lifecycle status */
+        status: v.union(
+            v.literal("pending"),
+            v.literal("processing"),
+            v.literal("completed"),
+            v.literal("failed"),
+            v.literal("cancelled")
+        ),
+        /** Worker-plane dispatch status */
+        dispatchStatus: v.union(
+            v.literal("pending"),
+            v.literal("dispatched"),
+            v.literal("processing"),
+            v.literal("completed"),
+            v.literal("failed"),
+            v.literal("cancelled")
+        ),
+        /** Number of dispatch attempts from Convex to Cloudflare */
+        dispatchAttempts: v.optional(v.number()),
+        /** Last time this item was dispatched */
+        dispatchedAt: v.optional(v.number()),
+        /** Last dispatch error message */
+        lastDispatchError: v.optional(v.string()),
+        /** Worker claim token for idempotent finalize/fail callbacks */
+        claimToken: v.optional(v.string()),
+        /** Worker attempt count for reclaim/retry handling */
+        workerAttempt: v.optional(v.number()),
+        /** Pollinations/provider request ID if available */
+        providerRequestId: v.optional(v.string()),
+        /** Final generated image ID */
+        imageId: v.optional(v.id("generatedImages")),
+        /** Final error message */
+        errorMessage: v.optional(v.string()),
+        /** Final provider error code */
+        errorCode: v.optional(v.number()),
+        /** Number of retries used by the worker */
+        retryCount: v.optional(v.number()),
+        /** Timestamp of creation */
+        createdAt: v.number(),
+        /** Timestamp of last update */
+        updatedAt: v.number(),
+    })
+        .index("by_batch_item", ["batchJobId", "itemIndex"])
+        .index("by_batch_status", ["batchJobId", "status", "itemIndex"])
+        .index("by_owner_status", ["ownerId", "status", "createdAt"])
+        .index("by_dispatch_status", ["dispatchStatus", "updatedAt"]),
 
     /**
      * Prompts table - shared prompts that can be saved to user libraries

@@ -10,6 +10,7 @@ import { auth } from "@clerk/nextjs/server"
 import { NextRequest, NextResponse } from "next/server"
 import { deleteImages } from "@/lib/storage"
 import crypto from "crypto"
+import { z } from "zod"
 
 interface DeleteBulkResponse {
     success: true
@@ -25,6 +26,10 @@ interface DeleteBulkError {
         message: string
     }
 }
+
+const deleteBulkRequestSchema = z.object({
+    r2Keys: z.array(z.string().min(1)),
+})
 
 /**
  * Hash a userId the same way it's hashed when generating R2 keys.
@@ -49,14 +54,15 @@ export async function POST(
             )
         }
 
-        const { r2Keys } = await request.json()
-
-        if (!r2Keys || !Array.isArray(r2Keys)) {
+        const parsed = deleteBulkRequestSchema.safeParse(await request.json())
+        if (!parsed.success) {
             return NextResponse.json(
                 { success: false, error: { code: "INVALID_INPUT", message: "r2Keys must be an array" } },
                 { status: 400 }
             )
         }
+
+        const { r2Keys } = parsed.data
 
         if (r2Keys.length === 0) {
             return NextResponse.json({

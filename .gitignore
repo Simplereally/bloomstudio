@@ -38,3 +38,6 @@ next-env.d.ts
 convex/_generated/
 .DS_Store
 .env*.local
+.dev.vars
+.wrangler
+worker-configuration.d.ts

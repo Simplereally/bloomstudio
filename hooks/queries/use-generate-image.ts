@@ -23,10 +23,8 @@ import type {
     VideoGenerationParams,
 } from "@/lib/schemas/pollinations.schema"
 import { ConvexError } from "convex/values"
-import { useAction, useConvex, useMutation, useQuery } from "convex/react"
+import { useConvex, useMutation, useQuery } from "convex/react"
 import * as React from "react"
-
-const SINGLE_GENERATION_DISPATCH_INTERVAL_MS = 100
 
 /**
  * Extract error code from a ConvexError's data payload.
@@ -86,11 +84,6 @@ interface ActiveGenerationEntry {
     params: ImageGenerationParams | VideoGenerationParams
     resolve?: (image: GeneratedImage) => void
     reject?: (error: ServerGenerationError) => void
-}
-
-interface PendingDispatchEntry {
-    generationId: Id<"pendingGenerations">
-    apiKey: string
 }
 
 export interface UseGenerateImageReturn {
@@ -158,7 +151,6 @@ export function useGenerateImage(
 ): UseGenerateImageReturn {
     const startGeneration = useMutation(api.singleGeneration.startGeneration)
     const cancelGeneration = useMutation(api.singleGeneration.cancelGeneration)
-    const processGeneration = useAction(api.singleGenerationProcessor.processGeneration)
 
     // Get API key from BYOP context
     const apiKey = usePollenApiKey()
@@ -188,56 +180,6 @@ export function useGenerateImage(
     React.useEffect(() => {
         activeGenerationsRef.current = activeGenerations
     }, [activeGenerations])
-
-    const pendingDispatchesRef = React.useRef<PendingDispatchEntry[]>([])
-    const dispatchTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
-
-    const scheduleDispatchQueue = React.useCallback(() => {
-        if (dispatchTimerRef.current !== null) {
-            return
-        }
-
-        const flushNext = () => {
-            const next = pendingDispatchesRef.current.shift()
-            if (!next) {
-                dispatchTimerRef.current = null
-                return
-            }
-
-            void Promise.resolve(
-                processGeneration({
-                    generationId: next.generationId,
-                    apiKey: next.apiKey,
-                })
-            ).catch((dispatchError) => {
-                console.error("Failed to dispatch generation immediately:", dispatchError)
-            })
-
-            dispatchTimerRef.current = setTimeout(
-                flushNext,
-                SINGLE_GENERATION_DISPATCH_INTERVAL_MS
-            )
-        }
-
-        flushNext()
-    }, [processGeneration])
-
-    const enqueueGenerationDispatch = React.useCallback(
-        (entry: PendingDispatchEntry) => {
-            pendingDispatchesRef.current.push(entry)
-            scheduleDispatchQueue()
-        },
-        [scheduleDispatchQueue]
-    )
-
-    React.useEffect(() => {
-        return () => {
-            if (dispatchTimerRef.current !== null) {
-                clearTimeout(dispatchTimerRef.current)
-                dispatchTimerRef.current = null
-            }
-        }
-    }, [])
 
     const activeGenerationIds = React.useMemo(
         () => activeGenerations.map((entry) => entry.id),
@@ -523,11 +465,6 @@ export function useGenerateImage(
                         reject: deferred?.reject,
                     },
                 ])
-
-                enqueueGenerationDispatch({
-                    generationId: id,
-                    apiKey,
-                })
             } catch (err) {
                 const errorCode = getConvexErrorCode(err) ?? "START_FAILED"
                 const message = err instanceof Error ? err.message : "Failed to start generation"
@@ -540,7 +477,7 @@ export function useGenerateImage(
                 deferred?.reject(serverError)
             }
         },
-        [apiKey, authorize, enqueueGenerationDispatch, startGeneration]
+        [apiKey, authorize, startGeneration]
     )
 
     const generate = React.useCallback(

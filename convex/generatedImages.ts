@@ -164,6 +164,8 @@ export const create = mutation({
         // Private images (unlisted) bypass NSFW detection entirely.
         // They are never shown in public feeds, so content analysis is unnecessary.
         const isPrivate = (args.visibility ?? "public") === "unlisted"
+        const needsModeration = !isPrivate
+        const needsSecondaryAssets = args.contentType.startsWith("video/")
 
         let isSensitive: boolean | null = false
         let sensitiveSource: "prompt_analysis" | undefined = undefined
@@ -203,6 +205,13 @@ export const create = mutation({
             isSensitive,
             sensitiveSource,
             sensitiveConfidence,
+            moderationStage: needsModeration && sensitiveConfidence < 0.9 ? "prompt_inference" : undefined,
+            moderationDispatchStatus: needsModeration && sensitiveConfidence < 0.9 ? "pending" : undefined,
+            moderationDispatchAttempts: needsModeration && sensitiveConfidence < 0.9 ? 0 : undefined,
+            moderationUpdatedAt: needsModeration && sensitiveConfidence < 0.9 ? Date.now() : undefined,
+            secondaryAssetsDispatchStatus: needsSecondaryAssets ? "pending" : undefined,
+            secondaryAssetsDispatchAttempts: needsSecondaryAssets ? 0 : undefined,
+            secondaryAssetsUpdatedAt: needsSecondaryAssets ? Date.now() : undefined,
         })
 
         // Store heavy details in side table (P0 Optimization)
@@ -817,6 +826,10 @@ export const setVisibility = mutation({
                     visibility: args.visibility,
                     isSensitive: null,
                     sensitiveConfidence: promptAnalysis.confidence,
+                    moderationStage: "prompt_inference",
+                    moderationDispatchStatus: "pending",
+                    moderationDispatchAttempts: 0,
+                    moderationUpdatedAt: Date.now(),
                 })
 
                 // Schedule async prompt inference (Gate 2), which may escalate to vision (Gate 3)
@@ -912,6 +925,10 @@ export const setBulkVisibility = mutation({
                                 visibility: args.visibility,
                                 isSensitive: null,
                                 sensitiveConfidence: promptAnalysis.confidence,
+                                moderationStage: "prompt_inference",
+                                moderationDispatchStatus: "pending",
+                                moderationDispatchAttempts: 0,
+                                moderationUpdatedAt: Date.now(),
                             })
                             imagesToAnalyze.push({ imageId, prompt: image.prompt })
                         }
@@ -948,7 +965,7 @@ export const setBulkVisibility = mutation({
 /**
  * Delete a generated image record.
  * Only the owner can delete their images.
- * Returns the r2Key and thumbnailR2Key so the caller can also delete from R2.
+ * Returns the R2 keys so the caller can also delete them from storage.
  */
 export const remove = mutation({
     args: {
@@ -971,10 +988,11 @@ export const remove = mutation({
 
         const r2Key = image.r2Key
         const thumbnailR2Key = image.thumbnailR2Key
+        const previewR2Key = image.previewR2Key
 
         await ctx.db.delete(args.imageId)
 
-        return { r2Key, thumbnailR2Key }
+        return { r2Key, thumbnailR2Key, previewR2Key }
     },
 })
 
@@ -1087,6 +1105,26 @@ export const updateImagePromptInference = internalMutation({
 });
 
 /**
+ * Lightweight analysis recovery state for catch-up actions.
+ * Lets recovery paths skip repeating prompt inference when it already ran.
+ */
+export const getAnalysisRecoveryState = internalQuery({
+    args: {
+        imageId: v.id("generatedImages"),
+    },
+    handler: async (ctx, args) => {
+        const details = await ctx.db
+            .query("generatedImageDetails")
+            .withIndex("by_image", (q) => q.eq("imageId", args.imageId))
+            .unique()
+
+        return {
+            hasPromptInference: details?.promptInference !== undefined,
+        }
+    },
+})
+
+/**
  * Find images that haven't been tagged yet for the cron job.
  * Using 'isSensitive' == null (or undefined for legacy)
  */
@@ -1119,11 +1157,45 @@ export const getUnanalyzedImages = internalQuery({
     },
 });
 
+/**
+ * Find unanalyzed images that are not already in-flight on the moderation worker plane.
+ * Used by the recovery scheduler so it does not keep re-dispatching the same claimed job.
+ */
+export const getRecoverableUnanalyzedImages = internalQuery({
+    args: { limit: v.number() },
+    handler: async (ctx, args) => {
+        const isRecoverable = (image: Doc<"generatedImages">) =>
+            image.moderationDispatchStatus !== "dispatched" &&
+            image.moderationDispatchStatus !== "processing";
+
+        const recentPending = await ctx.db
+            .query("generatedImages")
+            .withIndex("by_sensitivity", (q) => q.eq("isSensitive", null))
+            .take(Math.max(args.limit * 4, args.limit));
+
+        let recoverable = recentPending.filter(isRecoverable).slice(0, args.limit);
+
+        if (recoverable.length < args.limit) {
+            const legacyPending = await ctx.db
+                .query("generatedImages")
+                .filter((q) => q.eq(q.field("isSensitive"), undefined))
+                .take(Math.max((args.limit - recoverable.length) * 4, args.limit - recoverable.length));
+
+            recoverable = [
+                ...recoverable,
+                ...legacyPending.filter(isRecoverable).slice(0, args.limit - recoverable.length),
+            ];
+        }
+
+        return recoverable;
+    },
+})
+
 
 /**
  * Bulk delete multiple generated image records.
  * Only the owner can delete their images.
- * Returns all r2Keys and thumbnailR2Keys so the caller can delete them from R2.
+ * Returns all referenced R2 keys so the caller can delete them from storage.
  *
  * @param imageIds - Array of image IDs to delete (max 100 to avoid Convex limits)
  */
@@ -1151,12 +1223,14 @@ export const removeMany = mutation({
                 totalRequested: 0,
                 r2Keys: [],
                 thumbnailR2Keys: [],
+                previewR2Keys: [],
                 errors: undefined,
             }
         }
 
         const r2Keys: string[] = []
         const thumbnailR2Keys: string[] = []
+        const previewR2Keys: string[] = []
         const errors: string[] = []
         let successCount = 0
 
@@ -1181,6 +1255,9 @@ export const removeMany = mutation({
                     if (image.thumbnailR2Key) {
                         thumbnailR2Keys.push(image.thumbnailR2Key)
                     }
+                    if (image.previewR2Key) {
+                        previewR2Keys.push(image.previewR2Key)
+                    }
 
                     await ctx.db.delete(imageId)
                     successCount++
@@ -1197,6 +1274,7 @@ export const removeMany = mutation({
             totalRequested: args.imageIds.length,
             r2Keys,
             thumbnailR2Keys,
+            previewR2Keys,
             errors: errors.length > 0 ? errors : undefined,
         }
     },

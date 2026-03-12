@@ -74,7 +74,11 @@ describe("useDeleteImage", () => {
 
     describe("useDeleteGeneratedImage", () => {
         it("deletes from Convex and then R2 (including thumbnail)", async () => {
-            const mockRemove = vi.fn().mockResolvedValue({ r2Key: "test-r2-key", thumbnailR2Key: "test-thumbnail-key" })
+            const mockRemove = vi.fn().mockResolvedValue({
+                r2Key: "test-r2-key",
+                thumbnailR2Key: "test-thumbnail-key",
+                previewR2Key: "test-preview-key",
+            })
                 ; (useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemove)
 
             const { result } = renderHook(() => useDeleteGeneratedImage(), {
@@ -84,8 +88,8 @@ describe("useDeleteImage", () => {
             await result.current.mutateAsync("id123" as unknown as Id<"generatedImages">)
 
             expect(mockRemove).toHaveBeenCalledWith({ imageId: "id123" })
-            // Should delete both the original image and thumbnail
-            expect(global.fetch).toHaveBeenCalledTimes(2)
+            // Should delete original image plus both derivative objects
+            expect(global.fetch).toHaveBeenCalledTimes(3)
             expect(global.fetch).toHaveBeenCalledWith("/api/images/delete", expect.objectContaining({
                 method: "POST",
                 body: JSON.stringify({ r2Key: "test-r2-key" }),
@@ -94,12 +98,20 @@ describe("useDeleteImage", () => {
                 method: "POST",
                 body: JSON.stringify({ r2Key: "test-thumbnail-key" }),
             }))
+            expect(global.fetch).toHaveBeenCalledWith("/api/images/delete", expect.objectContaining({
+                method: "POST",
+                body: JSON.stringify({ r2Key: "test-preview-key" }),
+            }))
             expect(toast.success).toHaveBeenCalledWith("Image deleted")
             expect(invalidateImageDeletion).toHaveBeenCalledTimes(1)
         })
 
-        it("handles image without thumbnail", async () => {
-            const mockRemove = vi.fn().mockResolvedValue({ r2Key: "test-r2-key", thumbnailR2Key: undefined })
+        it("handles image without derivatives", async () => {
+            const mockRemove = vi.fn().mockResolvedValue({
+                r2Key: "test-r2-key",
+                thumbnailR2Key: undefined,
+                previewR2Key: undefined,
+            })
                 ; (useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemove)
 
             const { result } = renderHook(() => useDeleteGeneratedImage(), {
@@ -108,7 +120,7 @@ describe("useDeleteImage", () => {
 
             await result.current.mutateAsync("id123" as unknown as Id<"generatedImages">)
 
-            // Should only delete the original image (no thumbnail)
+            // Should only delete the original image
             expect(global.fetch).toHaveBeenCalledTimes(1)
             expect(global.fetch).toHaveBeenCalledWith("/api/images/delete", expect.objectContaining({
                 body: JSON.stringify({ r2Key: "test-r2-key" }),
@@ -118,7 +130,11 @@ describe("useDeleteImage", () => {
         })
 
         it("handles R2 deletion failure gracefully", async () => {
-            const mockRemove = vi.fn().mockResolvedValue({ r2Key: "test-r2-key", thumbnailR2Key: "test-thumbnail-key" })
+            const mockRemove = vi.fn().mockResolvedValue({
+                r2Key: "test-r2-key",
+                thumbnailR2Key: "test-thumbnail-key",
+                previewR2Key: "test-preview-key",
+            })
                 ; (useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemove)
 
             global.fetch = vi.fn().mockImplementation(() =>
@@ -136,8 +152,8 @@ describe("useDeleteImage", () => {
 
             // Should still be successful because Convex deletion succeeded
             expect(mockRemove).toHaveBeenCalled()
-            // Should attempt to delete both original and thumbnail (even if both fail)
-            expect(global.fetch).toHaveBeenCalledTimes(2)
+            // Should attempt to delete original plus derivatives even if they fail
+            expect(global.fetch).toHaveBeenCalledTimes(3)
             expect(toast.success).toHaveBeenCalledWith("Image deleted")
             expect(invalidateImageDeletion).toHaveBeenCalledTimes(1)
         })
@@ -182,6 +198,7 @@ describe("useDeleteImage", () => {
                 totalRequested: 3,
                 r2Keys: ["key1", "key2", "key3"],
                 thumbnailR2Keys: ["thumb1", "thumb2", "thumb3"],
+                previewR2Keys: ["preview1", "preview2", "preview3"],
             })
                 ; (useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemoveMany)
 
@@ -200,7 +217,7 @@ describe("useDeleteImage", () => {
             expect(global.fetch).toHaveBeenCalledTimes(1)
             expect(global.fetch).toHaveBeenCalledWith("/api/images/delete-bulk", expect.objectContaining({
                 method: "POST",
-                body: JSON.stringify({ r2Keys: ["key1", "key2", "key3", "thumb1", "thumb2", "thumb3"] }),
+                body: JSON.stringify({ r2Keys: ["key1", "key2", "key3", "thumb1", "thumb2", "thumb3", "preview1", "preview2", "preview3"] }),
             }))
 
             // Should show single success toast
@@ -216,6 +233,7 @@ describe("useDeleteImage", () => {
                 totalRequested: 1,
                 r2Keys: ["key1"],
                 thumbnailR2Keys: ["thumb1"],
+                previewR2Keys: ["preview1"],
             })
                 ; (useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemoveMany)
 
@@ -228,7 +246,7 @@ describe("useDeleteImage", () => {
             // Should make a single bulk delete request with 1 image + 1 thumbnail
             expect(global.fetch).toHaveBeenCalledTimes(1)
             expect(global.fetch).toHaveBeenCalledWith("/api/images/delete-bulk", expect.objectContaining({
-                body: JSON.stringify({ r2Keys: ["key1", "thumb1"] }),
+                body: JSON.stringify({ r2Keys: ["key1", "thumb1", "preview1"] }),
             }))
             expect(toast.success).toHaveBeenCalledWith("Deleted 1 image")
             expect(invalidateImageDeletion).toHaveBeenCalledTimes(1)
@@ -241,6 +259,7 @@ describe("useDeleteImage", () => {
                 totalRequested: 2,
                 r2Keys: ["key1", "key2"],
                 thumbnailR2Keys: [], // No thumbnails (legacy images)
+                previewR2Keys: [],
             })
                 ; (useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemoveMany)
 
@@ -282,6 +301,7 @@ describe("useDeleteImage", () => {
                 errors: ["Some error occurred"],
                 r2Keys: [],
                 thumbnailR2Keys: [],
+                previewR2Keys: [],
             })
                 ; (useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemoveMany)
 
@@ -304,6 +324,7 @@ describe("useDeleteImage", () => {
                 error: "Singular error occurred",
                 r2Keys: [],
                 thumbnailR2Keys: [],
+                previewR2Keys: [],
             })
                 ; (useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemoveMany)
 
@@ -325,6 +346,7 @@ describe("useDeleteImage", () => {
                 totalRequested: 2,
                 r2Keys: ["key1", "key2"],
                 thumbnailR2Keys: ["thumb1", "thumb2"],
+                previewR2Keys: ["preview1", "preview2"],
             })
                 ; (useConvexMutation as unknown as import("vitest").Mock).mockReturnValue(mockRemoveMany)
 
@@ -343,7 +365,7 @@ describe("useDeleteImage", () => {
             // Should have attempted the bulk delete
             expect(global.fetch).toHaveBeenCalledTimes(1)
             expect(global.fetch).toHaveBeenCalledWith("/api/images/delete-bulk", expect.objectContaining({
-                body: JSON.stringify({ r2Keys: ["key1", "key2", "thumb1", "thumb2"] }),
+                body: JSON.stringify({ r2Keys: ["key1", "key2", "thumb1", "thumb2", "preview1", "preview2"] }),
             }))
             expect(toast.success).toHaveBeenCalledWith("Deleted 2 images")
             expect(invalidateImageDeletion).toHaveBeenCalledTimes(1)

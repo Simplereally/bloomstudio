@@ -10,7 +10,8 @@ import { internalQuery } from "./_generated/server"
 /**
  * Get all R2 keys referenced in the database.
  * 
- * Collects r2Key and thumbnailR2Key from generatedImages and referenceImages tables.
+ * Collects main, thumbnail, and preview keys from generatedImages plus
+ * reference-image keys from referenceImages.
  * Used by the orphan cleanup action to identify which R2 objects
  * have matching Convex records.
  * 
@@ -30,6 +31,9 @@ export const getAllR2Keys = internalQuery({
             }
             if (img.thumbnailR2Key) {
                 keys.push(img.thumbnailR2Key)
+            }
+            if (img.previewR2Key) {
+                keys.push(img.previewR2Key)
             }
         }
 

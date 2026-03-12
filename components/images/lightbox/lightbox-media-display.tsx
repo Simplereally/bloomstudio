@@ -10,6 +10,24 @@ import {
 } from "@/hooks/use-image-lightbox";
 import { cn } from "@/lib/utils";
 
+const readyImageUrls = new Set<string>();
+
+export function markLightboxImageUrlReady(url: string | undefined) {
+	if (!url) {
+		return;
+	}
+
+	readyImageUrls.add(url);
+}
+
+function isImageUrlReady(url: string | undefined) {
+	if (!url) {
+		return false;
+	}
+
+	return readyImageUrls.has(url);
+}
+
 export interface LightboxMediaDisplayProps {
 	image: LightboxImage;
 	isOpen: boolean;
@@ -25,7 +43,7 @@ export interface LightboxMediaDisplayProps {
 export function LightboxMediaDisplay({
 	image,
 	isOpen,
-	isLoadingDetails,
+	isLoadingDetails: _isLoadingDetails,
 	onHoverChange,
 	onBackdropClick,
 	onZoomChange,
@@ -69,9 +87,9 @@ export function LightboxMediaDisplay({
 		image.originalUrl && image.originalUrl !== image.url;
 
 	React.useEffect(() => {
-		setIsThumbnailLoaded(false);
-		setIsFullResLoaded(false);
-	}, [image.url, image.originalUrl]);
+		setIsThumbnailLoaded(isImageUrlReady(thumbnailUrl));
+		setIsFullResLoaded(isImageUrlReady(fullResUrl));
+	}, [fullResUrl, thumbnailUrl]);
 
 	const handleHoverChange = React.useCallback(
 		(hovering: boolean) => {
@@ -124,150 +142,151 @@ export function LightboxMediaDisplay({
 			onClick={handleContainerClick}
 			onKeyDown={handleKeyDown}
 		>
-			{!isLoadingDetails && (
-				<>
-					{isVideo ? (
+			<>
+				{isVideo ? (
+					<div
+						role="presentation"
+						className="relative"
+						onClick={(e) => e.stopPropagation()}
+						onKeyDown={(e) => e.stopPropagation()}
+					>
 						<div
-							role="presentation"
-							className="relative"
-							onClick={(e) => e.stopPropagation()}
-							onKeyDown={(e) => e.stopPropagation()}
+							className="relative shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-sm group/video z-10"
+							onMouseEnter={() => handleHoverChange(true)}
+							onMouseLeave={() => handleHoverChange(false)}
 						>
-							<div
-								className="relative shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-sm group/video z-10"
-								onMouseEnter={() => handleHoverChange(true)}
-								onMouseLeave={() => handleHoverChange(false)}
-							>
-								<MediaPlayer
-									url={image.url}
-									alt={image.prompt || "Generated video"}
-									contentType={image.contentType}
-									controls={true}
-									autoPlay={true}
-									loop={true}
-									muted={false}
-									className="w-auto h-auto max-w-[100vw] max-h-[100vh] object-contain select-none"
-									draggable={false}
-								/>
-							</div>
+							<MediaPlayer
+								url={image.url}
+								alt={image.prompt || "Generated video"}
+								contentType={image.contentType}
+								controls={true}
+								autoPlay={true}
+								loop={true}
+								muted={false}
+								className="w-auto h-auto max-w-[100vw] max-h-[100vh] object-contain select-none"
+								draggable={false}
+							/>
 						</div>
-					) : (
+					</div>
+				) : (
+					<div
+						role="presentation"
+						className="relative"
+						style={
+							isZoomed
+								? {
+										width: naturalSize.width,
+										height: naturalSize.height,
+										flexShrink: 0,
+										margin: "auto",
+									}
+								: undefined
+						}
+						onClick={(e) => e.stopPropagation()}
+						onKeyDown={(e) => e.stopPropagation()}
+					>
 						<div
-							role="presentation"
-							className="relative"
-							style={
-								isZoomed
-									? {
-											width: naturalSize.width,
-											height: naturalSize.height,
-											flexShrink: 0,
-											margin: "auto",
-										}
-									: undefined
-							}
-							onClick={(e) => e.stopPropagation()}
-							onKeyDown={(e) => e.stopPropagation()}
+							role="button"
+							tabIndex={0}
+							className={cn(
+								"relative shadow-[0_0_50px_rgba(0,0,0,0.5)] group/image z-10",
+								!isZoomed && "rounded-sm",
+								!canZoom ? "cursor-default" : !isZoomed && "cursor-zoom-in",
+							)}
+							onClick={toggleZoom}
+							onKeyDown={(e) => {
+								if (e.key === "Enter" || e.key === " ")
+									toggleZoom(e as unknown as React.MouseEvent);
+							}}
+							onMouseEnter={() => handleHoverChange(true)}
+							onMouseLeave={() => handleHoverChange(false)}
 						>
-							<div
-								role="button"
-								tabIndex={0}
-								className={cn(
-									"relative shadow-[0_0_50px_rgba(0,0,0,0.5)] group/image z-10",
-									!isZoomed && "rounded-sm",
-									!canZoom ? "cursor-default" : !isZoomed && "cursor-zoom-in",
-								)}
-								onClick={toggleZoom}
-								onKeyDown={(e) => {
-									if (e.key === "Enter" || e.key === " ")
-										toggleZoom(e as unknown as React.MouseEvent);
-								}}
-								onMouseEnter={() => handleHoverChange(true)}
-								onMouseLeave={() => handleHoverChange(false)}
-							>
-								{hasSeparateThumbnail && thumbnailUrl && (
-									<NextImage
-										src={thumbnailUrl}
-										alt={image.prompt || "Generated image"}
-										onLoad={() => setIsThumbnailLoaded(true)}
-										draggable={false}
-										width={image.width || image.params?.width || 1000}
-										height={image.height || image.params?.height || 1000}
-										priority
-										unoptimized={thumbnailUrl.startsWith("http")}
-										className={cn(
-											"w-auto h-auto object-contain select-none transition-all duration-500",
-											isZoomed
-												? ""
-												: "max-w-[calc(100vw-2rem)] max-h-[calc(100vh-6rem)] md:max-w-[calc(100vw-6rem)] md:max-h-[calc(100vh-8rem)]",
-											!isThumbnailLoaded ? "opacity-0" : "opacity-100",
-											isFullResLoaded
-												? "opacity-0 pointer-events-none absolute inset-0"
-												: "blur-[2px]",
-										)}
-									/>
-								)}
-
+							{hasSeparateThumbnail && thumbnailUrl && (
 								<NextImage
-									src={fullResUrl || image.url}
+									src={thumbnailUrl}
 									alt={image.prompt || "Generated image"}
-									onLoad={(e) => {
-										handleImageLoad(
-											e as unknown as React.SyntheticEvent<HTMLImageElement>,
-										);
-										setIsFullResLoaded(true);
+									onLoad={() => {
+										markLightboxImageUrlReady(thumbnailUrl);
+										setIsThumbnailLoaded(true);
 									}}
 									draggable={false}
-									decoding="sync"
 									width={image.width || image.params?.width || 1000}
 									height={image.height || image.params?.height || 1000}
-									priority={true}
-									unoptimized={(fullResUrl || image.url).startsWith("http")}
+									priority
+									unoptimized={thumbnailUrl.startsWith("http")}
 									className={cn(
 										"w-auto h-auto object-contain select-none transition-all duration-500",
 										isZoomed
 											? ""
 											: "max-w-[calc(100vw-2rem)] max-h-[calc(100vh-6rem)] md:max-w-[calc(100vw-6rem)] md:max-h-[calc(100vh-8rem)]",
-										hasSeparateThumbnail
-											? isFullResLoaded
-												? "opacity-100"
-												: "opacity-0"
-											: !isFullResLoaded
-												? "opacity-0"
-												: "opacity-100",
-										isGenerating && "blur-md",
+										!isThumbnailLoaded ? "opacity-0" : "opacity-100",
+										isFullResLoaded
+											? "opacity-0 pointer-events-none absolute inset-0"
+											: "blur-[2px]",
 									)}
 								/>
+							)}
 
-								{/* Generating overlay with pulse effect */}
-								{isGenerating && (
-									<div className="absolute inset-0 z-20 rounded-sm overflow-hidden pointer-events-none">
-										<div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse" />
-										<div
-											className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent"
-											style={{
-												animation: "shimmer 2s ease-in-out infinite",
-											}}
-										/>
-									</div>
+							<NextImage
+								src={fullResUrl || image.url}
+								alt={image.prompt || "Generated image"}
+								onLoad={(e) => {
+									handleImageLoad(
+										e as unknown as React.SyntheticEvent<HTMLImageElement>,
+									);
+									markLightboxImageUrlReady(fullResUrl || image.url);
+									setIsFullResLoaded(true);
+								}}
+								draggable={false}
+								decoding="sync"
+								width={image.width || image.params?.width || 1000}
+								height={image.height || image.params?.height || 1000}
+								priority={true}
+								unoptimized={(fullResUrl || image.url).startsWith("http")}
+								className={cn(
+									"w-auto h-auto object-contain select-none transition-all duration-500",
+									isZoomed
+										? ""
+										: "max-w-[calc(100vw-2rem)] max-h-[calc(100vh-6rem)] md:max-w-[calc(100vw-6rem)] md:max-h-[calc(100vh-8rem)]",
+									hasSeparateThumbnail
+										? isFullResLoaded
+											? "opacity-100"
+											: "opacity-0"
+										: !isFullResLoaded
+											? "opacity-0"
+											: "opacity-100",
+									isGenerating && "blur-md",
 								)}
-							</div>
+							/>
 
-							{canZoom &&
-								!isZoomed &&
-								(isThumbnailLoaded || isFullResLoaded) && (
-									<div className="absolute top-4 right-4 z-10 opacity-0 group-hover/image:opacity-100 transition-opacity pointer-events-none">
-										<div className="bg-black/40 backdrop-blur-md rounded-full p-2 border border-white/10 text-white/70">
-											<ZoomIn className="w-5 h-5" />
-										</div>
-									</div>
-								)}
+							{/* Generating overlay with pulse effect */}
+							{isGenerating && (
+								<div className="absolute inset-0 z-20 rounded-sm overflow-hidden pointer-events-none">
+									<div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse" />
+									<div
+										className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent"
+										style={{
+											animation: "shimmer 2s ease-in-out infinite",
+										}}
+									/>
+								</div>
+							)}
 						</div>
-					)}
-				</>
-			)}
 
-			{(isLoadingDetails ||
-				(!isVideo && !isThumbnailLoaded && !isFullResLoaded)) && (
+						{canZoom &&
+							!isZoomed &&
+							(isThumbnailLoaded || isFullResLoaded) && (
+								<div className="absolute top-4 right-4 z-10 opacity-0 group-hover/image:opacity-100 transition-opacity pointer-events-none">
+									<div className="bg-black/40 backdrop-blur-md rounded-full p-2 border border-white/10 text-white/70">
+										<ZoomIn className="w-5 h-5" />
+									</div>
+								</div>
+							)}
+					</div>
+				)}
+			</>
+
+			{!isVideo && !isThumbnailLoaded && !isFullResLoaded && (
 				<div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
 					<Loader2 className="w-10 h-10 animate-spin text-white/50" />
 				</div>

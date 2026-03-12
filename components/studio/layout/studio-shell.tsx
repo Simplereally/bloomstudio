@@ -239,9 +239,30 @@ export function StudioShell({
     [activeSingleGenerations],
   );
 
+  const getSingleGenerationDisplayStatus = React.useCallback(
+    (
+      generation: (typeof activeSingleList)[number],
+    ): "pending" | "processing" => {
+      if (
+        generation.status === "processing" ||
+        generation.dispatchStatus === "dispatched" ||
+        generation.dispatchStatus === "processing"
+      ) {
+        return "processing";
+      }
+
+      return "pending";
+    },
+    [],
+  );
+
   const singlePendingCount = React.useMemo(
-    () => activeSingleList.filter((g) => g.status === "pending").length,
-    [activeSingleList],
+    () =>
+      activeSingleList.filter(
+        (generation) =>
+          getSingleGenerationDisplayStatus(generation) === "pending",
+      ).length,
+    [activeSingleList, getSingleGenerationDisplayStatus],
   );
 
   const singleActiveCount = activeSingleList.length;
@@ -263,13 +284,13 @@ export function StudioShell({
         const aspectRatio = h > 0 ? w / h : 1;
         return {
           id: g._id,
-          status: g.status,
+          status: getSingleGenerationDisplayStatus(g),
           createdAt: g.createdAt,
           aspectRatio: Number.isFinite(aspectRatio) ? aspectRatio : 1,
           labelIndex: i + 1,
         };
       });
-  }, [activeSingleList]);
+  }, [activeSingleList, getSingleGenerationDisplayStatus]);
 
   const handleCancelSingleItem = React.useCallback(
     async (id: string) => {
@@ -556,16 +577,18 @@ export function StudioShell({
   }, [currentLightboxGalleryIndex, galleryImages, studioUI]);
 
   const lightboxMediaNavigation = React.useMemo(() => {
-    if (!isMobile || !lightboxUsesGalleryNavigation || currentLightboxGalleryIndex < 0) {
+    if (!lightboxUsesGalleryNavigation || currentLightboxGalleryIndex < 0) {
       return undefined;
     }
 
     return {
       hasNext: currentLightboxGalleryIndex < galleryImages.length - 1,
       hasPrevious: currentLightboxGalleryIndex > 0,
-      hideVideoControls: true,
+      hideVideoControls: isMobile,
+      nextImage: galleryImages[currentLightboxGalleryIndex + 1] ?? null,
       onNext: handleNextLightboxMedia,
       onPrevious: handlePreviousLightboxMedia,
+      previousImage: galleryImages[currentLightboxGalleryIndex - 1] ?? null,
     };
   }, [
     currentLightboxGalleryIndex,
@@ -575,6 +598,11 @@ export function StudioShell({
     isMobile,
     lightboxUsesGalleryNavigation,
   ]);
+
+  const galleryActiveImageId =
+    lightboxUsesGalleryNavigation && currentLightboxGalleryIndex >= 0
+      ? galleryImages[currentLightboxGalleryIndex]?.id
+      : galleryState.currentImage?.id;
 
   const handleCanvasLightboxOpen = React.useCallback(
     (image: GeneratedImage | null) => {
@@ -796,7 +824,7 @@ export function StudioShell({
   // ========================================
   const galleryContent = (
     <GalleryFeature
-      activeImageId={galleryState.currentImage?.id}
+      activeImageId={galleryActiveImageId}
       onSelectImage={handleSelectGalleryImage}
       thumbnailSize="md"
       initialPage={initialGalleryPage}

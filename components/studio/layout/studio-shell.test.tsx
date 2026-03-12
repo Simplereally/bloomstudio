@@ -78,13 +78,14 @@ vi.mock("@/components/studio/features/generation", () => ({
 }))
 
 vi.mock("@/components/studio/features/canvas", () => ({
-    CanvasFeature: ({ currentImage, isGenerating, queueItems, onCancelItem }: { currentImage: GeneratedImage | null; isGenerating: boolean; queueItems?: Array<{ id: string; aspectRatio: number }>; onCancelItem?: (id: string) => void }) => (
+    CanvasFeature: ({ currentImage, isGenerating, queueItems, onCancelItem }: { currentImage: GeneratedImage | null; isGenerating: boolean; queueItems?: Array<{ id: string; aspectRatio: number; status: string }>; onCancelItem?: (id: string) => void }) => (
         <div data-testid="canvas-feature">
             <span data-testid="canvas-has-image">{String(!!currentImage)}</span>
             <span data-testid="canvas-is-generating">{String(isGenerating)}</span>
             <span data-testid="canvas-queue-count">{queueItems?.length ?? 0}</span>
             <span data-testid="canvas-has-cancel">{String(typeof onCancelItem === "function")}</span>
             <span data-testid="canvas-queue-ratios">{JSON.stringify(queueItems?.map(q => q.aspectRatio) ?? [])}</span>
+            <span data-testid="canvas-queue-statuses">{JSON.stringify(queueItems?.map(q => q.status) ?? [])}</span>
             {queueItems?.map((item) => (
                 <button
                     key={item.id}
@@ -653,6 +654,32 @@ describe("StudioShell", () => {
 
             // Only the pending one should appear
             expect(screen.getByTestId("canvas-queue-count")).toHaveTextContent("1")
+        })
+
+        it("treats dispatched worker-plane generations as processing for UI status", () => {
+            mockActiveGenerations = [
+                {
+                    _id: "gen_dispatched",
+                    status: "pending",
+                    dispatchStatus: "dispatched",
+                    createdAt: 1000,
+                    generationParams: { width: 1024, height: 1024 },
+                },
+                {
+                    _id: "gen_pending",
+                    status: "pending",
+                    dispatchStatus: "pending",
+                    createdAt: 2000,
+                    generationParams: { width: 1024, height: 1024 },
+                },
+            ]
+
+            render(<StudioShell {...defaultProps} />)
+
+            expect(screen.getByTestId("canvas-queue-statuses")).toHaveTextContent(
+                JSON.stringify(["processing", "pending"])
+            )
+            expect(screen.getByText("2 generations in progress (1 queued)")).toBeInTheDocument()
         })
     })
 })

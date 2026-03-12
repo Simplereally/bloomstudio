@@ -1,7 +1,7 @@
-import "@testing-library/jest-dom/vitest"
 import { describe, expect, it } from "vitest"
 import {
     buildRecordBatchItemResultTransition,
+    getBatchStatusAfterItemSettlement,
     getResumeBatchDecision,
 } from "./batchGenerationState"
 
@@ -12,6 +12,7 @@ describe("getResumeBatchDecision", () => {
                 currentIndex: 4,
                 totalCount: 10,
                 inFlightCount: 2,
+                settledItemIndexes: [0, 1, 2, 3],
             })
         ).toEqual({
             canSchedule: false,
@@ -21,12 +22,13 @@ describe("getResumeBatchDecision", () => {
         })
     })
 
-    it("increments inFlightCount when a drained paused batch resumes", () => {
+    it("resumes from the next unsettled item once work has drained", () => {
         expect(
             getResumeBatchDecision({
-                currentIndex: 4,
-                totalCount: 10,
+                currentIndex: 3,
+                totalCount: 6,
                 inFlightCount: 0,
+                settledItemIndexes: [0, 1, 2, 3],
             })
         ).toEqual({
             canSchedule: true,
@@ -35,94 +37,108 @@ describe("getResumeBatchDecision", () => {
             reason: null,
         })
     })
+})
 
-    it("advances to the next unsettled index when the current index is already settled", () => {
+describe("buildRecordBatchItemResultTransition", () => {
+    it("does not double-count a duplicate item result", () => {
         expect(
-            getResumeBatchDecision({
-                currentIndex: 4,
-                totalCount: 10,
-                inFlightCount: 0,
-                settledItemIndexes: [0, 1, 2, 3, 4],
-            })
+            buildRecordBatchItemResultTransition(
+                {
+                    completedCount: 2,
+                    failedCount: 1,
+                    imageIds: ["img_1", "img_2"],
+                    inFlightCount: 2,
+                    settledItemIndexes: [0, 1, 2],
+                    status: "processing",
+                    totalCount: 5,
+                },
+                {
+                    itemIndex: 2,
+                    success: true,
+                    imageId: "img_duplicate",
+                }
+            )
         ).toEqual({
-            canSchedule: true,
-            itemIndex: 5,
-            nextInFlightCount: 1,
-            reason: null,
+            isDuplicate: true,
+            shouldDelete: false,
+            updates: {
+                inFlightCount: 1,
+            },
         })
     })
 
-    it("handles sparse settled indexes correctly", () => {
+    it("records a fresh success and marks pending batches as processing", () => {
         expect(
-            getResumeBatchDecision({
-                currentIndex: 0,
-                totalCount: 10,
-                inFlightCount: 0,
-                settledItemIndexes: [0, 2],
-            })
+            buildRecordBatchItemResultTransition(
+                {
+                    completedCount: 0,
+                    failedCount: 0,
+                    imageIds: [],
+                    inFlightCount: 1,
+                    settledItemIndexes: [],
+                    status: "pending",
+                    totalCount: 3,
+                },
+                {
+                    itemIndex: 0,
+                    success: true,
+                    imageId: "img_1",
+                }
+            )
         ).toEqual({
-            canSchedule: true,
-            itemIndex: 1,
-            nextInFlightCount: 1,
-            reason: null,
+            isDuplicate: false,
+            shouldDelete: false,
+            updates: {
+                completedCount: 1,
+                imageIds: ["img_1"],
+                inFlightCount: 0,
+                settledItemIndexes: [0],
+                status: "processing",
+            },
         })
     })
 })
 
-describe("buildRecordBatchItemResultTransition", () => {
-    it("does not increment totals twice for the same settled item", () => {
-        const transition = buildRecordBatchItemResultTransition(
-            {
-                completedCount: 3,
+describe("getBatchStatusAfterItemSettlement", () => {
+    it("keeps a partially failed batch running", () => {
+        expect(
+            getBatchStatusAfterItemSettlement({
+                completedCount: 90,
                 failedCount: 1,
-                imageIds: ["img-1", "img-2", "img-3"],
-                inFlightCount: 2,
-                settledItemIndexes: [0, 1, 2, 3],
+                totalCount: 100,
                 status: "processing",
-                totalCount: 10,
-            },
-            {
-                itemIndex: 3,
-                success: true,
-                imageId: "img-duplicate",
-            }
-        )
-
-        expect(transition.isDuplicate).toBe(true)
-        expect(transition.shouldDelete).toBe(false)
-        expect(transition.updates).toEqual({
-            inFlightCount: 1,
-        })
+            })
+        ).toBe("processing")
     })
 
-    it("records a first successful result and tracks the settled item index", () => {
-        const transition = buildRecordBatchItemResultTransition(
-            {
+    it("marks a mixed-result finished batch as completed", () => {
+        expect(
+            getBatchStatusAfterItemSettlement({
+                completedCount: 90,
+                failedCount: 10,
+                totalCount: 100,
+                status: "processing",
+            })
+        ).not.toBe("failed")
+
+        expect(
+            getBatchStatusAfterItemSettlement({
                 completedCount: 3,
                 failedCount: 1,
-                imageIds: ["img-1", "img-2", "img-3"],
-                inFlightCount: 2,
-                settledItemIndexes: [0, 1, 2, 3],
-                status: "pending",
-                totalCount: 10,
-            },
-            {
-                itemIndex: 4,
-                success: true,
-                imageId: "img-4",
-                retryCount: 2,
-            }
-        )
+                totalCount: 4,
+                status: "processing",
+            })
+        ).toBe("completed")
+    })
 
-        expect(transition.isDuplicate).toBe(false)
-        expect(transition.shouldDelete).toBe(false)
-        expect(transition.updates).toEqual({
-            completedCount: 4,
-            currentItemRetryCount: 2,
-            imageIds: ["img-1", "img-2", "img-3", "img-4"],
-            inFlightCount: 1,
-            settledItemIndexes: [0, 1, 2, 3, 4],
-            status: "processing",
-        })
+    it("marks an all-failed batch as failed", () => {
+        expect(
+            getBatchStatusAfterItemSettlement({
+                completedCount: 0,
+                failedCount: 4,
+                totalCount: 4,
+                status: "processing",
+            })
+        ).toBe("failed")
     })
 })

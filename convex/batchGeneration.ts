@@ -1,15 +1,15 @@
 /**
  * Convex Batch Generation Functions
  *
- * Handles async batch image generation with scheduled server-side processing.
- * Images are generated with configurable intervals using Convex scheduled functions.
+ * Handles async batch image generation with Cloudflare-backed worker dispatch.
+ * Items are seeded in fixed-size chunks so the UX stays fast without burning
+ * Convex action compute on provider waits.
  * 
  * BYOP (Bring Your Own Pollen) Architecture:
  * - Client obtains API key from PollenAuth context (fetched from encrypted Convex storage)
- * - startBatchJob: Receives API key, creates batch record (with key), schedules first item
- * - processBatchItem (batchProcessor.ts): Reads API key from batch record, generates images
+ * - startBatchJob: Receives API key, creates batch record + batchItems, schedules the first chunk
+ * - Cloudflare worker: Claims each batch item, calls Pollinations, uploads media, finalizes in Convex
  * - storeGeneratedImage: Stores image metadata in Convex
- * - recordBatchItemAndScheduleNext: Updates DB and schedules next item
  * 
  * This is a true "fire and forget" implementation - users can close their browser
  * and the batch will continue processing on the server using the stored API key.
@@ -21,11 +21,11 @@ import {
     internalMutation,
     internalQuery,
     mutation,
-    query
+    query,
 } from "./_generated/server"
 import {
     buildRecordBatchItemResultTransition,
-    getResumeBatchDecision,
+    getBatchStatusAfterItemSettlement,
 } from "./lib/batchGenerationState"
 import { analyzePromptForNSFW } from "./lib/nsfwDetection"
 import { canUserGenerate } from "./lib/subscription"
@@ -36,18 +36,18 @@ const MAX_BATCH_SIZE = 1000
 /** Minimum batch size */
 const MIN_BATCH_SIZE = 1
 
-/** Base delay between generations in milliseconds (100ms = 10 req/s) */
+/** Seed work in chunks of 10 with 1.5s spacing between chunks. */
+const BATCH_DISPATCH_CHUNK_SIZE = 10
+const BATCH_DISPATCH_CHUNK_DELAY_MS = 1_500
+
+/** Legacy adaptive delay state retained for backward compatibility with existing docs/UI. */
 const BASE_RATE_LIMIT_DELAY_MS = 100
 const MAX_ADAPTIVE_DELAY_MS = 2_000
+const MIN_JITTER_MS = 0
+const MAX_JITTER_MS = 250
 const THROTTLE_BACKOFF_MULTIPLIER = 1.5
 const TRANSIENT_BACKOFF_MULTIPLIER = 1.25
 const SUCCESS_RECOVERY_MULTIPLIER = 0.9
-
-/** Min jitter to add (20ms) */
-const MIN_JITTER_MS = 20
-
-/** Max jitter to add (100ms) */
-const MAX_JITTER_MS = 100
 
 /**
  * Lightweight batch job data for list views.
@@ -152,8 +152,8 @@ export const startBatchJob = mutation({
 
         const now = Date.now()
 
-        // Create the batch job document with the API key for later use
-        // Initialize inFlightCount to 1 since we're about to schedule item 0
+        // Create the aggregate batch job document. Per-item execution lives in
+        // batchItems so the parent doc no longer acts as the queue itself.
         const batchJobId = await ctx.db.insert("batchJobs", {
             ownerId: identity.subject,
             status: "pending",
@@ -161,22 +161,32 @@ export const startBatchJob = mutation({
             completedCount: 0,
             failedCount: 0,
             currentIndex: 0,
-            inFlightCount: 1,
+            inFlightCount: 0,
             adaptiveDelayMs: BASE_RATE_LIMIT_DELAY_MS,
             generationParams: args.generationParams,
             apiKey: args.apiKey, // Store the API key for use by processor actions
             imageIds: [],
-            settledItemIndexes: [],
             createdAt: now,
             updatedAt: now,
         })
 
-        // Schedule the first item to process immediately
-        // Using scheduler.runAfter(0) starts it as soon as possible
-        // The processBatchItem action runs in Node.js runtime (batchProcessor.ts)
-        await ctx.scheduler.runAfter(0, internal.batchProcessor.processBatchItem, {
+        for (let itemIndex = 0; itemIndex < args.count; itemIndex += 1) {
+            await ctx.db.insert("batchItems", {
+                batchJobId,
+                ownerId: identity.subject,
+                itemIndex,
+                status: "pending",
+                dispatchStatus: "pending",
+                dispatchAttempts: 0,
+                createdAt: now,
+                updatedAt: now,
+            })
+        }
+
+        // Seed the first chunk immediately. Additional chunks self-schedule.
+        await ctx.scheduler.runAfter(0, internal.batchGeneration.seedBatchDispatchChunk, {
             batchJobId,
-            itemIndex: 0,
+            startIndex: 0,
         })
 
         return batchJobId
@@ -185,7 +195,7 @@ export const startBatchJob = mutation({
 
 /**
  * Internal mutation to store a generated image in the database.
- * Called by processBatchItem after successful image generation.
+ * Called by the worker-backed batch completion path after successful generation.
  */
 export const storeGeneratedImage = internalMutation({
     args: {
@@ -208,10 +218,12 @@ export const storeGeneratedImage = internalMutation({
     },
     handler: async (ctx, args) => {
         const now = Date.now()
+        const needsSecondaryAssets = args.contentType.startsWith("video/")
 
         // Private images (unlisted) bypass NSFW detection entirely.
         // They are never shown in public feeds, so content analysis is unnecessary.
         const isPrivate = args.visibility === "unlisted"
+        const needsModeration = !isPrivate
 
         let isSensitive: boolean | null = false
         let sensitiveSource: "prompt_analysis" | undefined = undefined
@@ -253,6 +265,13 @@ export const storeGeneratedImage = internalMutation({
             isSensitive,
             sensitiveSource,
             sensitiveConfidence,
+            moderationStage: needsModeration && sensitiveConfidence < 0.9 ? "prompt_inference" : undefined,
+            moderationDispatchStatus: needsModeration && sensitiveConfidence < 0.9 ? "pending" : undefined,
+            moderationDispatchAttempts: needsModeration && sensitiveConfidence < 0.9 ? 0 : undefined,
+            moderationUpdatedAt: needsModeration && sensitiveConfidence < 0.9 ? now : undefined,
+            secondaryAssetsDispatchStatus: needsSecondaryAssets ? "pending" : undefined,
+            secondaryAssetsDispatchAttempts: needsSecondaryAssets ? 0 : undefined,
+            secondaryAssetsUpdatedAt: needsSecondaryAssets ? now : undefined,
         })
 
         // Store heavy details in side table (P0 Optimization)
@@ -275,6 +294,526 @@ export const storeGeneratedImage = internalMutation({
 })
 
 /**
+ * Seed a batch dispatch chunk into the Cloudflare worker plane.
+ *
+ * This is the pacing primitive for batch throughput:
+ * - schedule up to 10 items immediately
+ * - schedule the next chunk 1.5s later
+ * - stop seeding while paused/cancelled/completed
+ */
+export const seedBatchDispatchChunk = internalMutation({
+    args: {
+        batchJobId: v.id("batchJobs"),
+        startIndex: v.number(),
+    },
+    returns: v.object({
+        scheduledCount: v.number(),
+        nextStartIndex: v.union(v.number(), v.null()),
+    }),
+    handler: async (ctx, args) => {
+        const batchJob = await ctx.db.get(args.batchJobId)
+        if (!batchJob || (batchJob.status !== "pending" && batchJob.status !== "processing")) {
+            return { scheduledCount: 0, nextStartIndex: null }
+        }
+
+        const endExclusive = Math.min(args.startIndex + BATCH_DISPATCH_CHUNK_SIZE, batchJob.totalCount)
+        let scheduledCount = 0
+
+        for (let itemIndex = args.startIndex; itemIndex < endExclusive; itemIndex += 1) {
+            const batchItems = await ctx.db
+                .query("batchItems")
+                .withIndex("by_batch_item", (q) =>
+                    q.eq("batchJobId", args.batchJobId).eq("itemIndex", itemIndex)
+                )
+                .take(1)
+
+            const batchItem = batchItems[0]
+            if (!batchItem) {
+                continue
+            }
+
+            if (batchItem.status !== "pending" || batchItem.dispatchStatus !== "pending") {
+                continue
+            }
+
+            await ctx.scheduler.runAfter(0, internal.cloudflareDispatch.dispatchBatchItem, {
+                batchJobId: args.batchJobId,
+                itemIndex,
+            })
+            scheduledCount += 1
+        }
+
+        const nextStartIndex = endExclusive < batchJob.totalCount ? endExclusive : null
+
+        if (nextStartIndex !== null) {
+            await ctx.scheduler.runAfter(BATCH_DISPATCH_CHUNK_DELAY_MS, internal.batchGeneration.seedBatchDispatchChunk, {
+                batchJobId: args.batchJobId,
+                startIndex: nextStartIndex,
+            })
+        }
+
+        return { scheduledCount, nextStartIndex }
+    },
+})
+
+/**
+ * Internal query to fetch a batch item by parent/id coordinates.
+ */
+export const getBatchItemInternal = internalQuery({
+    args: {
+        batchJobId: v.id("batchJobs"),
+        itemIndex: v.number(),
+    },
+    handler: async (ctx, args) => {
+        const items = await ctx.db
+            .query("batchItems")
+            .withIndex("by_batch_item", (q) =>
+                q.eq("batchJobId", args.batchJobId).eq("itemIndex", args.itemIndex)
+            )
+            .take(1)
+
+        return items[0] ?? null
+    },
+})
+
+/**
+ * Mark a batch item as dispatched to the Cloudflare worker plane.
+ */
+export const markBatchItemDispatched = internalMutation({
+    args: {
+        batchJobId: v.id("batchJobs"),
+        itemIndex: v.number(),
+    },
+    returns: v.object({
+        dispatched: v.boolean(),
+        dispatchAttempts: v.number(),
+    }),
+    handler: async (ctx, args) => {
+        const batchJob = await ctx.db.get(args.batchJobId)
+        if (!batchJob || (batchJob.status !== "pending" && batchJob.status !== "processing")) {
+            return { dispatched: false, dispatchAttempts: 0 }
+        }
+
+        const items = await ctx.db
+            .query("batchItems")
+            .withIndex("by_batch_item", (q) =>
+                q.eq("batchJobId", args.batchJobId).eq("itemIndex", args.itemIndex)
+            )
+            .take(1)
+
+        const batchItem = items[0]
+        if (!batchItem) {
+            return { dispatched: false, dispatchAttempts: 0 }
+        }
+
+        if (batchItem.status === "completed" || batchItem.status === "failed" || batchItem.status === "cancelled") {
+            return {
+                dispatched: false,
+                dispatchAttempts: batchItem.dispatchAttempts ?? 0,
+            }
+        }
+
+        if (batchItem.dispatchStatus === "dispatched" || batchItem.dispatchStatus === "processing") {
+            return {
+                dispatched: false,
+                dispatchAttempts: batchItem.dispatchAttempts ?? 0,
+            }
+        }
+
+        const nextAttempts = (batchItem.dispatchAttempts ?? 0) + 1
+        const now = Date.now()
+
+        await ctx.db.patch(batchItem._id, {
+            dispatchStatus: "dispatched",
+            dispatchAttempts: nextAttempts,
+            dispatchedAt: now,
+            lastDispatchError: undefined,
+            updatedAt: now,
+        })
+
+        await ctx.db.patch(args.batchJobId, {
+            status: batchJob.status === "pending" ? "processing" : batchJob.status,
+            currentIndex: Math.max(batchJob.currentIndex, args.itemIndex + 1),
+            inFlightCount: (batchJob.inFlightCount ?? 0) + 1,
+            updatedAt: now,
+        })
+
+        return {
+            dispatched: true,
+            dispatchAttempts: nextAttempts,
+        }
+    },
+})
+
+/**
+ * Record a failed dispatch attempt for a batch item and release the in-flight slot.
+ */
+export const recordBatchItemDispatchFailure = internalMutation({
+    args: {
+        batchJobId: v.id("batchJobs"),
+        itemIndex: v.number(),
+        errorMessage: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const batchJob = await ctx.db.get(args.batchJobId)
+        const items = await ctx.db
+            .query("batchItems")
+            .withIndex("by_batch_item", (q) =>
+                q.eq("batchJobId", args.batchJobId).eq("itemIndex", args.itemIndex)
+            )
+            .take(1)
+
+        const batchItem = items[0]
+        if (!batchItem) {
+            return
+        }
+
+        const now = Date.now()
+        await ctx.db.patch(batchItem._id, {
+            dispatchStatus: "pending",
+            lastDispatchError: args.errorMessage,
+            updatedAt: now,
+        })
+
+        if (batchJob) {
+            await ctx.db.patch(args.batchJobId, {
+                inFlightCount: Math.max(0, (batchJob.inFlightCount ?? 0) - 1),
+                updatedAt: now,
+            })
+        }
+    },
+})
+
+/**
+ * Claim a batch item for Cloudflare worker execution.
+ */
+export const claimBatchItemForWorker = internalMutation({
+    args: {
+        batchJobId: v.id("batchJobs"),
+        itemIndex: v.number(),
+        claimToken: v.string(),
+        workerAttempt: v.number(),
+        providerRequestId: v.optional(v.string()),
+    },
+    returns: v.object({
+        claimed: v.boolean(),
+    }),
+    handler: async (ctx, args) => {
+        const batchJob = await ctx.db.get(args.batchJobId)
+        if (
+            !batchJob ||
+            (batchJob.status !== "pending" &&
+                batchJob.status !== "processing" &&
+                batchJob.status !== "paused")
+        ) {
+            return { claimed: false }
+        }
+
+        const items = await ctx.db
+            .query("batchItems")
+            .withIndex("by_batch_item", (q) =>
+                q.eq("batchJobId", args.batchJobId).eq("itemIndex", args.itemIndex)
+            )
+            .take(1)
+
+        const batchItem = items[0]
+        if (!batchItem) {
+            return { claimed: false }
+        }
+
+        if (batchItem.status === "completed" || batchItem.status === "failed" || batchItem.status === "cancelled") {
+            return { claimed: false }
+        }
+
+        const currentAttempt = batchItem.workerAttempt ?? 0
+        const canClaimPending =
+            batchItem.status === "pending" &&
+            batchItem.dispatchStatus === "dispatched" &&
+            (batchJob.status === "pending" || batchJob.status === "processing" || batchJob.status === "paused")
+
+        const canReclaimProcessing =
+            batchItem.status === "processing" &&
+            args.workerAttempt > currentAttempt
+
+        if (!canClaimPending && !canReclaimProcessing) {
+            return { claimed: false }
+        }
+
+        await ctx.db.patch(batchItem._id, {
+            status: "processing",
+            dispatchStatus: "processing",
+            claimToken: args.claimToken,
+            workerAttempt: args.workerAttempt,
+            providerRequestId: args.providerRequestId,
+            updatedAt: Date.now(),
+        })
+
+        return { claimed: true }
+    },
+})
+
+/**
+ * Return the continuation state for a claimed batch item.
+ */
+export const getBatchItemWorkerContinuationState = internalQuery({
+    args: {
+        batchJobId: v.id("batchJobs"),
+        itemIndex: v.number(),
+        claimToken: v.string(),
+    },
+    returns: v.object({
+        canContinue: v.boolean(),
+        ownerId: v.optional(v.string()),
+        generationParams: v.optional(generationParamsValidator),
+    }),
+    handler: async (ctx, args) => {
+        const batchJob = await ctx.db.get(args.batchJobId)
+        if (
+            !batchJob ||
+            (batchJob.status !== "pending" &&
+                batchJob.status !== "processing" &&
+                batchJob.status !== "paused")
+        ) {
+            return { canContinue: false }
+        }
+
+        const items = await ctx.db
+            .query("batchItems")
+            .withIndex("by_batch_item", (q) =>
+                q.eq("batchJobId", args.batchJobId).eq("itemIndex", args.itemIndex)
+            )
+            .take(1)
+
+        const batchItem = items[0]
+        if (
+            !batchItem ||
+            batchItem.claimToken !== args.claimToken ||
+            batchItem.status !== "processing" ||
+            batchItem.dispatchStatus !== "processing"
+        ) {
+            return { canContinue: false }
+        }
+
+        return {
+            canContinue: true,
+            ownerId: batchJob.ownerId,
+            generationParams: batchJob.generationParams,
+        }
+    },
+})
+
+/**
+ * Finalize a worker-owned batch item exactly once and schedule the next item.
+ */
+export const completeBatchItemFromWorkerResult = internalMutation({
+    args: {
+        batchJobId: v.id("batchJobs"),
+        itemIndex: v.number(),
+        claimToken: v.string(),
+        r2Key: v.string(),
+        url: v.string(),
+        width: v.number(),
+        height: v.number(),
+        seed: v.optional(v.number()),
+        contentType: v.string(),
+        sizeBytes: v.number(),
+        retryCount: v.optional(v.number()),
+        providerRequestId: v.optional(v.string()),
+    },
+    returns: v.object({
+        completed: v.boolean(),
+        duplicate: v.boolean(),
+        imageId: v.optional(v.id("generatedImages")),
+    }),
+    handler: async (
+        ctx,
+        args
+    ): Promise<{ completed: boolean; duplicate: boolean; imageId?: Doc<"generatedImages">["_id"] }> => {
+        const batchJob = await ctx.db.get(args.batchJobId)
+        if (!batchJob || batchJob.status === "cancelled") {
+            return { completed: false, duplicate: false }
+        }
+
+        const items = await ctx.db
+            .query("batchItems")
+            .withIndex("by_batch_item", (q) =>
+                q.eq("batchJobId", args.batchJobId).eq("itemIndex", args.itemIndex)
+            )
+            .take(1)
+
+        const batchItem = items[0]
+        if (!batchItem) {
+            return { completed: false, duplicate: false }
+        }
+
+        if (batchItem.status === "completed") {
+            return {
+                completed: false,
+                duplicate: true,
+                imageId: batchItem.imageId,
+            }
+        }
+
+        if (batchItem.status === "failed" || batchItem.status === "cancelled") {
+            return { completed: false, duplicate: false }
+        }
+
+        if (batchItem.claimToken !== args.claimToken) {
+            return { completed: false, duplicate: false }
+        }
+
+        const imageId: Doc<"generatedImages">["_id"] = await ctx.runMutation(internal.batchGeneration.storeGeneratedImage, {
+            ownerId: batchJob.ownerId,
+            r2Key: args.r2Key,
+            url: args.url,
+            thumbnailR2Key: undefined,
+            thumbnailUrl: undefined,
+            previewR2Key: undefined,
+            previewUrl: undefined,
+            prompt: batchJob.generationParams.prompt,
+            width: args.width,
+            height: args.height,
+            model: batchJob.generationParams.model ?? "flux",
+            seed: args.seed,
+            contentType: args.contentType,
+            sizeBytes: args.sizeBytes,
+            generationParams: {
+                ...batchJob.generationParams,
+                seed: args.seed ?? batchJob.generationParams.seed,
+                width: args.width,
+                height: args.height,
+            },
+            visibility: batchJob.generationParams.private ? "unlisted" : "public",
+        })
+
+        const now = Date.now()
+        await ctx.db.patch(batchItem._id, {
+            status: "completed",
+            dispatchStatus: "completed",
+            imageId,
+            retryCount: args.retryCount,
+            providerRequestId: args.providerRequestId ?? batchItem.providerRequestId,
+            errorMessage: undefined,
+            errorCode: undefined,
+            updatedAt: now,
+        })
+
+        const nextCompletedCount = batchJob.completedCount + 1
+        const nextFailedCount = batchJob.failedCount
+        const nextInFlightCount = Math.max(0, (batchJob.inFlightCount ?? 0) - 1)
+        const totalProcessed = nextCompletedCount + nextFailedCount
+        const nextStatus = getBatchStatusAfterItemSettlement({
+            completedCount: nextCompletedCount,
+            failedCount: nextFailedCount,
+            totalCount: batchJob.totalCount,
+            status: batchJob.status,
+        })
+
+        await ctx.db.patch(args.batchJobId, {
+            status: nextStatus,
+            completedCount: nextCompletedCount,
+            failedCount: nextFailedCount,
+            inFlightCount: nextInFlightCount,
+            currentIndex: Math.max(batchJob.currentIndex, args.itemIndex + 1),
+            apiKey: totalProcessed >= batchJob.totalCount ? undefined : batchJob.apiKey,
+            updatedAt: now,
+        })
+
+        if (args.contentType.startsWith("video/")) {
+            await ctx.scheduler.runAfter(0, internal.cloudflareDispatch.dispatchSecondaryAssets, {
+                imageId,
+            })
+        }
+
+        return { completed: true, duplicate: false, imageId }
+    },
+})
+
+/**
+ * Fail a worker-owned batch item exactly once and schedule the next item when appropriate.
+ */
+export const failBatchItemFromWorker = internalMutation({
+    args: {
+        batchJobId: v.id("batchJobs"),
+        itemIndex: v.number(),
+        claimToken: v.string(),
+        errorMessage: v.string(),
+        errorCode: v.optional(v.number()),
+        retryCount: v.optional(v.number()),
+        providerRequestId: v.optional(v.string()),
+    },
+    returns: v.object({
+        failed: v.boolean(),
+        duplicate: v.boolean(),
+    }),
+    handler: async (ctx, args) => {
+        const batchJob = await ctx.db.get(args.batchJobId)
+        if (!batchJob || batchJob.status === "cancelled") {
+            return { failed: false, duplicate: false }
+        }
+
+        const items = await ctx.db
+            .query("batchItems")
+            .withIndex("by_batch_item", (q) =>
+                q.eq("batchJobId", args.batchJobId).eq("itemIndex", args.itemIndex)
+            )
+            .take(1)
+
+        const batchItem = items[0]
+        if (!batchItem) {
+            return { failed: false, duplicate: false }
+        }
+
+        if (batchItem.status === "failed") {
+            return { failed: false, duplicate: true }
+        }
+
+        if (batchItem.status === "completed" || batchItem.status === "cancelled") {
+            return { failed: false, duplicate: false }
+        }
+
+        if (batchItem.claimToken !== args.claimToken) {
+            return { failed: false, duplicate: false }
+        }
+
+        const now = Date.now()
+        await ctx.db.patch(batchItem._id, {
+            status: "failed",
+            dispatchStatus: "failed",
+            errorMessage: args.errorMessage,
+            errorCode: args.errorCode,
+            retryCount: args.retryCount,
+            providerRequestId: args.providerRequestId ?? batchItem.providerRequestId,
+            updatedAt: now,
+        })
+
+        const nextCompletedCount = batchJob.completedCount
+        const nextFailedCount = batchJob.failedCount + 1
+        const nextInFlightCount = Math.max(0, (batchJob.inFlightCount ?? 0) - 1)
+        const totalProcessed = nextCompletedCount + nextFailedCount
+        const nextStatus = getBatchStatusAfterItemSettlement({
+            completedCount: nextCompletedCount,
+            failedCount: nextFailedCount,
+            totalCount: batchJob.totalCount,
+            status: batchJob.status,
+        })
+
+        await ctx.db.patch(args.batchJobId, {
+            status: nextStatus,
+            completedCount: nextCompletedCount,
+            failedCount: nextFailedCount,
+            inFlightCount: nextInFlightCount,
+            currentIndex: Math.max(batchJob.currentIndex, args.itemIndex + 1),
+            lastErrorCode: args.errorCode,
+            apiKey: totalProcessed >= batchJob.totalCount ? undefined : batchJob.apiKey,
+            updatedAt: now,
+        })
+
+        return { failed: true, duplicate: false }
+    },
+})
+
+/**
  * Schedule the next item in the batch.
  * Should be called at the START of processing an item to pipeline requests.
  */
@@ -292,7 +831,7 @@ export const scheduleNextBatchItem = internalMutation({
 
         // Don't schedule if cancelled or paused
         // Note: We check this at the moment of scheduling.
-        // If the user pauses *during* the delay, the next action (processBatchItem)
+        // If the user pauses *during* the delay, the next dispatch action
         // mimics this check and will abort.
         if (batchJob.status !== "pending" && batchJob.status !== "processing") {
             return { seeded: false }
@@ -331,7 +870,7 @@ export const scheduleNextBatchItem = internalMutation({
         const jitter = Math.floor(Math.random() * (MAX_JITTER_MS - MIN_JITTER_MS + 1)) + MIN_JITTER_MS
         const delay = baseDelay + jitter
 
-        await ctx.scheduler.runAfter(delay, internal.batchProcessor.processBatchItem, {
+        await ctx.scheduler.runAfter(delay, internal.cloudflareDispatch.dispatchBatchItem, {
             batchJobId: args.batchJobId,
             itemIndex: nextIndex,
         })
@@ -442,7 +981,7 @@ export const recordBatchItemResult = internalMutation({
 
 /**
  * Decrement the in-flight count when an item is skipped.
- * Called when processBatchItem detects the batch is paused/cancelled
+ * Called when the worker-backed batch path detects the batch is paused/cancelled
  * and doesn't process the item.
  */
 export const decrementInFlightCount = internalMutation({
@@ -590,12 +1129,21 @@ export const getBatchImages = query({
             return []
         }
 
-        // Fetch all images by their IDs
-        const images = await Promise.all(
-            batchJob.imageIds.map((id) => ctx.db.get(id))
-        )
+        const completedBatchItems = await ctx.db
+            .query("batchItems")
+            .withIndex("by_batch_status", (q) =>
+                q.eq("batchJobId", args.batchJobId).eq("status", "completed")
+            )
+            .order("asc")
+            .collect()
 
-        // Filter out any null results and return
+        const itemImageIds = completedBatchItems
+            .map((item) => item.imageId)
+            .filter((imageId): imageId is NonNullable<Doc<"batchItems">["imageId"]> => imageId !== undefined)
+
+        const imageIds = itemImageIds.length > 0 ? itemImageIds : batchJob.imageIds
+        const images = await Promise.all(imageIds.map((id) => ctx.db.get(id)))
+
         return images.filter((img): img is Doc<"generatedImages"> => img !== null)
     },
 })
@@ -628,8 +1176,11 @@ export const cancelBatchJob = mutation({
             throw new Error("Batch job is not active")
         }
 
-        // Delete the batch job immediately ("nuke" policy)
-        await ctx.db.delete(args.batchJobId)
+        await ctx.db.patch(args.batchJobId, {
+            status: "cancelled",
+            apiKey: undefined,
+            updatedAt: Date.now(),
+        })
 
         return { success: true }
     },
@@ -675,7 +1226,7 @@ export const pauseBatchJob = mutation({
 
 /**
  * Resume a paused batch job.
- * Continues processing from where it left off by scheduling the next item.
+ * Continues processing from the first remaining pending item by restarting chunk seeding.
  */
 export const resumeBatchJob = mutation({
     args: {
@@ -701,30 +1252,25 @@ export const resumeBatchJob = mutation({
             throw new Error("Batch job is not paused")
         }
 
-        const resumeDecision = getResumeBatchDecision(batchJob)
-        if (!resumeDecision.canSchedule) {
-            if (resumeDecision.reason === "in_flight") {
-                throw new ConvexError({
-                    code: "BATCH_STILL_DRAINING",
-                    message: "Wait for in-flight batch items to finish before resuming.",
-                })
-            }
-            return { success: true }
-        }
+        const nextPendingItems = await ctx.db
+            .query("batchItems")
+            .withIndex("by_batch_status", (q) =>
+                q.eq("batchJobId", args.batchJobId).eq("status", "pending")
+            )
+            .order("asc")
+            .take(1)
 
-        // Update status to processing
+        const nextPendingItem = nextPendingItems[0]
+
         await ctx.db.patch(args.batchJobId, {
             status: "processing",
-            currentIndex: resumeDecision.itemIndex ?? batchJob.currentIndex,
-            inFlightCount: resumeDecision.nextInFlightCount,
             updatedAt: Date.now(),
         })
 
-        // Schedule the next item for processing
-        if (resumeDecision.itemIndex !== null) {
-            await ctx.scheduler.runAfter(0, internal.batchProcessor.processBatchItem, {
+        if (nextPendingItem) {
+            await ctx.scheduler.runAfter(0, internal.batchGeneration.seedBatchDispatchChunk, {
                 batchJobId: args.batchJobId,
-                itemIndex: resumeDecision.itemIndex,
+                startIndex: nextPendingItem.itemIndex,
             })
         }
 

@@ -18,7 +18,7 @@ import { useRandomSeed } from "@/hooks"
 import { IMAGE_MODEL_IDS, MODEL_REGISTRY } from "@/lib/config/models"
 import { usePollenApiKey, usePollenAuthActions } from "@/lib/pollen-auth"
 import { cn } from "@/lib/utils"
-import { useAction, useMutation, useQuery } from "convex/react"
+import { useMutation, useQuery } from "convex/react"
 import { AlertCircle, CheckCircle, Loader2 } from "lucide-react"
 import Image from "next/image"
 import { useState } from "react"
@@ -44,7 +44,6 @@ export function LimitTester() {
     const [naturalDimensions, setNaturalDimensions] = useState<{ w: number; h: number } | null>(null)
 
     const startGeneration = useMutation(api.singleGeneration.startGeneration)
-    const processGeneration = useAction(api.singleGenerationProcessor.processGeneration)
     
     // BYOP context for API key
     const apiKey = usePollenApiKey()
@@ -81,9 +80,6 @@ export function LimitTester() {
                 apiKey,
             })
             setCurrentGenId(id)
-            void Promise.resolve(processGeneration({ generationId: id, apiKey })).catch((dispatchError) => {
-                console.error("Immediate dispatch failed; recovery path will retry:", dispatchError)
-            })
         } catch (error) {
             toast.error("Failed to start generation")
             console.error(error)

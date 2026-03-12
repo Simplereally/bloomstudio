@@ -5,9 +5,17 @@ import type { ButtonHTMLAttributes, ReactEventHandler, ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ImageLightbox } from "./image-lightbox";
 
+const prewarmQueryMock = vi.hoisted(() => vi.fn());
+
 // Mock Clerk auth
 vi.mock("@clerk/nextjs", () => ({
 	useAuth: () => ({ isSignedIn: true }),
+}));
+
+vi.mock("convex/react", () => ({
+	useConvex: () => ({
+		prewarmQuery: prewarmQueryMock,
+	}),
 }));
 
 vi.mock("@/hooks/use-image-edit", () => ({
@@ -176,6 +184,7 @@ vi.mock("@/components/ui/media-player", () => ({
 		url,
 		alt,
 		contentType,
+		poster,
 		controls = true,
 		onLoadedMetadata,
 		onLoad,
@@ -183,6 +192,7 @@ vi.mock("@/components/ui/media-player", () => ({
 		url: string;
 		alt: string;
 		contentType?: string;
+		poster?: string;
 		controls?: boolean;
 		onLoadedMetadata?: ReactEventHandler<HTMLVideoElement>;
 		onLoad?: ReactEventHandler<HTMLImageElement>;
@@ -194,6 +204,7 @@ vi.mock("@/components/ui/media-player", () => ({
 				<video
 					src={url}
 					aria-label={alt}
+					data-poster={poster ?? ""}
 					data-testid="video-player"
 					data-controls={controls ? "true" : "false"}
 					controls={controls}
@@ -353,6 +364,8 @@ vi.mock("@/components/studio/features/prompt-library/prompt-detail", () => ({
 vi.mock("lucide-react", () => ({
 	BookmarkPlus: () => <span data-testid="bookmark-icon">📥</span>,
 	Check: () => <span>✓</span>,
+	ChevronLeft: () => <span data-testid="chevron-left">←</span>,
+	ChevronRight: () => <span data-testid="chevron-right">→</span>,
 	Copy: () => <span>📋</span>,
 	Loader2: () => <span>⏳</span>,
 	LogIn: () => <span>🔑</span>,
@@ -382,6 +395,7 @@ describe("ImageLightbox - Prompt Library Integration", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		capturedOnInsertComplete = undefined;
+		prewarmQueryMock.mockReset();
 	});
 
 	it("renders the lightbox with the image when open", () => {
@@ -590,6 +604,32 @@ describe("ImageLightbox - Prompt Library Integration", () => {
 			// Clean up mock
 			useImageDetailsMock.mockReturnValue(null);
 		});
+
+		it("does not pass the gallery thumbnail as a video poster during navigation", () => {
+			render(
+				<ImageLightbox
+					image={{
+						_id: "video-id",
+						url: "https://example.com/thumb.jpg",
+						originalUrl: "https://example.com/video.mp4",
+						prompt: "Video with poster",
+						model: "veo",
+						contentType: "video/mp4",
+					}}
+					isOpen={true}
+					onClose={vi.fn()}
+				/>,
+			);
+
+			expect(screen.getByTestId("video-player")).toHaveAttribute(
+				"src",
+				"https://example.com/video.mp4",
+			);
+			expect(screen.getByTestId("video-player")).toHaveAttribute(
+				"data-poster",
+				"",
+			);
+		});
 	});
 
 	describe("copy prompt auth-gating", () => {
@@ -720,6 +760,29 @@ describe("ImageLightbox - Single Image Mode", () => {
 				img.getAttribute("src")?.includes("test-image.jpg"),
 		);
 		expect(hasCorrectUrl).toBe(true);
+	});
+
+	it("renders gallery media immediately while full details are still loading", () => {
+		useImageDetailsMock.mockReturnValue(undefined);
+
+		render(
+			<ImageLightbox
+				image={{
+					_id: "gallery-image-id",
+					url: "https://example.com/thumb.jpg",
+					originalUrl: "https://example.com/full.jpg",
+					model: "test-model",
+					contentType: "image/jpeg",
+				}}
+				isOpen={true}
+				onClose={vi.fn()}
+			/>,
+		);
+
+		const images = screen.getAllByRole("img");
+		expect(images.some((img) => img.getAttribute("src")?.includes("full.jpg"))).toBe(
+			true,
+		);
 	});
 });
 
@@ -1165,5 +1228,136 @@ describe("ImageLightbox - Mobile Swipe Navigation", () => {
 		});
 
 		expect(onNext).not.toHaveBeenCalled();
+	});
+});
+
+describe("ImageLightbox - Desktop Media Navigation", () => {
+	const mockImage = {
+		url: "https://example.com/test-image.jpg",
+		prompt: "A beautiful landscape",
+		model: "test-model",
+		width: 1024,
+		height: 1024,
+	};
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it("navigates with left and right arrow keys", () => {
+		const onNext = vi.fn();
+		const onPrevious = vi.fn();
+
+		render(
+			<ImageLightbox
+				image={mockImage}
+				isOpen={true}
+				onClose={vi.fn()}
+				mediaNavigation={{
+					hasNext: true,
+					hasPrevious: true,
+					onNext,
+					onPrevious,
+				}}
+			/>,
+		);
+
+		fireEvent.keyDown(window, { key: "ArrowLeft" });
+		fireEvent.keyDown(window, { key: "ArrowRight" });
+
+		expect(onPrevious).toHaveBeenCalledTimes(1);
+		expect(onNext).toHaveBeenCalledTimes(1);
+	});
+
+	it("does not navigate from arrow keys while typing in an input", () => {
+		const onNext = vi.fn();
+		const onPrevious = vi.fn();
+
+		render(
+			<div>
+				<input data-testid="typing-target" />
+				<ImageLightbox
+					image={mockImage}
+					isOpen={true}
+					onClose={vi.fn()}
+					mediaNavigation={{
+						hasNext: true,
+						hasPrevious: true,
+						onNext,
+						onPrevious,
+					}}
+				/>
+			</div>,
+		);
+
+		const input = screen.getByTestId("typing-target");
+		fireEvent.keyDown(input, { key: "ArrowLeft" });
+		fireEvent.keyDown(input, { key: "ArrowRight" });
+
+		expect(onPrevious).not.toHaveBeenCalled();
+		expect(onNext).not.toHaveBeenCalled();
+	});
+
+	it("renders clickable left and right controls with boundary disabled states", async () => {
+		const user = userEvent.setup();
+		const onNext = vi.fn();
+		const onPrevious = vi.fn();
+
+		render(
+			<ImageLightbox
+				image={mockImage}
+				isOpen={true}
+				onClose={vi.fn()}
+				mediaNavigation={{
+					hasNext: true,
+					hasPrevious: false,
+					onNext,
+					onPrevious,
+				}}
+			/>,
+		);
+
+		const newerButton = screen.getByTestId("lightbox-nav-newer");
+		const olderButton = screen.getByTestId("lightbox-nav-older");
+
+		expect(newerButton).toBeDisabled();
+		expect(olderButton).not.toBeDisabled();
+
+		await user.click(olderButton);
+
+		expect(onNext).toHaveBeenCalledTimes(1);
+		expect(onPrevious).not.toHaveBeenCalled();
+	});
+
+	it("prewarms adjacent image details when gallery navigation is available", () => {
+		render(
+			<ImageLightbox
+				image={mockImage}
+				isOpen={true}
+				onClose={vi.fn()}
+				mediaNavigation={{
+					hasNext: true,
+					hasPrevious: true,
+					nextImage: { _id: "next-id", url: "https://example.com/next.jpg" },
+					previousImage: {
+						_id: "previous-id",
+						url: "https://example.com/previous.jpg",
+					},
+					onNext: vi.fn(),
+					onPrevious: vi.fn(),
+				}}
+			/>,
+		);
+
+		expect(prewarmQueryMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				args: { imageId: "previous-id" },
+			}),
+		);
+		expect(prewarmQueryMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				args: { imageId: "next-id" },
+			}),
+		);
 	});
 });

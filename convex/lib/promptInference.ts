@@ -8,6 +8,10 @@ import { fetchWithRetry, DEFAULT_RETRY_CONFIG } from "./retry";
 
 const CEREBRAS_API_URL = "https://api.cerebras.ai/v1/chat/completions";
 const CEREBRAS_MODEL = "llama3.1-8b"; // Fast, cheap, capable enough for classification
+const PROMPT_INFERENCE_RETRY_CONFIG = {
+  ...DEFAULT_RETRY_CONFIG,
+  maxRetries: 0,
+};
 
 export interface PromptInferenceResult {
   isSensitive: boolean;
@@ -15,6 +19,14 @@ export interface PromptInferenceResult {
   confidence: number;
   reasoning: string;
 }
+
+type CerebrasChatCompletionResponse = {
+  choices?: Array<{
+    message?: {
+      content?: string;
+    };
+  }>;
+};
 
 // =============================================================================
 // Prompt Template
@@ -121,7 +133,7 @@ export async function analyzePromptWithCerebras(prompt: string): Promise<PromptI
       }),
     },
     (status) => status === 429 || status >= 500, // Retry on rate limits and server errors
-    DEFAULT_RETRY_CONFIG,
+    PROMPT_INFERENCE_RETRY_CONFIG,
     "[CerebrasPromptInference]"
   );
 
@@ -129,7 +141,7 @@ export async function analyzePromptWithCerebras(prompt: string): Promise<PromptI
     throw new Error(result.error || "Failed to call Cerebras API");
   }
 
-  const json = await result.data.json();
+  const json = (await result.data.json()) as CerebrasChatCompletionResponse;
   const content = json.choices?.[0]?.message?.content;
 
   if (!content) {

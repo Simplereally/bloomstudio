@@ -151,6 +151,7 @@ const mockConvexImages = [
 describe("PersistentImageGallery", () => {
   let mockVisibilityMutateAsync: Mock;
   let mockBulkDeleteMutateAsync: Mock;
+  let mockHistoryLoadMore: Mock;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -194,6 +195,7 @@ describe("PersistentImageGallery", () => {
     mockBulkDeleteMutateAsync = vi
       .fn()
       .mockResolvedValue({ success: true, successCount: 2 });
+    mockHistoryLoadMore = vi.fn();
     (useSetBulkVisibility as Mock).mockReturnValue({
       mutateAsync: mockVisibilityMutateAsync,
     });
@@ -203,7 +205,7 @@ describe("PersistentImageGallery", () => {
     (useImageHistory as Mock).mockReturnValue({
       results: mockConvexImages,
       status: "Exhausted",
-      loadMore: vi.fn(),
+      loadMore: mockHistoryLoadMore,
     });
   });
 
@@ -246,6 +248,26 @@ describe("PersistentImageGallery", () => {
       render(<PersistentImageGallery />);
 
       expect(screen.getByTestId("gallery-empty")).toBeInTheDocument();
+    });
+
+    it("preloads more history when the active image is near the loaded end", async () => {
+      const extendedImages = Array.from({ length: 10 }, (_, index) => ({
+        ...mockConvexImages[0],
+        _id: `conv-${index}` as Id<"generatedImages">,
+        url: `https://example.com/image-${index}.jpg`,
+      }));
+
+      (useImageHistory as Mock).mockReturnValue({
+        results: extendedImages,
+        status: "CanLoadMore",
+        loadMore: mockHistoryLoadMore,
+      });
+
+      render(<PersistentImageGallery activeImageId="conv-8" />);
+
+      await waitFor(() => {
+        expect(mockHistoryLoadMore).toHaveBeenCalledWith(20);
+      });
     });
   });
 

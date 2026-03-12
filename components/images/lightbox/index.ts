@@ -19,6 +19,7 @@ export {
 } from "./lightbox-info-overlay";
 export {
 	LightboxMediaDisplay,
+	markLightboxImageUrlReady,
 	type LightboxMediaDisplayProps,
 } from "./lightbox-media-display";
 export { LightboxPane, type LightboxPaneProps } from "./lightbox-pane";

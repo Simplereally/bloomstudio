@@ -58,6 +58,10 @@ const sizeClasses = {
   lg: "w-32 h-32",
 };
 
+function isTransformedVideoThumbnail(url: string): boolean {
+  return url.includes("/cdn-cgi/media/") && /(?:^|[,/])(?:format=jpeg|format=jpg)(?:,|\/|$)/i.test(url);
+}
+
 /**
  * Memoized thumbnail component - only re-renders when props actually change.
  * This is critical for performance when rendering 100+ thumbnails.
@@ -97,7 +101,11 @@ export const GalleryThumbnail = React.memo(function GalleryThumbnail({
   const isVideo = isVideoContent(image.contentType, image.url);
   // Check if the URL is actually an image (thumbnail) despite being video content
   // This happens when we use a generated thumbnail for a video
-  const isVideoThumbnail = isVideo && (/\.(jpg|jpeg|png|webp)(\?.*)?$/i.test(image.url) || image.url.includes("/thumbnails/"));
+  const isVideoThumbnail = isVideo && (
+    /\.(jpg|jpeg|png|webp)(\?.*)?$/i.test(image.url) ||
+    image.url.includes("/thumbnails/") ||
+    isTransformedVideoThumbnail(image.url)
+  );
   // Show video element only if it's a video URL and we haven't had a loading error
   const showAsVideo = isVideo && !isVideoThumbnail && !videoError;
 

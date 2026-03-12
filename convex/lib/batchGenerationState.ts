@@ -7,6 +7,25 @@ export type ResumeBatchDecision = {
     reason: "in_flight" | "no_remaining_work" | null
 }
 
+export function getBatchStatusAfterItemSettlement(state: {
+    completedCount: number
+    failedCount: number
+    totalCount: number
+    status: BatchLifecycleStatus
+}): Extract<BatchLifecycleStatus, "processing" | "paused" | "completed" | "failed" | "cancelled"> {
+    const totalProcessed = state.completedCount + state.failedCount
+
+    if (totalProcessed >= state.totalCount) {
+        return state.completedCount > 0 ? "completed" : "failed"
+    }
+
+    if (state.status === "pending") {
+        return "processing"
+    }
+
+    return state.status
+}
+
 export function getResumeBatchDecision(state: {
     currentIndex: number
     totalCount: number

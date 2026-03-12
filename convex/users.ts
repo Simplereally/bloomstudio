@@ -164,8 +164,7 @@ export const getPollinationsApiKey = query({
 /**
  * @deprecated BYOP Migration - This function is deprecated.
  * API keys are now passed directly from the client via the BYOP flow.
- * Batch processing now receives the API key as a parameter.
- * See convex/batchProcessor.ts for the new implementation.
+ * Batch processing now receives the API key as a parameter via the Cloudflare worker dispatch path.
  *
  * Internal query to get a user's encrypted API key by their Clerk ID.
  * Used by internal actions like batch processing.
