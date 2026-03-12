@@ -620,6 +620,8 @@ export const failGenerationFromWorker = internalMutation({
         errorCode: v.optional(v.number()),
         retryCount: v.optional(v.number()),
         providerRequestId: v.optional(v.string()),
+        /** Skip claim token check — used by the queue error handler on final attempt */
+        skipClaimTokenCheck: v.optional(v.boolean()),
     },
     returns: v.object({
         failed: v.boolean(),
@@ -639,7 +641,7 @@ export const failGenerationFromWorker = internalMutation({
             return { failed: false, duplicate: false }
         }
 
-        if (generation.claimToken !== args.claimToken) {
+        if (!args.skipClaimTokenCheck && generation.claimToken !== args.claimToken) {
             return { failed: false, duplicate: false }
         }
 

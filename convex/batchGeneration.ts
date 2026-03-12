@@ -896,6 +896,8 @@ export const failBatchItemFromWorker = internalMutation({
         errorCode: v.optional(v.number()),
         retryCount: v.optional(v.number()),
         providerRequestId: v.optional(v.string()),
+        /** Skip claim token check — used by the queue error handler on final attempt */
+        skipClaimTokenCheck: v.optional(v.boolean()),
     },
     returns: v.object({
         failed: v.boolean(),
@@ -927,7 +929,7 @@ export const failBatchItemFromWorker = internalMutation({
             return { failed: false, duplicate: false }
         }
 
-        if (batchItem.claimToken !== args.claimToken) {
+        if (!args.skipClaimTokenCheck && batchItem.claimToken !== args.claimToken) {
             return { failed: false, duplicate: false }
         }
 
@@ -965,6 +967,67 @@ export const failBatchItemFromWorker = internalMutation({
         })
 
         return { failed: true, duplicate: false }
+    },
+})
+
+/**
+ * Release a worker-claimed batch item back to pending state.
+ * Called when the worker detects the batch is paused/cancelled and cannot continue.
+ * Resets the item so it can be re-dispatched when the batch resumes, and decrements
+ * the parent inFlightCount to avoid leaking in-flight slots.
+ */
+export const releaseBatchItemFromWorker = internalMutation({
+    args: {
+        batchJobId: v.id("batchJobs"),
+        itemIndex: v.number(),
+        claimToken: v.string(),
+    },
+    returns: v.object({
+        released: v.boolean(),
+    }),
+    handler: async (ctx, args) => {
+        const batchJob = await ctx.db.get(args.batchJobId)
+        if (!batchJob) {
+            return { released: false }
+        }
+
+        const items = await ctx.db
+            .query("batchItems")
+            .withIndex("by_batch_item", (q) =>
+                q.eq("batchJobId", args.batchJobId).eq("itemIndex", args.itemIndex)
+            )
+            .take(1)
+
+        const batchItem = items[0]
+        if (!batchItem) {
+            return { released: false }
+        }
+
+        // Only release items that are still processing with a matching claim token
+        if (batchItem.status === "completed" || batchItem.status === "failed" || batchItem.status === "cancelled") {
+            return { released: false }
+        }
+
+        if (batchItem.claimToken !== args.claimToken) {
+            return { released: false }
+        }
+
+        const now = Date.now()
+        await ctx.db.patch(batchItem._id, {
+            status: "pending",
+            dispatchStatus: "pending",
+            claimToken: undefined,
+            workerAttempt: undefined,
+            providerRequestId: undefined,
+            updatedAt: now,
+        })
+
+        await ctx.db.patch(args.batchJobId, {
+            inFlightCount: Math.max(0, (batchJob.inFlightCount ?? 0) - 1),
+            updatedAt: now,
+        })
+
+        return { released: true }
     },
 })
 

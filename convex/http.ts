@@ -14,6 +14,7 @@ import {
     continueModerationHttp,
     continueSecondaryAssetsHttp,
     failBatchItemHttp,
+    releaseBatchItemHttp,
     failPromptInferenceHttp,
     failSecondaryAssetsHttp,
     claimSingleGenerationHttp,
@@ -98,6 +99,12 @@ http.route({
     path: "/workers/batch-item/complete",
     method: "POST",
     handler: completeBatchItemHttp,
+})
+
+http.route({
+    path: "/workers/batch-item/release",
+    method: "POST",
+    handler: releaseBatchItemHttp,
 })
 
 http.route({

@@ -95,14 +95,12 @@ export function ImageLightbox({
 			resolvedDetails?.url ?? image.originalUrl ?? image.url;
 		const resolvedContentType =
 			resolvedDetails?.contentType ?? image.contentType;
-		const resolvedDisplayUrl = image.originalUrl
-				? image.url
-				: resolvedOriginalUrl;
 
 		return {
 			...image,
-			// Keep thumbnail/original separation so images and videos can render immediately.
-			url: resolvedDisplayUrl,
+			// Keep the current display URL stable so the preview doesn't reload
+			// when full details arrive. The fetched URL only populates originalUrl.
+			url: image.url,
 			originalUrl: resolvedOriginalUrl,
 			prompt: resolvedDetails?.prompt ?? image.prompt ?? "",
 			model: resolvedDetails?.model ?? image.model,
@@ -611,22 +609,44 @@ export function ImageLightbox({
 			return;
 		}
 
-		const isTypingTarget = (target: EventTarget | null) => {
+		const isInteractiveTarget = (target: EventTarget | null) => {
 			if (!(target instanceof HTMLElement)) {
 				return false;
 			}
 
 			const tagName = target.tagName;
-			return (
+
+			// Text input elements
+			if (
 				target.isContentEditable ||
 				tagName === "INPUT" ||
 				tagName === "TEXTAREA" ||
 				tagName === "SELECT"
-			);
+			) {
+				return true;
+			}
+
+			// Media elements (video/audio with their own controls)
+			if (target instanceof HTMLMediaElement) {
+				return true;
+			}
+
+			// Buttons
+			if (target instanceof HTMLButtonElement) {
+				return true;
+			}
+
+			// ARIA interactive roles
+			const role = target.getAttribute("role");
+			if (role === "button" || role === "slider" || role === "tab") {
+				return true;
+			}
+
+			return false;
 		};
 
 		const handleKeyDown = (event: KeyboardEvent) => {
-			if (event.defaultPrevented || isTypingTarget(event.target)) {
+			if (event.defaultPrevented || isInteractiveTarget(event.target)) {
 				return;
 			}
 

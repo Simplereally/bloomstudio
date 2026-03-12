@@ -58,6 +58,7 @@ const failBodySchema = z.object({
     errorCode: z.number().int().optional(),
     retryCount: retryCountSchema,
     providerRequestId: providerRequestIdSchema,
+    skipClaimTokenCheck: z.boolean().optional(),
 })
 
 const batchClaimBodySchema = z.object({
@@ -91,6 +92,7 @@ const batchFailBodySchema = z.object({
     errorCode: z.number().int().optional(),
     retryCount: retryCountSchema,
     providerRequestId: providerRequestIdSchema,
+    skipClaimTokenCheck: z.boolean().optional(),
 })
 
 const secondaryAssetsUpdateBodySchema = z.object({
@@ -227,6 +229,7 @@ export const failSingleGenerationHttp = createWorkerHttpAction(failBodySchema, (
         errorCode: parsedBody.errorCode,
         retryCount: parsedBody.retryCount,
         providerRequestId: parsedBody.providerRequestId,
+        skipClaimTokenCheck: parsedBody.skipClaimTokenCheck,
     })
 })
 
@@ -268,6 +271,21 @@ export const completeBatchItemHttp = createWorkerHttpAction(batchCompleteBodySch
     })
 })
 
+const batchReleaseBodySchema = z.object({
+    batchJobId: batchJobIdSchema,
+    itemIndex: itemIndexSchema,
+    claimToken: claimTokenSchema,
+})
+
+export const releaseBatchItemHttp = createWorkerHttpAction(batchReleaseBodySchema, (ctx, body: unknown): Promise<unknown> => {
+    const parsedBody = batchReleaseBodySchema.parse(body)
+    return ctx.runMutation(internal.batchGeneration.releaseBatchItemFromWorker, {
+        batchJobId: parsedBody.batchJobId,
+        itemIndex: parsedBody.itemIndex,
+        claimToken: parsedBody.claimToken,
+    })
+})
+
 export const failBatchItemHttp = createWorkerHttpAction(batchFailBodySchema, (ctx, body: unknown): Promise<unknown> => {
     const parsedBody = batchFailBodySchema.parse(body)
     return ctx.runMutation(internal.batchGeneration.failBatchItemFromWorker, {
@@ -278,6 +296,7 @@ export const failBatchItemHttp = createWorkerHttpAction(batchFailBodySchema, (ct
         errorCode: parsedBody.errorCode,
         retryCount: parsedBody.retryCount,
         providerRequestId: parsedBody.providerRequestId,
+        skipClaimTokenCheck: parsedBody.skipClaimTokenCheck,
     })
 })
 

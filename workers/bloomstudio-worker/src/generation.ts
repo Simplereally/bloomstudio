@@ -57,6 +57,10 @@ type FailBatchItemResponse = {
     duplicate: boolean
 }
 
+type ReleaseBatchItemResponse = {
+    released: boolean
+}
+
 type DirtberrySourceDimensions = {
     width: number
     height: number
@@ -208,9 +212,21 @@ export async function handleSingleGenerationMessage(message: SingleGenerationMes
         claimToken,
     })
 
-    if (!continuation.canContinue || !continuation.ownerId || !continuation.generationParams || !continuation.apiKey) {
+    if (!continuation.canContinue) {
+        // Generation was cancelled or otherwise settled - fail to release the claimed row
+        await postConvexJsonWithRetry<FailGenerationResponse>(env, "/workers/single-generation/fail", {
+            generationId: message.body.generationId,
+            claimToken,
+            errorMessage: "Continuation denied after claim",
+        })
         message.ack()
         return
+    }
+
+    if (!continuation.ownerId || !continuation.generationParams || !continuation.apiKey) {
+        // canContinue is true but required fields are missing - retry the message
+        // rather than silently dropping it
+        throw new Error("Continuation response missing required fields (ownerId, generationParams, or apiKey)")
     }
 
     const params = continuation.generationParams
@@ -245,6 +261,12 @@ export async function handleSingleGenerationMessage(message: SingleGenerationMes
     })
 
     if (!postFetchContinuation.canContinue || !postFetchContinuation.ownerId || !postFetchContinuation.generationParams || !postFetchContinuation.apiKey) {
+        // Post-fetch continuation denied - fail the generation to settle the row
+        await postConvexJsonWithRetry<FailGenerationResponse>(env, "/workers/single-generation/fail", {
+            generationId: message.body.generationId,
+            claimToken,
+            errorMessage: "Post-fetch continuation denied",
+        })
         message.ack()
         return
     }
@@ -268,7 +290,10 @@ export async function handleSingleGenerationMessage(message: SingleGenerationMes
             retryCount: workerAttempt > 1 ? workerAttempt - 1 : undefined,
         })
     } finally {
-        if (completeResult?.completed !== true) {
+        // Only delete the R2 object on a definitive negative acknowledgement.
+        // If the response was lost (completeResult undefined), let the orphan
+        // sweeper handle it rather than risk deleting a successfully stored object.
+        if (completeResult !== undefined && !completeResult.completed && !completeResult.duplicate) {
             await deleteR2Object(env, uploadResult.r2Key)
         }
     }
@@ -298,9 +323,21 @@ export async function handleBatchItemMessage(message: BatchItemMessage, env: Env
         claimToken,
     })
 
-    if (!continuation.canContinue || !continuation.ownerId || !continuation.generationParams || !continuation.apiKey) {
+    if (!continuation.canContinue) {
+        // Batch was paused/cancelled - release the item back to pending so it can
+        // be re-dispatched on resume, and decrement inFlightCount
+        await postConvexJsonWithRetry<ReleaseBatchItemResponse>(env, "/workers/batch-item/release", {
+            batchJobId: message.body.batchJobId,
+            itemIndex: message.body.itemIndex,
+            claimToken,
+        })
         message.ack()
         return
+    }
+
+    if (!continuation.ownerId || !continuation.generationParams || !continuation.apiKey) {
+        // canContinue is true but required fields are missing - retry the message
+        throw new Error("Batch item continuation response missing required fields (ownerId, generationParams, or apiKey)")
     }
 
     const params = continuation.generationParams
@@ -337,6 +374,12 @@ export async function handleBatchItemMessage(message: BatchItemMessage, env: Env
     })
 
     if (!postFetchContinuation.canContinue || !postFetchContinuation.ownerId || !postFetchContinuation.generationParams || !postFetchContinuation.apiKey) {
+        // Post-fetch continuation denied - release the item back to pending
+        await postConvexJsonWithRetry<ReleaseBatchItemResponse>(env, "/workers/batch-item/release", {
+            batchJobId: message.body.batchJobId,
+            itemIndex: message.body.itemIndex,
+            claimToken,
+        })
         message.ack()
         return
     }
@@ -361,7 +404,10 @@ export async function handleBatchItemMessage(message: BatchItemMessage, env: Env
             retryCount: workerAttempt > 1 ? workerAttempt - 1 : undefined,
         })
     } finally {
-        if (completeResult?.completed !== true) {
+        // Only delete the R2 object on a definitive negative acknowledgement.
+        // If the response was lost (completeResult undefined), let the orphan
+        // sweeper handle it rather than risk deleting a successfully stored object.
+        if (completeResult !== undefined && !completeResult.completed && !completeResult.duplicate) {
             await deleteR2Object(env, uploadResult.r2Key)
         }
     }
