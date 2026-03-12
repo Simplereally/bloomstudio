@@ -1166,8 +1166,8 @@ export const getRecoverableUnanalyzedImages = internalQuery({
     handler: async (ctx, args) => {
         const pageSize = Math.max(args.limit * 2, 25)
         const isRecoverable = (image: Doc<"generatedImages">) =>
-            image.moderationDispatchStatus !== "dispatched" &&
-            image.moderationDispatchStatus !== "processing"
+            image.moderationDispatchStatus === undefined ||
+            image.moderationDispatchStatus === "pending"
 
         const recoverable: Doc<"generatedImages">[] = []
 

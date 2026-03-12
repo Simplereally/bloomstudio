@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest"
-import { getNextAnalysisRunDelayMs, shouldRunRecoveryPromptInference } from "./contentAnalysis"
+import {
+    getNextAnalysisRunDelayMs,
+    getVisionFailureDispatchStatus,
+    shouldRunRecoveryPromptInference,
+} from "./contentAnalysis"
 
 describe("getNextAnalysisRunDelayMs", () => {
     it("schedules the next analysis run when more work is queued", () => {
@@ -56,5 +60,23 @@ describe("shouldRunRecoveryPromptInference", () => {
                 hasPromptInference: false,
             })
         ).toBe(false)
+    })
+})
+
+describe("getVisionFailureDispatchStatus", () => {
+    it("keeps rate-limited images pending so cron can retry later", () => {
+        expect(
+            getVisionFailureDispatchStatus({
+                rateLimited: true,
+            })
+        ).toBe("pending")
+    })
+
+    it("marks non-rate-limited vision failures as failed to stop infinite recovery loops", () => {
+        expect(
+            getVisionFailureDispatchStatus({
+                rateLimited: false,
+            })
+        ).toBe("failed")
     })
 })

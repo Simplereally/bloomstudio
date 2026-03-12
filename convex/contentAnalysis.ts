@@ -130,6 +130,12 @@ export function shouldRunRecoveryPromptInference(args: {
     return args.hasPrompt && !args.hasPromptInference
 }
 
+export function getVisionFailureDispatchStatus(args: {
+    rateLimited: boolean
+}): DispatchStatus {
+    return args.rateLimited ? "pending" : "failed"
+}
+
 /**
  * Lightweight moderation coordinator state for worker dispatch.
  */
@@ -560,9 +566,13 @@ export const failVisionAnalysisFromWorker = internalMutation({
             return { released: false, duplicate: false }
         }
 
+        const nextDispatchStatus = getVisionFailureDispatchStatus({
+            rateLimited: Boolean(args.rateLimited),
+        })
+
         await ctx.db.patch(args.imageId, {
             moderationStage: "vision_analysis",
-            moderationDispatchStatus: "pending",
+            moderationDispatchStatus: nextDispatchStatus,
             moderationLastDispatchError: args.errorMessage,
             moderationClaimToken: undefined,
             moderationWorkerAttempt: undefined,
@@ -570,7 +580,7 @@ export const failVisionAnalysisFromWorker = internalMutation({
             moderationUpdatedAt: Date.now(),
         })
 
-        if (!args.rateLimited) {
+        if (nextDispatchStatus === "pending") {
             await ctx.scheduler.runAfter(DELAY_BETWEEN_REQUESTS_MS, internal.contentAnalysis.analyzeRecentImages, {})
         }
 
