@@ -40,6 +40,7 @@ import {
   GenerationSettingsContext,
 } from "@/components/studio/features/generation";
 import { GalleryFeature } from "@/components/studio/features/history";
+import { LIGHTBOX_PRELOAD_THRESHOLD } from "@/components/studio/gallery/lightbox-preload";
 import {
   PromptFeature,
   PromptManagerContext,
@@ -506,9 +507,16 @@ export function StudioShell({
   const [extendedGalleryImages, setExtendedGalleryImages] = React.useState<
     ThumbnailData[] | null
   >(null);
+  const galleryLoadMoreRef = React.useRef<(() => Promise<void>) | null>(null);
   const handleGalleryImagesLoaded = React.useCallback(
     (images: ThumbnailData[]) => {
       setExtendedGalleryImages(images);
+    },
+    [],
+  );
+  const handleGalleryLoadMoreReady = React.useCallback(
+    (loadMore: (() => Promise<void>) | null) => {
+      galleryLoadMoreRef.current = loadMore;
     },
     [],
   );
@@ -521,6 +529,20 @@ export function StudioShell({
       ? extendedGalleryImages
       : baseGalleryImages;
 
+  const maybePreloadMoreGalleryHistory = React.useCallback(
+    (targetIndex: number) => {
+      if (targetIndex < 0) {
+        return;
+      }
+
+      const remainingImages = galleryImages.length - targetIndex - 1;
+      if (remainingImages <= LIGHTBOX_PRELOAD_THRESHOLD) {
+        void galleryLoadMoreRef.current?.();
+      }
+    },
+    [galleryImages.length],
+  );
+
   const [lightboxUsesGalleryNavigation, setLightboxUsesGalleryNavigation] =
     React.useState(false);
 
@@ -529,10 +551,14 @@ export function StudioShell({
   // ========================================
   const handleSelectGalleryImage = React.useCallback(
     (image: ThumbnailData) => {
+      const selectedIndex = galleryImages.findIndex(
+        (galleryImage) => galleryImage.id === image.id,
+      );
+      maybePreloadMoreGalleryHistory(selectedIndex);
       setLightboxUsesGalleryNavigation(true);
       studioUI.openLightbox(image);
     },
-    [studioUI],
+    [galleryImages, maybePreloadMoreGalleryHistory, studioUI],
   );
 
   const currentLightboxGalleryIndex = React.useMemo(() => {
@@ -559,13 +585,20 @@ export function StudioShell({
   }, [galleryImages, lightboxUsesGalleryNavigation, studioUI.lightboxImage]);
 
   const handleNextLightboxMedia = React.useCallback(() => {
-    const nextImage = galleryImages[currentLightboxGalleryIndex + 1];
+    const nextIndex = currentLightboxGalleryIndex + 1;
+    const nextImage = galleryImages[nextIndex];
     if (!nextImage) {
       return;
     }
 
+    maybePreloadMoreGalleryHistory(nextIndex);
     studioUI.setLightboxImage(nextImage);
-  }, [currentLightboxGalleryIndex, galleryImages, studioUI]);
+  }, [
+    currentLightboxGalleryIndex,
+    galleryImages,
+    maybePreloadMoreGalleryHistory,
+    studioUI,
+  ]);
 
   const handlePreviousLightboxMedia = React.useCallback(() => {
     const previousImage = galleryImages[currentLightboxGalleryIndex - 1];
@@ -592,7 +625,7 @@ export function StudioShell({
     };
   }, [
     currentLightboxGalleryIndex,
-    galleryImages.length,
+    galleryImages,
     handleNextLightboxMedia,
     handlePreviousLightboxMedia,
     isMobile,
@@ -829,6 +862,7 @@ export function StudioShell({
       thumbnailSize="md"
       initialPage={initialGalleryPage}
       onImagesLoaded={handleGalleryImagesLoaded}
+      onLoadMoreReady={handleGalleryLoadMoreReady}
     />
   );
 

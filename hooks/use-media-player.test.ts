@@ -262,7 +262,7 @@ describe("useMediaPlayer", () => {
             expect(onLoad).toHaveBeenCalledWith(mockEvent)
         })
 
-        it("clears loading when metadata becomes available", () => {
+        it("keeps loading after metadata until a playable frame is available", () => {
             const onLoad = vi.fn()
             const { result } = renderHook(() =>
                 useMediaPlayer({
@@ -283,8 +283,8 @@ describe("useMediaPlayer", () => {
                 result.current.handleVideoLoadedMetadata(mockEvent)
             })
 
-            expect(result.current.isLoading).toBe(false)
-            expect(onLoad).toHaveBeenCalledWith(mockEvent)
+            expect(result.current.isLoading).toBe(true)
+            expect(onLoad).not.toHaveBeenCalled()
         })
 
         it("clears loading when canplay fires", () => {
@@ -300,6 +300,7 @@ describe("useMediaPlayer", () => {
                     currentTarget: {
                         currentSrc: "https://example.com/video.mp4",
                         src: "https://example.com/video.mp4",
+                        readyState: HTMLMediaElement.HAVE_CURRENT_DATA,
                     },
                 } as unknown as React.SyntheticEvent<HTMLVideoElement>)
             })

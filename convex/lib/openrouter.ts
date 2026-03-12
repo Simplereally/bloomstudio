@@ -1,5 +1,7 @@
 "use node"
 
+import { z } from "zod"
+
 export interface ContentAnalysisResult {
     /** Binary nudity: "none" = clothed/partial skin, "full" = sexual organs visible OR completely nude */
     nudity: "none" | "full";
@@ -32,13 +34,37 @@ export interface OpenRouterDeps {
     timeoutMs: number;
 }
 
-type OpenRouterChatCompletionResponse = {
-    choices?: Array<{
-        message?: {
-            content?: string;
-        };
-    }>;
-};
+const contentAnalysisSchema = z.object({
+    nudity: z.enum(["none", "full"]),
+    sexual_content: z.enum(["none", "suggestive", "explicit"]),
+    violence: z.enum(["none", "mild", "graphic"]),
+    confidence: z.number().min(0).max(1),
+    reasoning: z.string(),
+})
+
+function getFirstMessageContent(value: unknown): string | undefined {
+    if (!value || typeof value !== "object") {
+        return undefined
+    }
+
+    const choices = Reflect.get(value, "choices")
+    if (!Array.isArray(choices) || choices.length === 0) {
+        return undefined
+    }
+
+    const firstChoice = choices[0]
+    if (!firstChoice || typeof firstChoice !== "object") {
+        return undefined
+    }
+
+    const message = Reflect.get(firstChoice, "message")
+    if (!message || typeof message !== "object") {
+        return undefined
+    }
+
+    const content = Reflect.get(message, "content")
+    return typeof content === "string" ? content : undefined
+}
 
 /** Get default dependencies */
 const getDefaultDeps = (): OpenRouterDeps => ({
@@ -122,8 +148,8 @@ Respond ONLY with valid JSON:
             throw new Error(`OpenRouter API error: ${response.status} ${response.statusText} - ${errorBody}`);
         }
 
-        const data = (await response.json()) as OpenRouterChatCompletionResponse;
-        const content = data.choices?.[0]?.message?.content;
+        const rawData: unknown = await response.json();
+        const content = getFirstMessageContent(rawData)
 
         if (!content) {
             throw new Error("No content received from OpenRouter");
@@ -132,8 +158,13 @@ Respond ONLY with valid JSON:
         // Remove any markdown code block formatting if present
         const jsonContent = content.replace(/^```json\n?/, '').replace(/\n?```$/, '');
 
-        // Parse JSON response
-        return JSON.parse(jsonContent);
+        const parsedContent: unknown = JSON.parse(jsonContent)
+        const validated = contentAnalysisSchema.safeParse(parsedContent)
+        if (!validated.success) {
+            throw new Error("OpenRouter returned invalid JSON shape")
+        }
+
+        return validated.data
     } catch (error) {
         // Ensure timeout is cleared on any error path
         clearTimeout(timeoutId);

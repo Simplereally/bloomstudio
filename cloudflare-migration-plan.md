@@ -796,8 +796,8 @@ This section is the actionable handoff for the next developer. If you are pickin
 
 ### Current secondary-assets path
 - Main generation completes in Convex and persists the video.
-- Convex then schedules [cloudflareDispatch.ts](C:/Code/pixelstream/convex/cloudflareDispatch.ts) to enqueue a `secondary_assets` Worker message.
-- The Worker claims the image through [cloudflareWorkerHttp.ts](C:/Code/pixelstream/convex/cloudflareWorkerHttp.ts) and finalizes through [secondaryAssets.ts](C:/Code/pixelstream/convex/secondaryAssets.ts).
+- Convex then schedules [cloudflareDispatch.ts](convex/cloudflareDispatch.ts) to enqueue a `secondary_assets` Worker message.
+- The Worker claims the image through [cloudflareWorkerHttp.ts](convex/cloudflareWorkerHttp.ts) and finalizes through [secondaryAssets.ts](convex/secondaryAssets.ts).
 - The currently deployed dev worker builds Cloudflare Media Transformations URLs against `https://media.bloomstudio.fun`.
 - The Worker-owned patch contract keeps derivative fields optional:
   - `thumbnailR2Key`
@@ -812,14 +812,14 @@ This section is the actionable handoff for the next developer. If you are pickin
 - The legacy ffmpeg-based Convex secondary-assets path has been removed from the repo.
 
 ### What changed in this track
-1. Added worker-safe secondary-assets state + callbacks in [secondaryAssets.ts](C:/Code/pixelstream/convex/secondaryAssets.ts).
-2. Added `secondary_assets` dispatch plumbing in [cloudflareDispatch.ts](C:/Code/pixelstream/convex/cloudflareDispatch.ts).
-3. Registered secured secondary-assets worker routes in [http.ts](C:/Code/pixelstream/convex/http.ts) and [cloudflareWorkerHttp.ts](C:/Code/pixelstream/convex/cloudflareWorkerHttp.ts).
-4. Extended the shared Worker in [workers/bloomstudio-worker/src/index.ts](C:/Code/pixelstream/workers/bloomstudio-worker/src/index.ts) to claim/continue/complete/fail `secondary_assets` jobs.
+1. Added worker-safe secondary-assets state + callbacks in [secondaryAssets.ts](convex/secondaryAssets.ts).
+2. Added `secondary_assets` dispatch plumbing in [cloudflareDispatch.ts](convex/cloudflareDispatch.ts).
+3. Registered secured secondary-assets worker routes in [http.ts](convex/http.ts) and [cloudflareWorkerHttp.ts](convex/cloudflareWorkerHttp.ts).
+4. Extended the shared Worker in [workers/bloomstudio-worker/src/index.ts](workers/bloomstudio-worker/src/index.ts) to claim/continue/complete/fail `secondary_assets` jobs.
 5. Replaced Browser Rendering with Cloudflare Media Transformations URL generation + probe validation on the worker plane.
 6. Replaced the active single/batch completion scheduling in:
-   - [singleGeneration.ts](C:/Code/pixelstream/convex/singleGeneration.ts)
-   - [batchGeneration.ts](C:/Code/pixelstream/convex/batchGeneration.ts)
+   - [singleGeneration.ts](convex/singleGeneration.ts)
+   - [batchGeneration.ts](convex/batchGeneration.ts)
 7. Extended delete/orphan-cleanup paths so preview keys are now treated as first-class R2 assets.
 8. Hardened the worker secondary-assets path so transform misconfiguration and unsupported media fail cleanly instead of retrying forever.
 9. Updated the gallery UI to treat Cloudflare-transformed video thumbnails as image thumbnails.
@@ -883,12 +883,12 @@ The remaining work is operational, not architectural:
 - validate fresh dev videos end to end
 
 ### Exact files to review first
-- [secondaryAssets.ts](C:/Code/pixelstream/convex/secondaryAssets.ts)
-- [singleGeneration.ts](C:/Code/pixelstream/convex/singleGeneration.ts)
-- [batchGeneration.ts](C:/Code/pixelstream/convex/batchGeneration.ts)
-- [index.ts](C:/Code/pixelstream/workers/bloomstudio-worker/src/index.ts)
-- [cloudflareDispatch.ts](C:/Code/pixelstream/convex/cloudflareDispatch.ts)
-- [cloudflareWorkerHttp.ts](C:/Code/pixelstream/convex/cloudflareWorkerHttp.ts)
+- [secondaryAssets.ts](convex/secondaryAssets.ts)
+- [singleGeneration.ts](convex/singleGeneration.ts)
+- [batchGeneration.ts](convex/batchGeneration.ts)
+- [index.ts](workers/bloomstudio-worker/src/index.ts)
+- [cloudflareDispatch.ts](convex/cloudflareDispatch.ts)
+- [cloudflareWorkerHttp.ts](convex/cloudflareWorkerHttp.ts)
 
 ### Exact next tasks
 1. [x] Finish storage cleanup coverage for derivative objects:
@@ -922,7 +922,7 @@ The remaining work is operational, not architectural:
 This section is the production handoff checklist once the dev migration is considered complete.
 
 ### Current production readiness
-- The production Cloudflare resource names are already codified in [wrangler.jsonc](C:/Code/pixelstream/wrangler.jsonc):
+- The production Cloudflare resource names are already codified in [wrangler.jsonc](wrangler.jsonc):
   - Worker: `bloomstudio-worker`
   - queue: `bloomstudio-prod-queue`
   - DLQ: `bloomstudio-prod-dlq`

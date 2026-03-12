@@ -60,13 +60,13 @@ export class ServerGenerationError extends Error {
  */
 export interface UseGenerateImageOptions {
     /** Callback fired when generation starts */
-    onMutate?: (params: ImageGenerationParams) => void | Promise<void>
+    onMutate?: (params: ImageGenerationParams | VideoGenerationParams) => void | Promise<void>
 
     /** Callback fired on successful generation */
-    onSuccess?: (image: GeneratedImage, params: ImageGenerationParams) => void
+    onSuccess?: (image: GeneratedImage, params: ImageGenerationParams | VideoGenerationParams) => void
 
     /** Callback fired on generation error */
-    onError?: (error: ServerGenerationError, params: ImageGenerationParams) => void
+    onError?: (error: ServerGenerationError, params: ImageGenerationParams | VideoGenerationParams) => void
 
     /** Callback fired after mutation settles (success or error) */
     onSettled?: (

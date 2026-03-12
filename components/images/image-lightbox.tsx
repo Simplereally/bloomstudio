@@ -50,6 +50,10 @@ import { markMediaUrlReady } from "@/hooks/use-media-player";
 
 export type { LightboxImage };
 
+function isGeneratedImageId(value: string | undefined): value is Id<"generatedImages"> {
+	return typeof value === "string" && value.length > 0;
+}
+
 interface ImageLightboxProps {
 	image: LightboxImage | null;
 	isOpen: boolean;
@@ -78,60 +82,19 @@ export function ImageLightbox({
 
 	// Fetch full image details if we only have thumbnail data (no prompt)
 	// This happens when opening from gallery which now returns lightweight data
-	const imageId = image?._id as Id<"generatedImages"> | undefined;
+	const imageId = isGeneratedImageId(image?._id) ? image._id : undefined;
 	const needsFullData = image && !image.prompt && imageId;
 	const fullImageData = useImageDetails(needsFullData ? imageId : null);
-	const [detailsCache, setDetailsCache] = React.useState<
-		Partial<Record<string, LightboxImage>>
-	>({});
-
-	React.useEffect(() => {
-		if (!imageId || !fullImageData) {
-			return;
-		}
-
-		setDetailsCache((prev) => {
-			if (prev[imageId]?.url === fullImageData.url && prev[imageId]?.prompt === fullImageData.prompt) {
-				return prev;
-			}
-
-			return {
-				...prev,
-				[imageId]: {
-					url: fullImageData.url,
-					originalUrl: fullImageData.url,
-					prompt: fullImageData.prompt,
-					model: fullImageData.model,
-					width: fullImageData.width,
-					height: fullImageData.height,
-					seed: fullImageData.seed,
-					contentType: fullImageData.contentType,
-					params: {
-						model: fullImageData.model,
-						width: fullImageData.width,
-						height: fullImageData.height,
-						seed: fullImageData.seed,
-					},
-				},
-			};
-		});
-	}, [fullImageData, imageId]);
-
-	const cachedImageDetails = imageId ? detailsCache[imageId] : undefined;
 
 	// Merge thumbnail data with full data when available
 	const displayImage: LightboxImage | null = React.useMemo(() => {
 		if (!image) return null;
 
-		const resolvedDetails = fullImageData ?? cachedImageDetails;
+		const resolvedDetails = fullImageData;
 		const resolvedOriginalUrl =
 			resolvedDetails?.url ?? image.originalUrl ?? image.url;
 		const resolvedContentType =
 			resolvedDetails?.contentType ?? image.contentType;
-		const resolvedIsVideo = isVideoContent(
-			resolvedContentType,
-			resolvedOriginalUrl,
-		);
 		const resolvedDisplayUrl = image.originalUrl
 				? image.url
 				: resolvedOriginalUrl;
@@ -158,7 +121,7 @@ export function ImageLightbox({
 						}
 					: undefined),
 		};
-	}, [cachedImageDetails, fullImageData, image]);
+	}, [fullImageData, image]);
 
 	const isVideo = displayImage
 		? isVideoContent(
@@ -167,8 +130,7 @@ export function ImageLightbox({
 			)
 		: false;
 
-	const isLoadingDetails =
-		!!needsFullData && cachedImageDetails === undefined && fullImageData === undefined;
+	const isLoadingDetails = !!needsFullData && fullImageData === undefined;
 
 	const [editChain, setEditChain] = React.useState<LightboxImage[]>([]);
 	const [selectedVersionIndex, setSelectedVersionIndex] = React.useState(0);
@@ -180,8 +142,8 @@ export function ImageLightbox({
 	// Track which label the source image had (for display in edit panel)
 	const [editSourceLabel, setEditSourceLabel] = React.useState<string>("");
 
-	const versions = React.useMemo(() => {
-		if (!displayImage) return [] as LightboxImage[];
+	const versions = React.useMemo<LightboxImage[]>(() => {
+		if (!displayImage) return [];
 		return [displayImage, ...editChain];
 	}, [displayImage, editChain]);
 
@@ -534,6 +496,7 @@ export function ImageLightbox({
 		!hasEdits &&
 		!isZoomed &&
 		!isEditPanelOpen &&
+		!libraryOpen &&
 		Boolean(mediaNavigation);
 
 	React.useEffect(() => {
@@ -542,9 +505,10 @@ export function ImageLightbox({
 		}
 
 		const warmCandidateDetails = (candidate: LightboxImage | null | undefined) => {
-			const candidateId = (candidate?._id ?? candidate?.id) as
-				| Id<"generatedImages">
-				| undefined;
+			const candidateIdValue = candidate?._id ?? candidate?.id;
+			const candidateId = isGeneratedImageId(candidateIdValue)
+				? candidateIdValue
+				: undefined;
 
 			if (!candidateId) {
 				return;
@@ -598,7 +562,7 @@ export function ImageLightbox({
 				video.muted = true;
 				video.playsInline = true;
 				video.addEventListener(
-					"loadedmetadata",
+					"loadeddata",
 					() => {
 						markMediaUrlReady(candidateUrl);
 					},

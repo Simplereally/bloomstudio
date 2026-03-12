@@ -47,7 +47,17 @@ export async function POST(
             )
         }
 
-        const parsed = deleteRequestSchema.safeParse(await request.json())
+        let requestBody: unknown
+        try {
+            requestBody = await request.json()
+        } catch {
+            return NextResponse.json(
+                { success: false, error: { code: "INVALID_JSON", message: "Invalid JSON body" } },
+                { status: 400 }
+            )
+        }
+
+        const parsed = deleteRequestSchema.safeParse(requestBody)
         if (!parsed.success) {
             return NextResponse.json(
                 { success: false, error: { code: "MISSING_KEY", message: "Missing r2Key" } },

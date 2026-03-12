@@ -61,6 +61,17 @@ describe("analyzePromptWithCerebras", () => {
         )
     })
 
+    it("throws when provider JSON is missing completion content", async () => {
+        mockFetchWithRetry.mockResolvedValueOnce({
+            success: true,
+            data: {
+                json: async () => ({}),
+            },
+        })
+
+        await expect(analyzePromptWithCerebras("a test prompt")).rejects.toThrow("Empty response from Cerebras")
+    })
+
     afterEach(() => {
         process.env.CEREBRAS_API_KEY = originalApiKey
     })

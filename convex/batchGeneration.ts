@@ -39,6 +39,7 @@ const MIN_BATCH_SIZE = 1
 /** Seed work in chunks of 10 with 1.5s spacing between chunks. */
 const BATCH_DISPATCH_CHUNK_SIZE = 10
 const BATCH_DISPATCH_CHUNK_DELAY_MS = 1_500
+const BATCH_ITEM_INSERT_CHUNK_SIZE = 100
 
 /** Legacy adaptive delay state retained for backward compatibility with existing docs/UI. */
 const BASE_RATE_LIMIT_DELAY_MS = 100
@@ -170,7 +171,9 @@ export const startBatchJob = mutation({
             updatedAt: now,
         })
 
-        for (let itemIndex = 0; itemIndex < args.count; itemIndex += 1) {
+        const firstChunkEnd = Math.min(args.count, BATCH_ITEM_INSERT_CHUNK_SIZE)
+
+        for (let itemIndex = 0; itemIndex < firstChunkEnd; itemIndex += 1) {
             await ctx.db.insert("batchItems", {
                 batchJobId,
                 ownerId: identity.subject,
@@ -183,11 +186,18 @@ export const startBatchJob = mutation({
             })
         }
 
-        // Seed the first chunk immediately. Additional chunks self-schedule.
-        await ctx.scheduler.runAfter(0, internal.batchGeneration.seedBatchDispatchChunk, {
-            batchJobId,
-            startIndex: 0,
-        })
+        if (firstChunkEnd < args.count) {
+            await ctx.scheduler.runAfter(0, internal.batchGeneration.seedBatchItemChunk, {
+                batchJobId,
+                startIndex: firstChunkEnd,
+            })
+        } else {
+            // Seed the first dispatch chunk immediately. Additional chunks self-schedule.
+            await ctx.scheduler.runAfter(0, internal.batchGeneration.seedBatchDispatchChunk, {
+                batchJobId,
+                startIndex: 0,
+            })
+        }
 
         return batchJobId
     },
@@ -290,6 +300,71 @@ export const storeGeneratedImage = internalMutation({
         }
 
         return imageId
+    },
+})
+
+/**
+ * Insert batch item rows in bounded chunks so very large batches stay under
+ * Convex mutation limits.
+ */
+export const seedBatchItemChunk = internalMutation({
+    args: {
+        batchJobId: v.id("batchJobs"),
+        startIndex: v.number(),
+    },
+    returns: v.object({
+        insertedCount: v.number(),
+        nextStartIndex: v.union(v.number(), v.null()),
+    }),
+    handler: async (ctx, args) => {
+        const batchJob = await ctx.db.get(args.batchJobId)
+        if (!batchJob || batchJob.status === "cancelled" || batchJob.status === "completed" || batchJob.status === "failed") {
+            return { insertedCount: 0, nextStartIndex: null }
+        }
+
+        const endExclusive = Math.min(args.startIndex + BATCH_ITEM_INSERT_CHUNK_SIZE, batchJob.totalCount)
+        const now = Date.now()
+        let insertedCount = 0
+
+        for (let itemIndex = args.startIndex; itemIndex < endExclusive; itemIndex += 1) {
+            const existingItems = await ctx.db
+                .query("batchItems")
+                .withIndex("by_batch_item", (q) =>
+                    q.eq("batchJobId", args.batchJobId).eq("itemIndex", itemIndex)
+                )
+                .take(1)
+
+            if (existingItems[0]) {
+                continue
+            }
+
+            await ctx.db.insert("batchItems", {
+                batchJobId: args.batchJobId,
+                ownerId: batchJob.ownerId,
+                itemIndex,
+                status: "pending",
+                dispatchStatus: "pending",
+                dispatchAttempts: 0,
+                createdAt: now,
+                updatedAt: now,
+            })
+            insertedCount += 1
+        }
+
+        const nextStartIndex = endExclusive < batchJob.totalCount ? endExclusive : null
+        if (nextStartIndex !== null) {
+            await ctx.scheduler.runAfter(0, internal.batchGeneration.seedBatchItemChunk, {
+                batchJobId: args.batchJobId,
+                startIndex: nextStartIndex,
+            })
+        } else {
+            await ctx.scheduler.runAfter(0, internal.batchGeneration.seedBatchDispatchChunk, {
+                batchJobId: args.batchJobId,
+                startIndex: 0,
+            })
+        }
+
+        return { insertedCount, nextStartIndex }
     },
 })
 
@@ -565,6 +640,7 @@ export const getBatchItemWorkerContinuationState = internalQuery({
         canContinue: v.boolean(),
         ownerId: v.optional(v.string()),
         generationParams: v.optional(generationParamsValidator),
+        apiKey: v.optional(v.string()),
     }),
     handler: async (ctx, args) => {
         const batchJob = await ctx.db.get(args.batchJobId)
@@ -598,6 +674,7 @@ export const getBatchItemWorkerContinuationState = internalQuery({
             canContinue: true,
             ownerId: batchJob.ownerId,
             generationParams: batchJob.generationParams,
+            apiKey: batchJob.apiKey,
         }
     },
 })

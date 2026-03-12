@@ -133,14 +133,33 @@ describe("MediaPlayer", () => {
 
         expect(video.parentElement?.querySelector(".animate-spin")).toBeInTheDocument()
 
+        Object.defineProperty(video, "readyState", {
+            configurable: true,
+            value: HTMLMediaElement.HAVE_CURRENT_DATA,
+        })
+
         fireEvent(video, new Event("canplay"))
 
         expect(video.parentElement?.querySelector(".animate-spin")).not.toBeInTheDocument()
     })
 
+    it("keeps the loading spinner visible after metadata until playable data is ready", () => {
+        render(<MediaPlayer url={videoUrl} contentType="video/mp4" />)
+        const video = screen.getByTestId("media-video")
+
+        fireEvent(video, new Event("loadedmetadata"))
+
+        expect(video.parentElement?.querySelector(".animate-spin")).toBeInTheDocument()
+    })
+
     it("does not show the loading spinner again for a previously loaded video URL", () => {
         const firstRender = render(<MediaPlayer url={videoUrl} contentType="video/mp4" />)
         const firstVideo = screen.getByTestId("media-video")
+
+        Object.defineProperty(firstVideo, "readyState", {
+            configurable: true,
+            value: HTMLMediaElement.HAVE_CURRENT_DATA,
+        })
 
         fireEvent(firstVideo, new Event("canplay"))
         firstRender.unmount()
@@ -154,6 +173,11 @@ describe("MediaPlayer", () => {
     it("shows the loading spinner immediately when switching to a different unloaded video URL", () => {
         const { rerender } = render(<MediaPlayer url={videoUrl} contentType="video/mp4" />)
         const firstVideo = screen.getByTestId("media-video")
+
+        Object.defineProperty(firstVideo, "readyState", {
+            configurable: true,
+            value: HTMLMediaElement.HAVE_CURRENT_DATA,
+        })
 
         fireEvent(firstVideo, new Event("canplay"))
         expect(firstVideo.parentElement?.querySelector(".animate-spin")).not.toBeInTheDocument()

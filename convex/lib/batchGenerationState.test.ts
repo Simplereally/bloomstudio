@@ -100,6 +100,17 @@ describe("buildRecordBatchItemResultTransition", () => {
 })
 
 describe("getBatchStatusAfterItemSettlement", () => {
+    it("transitions pending batches to processing when work remains", () => {
+        expect(
+            getBatchStatusAfterItemSettlement({
+                completedCount: 1,
+                failedCount: 0,
+                totalCount: 3,
+                status: "pending",
+            })
+        ).toBe("processing")
+    })
+
     it("keeps a partially failed batch running", () => {
         expect(
             getBatchStatusAfterItemSettlement({

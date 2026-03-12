@@ -32,6 +32,8 @@ interface UseImageLightboxProps {
   isOpen: boolean
 }
 
+type ToggleZoomEvent = React.MouseEvent | React.KeyboardEvent
+
 export function useImageLightbox({ image, isOpen }: UseImageLightboxProps) {
   const [isHovering, _setIsHovering] = React.useState(false)
   const hoverTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -115,8 +117,12 @@ export function useImageLightbox({ image, isOpen }: UseImageLightboxProps) {
     ? naturalSize.width > renderedSize.width * 1.05 || naturalSize.height > renderedSize.height * 1.05
     : false
 
-  const toggleZoom = (e: React.MouseEvent) => {
+  const toggleZoom = (e: ToggleZoomEvent) => {
     e.stopPropagation()
+
+    if ("key" in e && e.key === " ") {
+      e.preventDefault()
+    }
 
     // Prevent zoom if it's a video
     if (isVideoContent(image?.contentType, image?.url)) return

@@ -26,6 +26,8 @@ export interface GalleryViewProps {
     initialPage?: PaginatedGalleryResult
     /** Callback fired whenever the gallery's stable image list changes */
     onImagesLoaded?: (images: ThumbnailData[]) => void
+    /** Registers a stable load-more callback for parent-driven prefetching */
+    onLoadMoreReady?: (loadMore: (() => Promise<void>) | null) => void
 }
 
 export const GalleryView = React.memo(function GalleryView({
@@ -34,6 +36,7 @@ export const GalleryView = React.memo(function GalleryView({
     thumbnailSize = "md",
     initialPage,
     onImagesLoaded,
+    onLoadMoreReady,
 }: GalleryViewProps) {
     return (
         <div className="h-full min-h-0 flex flex-col bg-card/50 backdrop-blur-sm border-l border-border/50">
@@ -43,6 +46,7 @@ export const GalleryView = React.memo(function GalleryView({
                 thumbnailSize={thumbnailSize}
                 initialPage={initialPage}
                 onImagesLoaded={onImagesLoaded}
+                onLoadMoreReady={onLoadMoreReady}
             />
         </div>
     )

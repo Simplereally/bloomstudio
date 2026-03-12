@@ -26,6 +26,8 @@ export interface GalleryFeatureProps {
     initialPage?: PaginatedGalleryResult
     /** Callback fired whenever the gallery's stable image list changes */
     onImagesLoaded?: (images: ThumbnailData[]) => void
+    /** Registers a stable load-more callback for parent-driven prefetching */
+    onLoadMoreReady?: (loadMore: (() => Promise<void>) | null) => void
 }
 
 /**
@@ -46,6 +48,7 @@ export function GalleryFeature({
     thumbnailSize = "md",
     initialPage,
     onImagesLoaded,
+    onLoadMoreReady,
 }: GalleryFeatureProps) {
     return (
         <GalleryView
@@ -54,6 +57,7 @@ export function GalleryFeature({
             thumbnailSize={thumbnailSize}
             initialPage={initialPage}
             onImagesLoaded={onImagesLoaded}
+            onLoadMoreReady={onLoadMoreReady}
         />
     )
 }

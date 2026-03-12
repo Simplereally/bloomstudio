@@ -16,6 +16,7 @@
 import { ConvexError, v } from "convex/values"
 import { internal } from "./_generated/api"
 import { internalMutation, internalQuery, mutation, query, type MutationCtx } from "./_generated/server"
+import { decryptApiKey } from "./lib/crypto"
 import { analyzePromptForNSFW } from "./lib/nsfwDetection"
 import { canUserGenerate } from "./lib/subscription"
 
@@ -104,7 +105,6 @@ export const startGeneration = mutation({
         // fire-and-forget and does not depend on a follow-up client action.
         await ctx.scheduler.runAfter(0, internal.cloudflareDispatch.dispatchSingleGeneration, {
             generationId,
-            apiKey: args.apiKey,
         })
 
         return generationId
@@ -666,6 +666,7 @@ export const getGenerationWorkerContinuationState = internalQuery({
         canContinue: v.boolean(),
         ownerId: v.optional(v.string()),
         generationParams: v.optional(generationParamsValidator),
+        apiKey: v.optional(v.string()),
     }),
     handler: async (ctx, args) => {
         const generation = await ctx.db.get(args.generationId)
@@ -681,10 +682,25 @@ export const getGenerationWorkerContinuationState = internalQuery({
             return { canContinue: false }
         }
 
+        let apiKey: string | undefined
+        try {
+            const owner = await ctx.db
+                .query("users")
+                .withIndex("by_clerk_id", (q) => q.eq("clerkId", generation.ownerId))
+                .unique()
+
+            if (owner?.pollinationsApiKey) {
+                apiKey = await decryptApiKey(owner.pollinationsApiKey)
+            }
+        } catch {
+            apiKey = undefined
+        }
+
         return {
             canContinue: true,
             ownerId: generation.ownerId,
             generationParams: generation.generationParams,
+            apiKey,
         }
     },
 })

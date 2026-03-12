@@ -1164,30 +1164,60 @@ export const getUnanalyzedImages = internalQuery({
 export const getRecoverableUnanalyzedImages = internalQuery({
     args: { limit: v.number() },
     handler: async (ctx, args) => {
+        const pageSize = Math.max(args.limit * 2, 25)
         const isRecoverable = (image: Doc<"generatedImages">) =>
             image.moderationDispatchStatus !== "dispatched" &&
-            image.moderationDispatchStatus !== "processing";
+            image.moderationDispatchStatus !== "processing"
 
-        const recentPending = await ctx.db
-            .query("generatedImages")
-            .withIndex("by_sensitivity", (q) => q.eq("isSensitive", null))
-            .take(Math.max(args.limit * 4, args.limit));
+        const recoverable: Doc<"generatedImages">[] = []
 
-        let recoverable = recentPending.filter(isRecoverable).slice(0, args.limit);
-
-        if (recoverable.length < args.limit) {
-            const legacyPending = await ctx.db
+        let pendingCursor: string | null = null
+        let pendingDone = false
+        while (!pendingDone && recoverable.length < args.limit) {
+            const page = await ctx.db
                 .query("generatedImages")
-                .filter((q) => q.eq(q.field("isSensitive"), undefined))
-                .take(Math.max((args.limit - recoverable.length) * 4, args.limit - recoverable.length));
+                .withIndex("by_sensitivity", (q) => q.eq("isSensitive", null))
+                .paginate({
+                    numItems: pageSize,
+                    cursor: pendingCursor,
+                })
 
-            recoverable = [
-                ...recoverable,
-                ...legacyPending.filter(isRecoverable).slice(0, args.limit - recoverable.length),
-            ];
+            recoverable.push(
+                ...page.page
+                    .filter(isRecoverable)
+                    .slice(0, args.limit - recoverable.length)
+            )
+
+            pendingCursor = page.continueCursor
+            pendingDone = page.isDone
         }
 
-        return recoverable;
+        if (recoverable.length >= args.limit) {
+            return recoverable
+        }
+
+        let legacyCursor: string | null = null
+        let legacyDone = false
+        while (!legacyDone && recoverable.length < args.limit) {
+            const page = await ctx.db
+                .query("generatedImages")
+                .filter((q) => q.eq(q.field("isSensitive"), undefined))
+                .paginate({
+                    numItems: pageSize,
+                    cursor: legacyCursor,
+                })
+
+            recoverable.push(
+                ...page.page
+                    .filter(isRecoverable)
+                    .slice(0, args.limit - recoverable.length)
+            )
+
+            legacyCursor = page.continueCursor
+            legacyDone = page.isDone
+        }
+
+        return recoverable
     },
 })
 

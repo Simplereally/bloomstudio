@@ -28,8 +28,6 @@ const INITIAL_FILTER_STATE: HistoryFilterState = {
   selectedModels: [],
 };
 
-const LIGHTBOX_PRELOAD_THRESHOLD = 5;
-
 /**
  * Props for PersistentImageGallery - excludes props that are managed internally
  */
@@ -51,6 +49,8 @@ type PersistentImageGalleryProps = Omit<
   initialPage?: PaginatedGalleryResult;
   /** Callback fired whenever the stable mapped images array changes */
   onImagesLoaded?: (images: ThumbnailData[]) => void;
+  /** Registers a stable load-more callback for parent-driven prefetching */
+  onLoadMoreReady?: (loadMore: (() => Promise<void>) | null) => void;
 };
 
 /**
@@ -74,7 +74,13 @@ type PersistentImageGalleryProps = Omit<
  * Includes filter state management for visibility and model filtering.
  */
 export function PersistentImageGallery(props: PersistentImageGalleryProps) {
-  const { activeImageId, initialPage, onImagesLoaded, ...restProps } = props;
+  const {
+    activeImageId,
+    initialPage,
+    onImagesLoaded,
+    onLoadMoreReady,
+    ...restProps
+  } = props;
 
   const { user, isLoaded: isUserLoaded } = useUser();
 
@@ -279,11 +285,26 @@ export function PersistentImageGallery(props: PersistentImageGalleryProps) {
     queryFilters,
   ]);
 
+  const loadMoreIfAvailable = React.useCallback(async () => {
+    if (!canLoadMore || isLoadingMore) {
+      return;
+    }
+
+    await handleLoadMore();
+  }, [canLoadMore, handleLoadMore, isLoadingMore]);
+
   // Ref for stable handleLoadMore access (avoids effect re-runs when callback recreates)
   const handleLoadMoreRef = React.useRef(handleLoadMore);
   React.useEffect(() => {
     handleLoadMoreRef.current = handleLoadMore;
   }, [handleLoadMore]);
+
+  React.useEffect(() => {
+    onLoadMoreReady?.(loadMoreIfAvailable);
+    return () => {
+      onLoadMoreReady?.(null);
+    };
+  }, [loadMoreIfAvailable, onLoadMoreReady]);
 
   // Auto-load more if we got an empty page but aren't done
   // Uses ref to avoid retriggering when handleLoadMore is recreated
@@ -380,26 +401,6 @@ export function PersistentImageGallery(props: PersistentImageGalleryProps) {
   React.useEffect(() => {
     onImagesLoadedRef.current?.(mappedImages);
   }, [mappedImages]);
-
-  React.useEffect(() => {
-    if (!activeImageId || !canLoadMore || isLoadingMore) {
-      return;
-    }
-
-    const activeImageIndex = mappedImages.findIndex(
-      (image) => image.id === activeImageId,
-    );
-
-    if (activeImageIndex < 0) {
-      return;
-    }
-
-    const remainingImages = mappedImages.length - activeImageIndex - 1;
-
-    if (remainingImages <= LIGHTBOX_PRELOAD_THRESHOLD) {
-      handleLoadMore();
-    }
-  }, [activeImageId, canLoadMore, handleLoadMore, isLoadingMore, mappedImages]);
 
   // ========================================
   // Selection Handlers (stable callbacks)
@@ -503,6 +504,7 @@ export function PersistentImageGallery(props: PersistentImageGalleryProps) {
   return (
     <ImageGallery
       {...restProps}
+      activeImageId={activeImageId}
       selectionMode={selectionMode}
       selectedIds={selectedIds}
       onSelectionChange={handleSelectionChange}

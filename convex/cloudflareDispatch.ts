@@ -1,17 +1,13 @@
 "use node"
 
 import { v } from "convex/values"
+import { calculateWorkerRetryDelayMs, WORKER_RETRY_MAX_ATTEMPTS } from "../lib/cloudflare-worker/retry"
 import { internal } from "./_generated/api"
 import { internalAction } from "./_generated/server"
-
-const DISPATCH_MAX_ATTEMPTS = 5
-const DISPATCH_BASE_DELAY_MS = 2_000
-const DISPATCH_MAX_DELAY_MS = 30_000
 
 type SingleGenerationDispatchPayload = {
     jobType: "single_generation"
     generationId: string
-    apiKey: string
     attempt: number
     enqueuedAt: number
 }
@@ -20,7 +16,6 @@ type BatchItemDispatchPayload = {
     jobType: "batch_item"
     batchJobId: string
     itemIndex: number
-    apiKey: string
     attempt: number
     enqueuedAt: number
 }
@@ -62,6 +57,8 @@ type DispatchSecondaryAssetsResult =
     | { dispatched: false; reason: "missing" | "terminal" | "already_dispatched" | "not_needed" }
     | { dispatched: true; attempt: number }
 
+const DISPATCH_TIMEOUT_MS = 5_000
+
 function getRequiredWorkerConfig() {
     const baseUrl = process.env.CLOUDFLARE_WORKER_BASE_URL
     const sharedSecret = process.env.BLOOMSTUDIO_WORKER_SHARED_SECRET
@@ -76,14 +73,32 @@ function getRequiredWorkerConfig() {
 }
 
 function calculateDispatchDelayMs(attempt: number): number {
-    const exponential = DISPATCH_BASE_DELAY_MS * 2 ** Math.max(0, attempt - 1)
-    return Math.min(DISPATCH_MAX_DELAY_MS, exponential)
+    return calculateWorkerRetryDelayMs(attempt)
+}
+
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = DISPATCH_TIMEOUT_MS): Promise<Response> {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+    try {
+        return await fetch(url, {
+            ...init,
+            signal: controller.signal,
+        })
+    } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+            throw new Error(`Cloudflare dispatch timed out after ${timeoutMs}ms`)
+        }
+
+        throw error
+    } finally {
+        clearTimeout(timeoutId)
+    }
 }
 
 export const dispatchSingleGeneration = internalAction({
     args: {
         generationId: v.id("pendingGenerations"),
-        apiKey: v.string(),
     },
     handler: async (ctx, args): Promise<DispatchSingleGenerationResult> => {
         const generation = await ctx.runQuery(internal.singleGeneration.getGenerationInternal, {
@@ -91,11 +106,11 @@ export const dispatchSingleGeneration = internalAction({
         })
 
         if (!generation) {
-            return { dispatched: false, reason: "missing" as const }
+            return { dispatched: false, reason: "missing" }
         }
 
         if (generation.status === "completed" || generation.status === "failed" || generation.status === "cancelled") {
-            return { dispatched: false, reason: "terminal" as const }
+            return { dispatched: false, reason: "terminal" }
         }
 
         const dispatchResult: { dispatched: boolean; dispatchAttempts: number } = await ctx.runMutation(internal.singleGeneration.markGenerationDispatched, {
@@ -103,7 +118,7 @@ export const dispatchSingleGeneration = internalAction({
         })
 
         if (!dispatchResult.dispatched) {
-            return { dispatched: false, reason: "already_dispatched" as const }
+            return { dispatched: false, reason: "already_dispatched" }
         }
 
         try {
@@ -112,12 +127,11 @@ export const dispatchSingleGeneration = internalAction({
             const payload: SingleGenerationDispatchPayload = {
                 jobType: "single_generation",
                 generationId: args.generationId,
-                apiKey: args.apiKey,
                 attempt: dispatchResult.dispatchAttempts,
                 enqueuedAt: Date.now(),
             }
 
-            const response = await fetch(`${baseUrl.replace(/\/$/, "")}/dispatch`, {
+            const response = await fetchWithTimeout(`${baseUrl.replace(/\/$/, "")}/dispatch`, {
                 method: "POST",
                 headers: {
                     "content-type": "application/json",
@@ -140,17 +154,23 @@ export const dispatchSingleGeneration = internalAction({
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "Unknown dispatch error"
 
-            await ctx.runMutation(internal.singleGeneration.recordGenerationDispatchFailure, {
-                generationId: args.generationId,
-                errorMessage,
-            })
+            if (dispatchResult.dispatchAttempts < WORKER_RETRY_MAX_ATTEMPTS) {
+                await ctx.runMutation(internal.singleGeneration.recordGenerationDispatchFailure, {
+                    generationId: args.generationId,
+                    errorMessage,
+                })
 
-            if (dispatchResult.dispatchAttempts < DISPATCH_MAX_ATTEMPTS) {
                 await ctx.scheduler.runAfter(
                     calculateDispatchDelayMs(dispatchResult.dispatchAttempts),
                     internal.cloudflareDispatch.dispatchSingleGeneration,
                     args
                 )
+            } else {
+                await ctx.runMutation(internal.singleGeneration.updateGenerationStatus, {
+                    generationId: args.generationId,
+                    status: "failed",
+                    errorMessage,
+                })
             }
 
             throw error
@@ -175,7 +195,7 @@ export const dispatchBatchItem = internalAction({
         ])
 
         if (!batchJob || !batchItem) {
-            return { dispatched: false, reason: "missing" as const }
+            return { dispatched: false, reason: "missing" }
         }
 
         if (
@@ -187,11 +207,11 @@ export const dispatchBatchItem = internalAction({
             batchItem.status === "failed" ||
             batchItem.status === "cancelled"
         ) {
-            return { dispatched: false, reason: "terminal" as const }
+            return { dispatched: false, reason: "terminal" }
         }
 
         if (!batchJob.apiKey || batchJob.apiKey.trim().length === 0) {
-            return { dispatched: false, reason: "missing_api_key" as const }
+            return { dispatched: false, reason: "missing_api_key" }
         }
 
         const dispatchResult = await ctx.runMutation(internal.batchGeneration.markBatchItemDispatched, {
@@ -200,7 +220,7 @@ export const dispatchBatchItem = internalAction({
         })
 
         if (!dispatchResult.dispatched) {
-            return { dispatched: false, reason: "already_dispatched" as const }
+            return { dispatched: false, reason: "already_dispatched" }
         }
 
         try {
@@ -210,12 +230,11 @@ export const dispatchBatchItem = internalAction({
                 jobType: "batch_item",
                 batchJobId: args.batchJobId,
                 itemIndex: args.itemIndex,
-                apiKey: batchJob.apiKey,
                 attempt: dispatchResult.dispatchAttempts,
                 enqueuedAt: Date.now(),
             }
 
-            const response = await fetch(`${baseUrl.replace(/\/$/, "")}/dispatch`, {
+            const response = await fetchWithTimeout(`${baseUrl.replace(/\/$/, "")}/dispatch`, {
                 method: "POST",
                 headers: {
                     "content-type": "application/json",
@@ -244,7 +263,7 @@ export const dispatchBatchItem = internalAction({
                 errorMessage,
             })
 
-            if (dispatchResult.dispatchAttempts < DISPATCH_MAX_ATTEMPTS) {
+            if (dispatchResult.dispatchAttempts < WORKER_RETRY_MAX_ATTEMPTS) {
                 await ctx.scheduler.runAfter(
                     calculateDispatchDelayMs(dispatchResult.dispatchAttempts),
                     internal.cloudflareDispatch.dispatchBatchItem,
@@ -296,7 +315,7 @@ export const dispatchSecondaryAssets = internalAction({
                 enqueuedAt: Date.now(),
             }
 
-            const response = await fetch(`${baseUrl.replace(/\/$/, "")}/dispatch`, {
+            const response = await fetchWithTimeout(`${baseUrl.replace(/\/$/, "")}/dispatch`, {
                 method: "POST",
                 headers: {
                     "content-type": "application/json",
@@ -324,7 +343,7 @@ export const dispatchSecondaryAssets = internalAction({
                 errorMessage,
             })
 
-            if (dispatchResult.dispatchAttempts < DISPATCH_MAX_ATTEMPTS) {
+            if (dispatchResult.dispatchAttempts < WORKER_RETRY_MAX_ATTEMPTS) {
                 await ctx.scheduler.runAfter(
                     calculateDispatchDelayMs(dispatchResult.dispatchAttempts),
                     internal.cloudflareDispatch.dispatchSecondaryAssets,
@@ -377,7 +396,7 @@ export const dispatchPromptInference = internalAction({
                 enqueuedAt: Date.now(),
             }
 
-            const response = await fetch(`${baseUrl.replace(/\/$/, "")}/dispatch`, {
+            const response = await fetchWithTimeout(`${baseUrl.replace(/\/$/, "")}/dispatch`, {
                 method: "POST",
                 headers: {
                     "content-type": "application/json",
@@ -406,7 +425,7 @@ export const dispatchPromptInference = internalAction({
                 errorMessage,
             })
 
-            if (dispatchResult.dispatchAttempts < DISPATCH_MAX_ATTEMPTS) {
+            if (dispatchResult.dispatchAttempts < WORKER_RETRY_MAX_ATTEMPTS) {
                 await ctx.scheduler.runAfter(
                     calculateDispatchDelayMs(dispatchResult.dispatchAttempts),
                     internal.cloudflareDispatch.dispatchPromptInference,
@@ -459,7 +478,7 @@ export const dispatchVisionAnalysis = internalAction({
                 enqueuedAt: Date.now(),
             }
 
-            const response = await fetch(`${baseUrl.replace(/\/$/, "")}/dispatch`, {
+            const response = await fetchWithTimeout(`${baseUrl.replace(/\/$/, "")}/dispatch`, {
                 method: "POST",
                 headers: {
                     "content-type": "application/json",
@@ -488,7 +507,7 @@ export const dispatchVisionAnalysis = internalAction({
                 errorMessage,
             })
 
-            if (dispatchResult.dispatchAttempts < DISPATCH_MAX_ATTEMPTS) {
+            if (dispatchResult.dispatchAttempts < WORKER_RETRY_MAX_ATTEMPTS) {
                 await ctx.scheduler.runAfter(
                     calculateDispatchDelayMs(dispatchResult.dispatchAttempts),
                     internal.cloudflareDispatch.dispatchVisionAnalysis,

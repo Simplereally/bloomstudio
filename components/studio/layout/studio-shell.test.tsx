@@ -6,6 +6,16 @@ import type { GeneratedImage } from "@/types/pollinations"
 import { toast } from "sonner"
 import { useSubscriptionStatus } from "@/hooks/use-subscription-status"
 
+const mockGalleryLoadMore = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
+const mockGalleryImages = vi.hoisted(() =>
+    Array.from({ length: 10 }, (_, index) => ({
+        id: `conv-${index}`,
+        _id: `conv-${index}`,
+        url: `https://example.com/image-${index}.jpg`,
+        prompt: `Image ${index}`,
+    }))
+)
+
 // Mock server actions to avoid server-only import error
 vi.mock("@/app/_server/actions/invalidation", () => ({
     invalidateUserFavoritesCache: vi.fn(),
@@ -100,11 +110,53 @@ vi.mock("@/components/studio/features/canvas", () => ({
 }))
 
 vi.mock("@/components/studio/features/history", () => ({
-    GalleryFeature: ({ activeImageId, thumbnailSize, onImagesLoaded }: { activeImageId?: string; thumbnailSize?: string; onImagesLoaded?: (images: unknown[]) => void }) => (
+    GalleryFeature: ({
+        activeImageId,
+        thumbnailSize,
+        onImagesLoaded,
+        onLoadMoreReady,
+        onSelectImage,
+    }: {
+        activeImageId?: string;
+        thumbnailSize?: string;
+        onImagesLoaded?: (images: unknown[]) => void;
+        onLoadMoreReady?: (loadMore: (() => Promise<void>) | null) => void;
+        onSelectImage?: (image: {
+            id: string;
+            _id: string;
+            url: string;
+            prompt: string;
+        }) => void;
+    }) => (
         <div data-testid="gallery-feature">
             <span data-testid="gallery-active-id">{activeImageId || "none"}</span>
             <span data-testid="gallery-thumbnail-size">{thumbnailSize}</span>
             <span data-testid="gallery-has-onimagesloaded">{String(typeof onImagesLoaded === "function")}</span>
+            <span data-testid="gallery-has-onloadmoreready">{String(typeof onLoadMoreReady === "function")}</span>
+            <button
+                data-testid="gallery-trigger-images-loaded"
+                onClick={() => onImagesLoaded?.(mockGalleryImages)}
+            >
+                Trigger Images Loaded
+            </button>
+            <button
+                data-testid="gallery-register-load-more"
+                onClick={() => onLoadMoreReady?.(mockGalleryLoadMore)}
+            >
+                Register Load More
+            </button>
+            <button
+                data-testid="gallery-select-outside-threshold"
+                onClick={() => onSelectImage?.(mockGalleryImages[3]!)}
+            >
+                Select Outside Threshold
+            </button>
+            <button
+                data-testid="gallery-select-boundary-threshold"
+                onClick={() => onSelectImage?.(mockGalleryImages[4]!)}
+            >
+                Select Boundary Threshold
+            </button>
         </div>
     ),
 }))
@@ -149,7 +201,6 @@ vi.mock("@/components/images/image-lightbox", () => ({
 vi.mock("@/components/pollen-balance/low-balance-warning-dialog", () => ({
     LowBalanceWarningDialog: () => <div data-testid="low-balance-warning-dialog" />,
 }))
-
 
 // Mock hooks
 const mockPromptManager = {
@@ -398,6 +449,7 @@ describe("StudioShell", () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockActiveGenerations = []
+        mockGalleryLoadMore.mockClear()
     })
 
     it("renders all main components", () => {
@@ -476,6 +528,32 @@ describe("StudioShell", () => {
         render(<StudioShell {...defaultProps} />)
 
         expect(screen.getByTestId("gallery-has-onimagesloaded")).toHaveTextContent("true")
+    })
+
+    it("passes onLoadMoreReady callback to GalleryFeature", () => {
+        render(<StudioShell {...defaultProps} />)
+
+        expect(screen.getByTestId("gallery-has-onloadmoreready")).toHaveTextContent("true")
+    })
+
+    it("preloads more gallery history at the lightbox threshold boundary", () => {
+        render(<StudioShell {...defaultProps} />)
+
+        fireEvent.click(screen.getByTestId("gallery-register-load-more"))
+        fireEvent.click(screen.getByTestId("gallery-trigger-images-loaded"))
+        fireEvent.click(screen.getByTestId("gallery-select-boundary-threshold"))
+
+        expect(mockGalleryLoadMore).toHaveBeenCalledTimes(1)
+    })
+
+    it("does not preload more gallery history outside the threshold", () => {
+        render(<StudioShell {...defaultProps} />)
+
+        fireEvent.click(screen.getByTestId("gallery-register-load-more"))
+        fireEvent.click(screen.getByTestId("gallery-trigger-images-loaded"))
+        fireEvent.click(screen.getByTestId("gallery-select-outside-threshold"))
+
+        expect(mockGalleryLoadMore).not.toHaveBeenCalled()
     })
 
     it("passes historyImages to ControlsFeature (initially empty)", () => {

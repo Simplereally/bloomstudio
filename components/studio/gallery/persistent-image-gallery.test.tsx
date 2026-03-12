@@ -6,7 +6,6 @@ import { useSetBulkVisibility } from "@/hooks/mutations/use-set-visibility";
 import { useBulkDeleteGeneratedImages } from "@/hooks/mutations/use-delete-image";
 import { useImageHistory } from "@/hooks/queries/use-image-history";
 import type { ThumbnailData } from "./types";
-import type { Id } from "@/convex/_generated/dataModel";
 
 // Mock server actions to avoid server-only import error
 vi.mock("@/app/_server/actions/history", () => ({
@@ -103,7 +102,7 @@ vi.mock("./virtualized-gallery-grid", () => ({
 
 const mockConvexImages = [
   {
-    _id: "conv123" as Id<"generatedImages">,
+    _id: "conv123",
     _creationTime: Date.now(),
     ownerId: "user1",
     visibility: "public" as const,
@@ -125,7 +124,7 @@ const mockConvexImages = [
     },
   },
   {
-    _id: "conv456" as Id<"generatedImages">,
+    _id: "conv456",
     _creationTime: Date.now() - 1000,
     ownerId: "user1",
     visibility: "unlisted" as const,
@@ -250,12 +249,13 @@ describe("PersistentImageGallery", () => {
       expect(screen.getByTestId("gallery-empty")).toBeInTheDocument();
     });
 
-    it("preloads more history when the active image is near the loaded end", async () => {
+    it("registers a load-more callback for parent-driven prefetching", async () => {
       const extendedImages = Array.from({ length: 10 }, (_, index) => ({
         ...mockConvexImages[0],
-        _id: `conv-${index}` as Id<"generatedImages">,
+        _id: `conv-${index}`,
         url: `https://example.com/image-${index}.jpg`,
       }));
+      let registeredLoadMore: (() => Promise<void>) | null = null;
 
       (useImageHistory as Mock).mockReturnValue({
         results: extendedImages,
@@ -263,11 +263,21 @@ describe("PersistentImageGallery", () => {
         loadMore: mockHistoryLoadMore,
       });
 
-      render(<PersistentImageGallery activeImageId="conv-8" />);
+      render(
+        <PersistentImageGallery
+          onLoadMoreReady={(loadMore) => {
+            registeredLoadMore = loadMore;
+          }}
+        />,
+      );
 
-      await waitFor(() => {
-        expect(mockHistoryLoadMore).toHaveBeenCalledWith(20);
+      expect(registeredLoadMore).toBeTypeOf("function");
+
+      await act(async () => {
+        await registeredLoadMore?.();
       });
+
+      expect(mockHistoryLoadMore).toHaveBeenCalledWith(20);
     });
   });
 

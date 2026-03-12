@@ -20,14 +20,6 @@ export interface PromptInferenceResult {
   reasoning: string;
 }
 
-type CerebrasChatCompletionResponse = {
-  choices?: Array<{
-    message?: {
-      content?: string;
-    };
-  }>;
-};
-
 // =============================================================================
 // Prompt Template
 // =============================================================================
@@ -104,6 +96,30 @@ export function parseResult(rawText: string): PromptInferenceResult {
   }
 }
 
+function getCerebrasMessageContent(value: unknown): string | undefined {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+
+  const choices = Reflect.get(value, "choices");
+  if (!Array.isArray(choices) || choices.length === 0) {
+    return undefined;
+  }
+
+  const firstChoice = choices[0];
+  if (!firstChoice || typeof firstChoice !== "object") {
+    return undefined;
+  }
+
+  const message = Reflect.get(firstChoice, "message");
+  if (!message || typeof message !== "object") {
+    return undefined;
+  }
+
+  const content = Reflect.get(message, "content");
+  return typeof content === "string" ? content : undefined;
+}
+
 /**
  * Call Cerebras to analyze the prompt.
  */
@@ -141,8 +157,8 @@ export async function analyzePromptWithCerebras(prompt: string): Promise<PromptI
     throw new Error(result.error || "Failed to call Cerebras API");
   }
 
-  const json = (await result.data.json()) as CerebrasChatCompletionResponse;
-  const content = json.choices?.[0]?.message?.content;
+  const rawJson: unknown = await result.data.json();
+  const content = getCerebrasMessageContent(rawJson);
 
   if (!content) {
     throw new Error("Empty response from Cerebras");

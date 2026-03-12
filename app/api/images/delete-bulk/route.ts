@@ -95,8 +95,6 @@ export async function POST(
         const unauthorizedKeys: string[] = []
 
         for (const key of r2Keys) {
-            if (typeof key !== "string") continue
-
             if (key.includes(`/${userHash}/`)) {
                 authorizedKeys.push(key)
             } else {

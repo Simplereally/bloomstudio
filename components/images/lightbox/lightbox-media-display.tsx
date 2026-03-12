@@ -10,14 +10,26 @@ import {
 } from "@/hooks/use-image-lightbox";
 import { cn } from "@/lib/utils";
 
-const readyImageUrls = new Set<string>();
+const MAX_READY_IMAGE_URLS = 300;
+const readyImageUrls = new Map<string, true>();
 
 export function markLightboxImageUrlReady(url: string | undefined) {
 	if (!url) {
 		return;
 	}
 
-	readyImageUrls.add(url);
+	if (readyImageUrls.has(url)) {
+		readyImageUrls.delete(url);
+	}
+
+	readyImageUrls.set(url, true);
+
+	if (readyImageUrls.size > MAX_READY_IMAGE_URLS) {
+		const oldestUrl = readyImageUrls.keys().next().value;
+		if (oldestUrl) {
+			readyImageUrls.delete(oldestUrl);
+		}
+	}
 }
 
 function isImageUrlReady(url: string | undefined) {
@@ -195,8 +207,10 @@ export function LightboxMediaDisplay({
 							)}
 							onClick={toggleZoom}
 							onKeyDown={(e) => {
-								if (e.key === "Enter" || e.key === " ")
-									toggleZoom(e as unknown as React.MouseEvent);
+								if (e.key === "Enter" || e.key === " ") {
+									e.preventDefault();
+									toggleZoom(e);
+								}
 							}}
 							onMouseEnter={() => handleHoverChange(true)}
 							onMouseLeave={() => handleHoverChange(false)}
@@ -231,9 +245,7 @@ export function LightboxMediaDisplay({
 								src={fullResUrl || image.url}
 								alt={image.prompt || "Generated image"}
 								onLoad={(e) => {
-									handleImageLoad(
-										e as unknown as React.SyntheticEvent<HTMLImageElement>,
-									);
+									handleImageLoad(e);
 									markLightboxImageUrlReady(fullResUrl || image.url);
 									setIsFullResLoaded(true);
 								}}

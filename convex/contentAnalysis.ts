@@ -115,7 +115,7 @@ export function getNextAnalysisRunDelayMs(args: {
     allProvidersRateLimited: boolean
 }): number | null {
     if (args.allProvidersRateLimited) {
-        return null
+        return DELAY_BETWEEN_REQUESTS_MS
     }
 
     return args.queuedImageCount === ANALYSIS_QUEUE_LOOKAHEAD

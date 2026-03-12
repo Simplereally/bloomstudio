@@ -38,12 +38,28 @@ export interface GroqVisionResult {
     text: string
 }
 
-type GroqChatCompletionResponse = {
-    choices?: Array<{
-        message?: {
-            content?: string
-        }
-    }>
+function getFirstMessageContent(value: unknown): string | undefined {
+    if (!value || typeof value !== "object") {
+        return undefined
+    }
+
+    const choices = Reflect.get(value, "choices")
+    if (!Array.isArray(choices) || choices.length === 0) {
+        return undefined
+    }
+
+    const firstChoice = choices[0]
+    if (!firstChoice || typeof firstChoice !== "object") {
+        return undefined
+    }
+
+    const message = Reflect.get(firstChoice, "message")
+    if (!message || typeof message !== "object") {
+        return undefined
+    }
+
+    const content = Reflect.get(message, "content")
+    return typeof content === "string" ? content : undefined
 }
 
 export type FetchFn = (...args: Parameters<typeof fetch>) => ReturnType<typeof fetch>
@@ -168,8 +184,8 @@ export async function analyzeImageWithGroqDeps(
                 )
             }
 
-            const data = (await response.json()) as GroqChatCompletionResponse
-            const content = data.choices?.[0]?.message?.content
+            const responsePayload: unknown = await response.json()
+            const content = getFirstMessageContent(responsePayload)
 
             if (!content) {
                 throw new GroqApiError("No content received from Groq")

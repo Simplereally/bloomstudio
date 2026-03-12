@@ -11,13 +11,13 @@ describe("getNextAnalysisRunDelayMs", () => {
         ).toBe(2100)
     })
 
-    it("does not schedule another run when providers are rate-limited", () => {
+    it("schedules another run when providers are rate-limited", () => {
         expect(
             getNextAnalysisRunDelayMs({
                 queuedImageCount: 2,
                 allProvidersRateLimited: true,
             })
-        ).toBeNull()
+        ).toBe(2100)
     })
 
     it("does not schedule another run when there is no lookahead work", () => {

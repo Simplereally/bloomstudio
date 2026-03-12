@@ -1,748 +1,407 @@
-import { z } from "zod"
 import { internal } from "./_generated/api"
-import { httpAction } from "./_generated/server"
+import type { Id } from "./_generated/dataModel"
+import { z } from "zod"
+import {
+    createWorkerHttpAction,
+    generationResultSchema,
+    nonEmptyStringSchema,
+    nonNegativeIntSchema,
+    positiveIntSchema,
+    secondaryAssetsResultSchema,
+} from "./lib/cloudflareWorkerHttp"
 
-const workerSecretHeader = "x-bloomstudio-worker-secret"
+const claimTokenSchema = nonEmptyStringSchema
+const workerAttemptSchema = positiveIntSchema
+const providerRequestIdSchema = nonEmptyStringSchema.optional()
+const retryCountSchema = nonNegativeIntSchema.optional()
+
+function isNonEmptyString(value: unknown): value is string {
+    return typeof value === "string" && value.length > 0
+}
+
+const generationIdSchema = z.custom<Id<"pendingGenerations">>(isNonEmptyString, {
+    message: "Invalid generationId",
+})
+const batchJobIdSchema = z.custom<Id<"batchJobs">>(isNonEmptyString, {
+    message: "Invalid batchJobId",
+})
+const imageIdSchema = z.custom<Id<"generatedImages">>(isNonEmptyString, {
+    message: "Invalid imageId",
+})
+const itemIndexSchema = nonNegativeIntSchema
+const moderationStageSchema = z.enum(["prompt_inference", "vision_analysis"])
 
 const claimBodySchema = z.object({
-    generationId: z.string(),
-    claimToken: z.string().min(1),
-    workerAttempt: z.number().int().positive(),
-    providerRequestId: z.string().min(1).optional(),
+    generationId: generationIdSchema,
+    claimToken: claimTokenSchema,
+    workerAttempt: workerAttemptSchema,
+    providerRequestId: providerRequestIdSchema,
 })
 
 const continueBodySchema = z.object({
-    generationId: z.string(),
-    claimToken: z.string().min(1),
+    generationId: generationIdSchema,
+    claimToken: claimTokenSchema,
 })
 
 const completeBodySchema = z.object({
-    generationId: z.string(),
-    claimToken: z.string().min(1),
-    r2Key: z.string().min(1),
-    url: z.string().url(),
-    width: z.number().int().positive(),
-    height: z.number().int().positive(),
-    seed: z.number().int().nonnegative().optional(),
-    contentType: z.string().min(1),
-    sizeBytes: z.number().int().nonnegative(),
-    retryCount: z.number().int().nonnegative().optional(),
-    providerRequestId: z.string().min(1).optional(),
+    generationId: generationIdSchema,
+    claimToken: claimTokenSchema,
+    ...generationResultSchema.shape,
+    retryCount: retryCountSchema,
+    providerRequestId: providerRequestIdSchema,
 })
 
 const failBodySchema = z.object({
-    generationId: z.string(),
-    claimToken: z.string().min(1),
-    errorMessage: z.string().min(1),
+    generationId: generationIdSchema,
+    claimToken: claimTokenSchema,
+    errorMessage: nonEmptyStringSchema,
     errorCode: z.number().int().optional(),
-    retryCount: z.number().int().nonnegative().optional(),
-    providerRequestId: z.string().min(1).optional(),
+    retryCount: retryCountSchema,
+    providerRequestId: providerRequestIdSchema,
 })
 
 const batchClaimBodySchema = z.object({
-    batchJobId: z.string(),
-    itemIndex: z.number().int().nonnegative(),
-    claimToken: z.string().min(1),
-    workerAttempt: z.number().int().positive(),
-    providerRequestId: z.string().min(1).optional(),
+    batchJobId: batchJobIdSchema,
+    itemIndex: itemIndexSchema,
+    claimToken: claimTokenSchema,
+    workerAttempt: workerAttemptSchema,
+    providerRequestId: providerRequestIdSchema,
 })
 
 const batchContinueBodySchema = z.object({
-    batchJobId: z.string(),
-    itemIndex: z.number().int().nonnegative(),
-    claimToken: z.string().min(1),
+    batchJobId: batchJobIdSchema,
+    itemIndex: itemIndexSchema,
+    claimToken: claimTokenSchema,
 })
 
 const batchCompleteBodySchema = z.object({
-    batchJobId: z.string(),
-    itemIndex: z.number().int().nonnegative(),
-    claimToken: z.string().min(1),
-    r2Key: z.string().min(1),
-    url: z.string().url(),
-    width: z.number().int().positive(),
-    height: z.number().int().positive(),
-    seed: z.number().int().nonnegative().optional(),
-    contentType: z.string().min(1),
-    sizeBytes: z.number().int().nonnegative(),
-    retryCount: z.number().int().nonnegative().optional(),
-    providerRequestId: z.string().min(1).optional(),
+    batchJobId: batchJobIdSchema,
+    itemIndex: itemIndexSchema,
+    claimToken: claimTokenSchema,
+    ...generationResultSchema.shape,
+    retryCount: retryCountSchema,
+    providerRequestId: providerRequestIdSchema,
 })
 
 const batchFailBodySchema = z.object({
-    batchJobId: z.string(),
-    itemIndex: z.number().int().nonnegative(),
-    claimToken: z.string().min(1),
-    errorMessage: z.string().min(1),
+    batchJobId: batchJobIdSchema,
+    itemIndex: itemIndexSchema,
+    claimToken: claimTokenSchema,
+    errorMessage: nonEmptyStringSchema,
     errorCode: z.number().int().optional(),
-    retryCount: z.number().int().nonnegative().optional(),
-    providerRequestId: z.string().min(1).optional(),
+    retryCount: retryCountSchema,
+    providerRequestId: providerRequestIdSchema,
 })
 
 const secondaryAssetsUpdateBodySchema = z.object({
-    imageId: z.string(),
-    thumbnailR2Key: z.string().min(1).optional(),
-    thumbnailUrl: z.string().url().optional(),
-    previewR2Key: z.string().min(1).optional(),
-    previewUrl: z.string().url().optional(),
+    imageId: imageIdSchema,
+    ...secondaryAssetsResultSchema.shape,
 })
 
 const secondaryAssetsClaimBodySchema = z.object({
-    imageId: z.string(),
-    claimToken: z.string().min(1),
-    workerAttempt: z.number().int().positive(),
+    imageId: imageIdSchema,
+    claimToken: claimTokenSchema,
+    workerAttempt: workerAttemptSchema,
 })
 
 const secondaryAssetsContinueBodySchema = z.object({
-    imageId: z.string(),
-    claimToken: z.string().min(1),
+    imageId: imageIdSchema,
+    claimToken: claimTokenSchema,
 })
 
 const secondaryAssetsCompleteBodySchema = z.object({
-    imageId: z.string(),
-    claimToken: z.string().min(1),
-    thumbnailR2Key: z.string().min(1).optional(),
-    thumbnailUrl: z.string().url().optional(),
-    previewR2Key: z.string().min(1).optional(),
-    previewUrl: z.string().url().optional(),
+    imageId: imageIdSchema,
+    claimToken: claimTokenSchema,
+    ...secondaryAssetsResultSchema.shape,
 })
 
 const secondaryAssetsFailBodySchema = z.object({
-    imageId: z.string(),
-    claimToken: z.string().min(1),
-    errorMessage: z.string().min(1),
+    imageId: imageIdSchema,
+    claimToken: claimTokenSchema,
+    errorMessage: nonEmptyStringSchema,
 })
 
 const moderationClaimBodySchema = z.object({
-    imageId: z.string(),
-    stage: z.enum(["prompt_inference", "vision_analysis"]),
-    claimToken: z.string().min(1),
-    workerAttempt: z.number().int().positive(),
-    providerRequestId: z.string().min(1).optional(),
+    imageId: imageIdSchema,
+    stage: moderationStageSchema,
+    claimToken: claimTokenSchema,
+    workerAttempt: workerAttemptSchema,
+    providerRequestId: providerRequestIdSchema,
 })
 
 const moderationContinueBodySchema = z.object({
-    imageId: z.string(),
-    stage: z.enum(["prompt_inference", "vision_analysis"]),
-    claimToken: z.string().min(1),
+    imageId: imageIdSchema,
+    stage: moderationStageSchema,
+    claimToken: claimTokenSchema,
 })
 
 const promptInferenceCompleteBodySchema = z.object({
-    imageId: z.string(),
-    claimToken: z.string().min(1),
+    imageId: imageIdSchema,
+    claimToken: claimTokenSchema,
     promptInference: z.object({
-        category: z.string().min(1),
+        category: nonEmptyStringSchema,
         confidence: z.number().min(0).max(1),
-        reasoning: z.string().min(1),
-        provider: z.string().min(1),
-        analyzedAt: z.number().int().positive(),
+        reasoning: nonEmptyStringSchema,
+        provider: nonEmptyStringSchema,
+        analyzedAt: positiveIntSchema,
     }),
     action: z.enum(["tag_sensitive", "tag_safe", "escalate_to_vision"]),
-    providerRequestId: z.string().min(1).optional(),
+    providerRequestId: providerRequestIdSchema,
 })
 
 const promptInferenceFailBodySchema = z.object({
-    imageId: z.string(),
-    claimToken: z.string().min(1),
-    errorMessage: z.string().min(1),
-    providerRequestId: z.string().min(1).optional(),
+    imageId: imageIdSchema,
+    claimToken: claimTokenSchema,
+    errorMessage: nonEmptyStringSchema,
+    providerRequestId: providerRequestIdSchema,
 })
 
 const visionAnalysisCompleteBodySchema = z.object({
-    imageId: z.string(),
-    claimToken: z.string().min(1),
+    imageId: imageIdSchema,
+    claimToken: claimTokenSchema,
     isSensitive: z.boolean(),
     confidence: z.number().min(0).max(1),
     contentAnalysis: z.object({
-        nudity: z.string().min(1).optional(),
-        sexual: z.string().min(1).optional(),
-        violence: z.string().min(1).optional(),
-        analyzedAt: z.number().int().positive(),
+        nudity: nonEmptyStringSchema.optional(),
+        sexual: nonEmptyStringSchema.optional(),
+        violence: nonEmptyStringSchema.optional(),
+        analyzedAt: positiveIntSchema,
     }),
-    providerRequestId: z.string().min(1).optional(),
+    providerRequestId: providerRequestIdSchema,
 })
 
 const visionAnalysisFailBodySchema = z.object({
-    imageId: z.string(),
-    claimToken: z.string().min(1),
-    errorMessage: z.string().min(1),
+    imageId: imageIdSchema,
+    claimToken: claimTokenSchema,
+    errorMessage: nonEmptyStringSchema,
     rateLimited: z.boolean().optional(),
-    providerRequestId: z.string().min(1).optional(),
+    providerRequestId: providerRequestIdSchema,
 })
 
 const providerRateLimitBodySchema = z.object({
     provider: z.enum(["groq", "openrouter"]),
-    errorBody: z.string().min(1),
+    errorBody: nonEmptyStringSchema,
 })
 
-function unauthorized(): Response {
-    return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 })
-}
-
-function badRequest(message: string): Response {
-    return Response.json({ ok: false, error: message }, { status: 400 })
-}
-
-async function validateWorkerSecret(request: Request): Promise<boolean> {
-    const provided = request.headers.get(workerSecretHeader)
-    const expected = process.env.BLOOMSTUDIO_WORKER_SHARED_SECRET
-    return !!provided && !!expected && provided === expected
-}
-
-export const claimSingleGenerationHttp = httpAction(async (ctx, request) => {
-    if (!(await validateWorkerSecret(request))) {
-        return unauthorized()
-    }
-
-    let json: unknown
-    try {
-        json = await request.json()
-    } catch {
-        return badRequest("Invalid JSON body")
-    }
-
-    const parsed = claimBodySchema.safeParse(json)
-    if (!parsed.success) {
-        return badRequest(parsed.error.issues[0]?.message ?? "Invalid request body")
-    }
-
-    const claimResult = await ctx.runMutation(internal.singleGeneration.claimGenerationForWorker, {
-        generationId: parsed.data.generationId as never,
-        claimToken: parsed.data.claimToken,
-        workerAttempt: parsed.data.workerAttempt,
-        providerRequestId: parsed.data.providerRequestId,
+export const claimSingleGenerationHttp = createWorkerHttpAction(claimBodySchema, (ctx, body: unknown): Promise<unknown> => {
+    const parsedBody = claimBodySchema.parse(body)
+    return ctx.runMutation(internal.singleGeneration.claimGenerationForWorker, {
+        generationId: parsedBody.generationId,
+        claimToken: parsedBody.claimToken,
+        workerAttempt: parsedBody.workerAttempt,
+        providerRequestId: parsedBody.providerRequestId,
     })
-
-    return Response.json(claimResult)
 })
 
-export const continueSingleGenerationHttp = httpAction(async (ctx, request) => {
-    if (!(await validateWorkerSecret(request))) {
-        return unauthorized()
-    }
-
-    let json: unknown
-    try {
-        json = await request.json()
-    } catch {
-        return badRequest("Invalid JSON body")
-    }
-
-    const parsed = continueBodySchema.safeParse(json)
-    if (!parsed.success) {
-        return badRequest(parsed.error.issues[0]?.message ?? "Invalid request body")
-    }
-
-    const result = await ctx.runQuery(internal.singleGeneration.getGenerationWorkerContinuationState, {
-        generationId: parsed.data.generationId as never,
-        claimToken: parsed.data.claimToken,
+export const continueSingleGenerationHttp = createWorkerHttpAction(continueBodySchema, (ctx, body: unknown): Promise<unknown> => {
+    const parsedBody = continueBodySchema.parse(body)
+    return ctx.runQuery(internal.singleGeneration.getGenerationWorkerContinuationState, {
+        generationId: parsedBody.generationId,
+        claimToken: parsedBody.claimToken,
     })
-
-    return Response.json(result)
 })
 
-export const completeSingleGenerationHttp = httpAction(async (ctx, request) => {
-    if (!(await validateWorkerSecret(request))) {
-        return unauthorized()
-    }
-
-    let json: unknown
-    try {
-        json = await request.json()
-    } catch {
-        return badRequest("Invalid JSON body")
-    }
-
-    const parsed = completeBodySchema.safeParse(json)
-    if (!parsed.success) {
-        return badRequest(parsed.error.issues[0]?.message ?? "Invalid request body")
-    }
-
-    const result = await ctx.runMutation(internal.singleGeneration.completeGenerationFromWorkerResult, {
-        generationId: parsed.data.generationId as never,
-        claimToken: parsed.data.claimToken,
-        r2Key: parsed.data.r2Key,
-        url: parsed.data.url,
-        width: parsed.data.width,
-        height: parsed.data.height,
-        seed: parsed.data.seed,
-        contentType: parsed.data.contentType,
-        sizeBytes: parsed.data.sizeBytes,
-        retryCount: parsed.data.retryCount,
-        providerRequestId: parsed.data.providerRequestId,
+export const completeSingleGenerationHttp = createWorkerHttpAction(completeBodySchema, (ctx, body: unknown): Promise<unknown> => {
+    const parsedBody = completeBodySchema.parse(body)
+    return ctx.runMutation(internal.singleGeneration.completeGenerationFromWorkerResult, {
+        generationId: parsedBody.generationId,
+        claimToken: parsedBody.claimToken,
+        r2Key: parsedBody.r2Key,
+        url: parsedBody.url,
+        width: parsedBody.width,
+        height: parsedBody.height,
+        seed: parsedBody.seed,
+        contentType: parsedBody.contentType,
+        sizeBytes: parsedBody.sizeBytes,
+        retryCount: parsedBody.retryCount,
+        providerRequestId: parsedBody.providerRequestId,
     })
-
-    return Response.json(result)
 })
 
-export const failSingleGenerationHttp = httpAction(async (ctx, request) => {
-    if (!(await validateWorkerSecret(request))) {
-        return unauthorized()
-    }
-
-    let json: unknown
-    try {
-        json = await request.json()
-    } catch {
-        return badRequest("Invalid JSON body")
-    }
-
-    const parsed = failBodySchema.safeParse(json)
-    if (!parsed.success) {
-        return badRequest(parsed.error.issues[0]?.message ?? "Invalid request body")
-    }
-
-    const result = await ctx.runMutation(internal.singleGeneration.failGenerationFromWorker, {
-        generationId: parsed.data.generationId as never,
-        claimToken: parsed.data.claimToken,
-        errorMessage: parsed.data.errorMessage,
-        errorCode: parsed.data.errorCode,
-        retryCount: parsed.data.retryCount,
-        providerRequestId: parsed.data.providerRequestId,
+export const failSingleGenerationHttp = createWorkerHttpAction(failBodySchema, (ctx, body: unknown): Promise<unknown> => {
+    const parsedBody = failBodySchema.parse(body)
+    return ctx.runMutation(internal.singleGeneration.failGenerationFromWorker, {
+        generationId: parsedBody.generationId,
+        claimToken: parsedBody.claimToken,
+        errorMessage: parsedBody.errorMessage,
+        errorCode: parsedBody.errorCode,
+        retryCount: parsedBody.retryCount,
+        providerRequestId: parsedBody.providerRequestId,
     })
-
-    return Response.json(result)
 })
 
-export const claimBatchItemHttp = httpAction(async (ctx, request) => {
-    if (!(await validateWorkerSecret(request))) {
-        return unauthorized()
-    }
-
-    let json: unknown
-    try {
-        json = await request.json()
-    } catch {
-        return badRequest("Invalid JSON body")
-    }
-
-    const parsed = batchClaimBodySchema.safeParse(json)
-    if (!parsed.success) {
-        return badRequest(parsed.error.issues[0]?.message ?? "Invalid request body")
-    }
-
-    const result = await ctx.runMutation(internal.batchGeneration.claimBatchItemForWorker, {
-        batchJobId: parsed.data.batchJobId as never,
-        itemIndex: parsed.data.itemIndex,
-        claimToken: parsed.data.claimToken,
-        workerAttempt: parsed.data.workerAttempt,
-        providerRequestId: parsed.data.providerRequestId,
+export const claimBatchItemHttp = createWorkerHttpAction(batchClaimBodySchema, (ctx, body: unknown): Promise<unknown> => {
+    const parsedBody = batchClaimBodySchema.parse(body)
+    return ctx.runMutation(internal.batchGeneration.claimBatchItemForWorker, {
+        batchJobId: parsedBody.batchJobId,
+        itemIndex: parsedBody.itemIndex,
+        claimToken: parsedBody.claimToken,
+        workerAttempt: parsedBody.workerAttempt,
+        providerRequestId: parsedBody.providerRequestId,
     })
-
-    return Response.json(result)
 })
 
-export const continueBatchItemHttp = httpAction(async (ctx, request) => {
-    if (!(await validateWorkerSecret(request))) {
-        return unauthorized()
-    }
-
-    let json: unknown
-    try {
-        json = await request.json()
-    } catch {
-        return badRequest("Invalid JSON body")
-    }
-
-    const parsed = batchContinueBodySchema.safeParse(json)
-    if (!parsed.success) {
-        return badRequest(parsed.error.issues[0]?.message ?? "Invalid request body")
-    }
-
-    const result = await ctx.runQuery(internal.batchGeneration.getBatchItemWorkerContinuationState, {
-        batchJobId: parsed.data.batchJobId as never,
-        itemIndex: parsed.data.itemIndex,
-        claimToken: parsed.data.claimToken,
+export const continueBatchItemHttp = createWorkerHttpAction(batchContinueBodySchema, (ctx, body: unknown): Promise<unknown> => {
+    const parsedBody = batchContinueBodySchema.parse(body)
+    return ctx.runQuery(internal.batchGeneration.getBatchItemWorkerContinuationState, {
+        batchJobId: parsedBody.batchJobId,
+        itemIndex: parsedBody.itemIndex,
+        claimToken: parsedBody.claimToken,
     })
-
-    return Response.json(result)
 })
 
-export const completeBatchItemHttp = httpAction(async (ctx, request) => {
-    if (!(await validateWorkerSecret(request))) {
-        return unauthorized()
-    }
-
-    let json: unknown
-    try {
-        json = await request.json()
-    } catch {
-        return badRequest("Invalid JSON body")
-    }
-
-    const parsed = batchCompleteBodySchema.safeParse(json)
-    if (!parsed.success) {
-        return badRequest(parsed.error.issues[0]?.message ?? "Invalid request body")
-    }
-
-    const result = await ctx.runMutation(internal.batchGeneration.completeBatchItemFromWorkerResult, {
-        batchJobId: parsed.data.batchJobId as never,
-        itemIndex: parsed.data.itemIndex,
-        claimToken: parsed.data.claimToken,
-        r2Key: parsed.data.r2Key,
-        url: parsed.data.url,
-        width: parsed.data.width,
-        height: parsed.data.height,
-        seed: parsed.data.seed,
-        contentType: parsed.data.contentType,
-        sizeBytes: parsed.data.sizeBytes,
-        retryCount: parsed.data.retryCount,
-        providerRequestId: parsed.data.providerRequestId,
+export const completeBatchItemHttp = createWorkerHttpAction(batchCompleteBodySchema, (ctx, body: unknown): Promise<unknown> => {
+    const parsedBody = batchCompleteBodySchema.parse(body)
+    return ctx.runMutation(internal.batchGeneration.completeBatchItemFromWorkerResult, {
+        batchJobId: parsedBody.batchJobId,
+        itemIndex: parsedBody.itemIndex,
+        claimToken: parsedBody.claimToken,
+        r2Key: parsedBody.r2Key,
+        url: parsedBody.url,
+        width: parsedBody.width,
+        height: parsedBody.height,
+        seed: parsedBody.seed,
+        contentType: parsedBody.contentType,
+        sizeBytes: parsedBody.sizeBytes,
+        retryCount: parsedBody.retryCount,
+        providerRequestId: parsedBody.providerRequestId,
     })
-
-    return Response.json(result)
 })
 
-export const failBatchItemHttp = httpAction(async (ctx, request) => {
-    if (!(await validateWorkerSecret(request))) {
-        return unauthorized()
-    }
-
-    let json: unknown
-    try {
-        json = await request.json()
-    } catch {
-        return badRequest("Invalid JSON body")
-    }
-
-    const parsed = batchFailBodySchema.safeParse(json)
-    if (!parsed.success) {
-        return badRequest(parsed.error.issues[0]?.message ?? "Invalid request body")
-    }
-
-    const result = await ctx.runMutation(internal.batchGeneration.failBatchItemFromWorker, {
-        batchJobId: parsed.data.batchJobId as never,
-        itemIndex: parsed.data.itemIndex,
-        claimToken: parsed.data.claimToken,
-        errorMessage: parsed.data.errorMessage,
-        errorCode: parsed.data.errorCode,
-        retryCount: parsed.data.retryCount,
-        providerRequestId: parsed.data.providerRequestId,
+export const failBatchItemHttp = createWorkerHttpAction(batchFailBodySchema, (ctx, body: unknown): Promise<unknown> => {
+    const parsedBody = batchFailBodySchema.parse(body)
+    return ctx.runMutation(internal.batchGeneration.failBatchItemFromWorker, {
+        batchJobId: parsedBody.batchJobId,
+        itemIndex: parsedBody.itemIndex,
+        claimToken: parsedBody.claimToken,
+        errorMessage: parsedBody.errorMessage,
+        errorCode: parsedBody.errorCode,
+        retryCount: parsedBody.retryCount,
+        providerRequestId: parsedBody.providerRequestId,
     })
-
-    return Response.json(result)
 })
 
-export const updateSecondaryAssetsHttp = httpAction(async (ctx, request) => {
-    if (!(await validateWorkerSecret(request))) {
-        return unauthorized()
-    }
-
-    let json: unknown
-    try {
-        json = await request.json()
-    } catch {
-        return badRequest("Invalid JSON body")
-    }
-
-    const parsed = secondaryAssetsUpdateBodySchema.safeParse(json)
-    if (!parsed.success) {
-        return badRequest(parsed.error.issues[0]?.message ?? "Invalid request body")
-    }
-
+export const updateSecondaryAssetsHttp = createWorkerHttpAction(secondaryAssetsUpdateBodySchema, async (ctx, body: unknown): Promise<unknown> => {
+    const parsedBody = secondaryAssetsUpdateBodySchema.parse(body)
     await ctx.runMutation(internal.secondaryAssets.updateSecondaryAssets, {
-        imageId: parsed.data.imageId as never,
-        thumbnailR2Key: parsed.data.thumbnailR2Key,
-        thumbnailUrl: parsed.data.thumbnailUrl,
-        previewR2Key: parsed.data.previewR2Key,
-        previewUrl: parsed.data.previewUrl,
+        imageId: parsedBody.imageId,
+        thumbnailR2Key: parsedBody.thumbnailR2Key,
+        thumbnailUrl: parsedBody.thumbnailUrl,
+        previewR2Key: parsedBody.previewR2Key,
+        previewUrl: parsedBody.previewUrl,
     })
 
-    return Response.json({ ok: true })
+    return { ok: true }
 })
 
-export const claimSecondaryAssetsHttp = httpAction(async (ctx, request) => {
-    if (!(await validateWorkerSecret(request))) {
-        return unauthorized()
-    }
-
-    let json: unknown
-    try {
-        json = await request.json()
-    } catch {
-        return badRequest("Invalid JSON body")
-    }
-
-    const parsed = secondaryAssetsClaimBodySchema.safeParse(json)
-    if (!parsed.success) {
-        return badRequest(parsed.error.issues[0]?.message ?? "Invalid request body")
-    }
-
-    const result = await ctx.runMutation(internal.secondaryAssets.claimSecondaryAssetsForWorker, {
-        imageId: parsed.data.imageId as never,
-        claimToken: parsed.data.claimToken,
-        workerAttempt: parsed.data.workerAttempt,
+export const claimSecondaryAssetsHttp = createWorkerHttpAction(secondaryAssetsClaimBodySchema, (ctx, body: unknown): Promise<unknown> => {
+    const parsedBody = secondaryAssetsClaimBodySchema.parse(body)
+    return ctx.runMutation(internal.secondaryAssets.claimSecondaryAssetsForWorker, {
+        imageId: parsedBody.imageId,
+        claimToken: parsedBody.claimToken,
+        workerAttempt: parsedBody.workerAttempt,
     })
-
-    return Response.json(result)
 })
 
-export const continueSecondaryAssetsHttp = httpAction(async (ctx, request) => {
-    if (!(await validateWorkerSecret(request))) {
-        return unauthorized()
-    }
-
-    let json: unknown
-    try {
-        json = await request.json()
-    } catch {
-        return badRequest("Invalid JSON body")
-    }
-
-    const parsed = secondaryAssetsContinueBodySchema.safeParse(json)
-    if (!parsed.success) {
-        return badRequest(parsed.error.issues[0]?.message ?? "Invalid request body")
-    }
-
-    const result = await ctx.runQuery(internal.secondaryAssets.getSecondaryAssetsWorkerContinuationState, {
-        imageId: parsed.data.imageId as never,
-        claimToken: parsed.data.claimToken,
+export const continueSecondaryAssetsHttp = createWorkerHttpAction(secondaryAssetsContinueBodySchema, (ctx, body: unknown): Promise<unknown> => {
+    const parsedBody = secondaryAssetsContinueBodySchema.parse(body)
+    return ctx.runQuery(internal.secondaryAssets.getSecondaryAssetsWorkerContinuationState, {
+        imageId: parsedBody.imageId,
+        claimToken: parsedBody.claimToken,
     })
-
-    return Response.json(result)
 })
 
-export const completeSecondaryAssetsHttp = httpAction(async (ctx, request) => {
-    if (!(await validateWorkerSecret(request))) {
-        return unauthorized()
-    }
-
-    let json: unknown
-    try {
-        json = await request.json()
-    } catch {
-        return badRequest("Invalid JSON body")
-    }
-
-    const parsed = secondaryAssetsCompleteBodySchema.safeParse(json)
-    if (!parsed.success) {
-        return badRequest(parsed.error.issues[0]?.message ?? "Invalid request body")
-    }
-
-    const result = await ctx.runMutation(internal.secondaryAssets.completeSecondaryAssetsFromWorker, {
-        imageId: parsed.data.imageId as never,
-        claimToken: parsed.data.claimToken,
-        thumbnailR2Key: parsed.data.thumbnailR2Key,
-        thumbnailUrl: parsed.data.thumbnailUrl,
-        previewR2Key: parsed.data.previewR2Key,
-        previewUrl: parsed.data.previewUrl,
+export const completeSecondaryAssetsHttp = createWorkerHttpAction(secondaryAssetsCompleteBodySchema, (ctx, body: unknown): Promise<unknown> => {
+    const parsedBody = secondaryAssetsCompleteBodySchema.parse(body)
+    return ctx.runMutation(internal.secondaryAssets.completeSecondaryAssetsFromWorker, {
+        imageId: parsedBody.imageId,
+        claimToken: parsedBody.claimToken,
+        thumbnailR2Key: parsedBody.thumbnailR2Key,
+        thumbnailUrl: parsedBody.thumbnailUrl,
+        previewR2Key: parsedBody.previewR2Key,
+        previewUrl: parsedBody.previewUrl,
     })
-
-    return Response.json(result)
 })
 
-export const failSecondaryAssetsHttp = httpAction(async (ctx, request) => {
-    if (!(await validateWorkerSecret(request))) {
-        return unauthorized()
-    }
-
-    let json: unknown
-    try {
-        json = await request.json()
-    } catch {
-        return badRequest("Invalid JSON body")
-    }
-
-    const parsed = secondaryAssetsFailBodySchema.safeParse(json)
-    if (!parsed.success) {
-        return badRequest(parsed.error.issues[0]?.message ?? "Invalid request body")
-    }
-
-    const result = await ctx.runMutation(internal.secondaryAssets.failSecondaryAssetsFromWorker, {
-        imageId: parsed.data.imageId as never,
-        claimToken: parsed.data.claimToken,
-        errorMessage: parsed.data.errorMessage,
+export const failSecondaryAssetsHttp = createWorkerHttpAction(secondaryAssetsFailBodySchema, (ctx, body: unknown): Promise<unknown> => {
+    const parsedBody = secondaryAssetsFailBodySchema.parse(body)
+    return ctx.runMutation(internal.secondaryAssets.failSecondaryAssetsFromWorker, {
+        imageId: parsedBody.imageId,
+        claimToken: parsedBody.claimToken,
+        errorMessage: parsedBody.errorMessage,
     })
-
-    return Response.json(result)
 })
 
-export const claimModerationHttp = httpAction(async (ctx, request) => {
-    if (!(await validateWorkerSecret(request))) {
-        return unauthorized()
-    }
-
-    let json: unknown
-    try {
-        json = await request.json()
-    } catch {
-        return badRequest("Invalid JSON body")
-    }
-
-    const parsed = moderationClaimBodySchema.safeParse(json)
-    if (!parsed.success) {
-        return badRequest(parsed.error.issues[0]?.message ?? "Invalid request body")
-    }
-
-    const result = await ctx.runMutation(internal.contentAnalysis.claimModerationForWorker, {
-        imageId: parsed.data.imageId as never,
-        stage: parsed.data.stage,
-        claimToken: parsed.data.claimToken,
-        workerAttempt: parsed.data.workerAttempt,
-        providerRequestId: parsed.data.providerRequestId,
+export const claimModerationHttp = createWorkerHttpAction(moderationClaimBodySchema, (ctx, body: unknown): Promise<unknown> => {
+    const parsedBody = moderationClaimBodySchema.parse(body)
+    return ctx.runMutation(internal.contentAnalysis.claimModerationForWorker, {
+        imageId: parsedBody.imageId,
+        stage: parsedBody.stage,
+        claimToken: parsedBody.claimToken,
+        workerAttempt: parsedBody.workerAttempt,
+        providerRequestId: parsedBody.providerRequestId,
     })
-
-    return Response.json(result)
 })
 
-export const continueModerationHttp = httpAction(async (ctx, request) => {
-    if (!(await validateWorkerSecret(request))) {
-        return unauthorized()
-    }
-
-    let json: unknown
-    try {
-        json = await request.json()
-    } catch {
-        return badRequest("Invalid JSON body")
-    }
-
-    const parsed = moderationContinueBodySchema.safeParse(json)
-    if (!parsed.success) {
-        return badRequest(parsed.error.issues[0]?.message ?? "Invalid request body")
-    }
-
-    const result = await ctx.runQuery(internal.contentAnalysis.getModerationWorkerContinuationState, {
-        imageId: parsed.data.imageId as never,
-        stage: parsed.data.stage,
-        claimToken: parsed.data.claimToken,
+export const continueModerationHttp = createWorkerHttpAction(moderationContinueBodySchema, (ctx, body: unknown): Promise<unknown> => {
+    const parsedBody = moderationContinueBodySchema.parse(body)
+    return ctx.runQuery(internal.contentAnalysis.getModerationWorkerContinuationState, {
+        imageId: parsedBody.imageId,
+        stage: parsedBody.stage,
+        claimToken: parsedBody.claimToken,
     })
-
-    return Response.json(result)
 })
 
-export const completePromptInferenceHttp = httpAction(async (ctx, request) => {
-    if (!(await validateWorkerSecret(request))) {
-        return unauthorized()
-    }
-
-    let json: unknown
-    try {
-        json = await request.json()
-    } catch {
-        return badRequest("Invalid JSON body")
-    }
-
-    const parsed = promptInferenceCompleteBodySchema.safeParse(json)
-    if (!parsed.success) {
-        return badRequest(parsed.error.issues[0]?.message ?? "Invalid request body")
-    }
-
-    const result = await ctx.runMutation(internal.contentAnalysis.completePromptInferenceFromWorker, {
-        imageId: parsed.data.imageId as never,
-        claimToken: parsed.data.claimToken,
-        promptInference: parsed.data.promptInference,
-        action: parsed.data.action,
-        providerRequestId: parsed.data.providerRequestId,
+export const completePromptInferenceHttp = createWorkerHttpAction(promptInferenceCompleteBodySchema, (ctx, body: unknown): Promise<unknown> => {
+    const parsedBody = promptInferenceCompleteBodySchema.parse(body)
+    return ctx.runMutation(internal.contentAnalysis.completePromptInferenceFromWorker, {
+        imageId: parsedBody.imageId,
+        claimToken: parsedBody.claimToken,
+        promptInference: parsedBody.promptInference,
+        action: parsedBody.action,
+        providerRequestId: parsedBody.providerRequestId,
     })
-
-    return Response.json(result)
 })
 
-export const failPromptInferenceHttp = httpAction(async (ctx, request) => {
-    if (!(await validateWorkerSecret(request))) {
-        return unauthorized()
-    }
-
-    let json: unknown
-    try {
-        json = await request.json()
-    } catch {
-        return badRequest("Invalid JSON body")
-    }
-
-    const parsed = promptInferenceFailBodySchema.safeParse(json)
-    if (!parsed.success) {
-        return badRequest(parsed.error.issues[0]?.message ?? "Invalid request body")
-    }
-
-    const result = await ctx.runMutation(internal.contentAnalysis.failPromptInferenceFromWorker, {
-        imageId: parsed.data.imageId as never,
-        claimToken: parsed.data.claimToken,
-        errorMessage: parsed.data.errorMessage,
-        providerRequestId: parsed.data.providerRequestId,
+export const failPromptInferenceHttp = createWorkerHttpAction(promptInferenceFailBodySchema, (ctx, body: unknown): Promise<unknown> => {
+    const parsedBody = promptInferenceFailBodySchema.parse(body)
+    return ctx.runMutation(internal.contentAnalysis.failPromptInferenceFromWorker, {
+        imageId: parsedBody.imageId,
+        claimToken: parsedBody.claimToken,
+        errorMessage: parsedBody.errorMessage,
+        providerRequestId: parsedBody.providerRequestId,
     })
-
-    return Response.json(result)
 })
 
-export const completeVisionAnalysisHttp = httpAction(async (ctx, request) => {
-    if (!(await validateWorkerSecret(request))) {
-        return unauthorized()
-    }
-
-    let json: unknown
-    try {
-        json = await request.json()
-    } catch {
-        return badRequest("Invalid JSON body")
-    }
-
-    const parsed = visionAnalysisCompleteBodySchema.safeParse(json)
-    if (!parsed.success) {
-        return badRequest(parsed.error.issues[0]?.message ?? "Invalid request body")
-    }
-
-    const result = await ctx.runMutation(internal.contentAnalysis.completeVisionAnalysisFromWorker, {
-        imageId: parsed.data.imageId as never,
-        claimToken: parsed.data.claimToken,
-        isSensitive: parsed.data.isSensitive,
-        confidence: parsed.data.confidence,
-        contentAnalysis: parsed.data.contentAnalysis,
-        providerRequestId: parsed.data.providerRequestId,
+export const completeVisionAnalysisHttp = createWorkerHttpAction(visionAnalysisCompleteBodySchema, (ctx, body: unknown): Promise<unknown> => {
+    const parsedBody = visionAnalysisCompleteBodySchema.parse(body)
+    return ctx.runMutation(internal.contentAnalysis.completeVisionAnalysisFromWorker, {
+        imageId: parsedBody.imageId,
+        claimToken: parsedBody.claimToken,
+        isSensitive: parsedBody.isSensitive,
+        confidence: parsedBody.confidence,
+        contentAnalysis: parsedBody.contentAnalysis,
+        providerRequestId: parsedBody.providerRequestId,
     })
-
-    return Response.json(result)
 })
 
-export const failVisionAnalysisHttp = httpAction(async (ctx, request) => {
-    if (!(await validateWorkerSecret(request))) {
-        return unauthorized()
-    }
-
-    let json: unknown
-    try {
-        json = await request.json()
-    } catch {
-        return badRequest("Invalid JSON body")
-    }
-
-    const parsed = visionAnalysisFailBodySchema.safeParse(json)
-    if (!parsed.success) {
-        return badRequest(parsed.error.issues[0]?.message ?? "Invalid request body")
-    }
-
-    const result = await ctx.runMutation(internal.contentAnalysis.failVisionAnalysisFromWorker, {
-        imageId: parsed.data.imageId as never,
-        claimToken: parsed.data.claimToken,
-        errorMessage: parsed.data.errorMessage,
-        rateLimited: parsed.data.rateLimited,
-        providerRequestId: parsed.data.providerRequestId,
+export const failVisionAnalysisHttp = createWorkerHttpAction(visionAnalysisFailBodySchema, (ctx, body: unknown): Promise<unknown> => {
+    const parsedBody = visionAnalysisFailBodySchema.parse(body)
+    return ctx.runMutation(internal.contentAnalysis.failVisionAnalysisFromWorker, {
+        imageId: parsedBody.imageId,
+        claimToken: parsedBody.claimToken,
+        errorMessage: parsedBody.errorMessage,
+        rateLimited: parsedBody.rateLimited,
+        providerRequestId: parsedBody.providerRequestId,
     })
-
-    return Response.json(result)
 })
 
-export const recordProviderRateLimitHttp = httpAction(async (ctx, request) => {
-    if (!(await validateWorkerSecret(request))) {
-        return unauthorized()
-    }
-
-    let json: unknown
-    try {
-        json = await request.json()
-    } catch {
-        return badRequest("Invalid JSON body")
-    }
-
-    const parsed = providerRateLimitBodySchema.safeParse(json)
-    if (!parsed.success) {
-        return badRequest(parsed.error.issues[0]?.message ?? "Invalid request body")
-    }
-
+export const recordProviderRateLimitHttp = createWorkerHttpAction(providerRateLimitBodySchema, async (ctx, body: unknown): Promise<unknown> => {
+    const parsedBody = providerRateLimitBodySchema.parse(body)
     await ctx.runMutation(internal.lib.providerHealthFunctions.recordRateLimit, {
-        provider: parsed.data.provider,
-        errorBody: parsed.data.errorBody,
+        provider: parsedBody.provider,
+        errorBody: parsedBody.errorBody,
     })
 
-    return Response.json({ ok: true })
+    return { ok: true }
 })

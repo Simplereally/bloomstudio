@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import "@testing-library/jest-dom/vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ButtonHTMLAttributes, ReactEventHandler, ReactNode } from "react";
@@ -376,9 +377,9 @@ vi.mock("lucide-react", () => ({
 
 // Mock model config
 vi.mock("@/lib/config/models", async (importOriginal) => {
-	const actual = await importOriginal<typeof import("@/lib/config/models")>();
+	const actual = await importOriginal();
 	return {
-		...actual,
+		...(actual as Record<string, unknown>),
 		getModelDisplayName: (model: string) => model,
 	};
 });
@@ -763,7 +764,7 @@ describe("ImageLightbox - Single Image Mode", () => {
 	});
 
 	it("renders gallery media immediately while full details are still loading", () => {
-		useImageDetailsMock.mockReturnValue(undefined);
+		useImageDetailsMock.mockReturnValueOnce(undefined);
 
 		render(
 			<ImageLightbox

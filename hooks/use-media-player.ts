@@ -165,7 +165,17 @@ export function useMediaPlayer({
         if (hasError) {
             setHasError(false)
         }
-        markMediaUrlReady(getMediaSource(element) || currentUrlRef.current)
+
+        const source = getMediaSource(element) || currentUrlRef.current
+        const canMarkReady =
+            element instanceof HTMLImageElement ||
+            (element instanceof HTMLVideoElement &&
+                element.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA)
+
+        if (canMarkReady) {
+            markMediaUrlReady(source)
+        }
+
         setIsLoading(false)
 
         if (!hasDispatchedLoadRef.current) {
@@ -223,8 +233,16 @@ export function useMediaPlayer({
     }, [clearErrorTimeout, clearRetryTimeout, isCurrentMediaElement, isVideo, onError])
 
     const handleVideoLoadedMetadata = React.useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
-        dispatchLoad(e)
-    }, [dispatchLoad])
+        const element = e.currentTarget as HTMLVideoElement | null
+        if (!isCurrentMediaElement(element)) {
+            return
+        }
+
+        clearErrorTimeout()
+        if (hasError) {
+            setHasError(false)
+        }
+    }, [clearErrorTimeout, hasError, isCurrentMediaElement])
 
     const handleVideoLoadedData = React.useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
         dispatchLoad(e)

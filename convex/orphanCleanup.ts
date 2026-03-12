@@ -320,7 +320,8 @@ export const cleanupOrphanedR2Objects = internalAction({
 
         // Get all orphaned keys (not just the sample)
         // We need to re-list and compare since audit only returns sample
-        const prefixes = ["generated/", "thumbnails/", "reference/"]
+        const prefixes = ["generated/", "thumbnails/", "previews/", "reference/"]
+        
         let allR2Objects: _Object[] = []
         
         for (const prefix of prefixes) {

@@ -1,0 +1,1 @@
+export const LIGHTBOX_PRELOAD_THRESHOLD = 5;
