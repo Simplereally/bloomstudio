@@ -560,6 +560,71 @@ export const recordBatchItemDispatchFailure = internalMutation({
 })
 
 /**
+ * Record a terminal dispatch failure for a batch item when all retries
+ * have been exhausted. Unlike recordBatchItemDispatchFailure (which resets
+ * the item to "pending" for another attempt), this permanently marks the
+ * item as failed and settles the parent batch job counters.
+ */
+export const recordBatchItemDispatchTerminalFailure = internalMutation({
+    args: {
+        batchJobId: v.id("batchJobs"),
+        itemIndex: v.number(),
+        errorMessage: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const batchJob = await ctx.db.get(args.batchJobId)
+        const items = await ctx.db
+            .query("batchItems")
+            .withIndex("by_batch_item", (q) =>
+                q.eq("batchJobId", args.batchJobId).eq("itemIndex", args.itemIndex)
+            )
+            .take(1)
+
+        const batchItem = items[0]
+        if (!batchItem) {
+            return
+        }
+
+        // If the item is already in a terminal state, skip
+        if (batchItem.status === "completed" || batchItem.status === "failed" || batchItem.status === "cancelled") {
+            return
+        }
+
+        const now = Date.now()
+        await ctx.db.patch(batchItem._id, {
+            status: "failed",
+            dispatchStatus: "failed",
+            lastDispatchError: args.errorMessage,
+            errorMessage: `Dispatch failed after exhausting all retry attempts: ${args.errorMessage}`,
+            updatedAt: now,
+        })
+
+        if (batchJob) {
+            const nextCompletedCount = batchJob.completedCount
+            const nextFailedCount = batchJob.failedCount + 1
+            const nextInFlightCount = Math.max(0, (batchJob.inFlightCount ?? 0) - 1)
+            const totalProcessed = nextCompletedCount + nextFailedCount
+            const nextStatus = getBatchStatusAfterItemSettlement({
+                completedCount: nextCompletedCount,
+                failedCount: nextFailedCount,
+                totalCount: batchJob.totalCount,
+                status: batchJob.status,
+            })
+
+            await ctx.db.patch(args.batchJobId, {
+                status: nextStatus,
+                completedCount: nextCompletedCount,
+                failedCount: nextFailedCount,
+                inFlightCount: nextInFlightCount,
+                currentIndex: Math.max(batchJob.currentIndex, args.itemIndex + 1),
+                apiKey: totalProcessed >= batchJob.totalCount ? undefined : batchJob.apiKey,
+                updatedAt: now,
+            })
+        }
+    },
+})
+
+/**
  * Claim a batch item for Cloudflare worker execution.
  */
 export const claimBatchItemForWorker = internalMutation({
@@ -604,13 +669,26 @@ export const claimBatchItemForWorker = internalMutation({
         const canClaimPending =
             batchItem.status === "pending" &&
             batchItem.dispatchStatus === "dispatched" &&
-            (batchJob.status === "pending" || batchJob.status === "processing" || batchJob.status === "paused")
+            (batchJob.status === "pending" || batchJob.status === "processing")
 
         const canReclaimProcessing =
             batchItem.status === "processing" &&
             args.workerAttempt > currentAttempt
 
         if (!canClaimPending && !canReclaimProcessing) {
+            // When the job is paused and the item was pre-dispatched but not
+            // yet claimed, release it back to pending so it can be
+            // re-dispatched when the job resumes.
+            if (
+                batchJob.status === "paused" &&
+                batchItem.status === "pending" &&
+                batchItem.dispatchStatus === "dispatched"
+            ) {
+                await ctx.db.patch(batchItem._id, {
+                    dispatchStatus: "pending",
+                    updatedAt: Date.now(),
+                })
+            }
             return { claimed: false }
         }
 

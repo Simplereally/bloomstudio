@@ -7,7 +7,7 @@ import {
     logWorkerEvent,
     postConvexJsonWithRetry,
 } from "./core"
-import type { Env, GenerationQueueMessage } from "./types"
+import type { Env, GenerationQueueMessage, QueueMessage } from "./types"
 
 const SECONDARY_ASSET_TIMEOUT_MS = 30_000
 const VIDEO_THUMBNAIL_SIZE = 128
@@ -35,7 +35,7 @@ type FailSecondaryAssetsResponse = {
     duplicate: boolean
 }
 
-type SecondaryAssetsMessage = Message<Extract<GenerationQueueMessage, { jobType: "secondary_assets" }>>
+type SecondaryAssetsMessage = QueueMessage<Extract<GenerationQueueMessage, { jobType: "secondary_assets" }>>
 
 class SecondaryAssetsError extends Error {
     readonly retryable: boolean

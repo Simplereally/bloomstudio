@@ -10,6 +10,7 @@ import type {
     ModerationStage,
     PromptInferenceResult,
     ProviderName,
+    QueueMessage,
     VisionAttemptResult,
     VisionContentAnalysisResult,
     VisionProviderFailure,
@@ -84,8 +85,8 @@ type FailVisionAnalysisResponse = {
     duplicate: boolean
 }
 
-type PromptInferenceMessage = Message<Extract<GenerationQueueMessage, { jobType: "prompt_inference" }>>
-type VisionAnalysisMessage = Message<Extract<GenerationQueueMessage, { jobType: "vision_analysis" }>>
+type PromptInferenceMessage = QueueMessage<Extract<GenerationQueueMessage, { jobType: "prompt_inference" }>>
+type VisionAnalysisMessage = QueueMessage<Extract<GenerationQueueMessage, { jobType: "vision_analysis" }>>
 
 async function fetchJsonWithTimeout(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
     const controller = new AbortController()

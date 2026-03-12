@@ -51,7 +51,7 @@ import { markMediaUrlReady } from "@/hooks/use-media-player";
 export type { LightboxImage };
 
 function isGeneratedImageId(value: string | undefined): value is Id<"generatedImages"> {
-	return typeof value === "string" && value.length > 0;
+	return typeof value === "string" && value.length > 0 && !value.startsWith("img_");
 }
 
 interface ImageLightboxProps {

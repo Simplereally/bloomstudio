@@ -160,7 +160,11 @@ export function LightboxMediaDisplay({
 						role="presentation"
 						className="relative"
 						onClick={(e) => e.stopPropagation()}
-						onKeyDown={(e) => e.stopPropagation()}
+						onKeyDown={(e) => {
+							if (e.key !== "Escape" && e.key !== "Esc") {
+								e.stopPropagation();
+							}
+						}}
 					>
 						<div
 							className="relative shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-sm group/video z-10"
@@ -195,7 +199,11 @@ export function LightboxMediaDisplay({
 								: undefined
 						}
 						onClick={(e) => e.stopPropagation()}
-						onKeyDown={(e) => e.stopPropagation()}
+						onKeyDown={(e) => {
+							if (e.key !== "Escape" && e.key !== "Esc") {
+								e.stopPropagation();
+							}
+						}}
 					>
 						<div
 							role="button"

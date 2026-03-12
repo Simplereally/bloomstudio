@@ -2,6 +2,15 @@ export type AppEnv = "development" | "production"
 export type ModerationStage = "prompt_inference" | "vision_analysis"
 export type ProviderName = "groq" | "openrouter"
 
+declare global {
+    interface RequestInit {
+        cf?: {
+            cacheTtl?: number
+            cacheEverything?: boolean
+        }
+    }
+}
+
 export type SingleGenerationDispatchRequestBody = {
     jobType: "single_generation"
     generationId: string
@@ -46,6 +55,40 @@ export type DispatchRequestBody =
     | SecondaryAssetsDispatchRequestBody
 
 export type GenerationQueueMessage = DispatchRequestBody
+
+export type QueueMessage<TBody> = {
+    body: TBody
+    attempts: number
+    ack: () => void
+    retry: (options?: { delaySeconds?: number }) => void
+}
+
+export type QueueMessageBatch<TBody> = {
+    messages: Array<QueueMessage<TBody>>
+}
+
+export type WorkerHandler<TEnv, TQueueMessage> = {
+    fetch?: (request: Request, env: TEnv) => Promise<Response>
+    queue?: (batch: QueueMessageBatch<TQueueMessage>, env: TEnv) => Promise<void>
+}
+
+type QueueBinding<TBody> = {
+    send: (message: TBody) => Promise<void>
+}
+
+type R2BucketBinding = {
+    put: (
+        key: string,
+        value: ArrayBuffer | ArrayBufferView | string | Blob,
+        options?: {
+            httpMetadata?: {
+                contentType?: string
+                cacheControl?: string
+            }
+        }
+    ) => Promise<unknown>
+    delete: (key: string) => Promise<void>
+}
 
 export type GenerationParams = {
     prompt: string
@@ -106,6 +149,6 @@ export type Env = {
     CEREBRAS_API_KEY?: string
     GROQ_API_KEY?: string
     OPENROUTER_API_KEY?: string
-    GENERATION_QUEUE: Queue<GenerationQueueMessage>
-    MEDIA_BUCKET: R2Bucket
+    GENERATION_QUEUE: QueueBinding<GenerationQueueMessage>
+    MEDIA_BUCKET: R2BucketBinding
 }

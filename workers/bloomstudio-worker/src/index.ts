@@ -1,8 +1,8 @@
 import { handleWorkerFetch } from "./http"
 import { handleQueueBatch } from "./queue"
-import type { Env, GenerationQueueMessage } from "./types"
+import type { Env, GenerationQueueMessage, WorkerHandler } from "./types"
 
-const worker: ExportedHandler<Env, GenerationQueueMessage> = {
+const worker: WorkerHandler<Env, GenerationQueueMessage> = {
     fetch: handleWorkerFetch,
     queue: handleQueueBatch,
 }

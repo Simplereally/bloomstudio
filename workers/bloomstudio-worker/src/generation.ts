@@ -8,7 +8,12 @@ import {
     WORKER_RETRY_MAX_ATTEMPTS,
 } from "../../../lib/cloudflare-worker/retry"
 import { getRequiredConfig, postConvexJsonWithRetry } from "./core"
-import type { Env, GenerationParams, GenerationQueueMessage } from "./types"
+import type {
+    Env,
+    GenerationParams,
+    GenerationQueueMessage,
+    QueueMessage,
+} from "./types"
 
 type ClaimGenerationResponse = {
     claimed: boolean
@@ -57,8 +62,8 @@ type DirtberrySourceDimensions = {
     height: number
 }
 
-type SingleGenerationMessage = Message<Extract<GenerationQueueMessage, { jobType: "single_generation" }>>
-type BatchItemMessage = Message<Extract<GenerationQueueMessage, { jobType: "batch_item" }>>
+type SingleGenerationMessage = QueueMessage<Extract<GenerationQueueMessage, { jobType: "single_generation" }>>
+type BatchItemMessage = QueueMessage<Extract<GenerationQueueMessage, { jobType: "batch_item" }>>
 
 function isVideoRequest(generationParams: GenerationParams): boolean {
     return (
@@ -167,7 +172,7 @@ async function deleteR2Object(env: Env, objectKey: string): Promise<void> {
     }
 }
 
-function retryMessage(message: Message<GenerationQueueMessage>, attempt: number): void {
+function retryMessage(message: QueueMessage<GenerationQueueMessage>, attempt: number): void {
     message.retry({
         delaySeconds: calculateWorkerQueueRetryDelaySeconds(attempt),
     })

@@ -257,13 +257,21 @@ export const dispatchBatchItem = internalAction({
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "Unknown dispatch error"
 
-            await ctx.runMutation(internal.batchGeneration.recordBatchItemDispatchFailure, {
-                batchJobId: args.batchJobId,
-                itemIndex: args.itemIndex,
-                errorMessage,
-            })
+            if (dispatchResult.dispatchAttempts >= WORKER_RETRY_MAX_ATTEMPTS) {
+                // Retries exhausted — mark the item as terminally failed
+                await ctx.runMutation(internal.batchGeneration.recordBatchItemDispatchTerminalFailure, {
+                    batchJobId: args.batchJobId,
+                    itemIndex: args.itemIndex,
+                    errorMessage,
+                })
+            } else {
+                // Still have retries — reset to pending and schedule another attempt
+                await ctx.runMutation(internal.batchGeneration.recordBatchItemDispatchFailure, {
+                    batchJobId: args.batchJobId,
+                    itemIndex: args.itemIndex,
+                    errorMessage,
+                })
 
-            if (dispatchResult.dispatchAttempts < WORKER_RETRY_MAX_ATTEMPTS) {
                 await ctx.scheduler.runAfter(
                     calculateDispatchDelayMs(dispatchResult.dispatchAttempts),
                     internal.cloudflareDispatch.dispatchBatchItem,
