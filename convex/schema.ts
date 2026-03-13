@@ -187,6 +187,7 @@ export default defineSchema({
         .index("by_visibility_sensitive", ["visibility", "isSensitive", "createdAt"])
         // Index for scanning by sensitivity (e.g. finding pending)
         .index("by_sensitivity", ["isSensitive", "createdAt"])
+        .index("by_sensitivity_moderation_status", ["isSensitive", "moderationDispatchStatus", "createdAt"])
         .index("by_moderation_dispatch_status", ["moderationDispatchStatus", "moderationUpdatedAt"])
         .index("by_moderation_status_sensitivity", ["moderationDispatchStatus", "isSensitive", "moderationUpdatedAt"])
         .index("by_secondary_assets_dispatch_status", ["secondaryAssetsDispatchStatus", "secondaryAssetsUpdatedAt"]),

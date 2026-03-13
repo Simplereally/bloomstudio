@@ -14,6 +14,8 @@ const DELAY_BETWEEN_REQUESTS_MS = 2100
 
 /** Fetch a small lookahead so we know whether to schedule the next recovery action. */
 const ANALYSIS_QUEUE_LOOKAHEAD = 2
+/** Allow a small clock skew so an about-to-run scheduled job can still claim execution. */
+const ANALYSIS_SCHEDULE_CLAIM_SKEW_MS = 1000
 const ANALYSIS_RECOVERY_JOB_NAME = "content_analysis_recovery"
 
 const moderationStageValidator = v.union(
@@ -400,7 +402,10 @@ export const claimScheduledAnalyzeRecentImagesRun = internalMutation({
             return false
         }
 
-        if (existingJob.nextRunAt !== undefined && existingJob.nextRunAt > now + 1000) {
+        if (
+            existingJob.nextRunAt !== undefined &&
+            existingJob.nextRunAt > now + ANALYSIS_SCHEDULE_CLAIM_SKEW_MS
+        ) {
             return false
         }
 
@@ -699,16 +704,10 @@ export const failVisionAnalysisFromWorker = internalMutation({
         })
 
         if (nextDispatchStatus === "pending") {
-            const providerHealths: Array<ProviderHealthSnapshot | null> = await Promise.all([
-                ctx.db
-                    .query("providerHealth")
-                    .withIndex("by_provider", (q) => q.eq("provider", "groq"))
-                    .first(),
-                ctx.db
-                    .query("providerHealth")
-                    .withIndex("by_provider", (q) => q.eq("provider", "openrouter"))
-                    .first(),
-            ])
+            const providerHealths: Array<ProviderHealthSnapshot | null> = await ctx.runQuery(
+                internal.lib.providerHealthFunctions.getAllHealth,
+                {}
+            )
             const recoveryDelayMs = getProviderRecoveryDelayMs({
                 providerHealths,
                 now: Date.now(),

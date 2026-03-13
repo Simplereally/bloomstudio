@@ -1178,9 +1178,6 @@ export const getRecoverableUnanalyzedImages = internalQuery({
         }
 
         const missingCount = args.limit - recoverable.length
-        if (missingCount <= 0) {
-            return recoverable
-        }
 
         const legacyLookahead = Math.max(missingCount * 4, 16)
         const legacyPending = await ctx.db
@@ -1195,14 +1192,8 @@ export const getRecoverableUnanalyzedImages = internalQuery({
 
         const legacyUndefinedSensitivity = await ctx.db
             .query("generatedImages")
-            .filter((q) =>
-                q.and(
-                    q.eq(q.field("isSensitive"), undefined),
-                    q.or(
-                        q.eq(q.field("moderationDispatchStatus"), undefined),
-                        q.eq(q.field("moderationDispatchStatus"), "pending")
-                    )
-                )
+            .withIndex("by_sensitivity_moderation_status", (q) =>
+                q.eq("isSensitive", undefined).eq("moderationDispatchStatus", undefined)
             )
             .take(Math.max(args.limit - recoverable.length - legacyPending.length, 8))
 
