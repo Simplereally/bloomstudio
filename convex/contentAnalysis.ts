@@ -257,14 +257,20 @@ export function getProviderRecoveryDelayMs(args: {
     providerHealths: Array<ProviderHealthSnapshot | null>
     now: number
 }): number | null {
-    const unavailableResets = args.providerHealths
+    const unavailableProviderHealths = args.providerHealths
         .filter((health): health is ProviderHealthSnapshot => health !== null)
         .filter((health) => !health.isAvailable)
+
+    if (unavailableProviderHealths.length === 0) {
+        return null
+    }
+
+    const unavailableResets = unavailableProviderHealths
         .map((health) => health.rateLimitedUntil)
         .filter((resetAt): resetAt is number => typeof resetAt === "number" && resetAt > args.now)
 
     if (unavailableResets.length === 0) {
-        return null
+        return DELAY_BETWEEN_REQUESTS_MS
     }
 
     return Math.max(DELAY_BETWEEN_REQUESTS_MS, Math.min(...unavailableResets) - args.now)
@@ -902,6 +908,9 @@ export const analyzeRecentImages = internalAction({
         }
 
         await ctx.runMutation(internal.lib.providerHealthFunctions.refreshExpiredLimits, {})
+        await ctx.runMutation(internal.generatedImages.normalizeLegacyModerationStateBatch, {
+            limit: 32,
+        })
 
         const images = await ctx.runQuery(
             internal.generatedImages.getRecoverableUnanalyzedImages,

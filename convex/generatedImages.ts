@@ -22,6 +22,11 @@ type EnrichedImage = Doc<"generatedImages"> & {
     ownerPictureUrl: string | null
 }
 
+type GeneratedImageLegacyModerationState = Pick<
+    Doc<"generatedImages">,
+    "createdAt" | "isSensitive" | "moderationDispatchStatus" | "moderationUpdatedAt"
+>
+
 /**
  * Helper to batch-enrich images with owner display info.
  * Collects unique owner IDs and performs batch lookups to avoid N+1 queries.
@@ -64,6 +69,29 @@ async function enrichImages(
             ownerPictureUrl: owner?.pictureUrl ?? null,
         }
     })
+}
+
+export function getLegacyModerationBackfillPatch(
+    image: GeneratedImageLegacyModerationState
+): Partial<Doc<"generatedImages">> | null {
+    const patch: Partial<Doc<"generatedImages">> = {}
+
+    if (image.isSensitive === undefined) {
+        patch.isSensitive = null
+    }
+
+    if (image.moderationDispatchStatus === undefined) {
+        patch.moderationDispatchStatus = "pending"
+    }
+
+    if (
+        (patch.isSensitive !== undefined || patch.moderationDispatchStatus !== undefined) &&
+        image.moderationUpdatedAt === undefined
+    ) {
+        patch.moderationUpdatedAt = image.createdAt
+    }
+
+    return Object.keys(patch).length > 0 ? patch : null
 }
 
 /** 
@@ -1145,17 +1173,69 @@ export const getUnanalyzedImages = internalQuery({
         if (pending.length < args.limit) {
             const legacyPending = await ctx.db
                 .query("generatedImages")
-                // Scan recent first to clear new stuff, or old first? 
-                // Default order is sufficient.
-                .filter(q => q.eq(q.field("isSensitive"), undefined))
-                .take(args.limit - pending.length);
+                .withIndex("by_sensitivity", q => q.eq("isSensitive", undefined))
+                .take(args.limit - pending.length)
 
-            pending = [...pending, ...legacyPending];
+            pending = [...pending, ...legacyPending]
         }
 
-        return pending;
+        return pending
     },
-});
+})
+
+export const normalizeLegacyModerationStateBatch = internalMutation({
+    args: {
+        limit: v.number(),
+    },
+    returns: v.object({
+        normalized: v.number(),
+    }),
+    handler: async (ctx, args) => {
+        const limit = Math.max(0, Math.min(args.limit, 64))
+        if (limit === 0) {
+            return { normalized: 0 }
+        }
+
+        let normalized = 0
+        const legacyUndefinedSensitivity = await ctx.db
+            .query("generatedImages")
+            .withIndex("by_sensitivity", (q) => q.eq("isSensitive", undefined))
+            .take(limit)
+
+        for (const image of legacyUndefinedSensitivity) {
+            const patch = getLegacyModerationBackfillPatch(image)
+            if (!patch) {
+                continue
+            }
+
+            await ctx.db.patch(image._id, patch)
+            normalized += 1
+        }
+
+        if (normalized >= limit) {
+            return { normalized }
+        }
+
+        const legacyNullStatus = await ctx.db
+            .query("generatedImages")
+            .withIndex("by_sensitivity_moderation_status", (q) =>
+                q.eq("isSensitive", null).eq("moderationDispatchStatus", undefined)
+            )
+            .take(limit - normalized)
+
+        for (const image of legacyNullStatus) {
+            const patch = getLegacyModerationBackfillPatch(image)
+            if (!patch) {
+                continue
+            }
+
+            await ctx.db.patch(image._id, patch)
+            normalized += 1
+        }
+
+        return { normalized }
+    },
+})
 
 /**
  * Find unanalyzed images that are not already in-flight on the moderation worker plane.
@@ -1182,22 +1262,16 @@ export const getRecoverableUnanalyzedImages = internalQuery({
         const legacyLookahead = Math.max(missingCount * 4, 16)
         const legacyPending = await ctx.db
             .query("generatedImages")
-            .withIndex("by_sensitivity", (q) => q.eq("isSensitive", null))
-            .filter((q) => q.eq(q.field("moderationDispatchStatus"), undefined))
+            .withIndex("by_sensitivity_moderation_status", (q) =>
+                q.eq("isSensitive", null).eq("moderationDispatchStatus", undefined)
+            )
             .take(legacyLookahead)
 
         if (recoverable.length + legacyPending.length >= args.limit) {
             return [...recoverable, ...legacyPending.slice(0, missingCount)]
         }
 
-        const legacyUndefinedSensitivity = await ctx.db
-            .query("generatedImages")
-            .withIndex("by_sensitivity_moderation_status", (q) =>
-                q.eq("isSensitive", undefined).eq("moderationDispatchStatus", undefined)
-            )
-            .take(Math.max(args.limit - recoverable.length - legacyPending.length, 8))
-
-        return [...recoverable, ...legacyPending, ...legacyUndefinedSensitivity].slice(0, args.limit)
+        return [...recoverable, ...legacyPending].slice(0, args.limit)
     },
 })
 

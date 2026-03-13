@@ -62,6 +62,18 @@ describe("getProviderRecoveryDelayMs", () => {
         ).toBe(2100)
     })
 
+    it("returns the floor delay when providers are unavailable without future reset times", () => {
+        expect(
+            getProviderRecoveryDelayMs({
+                now: 1_000,
+                providerHealths: [
+                    { isAvailable: false },
+                    { isAvailable: false, rateLimitedUntil: 500 },
+                ],
+            })
+        ).toBe(2100)
+    })
+
     it("returns null when a provider is already available", () => {
         expect(
             getProviderRecoveryDelayMs({
