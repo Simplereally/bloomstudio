@@ -1,4 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server"
+import { NextResponse } from "next/server"
 
 /**
  * Route matcher for protected routes that require authentication.
@@ -23,6 +24,17 @@ export const isProtectedRoute = createRouteMatcher([
  * - Allows all other routes to pass through
  */
 export default clerkMiddleware(async (auth, req) => {
+  if (req.nextUrl.pathname === "/") {
+    const requestHeaders = new Headers(req.headers)
+    requestHeaders.set("x-bloom-public-shell", "maintenance")
+
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    })
+  }
+
   if (isProtectedRoute(req)) await auth.protect()
 })
 
