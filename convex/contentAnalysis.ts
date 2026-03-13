@@ -44,8 +44,115 @@ type ProviderHealthSnapshot = {
     rateLimitedUntil?: number
 }
 
+type BackgroundJobStateLike = {
+    updatedAt: number
+    _creationTime: number
+    nextRunAt?: number
+    scheduledToken?: string
+    lastRunAt?: number
+}
+
+type BackgroundJobStateDoc = Doc<"backgroundJobState">
+
 function isSensitivityResolved(image: Doc<"generatedImages"> | null): boolean {
     return image?.isSensitive !== undefined && image?.isSensitive !== null
+}
+
+function compareBackgroundJobStateRecency<T extends BackgroundJobStateLike>(left: T, right: T): number {
+    if (left.updatedAt !== right.updatedAt) {
+        return right.updatedAt - left.updatedAt
+    }
+
+    return right._creationTime - left._creationTime
+}
+
+export function getLatestBackgroundJobLastRunAt<T extends { lastRunAt?: number }>(
+    rows: T[]
+): number | undefined {
+    const lastRunAtValues = rows
+        .map((row) => row.lastRunAt)
+        .filter((lastRunAt): lastRunAt is number => lastRunAt !== undefined)
+
+    if (lastRunAtValues.length === 0) {
+        return undefined
+    }
+
+    return Math.max(...lastRunAtValues)
+}
+
+export function getEffectiveScheduledBackgroundJob<T extends BackgroundJobStateLike>(
+    rows: T[]
+): (T & { nextRunAt: number; scheduledToken: string }) | null {
+    const scheduledRows = rows.filter(
+        (row): row is T & { nextRunAt: number; scheduledToken: string } =>
+            row.nextRunAt !== undefined && row.scheduledToken !== undefined
+    )
+
+    if (scheduledRows.length === 0) {
+        return null
+    }
+
+    return scheduledRows.sort((left, right) => {
+        if (left.nextRunAt !== right.nextRunAt) {
+            return left.nextRunAt - right.nextRunAt
+        }
+
+        return compareBackgroundJobStateRecency(left, right)
+    })[0]
+}
+
+async function listBackgroundJobStateRows(
+    ctx: MutationCtx,
+    jobName: string
+): Promise<BackgroundJobStateDoc[]> {
+    return await ctx.db
+        .query("backgroundJobState")
+        .withIndex("by_job_name_updated_at", (q) => q.eq("jobName", jobName))
+        .collect()
+}
+
+async function reconcileBackgroundJobStateRows(
+    ctx: MutationCtx,
+    args: {
+        jobName: string
+        rows: BackgroundJobStateDoc[]
+        nextRunAt?: number
+        scheduledToken?: string
+        lastRunAt?: number
+        now: number
+    }
+) {
+    const canonicalRow = [...args.rows].sort(compareBackgroundJobStateRecency)[0]
+
+    if (!canonicalRow) {
+        await ctx.db.insert("backgroundJobState", {
+            jobName: args.jobName,
+            nextRunAt: args.nextRunAt,
+            scheduledToken: args.scheduledToken,
+            lastRunAt: args.lastRunAt,
+            updatedAt: args.now,
+        })
+        return
+    }
+
+    const duplicateRows = args.rows.filter((row) => row._id !== canonicalRow._id)
+    const stateChanged =
+        canonicalRow.nextRunAt !== args.nextRunAt ||
+        canonicalRow.scheduledToken !== args.scheduledToken ||
+        canonicalRow.lastRunAt !== args.lastRunAt
+
+    if (stateChanged || duplicateRows.length > 0) {
+        await ctx.db.patch(canonicalRow._id, {
+            nextRunAt: args.nextRunAt,
+            scheduledToken: args.scheduledToken,
+            lastRunAt: args.lastRunAt,
+            updatedAt: args.now,
+        })
+    }
+
+    for (const duplicateRow of duplicateRows) {
+        await ctx.db.delete(duplicateRow._id)
+    }
 }
 
 async function upsertPromptInference(
@@ -129,6 +236,21 @@ export function getNextAnalysisRunDelayMs(args: {
     return args.queuedImageCount === ANALYSIS_QUEUE_LOOKAHEAD
         ? DELAY_BETWEEN_REQUESTS_MS
         : null
+}
+
+export function shouldSkipAnalyzeRecentImagesSchedule(args: {
+    existingNextRunAt: number | undefined
+    requestedNextRunAt: number
+    now: number
+}): boolean {
+    if (args.existingNextRunAt === undefined) {
+        return false
+    }
+
+    const existingRunIsStillClaimable =
+        args.existingNextRunAt >= args.now - ANALYSIS_SCHEDULE_CLAIM_SKEW_MS
+
+    return existingRunIsStillClaimable && args.existingNextRunAt <= args.requestedNextRunAt
 }
 
 export function getProviderRecoveryDelayMs(args: {
@@ -346,34 +468,40 @@ export const scheduleAnalyzeRecentImagesRun = internalMutation({
         const now = Date.now()
         const delayMs = Math.max(0, args.delayMs)
         const nextRunAt = now + delayMs
-        const existingJob = await ctx.db
-            .query("backgroundJobState")
-            .withIndex("by_job_name", (q) => q.eq("jobName", ANALYSIS_RECOVERY_JOB_NAME))
-            .first()
+        const existingJobs = await listBackgroundJobStateRows(ctx, ANALYSIS_RECOVERY_JOB_NAME)
+        const existingScheduledJob = getEffectiveScheduledBackgroundJob(existingJobs)
+        const lastRunAt = getLatestBackgroundJobLastRunAt(existingJobs)
 
-        if (existingJob?.nextRunAt !== undefined && existingJob.nextRunAt <= nextRunAt) {
+        if (shouldSkipAnalyzeRecentImagesSchedule({
+            existingNextRunAt: existingScheduledJob?.nextRunAt,
+            requestedNextRunAt: nextRunAt,
+            now,
+        })) {
+            await reconcileBackgroundJobStateRows(ctx, {
+                jobName: ANALYSIS_RECOVERY_JOB_NAME,
+                rows: existingJobs,
+                nextRunAt: existingScheduledJob?.nextRunAt,
+                scheduledToken: existingScheduledJob?.scheduledToken,
+                lastRunAt,
+                now,
+            })
+
             return {
                 scheduled: false,
-                nextRunAt: existingJob.nextRunAt,
+                nextRunAt: existingScheduledJob?.nextRunAt ?? nextRunAt,
             }
         }
 
         const scheduledToken = `${now}-${nextRunAt}`
 
-        if (existingJob) {
-            await ctx.db.patch(existingJob._id, {
-                nextRunAt,
-                scheduledToken,
-                updatedAt: now,
-            })
-        } else {
-            await ctx.db.insert("backgroundJobState", {
-                jobName: ANALYSIS_RECOVERY_JOB_NAME,
-                nextRunAt,
-                scheduledToken,
-                updatedAt: now,
-            })
-        }
+        await reconcileBackgroundJobStateRows(ctx, {
+            jobName: ANALYSIS_RECOVERY_JOB_NAME,
+            rows: existingJobs,
+            nextRunAt,
+            scheduledToken,
+            lastRunAt,
+            now,
+        })
 
         await ctx.scheduler.runAfter(delayMs, internal.contentAnalysis.analyzeRecentImages, {
             scheduleToken: scheduledToken,
@@ -393,27 +521,39 @@ export const claimScheduledAnalyzeRecentImagesRun = internalMutation({
     returns: v.boolean(),
     handler: async (ctx, args) => {
         const now = Date.now()
-        const existingJob = await ctx.db
-            .query("backgroundJobState")
-            .withIndex("by_job_name", (q) => q.eq("jobName", ANALYSIS_RECOVERY_JOB_NAME))
-            .first()
+        const existingJobs = await listBackgroundJobStateRows(ctx, ANALYSIS_RECOVERY_JOB_NAME)
+        const existingScheduledJob = getEffectiveScheduledBackgroundJob(existingJobs)
+        const lastRunAt = getLatestBackgroundJobLastRunAt(existingJobs)
 
-        if (!existingJob || existingJob.scheduledToken !== args.scheduleToken) {
+        if (!existingScheduledJob || existingScheduledJob.scheduledToken !== args.scheduleToken) {
+            if (existingJobs.length > 1) {
+                await reconcileBackgroundJobStateRows(ctx, {
+                    jobName: ANALYSIS_RECOVERY_JOB_NAME,
+                    rows: existingJobs,
+                    nextRunAt: existingScheduledJob?.nextRunAt,
+                    scheduledToken: existingScheduledJob?.scheduledToken,
+                    lastRunAt,
+                    now,
+                })
+            }
+
             return false
         }
 
         if (
-            existingJob.nextRunAt !== undefined &&
-            existingJob.nextRunAt > now + ANALYSIS_SCHEDULE_CLAIM_SKEW_MS
+            existingScheduledJob.nextRunAt !== undefined &&
+            existingScheduledJob.nextRunAt > now + ANALYSIS_SCHEDULE_CLAIM_SKEW_MS
         ) {
             return false
         }
 
-        await ctx.db.patch(existingJob._id, {
+        await reconcileBackgroundJobStateRows(ctx, {
+            jobName: ANALYSIS_RECOVERY_JOB_NAME,
+            rows: existingJobs,
             nextRunAt: undefined,
             scheduledToken: undefined,
             lastRunAt: now,
-            updatedAt: now,
+            now,
         })
 
         return true

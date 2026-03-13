@@ -545,7 +545,9 @@ export default defineSchema({
         lastRunAt: v.optional(v.number()),
         /** Last mutation time for debugging. */
         updatedAt: v.number(),
-    }).index("by_job_name", ["jobName"]),
+    })
+        .index("by_job_name", ["jobName"])
+        .index("by_job_name_updated_at", ["jobName", "updatedAt"]),
 
     /**
      * Music generations - AI-generated music tracks from the music studio
