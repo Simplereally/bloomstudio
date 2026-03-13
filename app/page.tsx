@@ -4,11 +4,6 @@ import Link from "next/link";
 
 /**
  * Temporary maintenance landing page.
- *
- * IMPORTANT:
- * Keep this route fully static and server-rendered.
- * Do not import auth, Clerk, Convex, or other client app-shell code here
- * while the public site is intentionally gated.
  */
 export default function LandingPage() {
   return (
@@ -48,12 +43,11 @@ export default function LandingPage() {
               </div>
               <div className="space-y-5">
                 <h1 className="max-w-4xl text-5xl font-bold leading-[0.95] tracking-tight text-white sm:text-6xl lg:text-7xl">
-                  We have temporarily taken the application offline.
+                  Bloom Studio is currently in maintenance mode.
                 </h1>
                 <p className="max-w-2xl text-lg leading-8 text-white/72 sm:text-xl">
-                  The public app and studio are under temporary maintenance while we stabilize the backend.
-                  The homepage is intentionally running in a stripped-down SSR mode so it does not touch the
-                  normal Convex-driven app shell.
+                  The application is temporarily unavailable while we work on restoring service.
+                  Thank you for your patience.
                 </p>
               </div>
               <div className="flex flex-wrap gap-4">
@@ -75,22 +69,17 @@ export default function LandingPage() {
             <aside className="rounded-[2rem] border border-white/10 bg-white/5 p-7 backdrop-blur-sm">
               <div className="space-y-6">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/45">
-                    What is disabled
-                  </p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/45">Status</p>
                   <ul className="mt-4 space-y-3 text-sm leading-7 text-white/72">
-                    <li>Studio generation and media processing</li>
-                    <li>Authentication-dependent app chrome</li>
-                    <li>Public landing page interactions that rely on the app shell</li>
+                    <li>The app is temporarily unavailable.</li>
+                    <li>We are working to bring it back online.</li>
+                    <li>Updates will be shared once service is restored.</li>
                   </ul>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/45">
-                    Temporary routing note
-                  </p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/45">Need help?</p>
                   <p className="mt-4 text-sm leading-7 text-white/72">
-                    This page is intentionally minimal and should remain free of Clerk or Convex calls until the
-                    application is reopened.
+                    If you need assistance, contact support and we will follow up as soon as possible.
                   </p>
                 </div>
               </div>
