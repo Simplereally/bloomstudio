@@ -1,0 +1,742 @@
+diff --git a/C:\Code\pixelstream\CONVEX_MIGRATION.md b/C:\Code\pixelstream\CONVEX_MIGRATION.md
+deleted file mode 100644
+--- a/C:\Code\pixelstream\CONVEX_MIGRATION.md
++++ /dev/null
+@@ -1,737 +0,0 @@
+-# Convex Migration Plan
+-
+-Date: 2026-03-13
+-
+-## Executive Summary
+-
+-Convex is not a thin persistence dependency in this codebase. It is currently acting as:
+-
+-- the primary database
+-- the client API layer
+-- the reactive subscription layer
+-- the auth-aware server function runtime
+-- the internal job orchestration layer
+-- the worker callback surface
+-- part of the Stripe integration
+-
+-This means there is no low-risk "swap Convex for X" adapter that will let us keep the rest of the app unchanged.
+-
+-The correct migration strategy is:
+-
+-1. Do not build a generic Convex compatibility layer.
+-2. Introduce a proper server/data layer now.
+-3. Migrate feature-by-feature behind domain services and hooks.
+-4. Preserve the existing Cloudflare worker plane and R2.
+-5. Replace Convex reactivity with standard request/response + targeted polling/invalidation.
+-
+-## Recommendation
+-
+-Recommended target stack:
+-
+-- Database: Turso
+-- ORM/query layer: Drizzle ORM
+-- Auth: keep Clerk
+-- App API layer: Next.js Route Handlers + Server Actions
+-- Background orchestration: keep the existing Cloudflare workers/queues/crons
+-- Client data fetching: TanStack Query plus existing local UI state patterns
+-
+-Why this is the best fit for this repo:
+-
+-- It is the lowest-friction database option across both Next.js and the existing Cloudflare worker plane.
+-- It keeps cost near zero on hobby-scale usage.
+-- It avoids Convex-specific lock-in while staying modern and simple.
+-- It does not force an immediate hosting migration away from the current Vercel + Cloudflare split.
+-- It is a better fit than Cloudflare D1 for this app because the app is not fully on Cloudflare.
+-- It is a better fit than Supabase for the first move because we already use Clerk, R2, and Cloudflare workers, so most of Supabase's extra platform surface would go unused.
+-
+-Secondary option if you want Postgres instead of SQLite:
+-
+-- Supabase Postgres + Drizzle
+-
+-I would choose Supabase only if you specifically want:
+-
+-- Postgres now
+-- built-in realtime as an option
+-- a single vendor for database plus operational add-ons
+-
+-I would not choose Cloudflare D1 as the first migration target unless you also plan to move the primary app/backend execution plane onto Cloudflare. In the current architecture it adds platform coupling in the wrong place.
+-
+-## Current Convex Footprint
+-
+-Measured in this repo:
+-
+-- 15 tables in `convex/schema.ts`
+-- 29 Convex backend modules with database/function logic
+-- 71 public Convex functions
+-- 94 internal Convex functions
+-- 20 worker HTTP callback routes plus Stripe webhook routing in `convex/http.ts`
+-- 88 files in `app/`, `components/`, `hooks/`, and `lib/` that reference Convex surfaces
+-- 184 import/call-site references to Convex-generated APIs, IDs, or hooks in the app code
+-- 32 `useQuery(...)` call sites
+-- 29 `useMutation(...)` call sites
+-- 8 `usePaginatedQuery(...)` call sites
+-- 3 `useAction(...)` call sites
+-- 6 `fetchQuery(...)` server call sites
+-- 2 `fetchMutation(...)` server call sites
+-
+-This is not "database only". It is full-stack coupling.
+-
+-## Where Convex Is Embedded
+-
+-### 1. Frontend runtime coupling
+-
+-The UI directly imports Convex in many places:
+-
+-- `components/providers/convex-client-provider.tsx`
+-- `hooks/queries/use-image-history.ts`
+-- `hooks/queries/use-favorites.ts`
+-- `hooks/queries/use-batch-generation.ts`
+-- `hooks/use-prompt-library.ts`
+-- `hooks/use-subscription-status.ts`
+-- `lib/pollen-auth/context.tsx`
+-- many page/components that import `api` from `@/convex/_generated/api`
+-
+-Convex-specific frontend semantics currently relied on:
+-
+-- `useQuery` loading state is `undefined`
+-- `"skip"` sentinel arguments
+-- `usePaginatedQuery` pagination model
+-- reactive live updates
+-- generated `api.*` function references
+-- branded `Id<"table">` types from Convex
+-- optimistic mutations in Convex hooks
+-- `useConvexAuth` and `useConvex`
+-
+-### 2. Server-side Next.js coupling
+-
+-The app also uses Convex from the server side:
+-
+-- `app/_server/cache/history.ts`
+-- `app/_server/cache/feed.ts`
+-- `app/_server/cache/favorites.ts`
+-- `app/api/enhance-prompt/route.ts`
+-- `app/api/suggestions/route.ts`
+-- `app/feed/[type]/page.tsx`
+-
+-These files use:
+-
+-- `fetchQuery(...)`
+-- `fetchMutation(...)`
+-- Clerk-to-Convex JWT bridging in `app/_server/convex/client.ts`
+-
+-### 3. Worker/orchestration coupling
+-
+-Cloudflare workers currently talk to Convex over HTTP callbacks:
+-
+-- `workers/bloomstudio-worker/src/generation.ts`
+-- `workers/bloomstudio-worker/src/moderation.ts`
+-- `workers/bloomstudio-worker/src/secondary-assets.ts`
+-- `workers/bloomstudio-worker/src/core.ts`
+-
+-The worker plane depends on:
+-
+-- claim/continue/complete/fail endpoints
+-- provider health callbacks
+-- Convex as the state machine for generation, moderation, and asset jobs
+-
+-### 4. Backend orchestration coupling
+-
+-Convex is also running internal orchestration:
+-
+-- schedulers
+-- cron jobs
+-- internal actions/mutations/queries
+-- worker dispatch logic
+-- Stripe component integration
+-
+-High-coupling files include:
+-
+-- `convex/singleGeneration.ts`
+-- `convex/batchGeneration.ts`
+-- `convex/contentAnalysis.ts`
+-- `convex/cloudflareDispatch.ts`
+-- `convex/cloudflareWorkerHttp.ts`
+-- `convex/secondaryAssets.ts`
+-- `convex/stripe.ts`
+-
+-## Architectural Assessment
+-
+-### Is there already a clean adapter layer?
+-
+-Partially, but not enough.
+-
+-Good seams that already exist:
+-
+-- query hooks for feeds/history/favorites
+-- some domain hooks for prompt library, batch generation, subscription status, music generation
+-- server cache helpers under `app/_server/cache`
+-- Cloudflare worker code already separated from the UI
+-
+-Missing seams:
+-
+-- many components/pages still call Convex directly instead of via domain hooks/services
+-- server routes call Convex directly
+-- worker state transitions are hardwired to Convex HTTP endpoints
+-- Convex IDs/types are used in UI code
+-- auth loading state in some pages depends on `useConvexAuth`
+-
+-### Should we build a proper adapter layer?
+-
+-Yes, but only at the domain/service layer.
+-
+-Do this:
+-
+-- introduce `lib/db/*` for schema and database access
+-- introduce `lib/server/*` or `app/_server/*` repositories/services
+-- introduce domain APIs like `imageService`, `userService`, `generationService`
+-- refactor hooks to call our own API layer, not Convex directly
+-
+-Do not do this:
+-
+-- do not build `convexCompat.useQuery(...)`
+-- do not try to emulate Convex's generated `api.*` tree
+-- do not attempt to preserve Convex reactivity semantics generically
+-
+-That would recreate the lock-in instead of removing it.
+-
+-### Adapter conclusion
+-
+-The code is too tightly integrated with Convex for a single drop-in backend adapter.
+-
+-The right approach is:
+-
+-- one-by-one replacements by feature slice
+-- but with a real shared server/data layer introduced first so the replacements converge on a clean architecture
+-
+-## Recommended Target Architecture
+-
+-### Core shape
+-
+-- Next.js app remains the user-facing application
+-- Clerk remains auth
+-- Cloudflare workers remain the async compute/orchestration plane
+-- R2 remains media storage
+-- Turso becomes the system-of-record database
+-- Drizzle becomes the schema/migration/query layer
+-- Next Route Handlers / Server Actions replace public Convex functions
+-- Cloudflare worker callback routes move from Convex HTTP actions to Next.js API routes or a thin backend worker API
+-
+-### Data flow after migration
+-
+-1. Client calls Route Handler or Server Action.
+-2. Server code authenticates with Clerk.
+-3. Server code uses domain service + Drizzle repository.
+-4. Background work is dispatched to the existing Cloudflare queue/worker.
+-5. Worker reports state changes to backend HTTP endpoints not tied to Convex.
+-6. Client refreshes with TanStack Query invalidation or targeted polling.
+-
+-### Realtime strategy
+-
+-Do not try to preserve Convex-style reactivity everywhere.
+-
+-Use three simpler patterns:
+-
+-- server-rendered initial fetch for read-heavy pages
+-- TanStack Query polling for job progress and short-lived status
+-- explicit invalidation/refetch after writes
+-
+-Only add true realtime later if a page demonstrably needs it.
+-
+-## Why Turso First
+-
+-As of 2026-03-13, official materials indicate:
+-
+-- Turso positions itself as edge SQLite/libSQL with Drizzle support and a generous free plan.
+-- Cloudflare D1 free pricing is row-read/write based and can be punishing if query shape regresses.
+-- Supabase free plan is workable, but comes with a larger platform surface than this repo needs.
+-
+-Why Turso fits this repo specifically:
+-
+-- The app already has a split runtime: Vercel/Next plus Cloudflare workers.
+-- Turso's client model is friendly to both environments.
+-- The current data model is relational enough to map cleanly to SQL.
+-- Current usage is low enough that SQLite write-concurrency is acceptable if we keep transactions short.
+-
+-Known tradeoff:
+-
+-- If write concurrency grows materially, or if you later want richer SQL features and more headroom, Postgres may become the better long-term store.
+-
+-That is acceptable for this migration because the primary goal is to get off Convex quickly with minimal operational cost and minimal platform sprawl.
+-
+-## Why Not D1 First
+-
+-Cloudflare D1 is attractive on price, but it is not the least-friction move for this repository.
+-
+-Reasons:
+-
+-- The main app is still built/deployed as a Next.js app on Vercel.
+-- The worker plane is on Cloudflare, but the primary application data access is not.
+-- Choosing D1 strongly nudges us toward a broader hosting/runtime migration at the same time as the data migration.
+-- This app already had bandwidth/query-shape issues; D1's row-based pricing punishes inefficient scans too.
+-
+-D1 is a good second-step option only if the broader plan becomes:
+-
+-- move Next/backend execution to Cloudflare
+-- consolidate app and workers onto one vendor/runtime plane
+-
+-That is a larger project than the current emergency migration.
+-
+-## Why Not a Generic Supabase Migration First
+-
+-Supabase is the best Postgres-based alternative, but it is not the lowest-friction replacement for this codebase right now.
+-
+-Reasons:
+-
+-- We already use Clerk, so Supabase Auth is unnecessary.
+-- We already use R2, so Supabase Storage is unnecessary.
+-- We already use Cloudflare workers, so Supabase Edge Functions are unnecessary.
+-- The migration would still require replacing Convex functions, hooks, auth bindings, and callbacks one by one.
+-
+-Supabase is still a valid backup choice if:
+-
+-- you strongly prefer Postgres over SQLite
+-- you want optional realtime later
+-- you want a broader managed database platform now
+-
+-## Migration Principles
+-
+-1. Migrate vertical slices, not infrastructure in the abstract.
+-2. Preserve the current external compute plane.
+-3. Replace Convex with our own domain APIs, not with another vendor-shaped API.
+-4. Remove Convex-generated IDs and types from the app boundary.
+-5. Accept polling/invalidation instead of trying to recreate full reactivity.
+-
+-## Proposed New Architecture Layers
+-
+-### 1. Database layer
+-
+-Create:
+-
+-- `lib/db/client.ts`
+-- `lib/db/schema/*.ts`
+-- `lib/db/migrations/*`
+-
+-Responsibilities:
+-
+-- Drizzle setup
+-- typed schema
+-- migrations
+-- transaction helpers
+-
+-### 2. Repository layer
+-
+-Create:
+-
+-- `lib/server/repositories/users.ts`
+-- `lib/server/repositories/images.ts`
+-- `lib/server/repositories/generations.ts`
+-- `lib/server/repositories/batch-jobs.ts`
+-- `lib/server/repositories/favorites.ts`
+-- `lib/server/repositories/follows.ts`
+-- `lib/server/repositories/prompts.ts`
+-- `lib/server/repositories/music.ts`
+-- `lib/server/repositories/subscriptions.ts`
+-
+-Responsibilities:
+-
+-- database reads/writes only
+-- no framework response logic
+-- no UI concerns
+-
+-### 3. Service layer
+-
+-Create:
+-
+-- `lib/server/services/users.ts`
+-- `lib/server/services/feed.ts`
+-- `lib/server/services/generation.ts`
+-- `lib/server/services/moderation.ts`
+-- `lib/server/services/billing.ts`
+-
+-Responsibilities:
+-
+-- auth-aware business rules
+-- orchestration rules
+-- worker claim/complete state transitions
+-- cache invalidation decisions
+-
+-### 4. Transport layer
+-
+-Create:
+-
+-- `app/api/*` route handlers for mutations and worker callbacks
+-- server actions where form/action ergonomics help
+-
+-Responsibilities:
+-
+-- request validation
+-- auth extraction
+-- response serialization
+-
+-### 5. Client hook layer
+-
+-Refactor existing hooks to call our own routes/services:
+-
+-- `hooks/queries/use-image-history.ts`
+-- `hooks/queries/use-favorites.ts`
+-- `hooks/queries/use-batch-generation.ts`
+-- `hooks/use-prompt-library.ts`
+-- `hooks/use-subscription-status.ts`
+-- `hooks/use-music-generation.ts`
+-
+-Responsibilities:
+-
+-- polling
+-- invalidation
+-- local optimistic UI where useful
+-
+-## Feature-by-Feature Migration Order
+-
+-### Phase 0: Stop the bleeding
+-
+-Goal: remove Convex as the hard dependency that keeps the site down.
+-
+-Actions:
+-
+-- snapshot/export current Convex data while access still exists
+-- remove Convex deploy from `vercel.json`
+-- decouple build from Convex codegen/deploy
+-- add new DB env plumbing
+-- stand up Turso + Drizzle schema and migrations
+-
+-Success condition:
+-
+-- the app can build and deploy without a Convex deployment
+-
+-### Phase 1: Core reads required for a minimally useful site
+-
+-Migrate first:
+-
+-- users/profile lookup
+-- public feed
+-- profile pages
+-- image detail reads
+-- settings reads
+-
+-Code seams to replace first:
+-
+-- `app/_server/cache/feed.ts`
+-- `app/_server/cache/history.ts`
+-- `app/feed/[type]/page.tsx`
+-- `app/profile/[username]/page.tsx`
+-- `hooks/queries/use-image-history.ts`
+-- `components/gallery/feed-client.tsx`
+-- `components/gallery/paginated-image-grid.tsx`
+-
+-Success condition:
+-
+-- public browsing works without Convex
+-
+-### Phase 2: Core writes and account state
+-
+-Migrate:
+-
+-- create/get current user
+-- username update
+-- content preference update
+-- default privacy update
+-- Pollinations API key storage/removal
+-- favorites
+-- follows
+-- prompt library CRUD
+-
+-Code seams:
+-
+-- `convex/users.ts`
+-- `convex/favorites.ts`
+-- `convex/follows.ts`
+-- `convex/promptLibrary.ts`
+-- `lib/pollen-auth/context.tsx`
+-- settings components
+-
+-Success condition:
+-
+-- signed-in user features work without Convex
+-
+-### Phase 3: Generation orchestration
+-
+-This is the most important backend slice after reads.
+-
+-Migrate:
+-
+-- pending generation tables
+-- batch jobs + batch items
+-- worker claim/continue/complete/fail endpoints
+-- generated image persistence
+-- secondary asset lifecycle
+-
+-Code seams:
+-
+-- `convex/singleGeneration.ts`
+-- `convex/batchGeneration.ts`
+-- `convex/cloudflareDispatch.ts`
+-- `convex/cloudflareWorkerHttp.ts`
+-- `convex/secondaryAssets.ts`
+-- worker files under `workers/bloomstudio-worker/src/*`
+-
+-Target design:
+-
+-- keep Cloudflare queue dispatch
+-- replace Convex HTTP callback routes with Next.js API routes or a small backend worker API
+-- keep the same state machine semantics but store state in SQL
+-
+-Success condition:
+-
+-- generation works end-to-end without Convex
+-
+-### Phase 4: Moderation and recovery jobs
+-
+-Migrate:
+-
+-- moderation state tables/columns
+-- provider health
+-- prompt inference and vision-analysis callbacks
+-- recovery scheduling
+-- cron jobs
+-
+-Code seams:
+-
+-- `convex/contentAnalysis.ts`
+-- `convex/lib/providerHealth.ts`
+-- `convex/lib/providerHealthFunctions.ts`
+-- `workers/bloomstudio-worker/src/moderation.ts`
+-
+-Success condition:
+-
+-- public image moderation path is fully off Convex
+-
+-### Phase 5: Billing, rate limits, maintenance
+-
+-Migrate:
+-
+-- Stripe customer/subscription state
+-- checkout and billing portal actions
+-- webhook handling
+-- prompt enhancement / suggestion rate limits
+-- orphan cleanup
+-- admin/troubleshooting tools
+-
+-Code seams:
+-
+-- `convex/stripe.ts`
+-- `convex/http.ts`
+-- `convex/rateLimits.ts`
+-- `app/api/enhance-prompt/route.ts`
+-- `app/api/suggestions/route.ts`
+-- `convex/orphanCleanup.ts`
+-
+-Success condition:
+-
+-- no production path still depends on Convex
+-
+-## Data Model Mapping
+-
+-Mirror these Convex tables first in SQL:
+-
+-- `users`
+-- `generated_images`
+-- `generated_image_details`
+-- `pending_generations`
+-- `batch_jobs`
+-- `batch_items`
+-- `reference_images`
+-- `favorites`
+-- `follows`
+-- `prompts`
+-- `user_prompt_library`
+-- `provider_health`
+-- `rate_limits`
+-- `music_generations`
+-- `background_job_state`
+-
+-Implementation notes:
+-
+-- store large flexible fields like `generationParams` as JSON
+-- use normal SQL foreign keys where the relationships are stable
+-- add explicit indexes for every current hot query path
+-- use text IDs generated by the app, not database-implicit integer IDs, so IDs are stable across app and worker boundaries
+-
+-Recommended ID strategy:
+-
+-- `cuid2` or `ulid` for all top-level entities
+-
+-Do not keep Convex-branded ID types in the app.
+-
+-## Query/Mutation Migration Strategy
+-
+-### Replace public Convex functions with domain endpoints
+-
+-Examples:
+-
+-- `api.generatedImages.getPublicFeed` -> `GET /api/feed/public`
+-- `api.generatedImages.getMyImages` -> `GET /api/images/my`
+-- `api.generatedImages.setVisibility` -> `POST /api/images/:id/visibility`
+-- `api.favorites.toggle` -> `POST /api/favorites/toggle`
+-- `api.follows.follow` -> `POST /api/follows`
+-- `api.users.getCurrentUser` -> `GET /api/me`
+-
+-### Replace internal Convex actions with service calls and queues
+-
+-Examples:
+-
+-- `internal.cloudflareDispatch.dispatchSingleGeneration` -> service method that enqueues the existing Cloudflare message
+-- `internal.contentAnalysis.analyzeRecentImages` -> worker cron or backend cron endpoint
+-- `ctx.scheduler.runAfter(...)` -> Cloudflare Cron/Queues-based follow-up or application-side scheduler table
+-
+-## Worker Migration Strategy
+-
+-Current worker callbacks are already shaped like a state machine. That is good news.
+-
+-Keep the same phases:
+-
+-- claim
+-- continue
+-- complete
+-- fail
+-- release where applicable
+-
+-Replace only the storage/orchestration backend:
+-
+-- `CONVEX_SITE_URL` becomes `BACKEND_BASE_URL`
+-- worker callback paths move off `convex/http.ts`
+-- callback handlers call service methods backed by Drizzle
+-
+-This lets us preserve most of the queue/worker logic while replacing the state store.
+-
+-## Realtime Replacement Strategy
+-
+-Convex gave us "always fresh" subscriptions. We do not need to fully replace that.
+-
+-By feature:
+-
+-- generation status: poll every few seconds while there are active jobs
+-- batch status: poll while active
+-- feeds/history: server render + manual invalidation or occasional background refresh
+-- favorites/follows: optimistic local state + invalidate affected query
+-- settings/profile: fetch on mount, refetch after mutation
+-
+-This is simpler and cheaper than trying to rebuild live subscriptions on day one.
+-
+-## What Can Be Reused
+-
+-These areas already provide decent seams and should be reused:
+-
+-- `hooks/queries/use-image-history.ts`
+-- `hooks/queries/use-favorites.ts`
+-- `hooks/queries/use-batch-generation.ts`
+-- `hooks/use-prompt-library.ts`
+-- `hooks/use-subscription-status.ts`
+-- `app/_server/cache/*`
+-- `workers/bloomstudio-worker/*`
+-
+-These should be treated as migration boundaries, not thrown away.
+-
+-## What Must Change Directly
+-
+-These Convex-specific pieces need explicit replacement:
+-
+-- `components/providers/convex-client-provider.tsx`
+-- `app/_server/convex/client.ts`
+-- any use of `useConvexAuth`
+-- any use of `useConvex`
+-- any direct import from `@/convex/_generated/api`
+-- any direct import from `@/convex/_generated/dataModel`
+-- `vercel.json` build command that runs Convex deploy
+-- worker env/config names that point at Convex
+-
+-## Risks
+-
+-### 1. Generation pipeline regression
+-
+-This is the highest-risk slice because it spans:
+-
+-- UI
+-- backend
+-- database state
+-- Cloudflare queues/workers
+-- moderation
+-- media persistence
+-
+-Mitigation:
+-
+-- migrate single generation first
+-- then batch generation
+-- keep the current worker message shapes where possible
+-
+-### 2. Overbuilding a fake Convex replacement
+-
+-This is the main architectural trap.
+-
+-Mitigation:
+-
+-- build domain services and route handlers
+-- do not emulate `api.*`, `useQuery`, `usePaginatedQuery`, or Convex auth semantics
+-
+-### 3. ID/type churn
+-
+-Convex ID types are embedded in UI code.
+-
+-Mitigation:
+-
+-- introduce app-owned ID aliases early
+-- migrate hooks/components to plain string IDs or branded app types
+-
+-### 4. Query regressions
+-
+-The repo already showed how expensive bad query shapes can get.
+-
+-Mitigation:
+-
+-- define indexes up front
+-- write repository methods around concrete access patterns
+-- test hot paths with realistic pagination and moderation state
+-
+-## Concrete First Deliverables
+-
+-I would implement these first:
+-
+-1. `lib/db/client.ts`
+-2. `lib/db/schema/*`
+-3. `lib/server/repositories/users.ts`
+-4. `lib/server/repositories/images.ts`
+-5. `lib/server/services/feed.ts`
+-6. `app/api/feed/public/route.ts`
+-7. `app/api/me/route.ts`
+-8. replacement for `app/_server/cache/feed.ts`
+-9. replacement for `hooks/queries/use-image-history.ts`
+-10. worker callback API skeleton under `app/api/workers/*`
+-
+-That gets the architecture moving in the right direction without pretending this is a one-file vendor swap.
+-
+-## Final Recommendation
+-
+-Do this:
+-
+-- migrate off Convex to Turso + Drizzle
+-- keep Clerk, R2, and Cloudflare workers
+-- replace Convex with our own server/data layer
+-- migrate by vertical feature slices
+-- accept polling/invalidation instead of global reactivity
+-
+-Do not do this:
+-
+-- do not build a fake generic Convex adapter
+-- do not try to preserve Convex API shapes as your internal architecture
+-- do not combine this with a full hosting migration unless you intentionally want a larger platform consolidation project
+-
+-## Official References
+-
+-Current vendor references checked on 2026-03-13:
+-
+-- Turso pricing: https://turso.tech/pricing
+-- Turso + Drizzle docs: https://docs.turso.tech/sdk/ts/orm/drizzle
+-- Supabase pricing: https://supabase.com/pricing
+-- Supabase Realtime docs: https://supabase.com/docs/guides/realtime
+-- Cloudflare D1 pricing: https://developers.cloudflare.com/d1/platform/pricing/
+-- Cloudflare Queues pricing: https://developers.cloudflare.com/queues/platform/pricing/
+-
