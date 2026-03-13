@@ -31,6 +31,7 @@ crons.interval(
     "analyze unanalyzed images",
     { hours: 1 },
     internal.contentAnalysis.analyzeRecentImages,
+    {},
 );
 
 export default crons;

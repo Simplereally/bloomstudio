@@ -55,10 +55,6 @@ Analyze the user's generation prompt provided at the end of this message. You mu
 
 type ClaimModerationResponse = {
     claimed: boolean
-}
-
-type ContinueModerationResponse = {
-    canContinue: boolean
     prompt?: string
     imageUrl?: string
 }
@@ -492,27 +488,12 @@ async function claimModerationJob(
     stage: ModerationStage,
     claimToken: string,
     workerAttempt: number
-): Promise<boolean> {
-    const claimResult = await postConvexJsonWithRetry<ClaimModerationResponse>(env, "/workers/moderation/claim", {
+): Promise<ClaimModerationResponse> {
+    return postConvexJsonWithRetry<ClaimModerationResponse>(env, "/workers/moderation/claim", {
         imageId,
         stage,
         claimToken,
         workerAttempt,
-    })
-
-    return claimResult.claimed
-}
-
-async function continueModerationJob(
-    env: Env,
-    imageId: string,
-    stage: ModerationStage,
-    claimToken: string
-): Promise<ContinueModerationResponse> {
-    return postConvexJsonWithRetry<ContinueModerationResponse>(env, "/workers/moderation/continue", {
-        imageId,
-        stage,
-        claimToken,
     })
 }
 
@@ -520,20 +501,14 @@ export async function handlePromptInferenceMessage(message: PromptInferenceMessa
     const claimToken = crypto.randomUUID()
     const workerAttempt = Math.max(1, message.attempts)
 
-    const claimed = await claimModerationJob(env, message.body.imageId, "prompt_inference", claimToken, workerAttempt)
-    if (!claimed) {
-        message.ack()
-        return
-    }
-
-    const continuation = await continueModerationJob(env, message.body.imageId, "prompt_inference", claimToken)
-    if (!continuation.canContinue || !continuation.prompt) {
+    const claim = await claimModerationJob(env, message.body.imageId, "prompt_inference", claimToken, workerAttempt)
+    if (!claim.claimed || !claim.prompt) {
         message.ack()
         return
     }
 
     try {
-        const inference = await analyzePromptWithCerebrasWorker(env, continuation.prompt)
+        const inference = await analyzePromptWithCerebrasWorker(env, claim.prompt)
         const decision = decidePromptSensitivity(inference)
 
         await postConvexJsonWithRetry<CompletePromptInferenceResponse>(env, "/workers/moderation/prompt-inference/complete", {
@@ -573,19 +548,13 @@ export async function handleVisionAnalysisMessage(message: VisionAnalysisMessage
     const claimToken = crypto.randomUUID()
     const workerAttempt = Math.max(1, message.attempts)
 
-    const claimed = await claimModerationJob(env, message.body.imageId, "vision_analysis", claimToken, workerAttempt)
-    if (!claimed) {
+    const claim = await claimModerationJob(env, message.body.imageId, "vision_analysis", claimToken, workerAttempt)
+    if (!claim.claimed || !claim.imageUrl) {
         message.ack()
         return
     }
 
-    const continuation = await continueModerationJob(env, message.body.imageId, "vision_analysis", claimToken)
-    if (!continuation.canContinue || !continuation.imageUrl) {
-        message.ack()
-        return
-    }
-
-    const analysisResult = await analyzeImageContentWorker(env, continuation.imageUrl)
+    const analysisResult = await analyzeImageContentWorker(env, claim.imageUrl)
     if (!analysisResult.success) {
         const canRetry = analysisResult.retryable && workerAttempt < WORKER_RETRY_MAX_ATTEMPTS
         if (canRetry) {

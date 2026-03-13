@@ -41,6 +41,7 @@
   ],
   "exclude": [
     "node_modules",
+    "worker-configuration.d.ts",
     "**/*.test.ts",
     "**/*.test.tsx"
   ]

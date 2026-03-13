@@ -187,7 +187,9 @@ export default defineSchema({
         .index("by_visibility_sensitive", ["visibility", "isSensitive", "createdAt"])
         // Index for scanning by sensitivity (e.g. finding pending)
         .index("by_sensitivity", ["isSensitive", "createdAt"])
+        .index("by_sensitivity_moderation_status", ["isSensitive", "moderationDispatchStatus", "createdAt"])
         .index("by_moderation_dispatch_status", ["moderationDispatchStatus", "moderationUpdatedAt"])
+        .index("by_moderation_status_sensitivity", ["moderationDispatchStatus", "isSensitive", "moderationUpdatedAt"])
         .index("by_secondary_assets_dispatch_status", ["secondaryAssetsDispatchStatus", "secondaryAssetsUpdatedAt"]),
 
     /**
@@ -528,6 +530,24 @@ export default defineSchema({
         /** Maximum requests allowed in the window (if known) */
         requestLimit: v.optional(v.number()),
     }).index("by_provider", ["provider"]),
+
+    /**
+     * Background job scheduler state for deduplicating self-rescheduling actions.
+     */
+    backgroundJobState: defineTable({
+        /** Stable logical job name, e.g. moderation recovery. */
+        jobName: v.string(),
+        /** Next scheduled execution time in unix ms. */
+        nextRunAt: v.optional(v.number()),
+        /** Token passed to the scheduled action so stale runs can no-op. */
+        scheduledToken: v.optional(v.string()),
+        /** Most recent execution start time in unix ms. */
+        lastRunAt: v.optional(v.number()),
+        /** Last mutation time for debugging. */
+        updatedAt: v.number(),
+    })
+        .index("by_job_name", ["jobName"])
+        .index("by_job_name_updated_at", ["jobName", "updatedAt"]),
 
     /**
      * Music generations - AI-generated music tracks from the music studio

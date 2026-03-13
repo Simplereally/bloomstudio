@@ -42,6 +42,16 @@ export const getHealth = internalQuery({
     },
 })
 
+export const getAllHealth = internalQuery({
+    args: {},
+    handler: async (ctx) => {
+        return Promise.all([
+            getProviderHealth(ctx, "groq"),
+            getProviderHealth(ctx, "openrouter"),
+        ])
+    },
+})
+
 // =============================================================================
 // Mutations
 // =============================================================================

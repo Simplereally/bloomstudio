@@ -14,6 +14,9 @@ const DELAY_BETWEEN_REQUESTS_MS = 2100
 
 /** Fetch a small lookahead so we know whether to schedule the next recovery action. */
 const ANALYSIS_QUEUE_LOOKAHEAD = 2
+/** Allow a small clock skew so an about-to-run scheduled job can still claim execution. */
+const ANALYSIS_SCHEDULE_CLAIM_SKEW_MS = 1000
+const ANALYSIS_RECOVERY_JOB_NAME = "content_analysis_recovery"
 
 const moderationStageValidator = v.union(
     v.literal("prompt_inference"),
@@ -36,8 +39,120 @@ type VisionAnalysisPayload = {
     analyzedAt: number
 }
 
+type ProviderHealthSnapshot = {
+    isAvailable: boolean
+    rateLimitedUntil?: number
+}
+
+type BackgroundJobStateLike = {
+    updatedAt: number
+    _creationTime: number
+    nextRunAt?: number
+    scheduledToken?: string
+    lastRunAt?: number
+}
+
+type BackgroundJobStateDoc = Doc<"backgroundJobState">
+
 function isSensitivityResolved(image: Doc<"generatedImages"> | null): boolean {
     return image?.isSensitive !== undefined && image?.isSensitive !== null
+}
+
+function compareBackgroundJobStateRecency<T extends BackgroundJobStateLike>(left: T, right: T): number {
+    if (left.updatedAt !== right.updatedAt) {
+        return right.updatedAt - left.updatedAt
+    }
+
+    return right._creationTime - left._creationTime
+}
+
+export function getLatestBackgroundJobLastRunAt<T extends { lastRunAt?: number }>(
+    rows: T[]
+): number | undefined {
+    const lastRunAtValues = rows
+        .map((row) => row.lastRunAt)
+        .filter((lastRunAt): lastRunAt is number => lastRunAt !== undefined)
+
+    if (lastRunAtValues.length === 0) {
+        return undefined
+    }
+
+    return Math.max(...lastRunAtValues)
+}
+
+export function getEffectiveScheduledBackgroundJob<T extends BackgroundJobStateLike>(
+    rows: T[]
+): (T & { nextRunAt: number; scheduledToken: string }) | null {
+    const scheduledRows = rows.filter(
+        (row): row is T & { nextRunAt: number; scheduledToken: string } =>
+            row.nextRunAt !== undefined && row.scheduledToken !== undefined
+    )
+
+    if (scheduledRows.length === 0) {
+        return null
+    }
+
+    return scheduledRows.sort((left, right) => {
+        if (left.nextRunAt !== right.nextRunAt) {
+            return left.nextRunAt - right.nextRunAt
+        }
+
+        return compareBackgroundJobStateRecency(left, right)
+    })[0]
+}
+
+async function listBackgroundJobStateRows(
+    ctx: MutationCtx,
+    jobName: string
+): Promise<BackgroundJobStateDoc[]> {
+    return await ctx.db
+        .query("backgroundJobState")
+        .withIndex("by_job_name_updated_at", (q) => q.eq("jobName", jobName))
+        .collect()
+}
+
+async function reconcileBackgroundJobStateRows(
+    ctx: MutationCtx,
+    args: {
+        jobName: string
+        rows: BackgroundJobStateDoc[]
+        nextRunAt?: number
+        scheduledToken?: string
+        lastRunAt?: number
+        now: number
+    }
+) {
+    const canonicalRow = [...args.rows].sort(compareBackgroundJobStateRecency)[0]
+
+    if (!canonicalRow) {
+        await ctx.db.insert("backgroundJobState", {
+            jobName: args.jobName,
+            nextRunAt: args.nextRunAt,
+            scheduledToken: args.scheduledToken,
+            lastRunAt: args.lastRunAt,
+            updatedAt: args.now,
+        })
+        return
+    }
+
+    const duplicateRows = args.rows.filter((row) => row._id !== canonicalRow._id)
+    const stateChanged =
+        canonicalRow.nextRunAt !== args.nextRunAt ||
+        canonicalRow.scheduledToken !== args.scheduledToken ||
+        canonicalRow.lastRunAt !== args.lastRunAt
+
+    if (stateChanged || duplicateRows.length > 0) {
+        await ctx.db.patch(canonicalRow._id, {
+            nextRunAt: args.nextRunAt,
+            scheduledToken: args.scheduledToken,
+            lastRunAt: args.lastRunAt,
+            updatedAt: args.now,
+        })
+    }
+
+    for (const duplicateRow of duplicateRows) {
+        await ctx.db.delete(duplicateRow._id)
+    }
 }
 
 async function upsertPromptInference(
@@ -112,15 +227,53 @@ async function upsertVisionAnalysis(
 
 export function getNextAnalysisRunDelayMs(args: {
     queuedImageCount: number
-    allProvidersRateLimited: boolean
+    providerRecoveryDelayMs: number | null
 }): number | null {
-    if (args.allProvidersRateLimited) {
-        return DELAY_BETWEEN_REQUESTS_MS
+    if (args.providerRecoveryDelayMs !== null) {
+        return args.providerRecoveryDelayMs
     }
 
     return args.queuedImageCount === ANALYSIS_QUEUE_LOOKAHEAD
         ? DELAY_BETWEEN_REQUESTS_MS
         : null
+}
+
+export function shouldSkipAnalyzeRecentImagesSchedule(args: {
+    existingNextRunAt: number | undefined
+    requestedNextRunAt: number
+    now: number
+}): boolean {
+    if (args.existingNextRunAt === undefined) {
+        return false
+    }
+
+    const existingRunIsStillClaimable =
+        args.existingNextRunAt >= args.now - ANALYSIS_SCHEDULE_CLAIM_SKEW_MS
+
+    return existingRunIsStillClaimable && args.existingNextRunAt <= args.requestedNextRunAt
+}
+
+export function getProviderRecoveryDelayMs(args: {
+    providerHealths: Array<ProviderHealthSnapshot | null>
+    now: number
+}): number | null {
+    const unavailableProviderHealths = args.providerHealths
+        .filter((health): health is ProviderHealthSnapshot => health !== null)
+        .filter((health) => !health.isAvailable)
+
+    if (unavailableProviderHealths.length === 0) {
+        return null
+    }
+
+    const unavailableResets = unavailableProviderHealths
+        .map((health) => health.rateLimitedUntil)
+        .filter((resetAt): resetAt is number => typeof resetAt === "number" && resetAt > args.now)
+
+    if (unavailableResets.length === 0) {
+        return DELAY_BETWEEN_REQUESTS_MS
+    }
+
+    return Math.max(DELAY_BETWEEN_REQUESTS_MS, Math.min(...unavailableResets) - args.now)
 }
 
 export function shouldRunRecoveryPromptInference(args: {
@@ -253,6 +406,8 @@ export const claimModerationForWorker = internalMutation({
     },
     returns: v.object({
         claimed: v.boolean(),
+        prompt: v.optional(v.string()),
+        imageUrl: v.optional(v.string()),
     }),
     handler: async (ctx, args) => {
         const image = await ctx.db.get(args.imageId)
@@ -293,7 +448,121 @@ export const claimModerationForWorker = internalMutation({
             moderationUpdatedAt: Date.now(),
         })
 
-        return { claimed: true }
+        if (args.stage === "prompt_inference") {
+            return {
+                claimed: true,
+                prompt: image.prompt,
+            }
+        }
+
+        return {
+            claimed: true,
+            imageUrl: image.url,
+        }
+    },
+})
+
+export const scheduleAnalyzeRecentImagesRun = internalMutation({
+    args: {
+        delayMs: v.number(),
+    },
+    returns: v.object({
+        scheduled: v.boolean(),
+        nextRunAt: v.number(),
+    }),
+    handler: async (ctx, args) => {
+        const now = Date.now()
+        const delayMs = Math.max(0, args.delayMs)
+        const nextRunAt = now + delayMs
+        const existingJobs = await listBackgroundJobStateRows(ctx, ANALYSIS_RECOVERY_JOB_NAME)
+        const existingScheduledJob = getEffectiveScheduledBackgroundJob(existingJobs)
+        const lastRunAt = getLatestBackgroundJobLastRunAt(existingJobs)
+
+        if (shouldSkipAnalyzeRecentImagesSchedule({
+            existingNextRunAt: existingScheduledJob?.nextRunAt,
+            requestedNextRunAt: nextRunAt,
+            now,
+        })) {
+            await reconcileBackgroundJobStateRows(ctx, {
+                jobName: ANALYSIS_RECOVERY_JOB_NAME,
+                rows: existingJobs,
+                nextRunAt: existingScheduledJob?.nextRunAt,
+                scheduledToken: existingScheduledJob?.scheduledToken,
+                lastRunAt,
+                now,
+            })
+
+            return {
+                scheduled: false,
+                nextRunAt: existingScheduledJob?.nextRunAt ?? nextRunAt,
+            }
+        }
+
+        const scheduledToken = `${now}-${nextRunAt}`
+
+        await reconcileBackgroundJobStateRows(ctx, {
+            jobName: ANALYSIS_RECOVERY_JOB_NAME,
+            rows: existingJobs,
+            nextRunAt,
+            scheduledToken,
+            lastRunAt,
+            now,
+        })
+
+        await ctx.scheduler.runAfter(delayMs, internal.contentAnalysis.analyzeRecentImages, {
+            scheduleToken: scheduledToken,
+        })
+
+        return {
+            scheduled: true,
+            nextRunAt,
+        }
+    },
+})
+
+export const claimScheduledAnalyzeRecentImagesRun = internalMutation({
+    args: {
+        scheduleToken: v.string(),
+    },
+    returns: v.boolean(),
+    handler: async (ctx, args) => {
+        const now = Date.now()
+        const existingJobs = await listBackgroundJobStateRows(ctx, ANALYSIS_RECOVERY_JOB_NAME)
+        const existingScheduledJob = getEffectiveScheduledBackgroundJob(existingJobs)
+        const lastRunAt = getLatestBackgroundJobLastRunAt(existingJobs)
+
+        if (!existingScheduledJob || existingScheduledJob.scheduledToken !== args.scheduleToken) {
+            if (existingJobs.length > 1) {
+                await reconcileBackgroundJobStateRows(ctx, {
+                    jobName: ANALYSIS_RECOVERY_JOB_NAME,
+                    rows: existingJobs,
+                    nextRunAt: existingScheduledJob?.nextRunAt,
+                    scheduledToken: existingScheduledJob?.scheduledToken,
+                    lastRunAt,
+                    now,
+                })
+            }
+
+            return false
+        }
+
+        if (
+            existingScheduledJob.nextRunAt !== undefined &&
+            existingScheduledJob.nextRunAt > now + ANALYSIS_SCHEDULE_CLAIM_SKEW_MS
+        ) {
+            return false
+        }
+
+        await reconcileBackgroundJobStateRows(ctx, {
+            jobName: ANALYSIS_RECOVERY_JOB_NAME,
+            rows: existingJobs,
+            nextRunAt: undefined,
+            scheduledToken: undefined,
+            lastRunAt: now,
+            now,
+        })
+
+        return true
     },
 })
 
@@ -581,7 +850,18 @@ export const failVisionAnalysisFromWorker = internalMutation({
         })
 
         if (nextDispatchStatus === "pending") {
-            await ctx.scheduler.runAfter(DELAY_BETWEEN_REQUESTS_MS, internal.contentAnalysis.analyzeRecentImages, {})
+            const providerHealths: Array<ProviderHealthSnapshot | null> = await ctx.runQuery(
+                internal.lib.providerHealthFunctions.getAllHealth,
+                {}
+            )
+            const recoveryDelayMs = getProviderRecoveryDelayMs({
+                providerHealths,
+                now: Date.now(),
+            }) ?? DELAY_BETWEEN_REQUESTS_MS
+
+            await ctx.runMutation(internal.contentAnalysis.scheduleAnalyzeRecentImagesRun, {
+                delayMs: recoveryDelayMs,
+            })
         }
 
         return { released: true, duplicate: false }
@@ -613,9 +893,24 @@ export const analyzeImage = internalAction({
  * Recovery action: re-dispatch one unanalyzed image without doing external work in Convex.
  */
 export const analyzeRecentImages = internalAction({
-    args: {},
-    handler: async (ctx: ActionCtx) => {
+    args: {
+        scheduleToken: v.optional(v.string()),
+    },
+    handler: async (ctx: ActionCtx, args) => {
+        if (args.scheduleToken) {
+            const claimed = await ctx.runMutation(internal.contentAnalysis.claimScheduledAnalyzeRecentImagesRun, {
+                scheduleToken: args.scheduleToken,
+            })
+
+            if (!claimed) {
+                return
+            }
+        }
+
         await ctx.runMutation(internal.lib.providerHealthFunctions.refreshExpiredLimits, {})
+        await ctx.runMutation(internal.generatedImages.normalizeLegacyModerationStateBatch, {
+            limit: 32,
+        })
 
         const images = await ctx.runQuery(
             internal.generatedImages.getRecoverableUnanalyzedImages,
@@ -626,7 +921,7 @@ export const analyzeRecentImages = internalAction({
             return
         }
 
-        let allProvidersRateLimited = false
+        let providerRecoveryDelayMs: number | null = null
         const image = images[0]
         if (!image) {
             return
@@ -646,17 +941,18 @@ export const analyzeRecentImages = internalAction({
                 imageId: image._id,
             })
         } else {
-            const providersAvailable = await ctx.runQuery(
-                internal.lib.providerHealthFunctions.checkProvidersAvailable, {}
+            const providerHealths = await ctx.runQuery(
+                internal.lib.providerHealthFunctions.getAllHealth, {}
             )
+            const providersAvailable = providerHealths.some((health) => !health || health.isAvailable)
 
             if (!providersAvailable) {
-                allProvidersRateLimited = true
                 const now = Date.now()
-                const [groq, openrouter] = await Promise.all([
-                    ctx.runQuery(internal.lib.providerHealthFunctions.getHealth, { provider: "groq" }),
-                    ctx.runQuery(internal.lib.providerHealthFunctions.getHealth, { provider: "openrouter" }),
-                ])
+                const [groq, openrouter] = providerHealths
+                providerRecoveryDelayMs = getProviderRecoveryDelayMs({
+                    providerHealths,
+                    now,
+                })
                 console.log(
                     `[Vision] Rate-limited (Groq: ${formatResetTime(groq?.rateLimitedUntil, now)}, OpenRouter: ${formatResetTime(openrouter?.rateLimitedUntil, now)})`
                 )
@@ -669,11 +965,13 @@ export const analyzeRecentImages = internalAction({
 
         const nextRunDelayMs = getNextAnalysisRunDelayMs({
             queuedImageCount: images.length,
-            allProvidersRateLimited,
+            providerRecoveryDelayMs,
         })
 
         if (nextRunDelayMs !== null) {
-            await ctx.scheduler.runAfter(nextRunDelayMs, internal.contentAnalysis.analyzeRecentImages, {})
+            await ctx.runMutation(internal.contentAnalysis.scheduleAnalyzeRecentImagesRun, {
+                delayMs: nextRunDelayMs,
+            })
         }
     },
 })
