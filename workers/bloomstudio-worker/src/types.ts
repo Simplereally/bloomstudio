@@ -2,6 +2,15 @@ export type AppEnv = "development" | "production"
 export type ModerationStage = "prompt_inference" | "vision_analysis"
 export type ProviderName = "groq" | "openrouter"
 
+export type CloudflareRequestInitCfOptions = {
+    cacheEverything?: boolean
+    cacheTtl?: number
+}
+
+export type WorkerRequestInit = RequestInit & {
+    cf?: CloudflareRequestInitCfOptions
+}
+
 export type SingleGenerationDispatchRequestBody = {
     jobType: "single_generation"
     generationId: string

@@ -7,7 +7,7 @@ import {
     logWorkerEvent,
     postConvexJsonWithRetry,
 } from "./core"
-import type { Env, GenerationQueueMessage, QueueMessage } from "./types"
+import type { Env, GenerationQueueMessage, QueueMessage, WorkerRequestInit } from "./types"
 
 const SECONDARY_ASSET_TIMEOUT_MS = 30_000
 const VIDEO_THUMBNAIL_SIZE = 128
@@ -113,7 +113,7 @@ async function verifyMediaTransformResponse(url: string, expectedContentTypePref
     let response: Response
 
     try {
-        response = await fetch(url, {
+        const requestInit = {
             method: "GET",
             headers: {
                 accept:
@@ -127,7 +127,9 @@ async function verifyMediaTransformResponse(url: string, expectedContentTypePref
                 cacheEverything: true,
             },
             signal: controller.signal,
-        })
+        } satisfies WorkerRequestInit
+
+        response = await fetch(url, requestInit)
     } catch (error) {
         clearTimeout(timeoutId)
         throw new SecondaryAssetsError(
