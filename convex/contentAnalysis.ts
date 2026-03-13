@@ -14,6 +14,7 @@ const DELAY_BETWEEN_REQUESTS_MS = 2100
 
 /** Fetch a small lookahead so we know whether to schedule the next recovery action. */
 const ANALYSIS_QUEUE_LOOKAHEAD = 2
+const ANALYSIS_RECOVERY_JOB_NAME = "content_analysis_recovery"
 
 const moderationStageValidator = v.union(
     v.literal("prompt_inference"),
@@ -34,6 +35,11 @@ type VisionAnalysisPayload = {
     sexual?: string
     violence?: string
     analyzedAt: number
+}
+
+type ProviderHealthSnapshot = {
+    isAvailable: boolean
+    rateLimitedUntil?: number
 }
 
 function isSensitivityResolved(image: Doc<"generatedImages"> | null): boolean {
@@ -112,15 +118,32 @@ async function upsertVisionAnalysis(
 
 export function getNextAnalysisRunDelayMs(args: {
     queuedImageCount: number
-    allProvidersRateLimited: boolean
+    providerRecoveryDelayMs: number | null
 }): number | null {
-    if (args.allProvidersRateLimited) {
-        return DELAY_BETWEEN_REQUESTS_MS
+    if (args.providerRecoveryDelayMs !== null) {
+        return args.providerRecoveryDelayMs
     }
 
     return args.queuedImageCount === ANALYSIS_QUEUE_LOOKAHEAD
         ? DELAY_BETWEEN_REQUESTS_MS
         : null
+}
+
+export function getProviderRecoveryDelayMs(args: {
+    providerHealths: Array<ProviderHealthSnapshot | null>
+    now: number
+}): number | null {
+    const unavailableResets = args.providerHealths
+        .filter((health): health is ProviderHealthSnapshot => health !== null)
+        .filter((health) => !health.isAvailable)
+        .map((health) => health.rateLimitedUntil)
+        .filter((resetAt): resetAt is number => typeof resetAt === "number" && resetAt > args.now)
+
+    if (unavailableResets.length === 0) {
+        return null
+    }
+
+    return Math.max(DELAY_BETWEEN_REQUESTS_MS, Math.min(...unavailableResets) - args.now)
 }
 
 export function shouldRunRecoveryPromptInference(args: {
@@ -253,6 +276,8 @@ export const claimModerationForWorker = internalMutation({
     },
     returns: v.object({
         claimed: v.boolean(),
+        prompt: v.optional(v.string()),
+        imageUrl: v.optional(v.string()),
     }),
     handler: async (ctx, args) => {
         const image = await ctx.db.get(args.imageId)
@@ -293,7 +318,100 @@ export const claimModerationForWorker = internalMutation({
             moderationUpdatedAt: Date.now(),
         })
 
-        return { claimed: true }
+        if (args.stage === "prompt_inference") {
+            return {
+                claimed: true,
+                prompt: image.prompt,
+            }
+        }
+
+        return {
+            claimed: true,
+            imageUrl: image.url,
+        }
+    },
+})
+
+export const scheduleAnalyzeRecentImagesRun = internalMutation({
+    args: {
+        delayMs: v.number(),
+    },
+    returns: v.object({
+        scheduled: v.boolean(),
+        nextRunAt: v.number(),
+    }),
+    handler: async (ctx, args) => {
+        const now = Date.now()
+        const delayMs = Math.max(0, args.delayMs)
+        const nextRunAt = now + delayMs
+        const existingJob = await ctx.db
+            .query("backgroundJobState")
+            .withIndex("by_job_name", (q) => q.eq("jobName", ANALYSIS_RECOVERY_JOB_NAME))
+            .first()
+
+        if (existingJob?.nextRunAt !== undefined && existingJob.nextRunAt <= nextRunAt) {
+            return {
+                scheduled: false,
+                nextRunAt: existingJob.nextRunAt,
+            }
+        }
+
+        const scheduledToken = `${now}-${nextRunAt}`
+
+        if (existingJob) {
+            await ctx.db.patch(existingJob._id, {
+                nextRunAt,
+                scheduledToken,
+                updatedAt: now,
+            })
+        } else {
+            await ctx.db.insert("backgroundJobState", {
+                jobName: ANALYSIS_RECOVERY_JOB_NAME,
+                nextRunAt,
+                scheduledToken,
+                updatedAt: now,
+            })
+        }
+
+        await ctx.scheduler.runAfter(delayMs, internal.contentAnalysis.analyzeRecentImages, {
+            scheduleToken: scheduledToken,
+        })
+
+        return {
+            scheduled: true,
+            nextRunAt,
+        }
+    },
+})
+
+export const claimScheduledAnalyzeRecentImagesRun = internalMutation({
+    args: {
+        scheduleToken: v.string(),
+    },
+    returns: v.boolean(),
+    handler: async (ctx, args) => {
+        const now = Date.now()
+        const existingJob = await ctx.db
+            .query("backgroundJobState")
+            .withIndex("by_job_name", (q) => q.eq("jobName", ANALYSIS_RECOVERY_JOB_NAME))
+            .first()
+
+        if (!existingJob || existingJob.scheduledToken !== args.scheduleToken) {
+            return false
+        }
+
+        if (existingJob.nextRunAt !== undefined && existingJob.nextRunAt > now + 1000) {
+            return false
+        }
+
+        await ctx.db.patch(existingJob._id, {
+            nextRunAt: undefined,
+            scheduledToken: undefined,
+            lastRunAt: now,
+            updatedAt: now,
+        })
+
+        return true
     },
 })
 
@@ -581,7 +699,24 @@ export const failVisionAnalysisFromWorker = internalMutation({
         })
 
         if (nextDispatchStatus === "pending") {
-            await ctx.scheduler.runAfter(DELAY_BETWEEN_REQUESTS_MS, internal.contentAnalysis.analyzeRecentImages, {})
+            const providerHealths: Array<ProviderHealthSnapshot | null> = await Promise.all([
+                ctx.db
+                    .query("providerHealth")
+                    .withIndex("by_provider", (q) => q.eq("provider", "groq"))
+                    .first(),
+                ctx.db
+                    .query("providerHealth")
+                    .withIndex("by_provider", (q) => q.eq("provider", "openrouter"))
+                    .first(),
+            ])
+            const recoveryDelayMs = getProviderRecoveryDelayMs({
+                providerHealths,
+                now: Date.now(),
+            }) ?? DELAY_BETWEEN_REQUESTS_MS
+
+            await ctx.runMutation(internal.contentAnalysis.scheduleAnalyzeRecentImagesRun, {
+                delayMs: recoveryDelayMs,
+            })
         }
 
         return { released: true, duplicate: false }
@@ -613,8 +748,20 @@ export const analyzeImage = internalAction({
  * Recovery action: re-dispatch one unanalyzed image without doing external work in Convex.
  */
 export const analyzeRecentImages = internalAction({
-    args: {},
-    handler: async (ctx: ActionCtx) => {
+    args: {
+        scheduleToken: v.optional(v.string()),
+    },
+    handler: async (ctx: ActionCtx, args) => {
+        if (args.scheduleToken) {
+            const claimed = await ctx.runMutation(internal.contentAnalysis.claimScheduledAnalyzeRecentImagesRun, {
+                scheduleToken: args.scheduleToken,
+            })
+
+            if (!claimed) {
+                return
+            }
+        }
+
         await ctx.runMutation(internal.lib.providerHealthFunctions.refreshExpiredLimits, {})
 
         const images = await ctx.runQuery(
@@ -626,7 +773,7 @@ export const analyzeRecentImages = internalAction({
             return
         }
 
-        let allProvidersRateLimited = false
+        let providerRecoveryDelayMs: number | null = null
         const image = images[0]
         if (!image) {
             return
@@ -646,17 +793,18 @@ export const analyzeRecentImages = internalAction({
                 imageId: image._id,
             })
         } else {
-            const providersAvailable = await ctx.runQuery(
-                internal.lib.providerHealthFunctions.checkProvidersAvailable, {}
+            const providerHealths = await ctx.runQuery(
+                internal.lib.providerHealthFunctions.getAllHealth, {}
             )
+            const providersAvailable = providerHealths.some((health) => !health || health.isAvailable)
 
             if (!providersAvailable) {
-                allProvidersRateLimited = true
                 const now = Date.now()
-                const [groq, openrouter] = await Promise.all([
-                    ctx.runQuery(internal.lib.providerHealthFunctions.getHealth, { provider: "groq" }),
-                    ctx.runQuery(internal.lib.providerHealthFunctions.getHealth, { provider: "openrouter" }),
-                ])
+                const [groq, openrouter] = providerHealths
+                providerRecoveryDelayMs = getProviderRecoveryDelayMs({
+                    providerHealths,
+                    now,
+                })
                 console.log(
                     `[Vision] Rate-limited (Groq: ${formatResetTime(groq?.rateLimitedUntil, now)}, OpenRouter: ${formatResetTime(openrouter?.rateLimitedUntil, now)})`
                 )
@@ -669,11 +817,13 @@ export const analyzeRecentImages = internalAction({
 
         const nextRunDelayMs = getNextAnalysisRunDelayMs({
             queuedImageCount: images.length,
-            allProvidersRateLimited,
+            providerRecoveryDelayMs,
         })
 
         if (nextRunDelayMs !== null) {
-            await ctx.scheduler.runAfter(nextRunDelayMs, internal.contentAnalysis.analyzeRecentImages, {})
+            await ctx.runMutation(internal.contentAnalysis.scheduleAnalyzeRecentImagesRun, {
+                delayMs: nextRunDelayMs,
+            })
         }
     },
 })

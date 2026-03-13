@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
     getNextAnalysisRunDelayMs,
+    getProviderRecoveryDelayMs,
     getVisionFailureDispatchStatus,
     shouldRunRecoveryPromptInference,
 } from "./contentAnalysis"
@@ -10,25 +11,62 @@ describe("getNextAnalysisRunDelayMs", () => {
         expect(
             getNextAnalysisRunDelayMs({
                 queuedImageCount: 2,
-                allProvidersRateLimited: false,
+                providerRecoveryDelayMs: null,
             })
         ).toBe(2100)
     })
 
-    it("schedules another run when providers are rate-limited", () => {
+    it("schedules another run when providers have a recovery delay", () => {
         expect(
             getNextAnalysisRunDelayMs({
                 queuedImageCount: 2,
-                allProvidersRateLimited: true,
+                providerRecoveryDelayMs: 60_000,
             })
-        ).toBe(2100)
+        ).toBe(60_000)
     })
 
     it("does not schedule another run when there is no lookahead work", () => {
         expect(
             getNextAnalysisRunDelayMs({
                 queuedImageCount: 1,
-                allProvidersRateLimited: false,
+                providerRecoveryDelayMs: null,
+            })
+        ).toBeNull()
+    })
+})
+
+describe("getProviderRecoveryDelayMs", () => {
+    it("waits until the earliest provider reset instead of hot-looping", () => {
+        expect(
+            getProviderRecoveryDelayMs({
+                now: 1_000,
+                providerHealths: [
+                    { isAvailable: false, rateLimitedUntil: 11_000 },
+                    { isAvailable: false, rateLimitedUntil: 21_000 },
+                ],
+            })
+        ).toBe(10_000)
+    })
+
+    it("returns the floor delay when reset is too close", () => {
+        expect(
+            getProviderRecoveryDelayMs({
+                now: 1_000,
+                providerHealths: [
+                    { isAvailable: false, rateLimitedUntil: 1_500 },
+                ],
+            })
+        ).toBe(2100)
+    })
+
+    it("returns null when a provider is already available", () => {
+        expect(
+            getProviderRecoveryDelayMs({
+                now: 1_000,
+                providerHealths: [
+                    { isAvailable: true },
+                    null,
+                ],
             })
         ).toBeNull()
     })

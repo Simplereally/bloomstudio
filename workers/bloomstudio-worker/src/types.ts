@@ -2,15 +2,6 @@ export type AppEnv = "development" | "production"
 export type ModerationStage = "prompt_inference" | "vision_analysis"
 export type ProviderName = "groq" | "openrouter"
 
-declare global {
-    interface RequestInit {
-        cf?: {
-            cacheTtl?: number
-            cacheEverything?: boolean
-        }
-    }
-}
-
 export type SingleGenerationDispatchRequestBody = {
     jobType: "single_generation"
     generationId: string

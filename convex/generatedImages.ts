@@ -1164,60 +1164,49 @@ export const getUnanalyzedImages = internalQuery({
 export const getRecoverableUnanalyzedImages = internalQuery({
     args: { limit: v.number() },
     handler: async (ctx, args) => {
-        const pageSize = Math.max(args.limit * 2, 25)
-        const isRecoverable = (image: Doc<"generatedImages">) =>
-            image.moderationDispatchStatus === undefined ||
-            image.moderationDispatchStatus === "pending"
-
-        const recoverable: Doc<"generatedImages">[] = []
-
-        let pendingCursor: string | null = null
-        let pendingDone = false
-        while (!pendingDone && recoverable.length < args.limit) {
-            const page = await ctx.db
-                .query("generatedImages")
-                .withIndex("by_sensitivity", (q) => q.eq("isSensitive", null))
-                .paginate({
-                    numItems: pageSize,
-                    cursor: pendingCursor,
-                })
-
-            recoverable.push(
-                ...page.page
-                    .filter(isRecoverable)
-                    .slice(0, args.limit - recoverable.length)
+        const recoverable = await ctx.db
+            .query("generatedImages")
+            .withIndex("by_moderation_status_sensitivity", (q) =>
+                q
+                    .eq("moderationDispatchStatus", "pending")
+                    .eq("isSensitive", null)
             )
-
-            pendingCursor = page.continueCursor
-            pendingDone = page.isDone
-        }
+            .take(args.limit)
 
         if (recoverable.length >= args.limit) {
             return recoverable
         }
 
-        let legacyCursor: string | null = null
-        let legacyDone = false
-        while (!legacyDone && recoverable.length < args.limit) {
-            const page = await ctx.db
-                .query("generatedImages")
-                .filter((q) => q.eq(q.field("isSensitive"), undefined))
-                .paginate({
-                    numItems: pageSize,
-                    cursor: legacyCursor,
-                })
-
-            recoverable.push(
-                ...page.page
-                    .filter(isRecoverable)
-                    .slice(0, args.limit - recoverable.length)
-            )
-
-            legacyCursor = page.continueCursor
-            legacyDone = page.isDone
+        const missingCount = args.limit - recoverable.length
+        if (missingCount <= 0) {
+            return recoverable
         }
 
-        return recoverable
+        const legacyLookahead = Math.max(missingCount * 4, 16)
+        const legacyPending = await ctx.db
+            .query("generatedImages")
+            .withIndex("by_sensitivity", (q) => q.eq("isSensitive", null))
+            .filter((q) => q.eq(q.field("moderationDispatchStatus"), undefined))
+            .take(legacyLookahead)
+
+        if (recoverable.length + legacyPending.length >= args.limit) {
+            return [...recoverable, ...legacyPending.slice(0, missingCount)]
+        }
+
+        const legacyUndefinedSensitivity = await ctx.db
+            .query("generatedImages")
+            .filter((q) =>
+                q.and(
+                    q.eq(q.field("isSensitive"), undefined),
+                    q.or(
+                        q.eq(q.field("moderationDispatchStatus"), undefined),
+                        q.eq(q.field("moderationDispatchStatus"), "pending")
+                    )
+                )
+            )
+            .take(Math.max(args.limit - recoverable.length - legacyPending.length, 8))
+
+        return [...recoverable, ...legacyPending, ...legacyUndefinedSensitivity].slice(0, args.limit)
     },
 })
 
