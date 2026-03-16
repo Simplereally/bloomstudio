@@ -96,3 +96,40 @@ Add: `bun add <pkg>`
 - Use shadcn/ui as the base; extend via composition + variants.
 - Tailwind utilities in JSX; extract repetition into components, not `@apply`.
 - Theme via CSS variables; keep design tokens centralized.
+
+---
+
+## Cursor Cloud specific instructions
+
+### Product overview
+Bloom Studio is a SaaS AI image/video generation app built with Next.js 16 (App Router, Turbopack), Convex (backend + real-time DB), Clerk (auth), and the Pollinations.AI API.
+
+### Services
+
+| Service | How to run | Notes |
+|---------|-----------|-------|
+| **Next.js dev server** | `bun run dev` | Starts on port 3000 by default |
+| **Convex backend** | `bunx convex dev` | Requires a Convex project + `CONVEX_DEPLOYMENT` env var |
+
+### Environment variables
+The app requires a `.env.local` file at the repo root with at minimum:
+- `NEXT_PUBLIC_CONVEX_URL` — Convex deployment URL (hard error if missing)
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` — Clerk publishable key
+- `CLERK_SECRET_KEY` — Clerk server-side secret key (Clerk middleware rejects requests without this)
+- `NEXT_PUBLIC_APP_URL` — defaults to `http://localhost:3000`
+
+Without valid Clerk keys the dev server compiles successfully but all page requests return 500. Clerk middleware (`proxy.ts`, which is loaded as the Next.js middleware) validates keys server-side.
+
+### Key commands
+- **Lint:** `bun run lint` (ESLint flat config, caches to `.cache/eslint`)
+- **Test:** `bun run test` (Vitest + jsdom + React Testing Library; 205 test files, ~2800 tests)
+- **Type-check:** `bun run typecheck`
+- **Dev:** `bun run dev`
+
+### Gotchas
+- The middleware file is `proxy.ts` (not the standard `middleware.ts`). Clerk's `@clerk/nextjs` package auto-discovers it.
+- Do **not** use `bun test` directly — always use `bun run test` (there's a guard script for this).
+- `.env*` files are gitignored; you must create `.env.local` yourself.
+- After changing `.env.local`, you must restart the dev server for the changes to take effect.
+- The `convex/_generated/` directory is gitignored and created by `bunx convex dev`; Convex functions won't type-check until it exists.
+- Never run `bun run build`, `bun run lint`, and `bun run test` in parallel — they can conflict.
