@@ -16,6 +16,7 @@ export const POLLINATIONS_FETCH_TIMEOUT_MS = 10 * 60 * 1000
 
 /** Video model IDs - these are the only models that accept video-specific query params */
 const VIDEO_MODELS = ["veo", "seedance", "seedance-pro", "wan", "ltx-2", "grok-video"] as const
+const VIDEO_MODELS_WITH_REFERENCE_IMAGE = ["veo", "seedance", "seedance-pro", "wan", "grok-video"] as const
 
 // ============================================================
 // Types
@@ -105,9 +106,12 @@ export function buildPollinationsUrl(params: PollinationsUrlParams): string {
     const isVideoModel = params.model && VIDEO_MODELS.includes(params.model as typeof VIDEO_MODELS[number])
     if (isVideoModel) {
         // Reference image(s): only Veo currently supports interpolation with start+end frames.
+        const supportsReferenceImage = VIDEO_MODELS_WITH_REFERENCE_IMAGE.includes(
+            params.model as typeof VIDEO_MODELS_WITH_REFERENCE_IMAGE[number]
+        )
         if (params.model === "veo" && params.image && params.lastFrameImage) {
             queryParams.append("image", `${params.image}|${params.lastFrameImage}`)
-        } else if (params.image) {
+        } else if (supportsReferenceImage && params.image) {
             queryParams.append("image", params.image)
         }
 

@@ -318,6 +318,18 @@ export function StudioShell({
 
     if (!prompt) return;
 
+    const generationModel = getModel(generationSettings.model);
+    const supportsVideoReferenceImage =
+      generationSettings.isVideoModel && generationModel?.supportsReferenceImage === true;
+    const supportsVideoInterpolation =
+      generationSettings.isVideoModel && generationModel?.supportsInterpolation === true;
+    const videoReferenceImage = supportsVideoReferenceImage
+      ? generationSettings.videoReferenceImages[0] || undefined
+      : undefined;
+    const videoLastFrameImage = supportsVideoInterpolation
+      ? generationSettings.videoReferenceImages[1] || undefined
+      : undefined;
+
     // Add to history
     promptManager.addToPromptHistory(prompt);
 
@@ -337,16 +349,15 @@ export function StudioShell({
            enhance: false,
            private: generationSettings.options.private,
            safe: generationSettings.options.safe,
-           // For video models, use the first frame as the reference image (image-to-video);
-           // for image models, use the standard reference image (image-to-image).
+           // Only include video frames for models that accept image-to-video input.
            image: generationSettings.isVideoModel
-             ? (generationSettings.videoReferenceImages[0] || undefined)
+             ? videoReferenceImage
              : generationSettings.referenceImage,
            // Video-specific parameters
            duration: generationSettings.videoSettings.duration,
            audio: generationSettings.videoSettings.audio,
            aspectRatio: generationSettings.aspectRatio,
-            lastFrameImage: generationSettings.videoReferenceImages[1] || undefined,
+            lastFrameImage: videoLastFrameImage,
           },
         batchMode.batchSettings.count,
       );
@@ -369,10 +380,9 @@ export function StudioShell({
       enhance: false,
       private: generationSettings.options.private,
       safe: generationSettings.options.safe,
-      // For video models, use the first frame as the reference image (image-to-video);
-      // for image models, use the standard reference image (image-to-image).
+      // Only include video frames for models that accept image-to-video input.
       image: generationSettings.isVideoModel
-        ? (generationSettings.videoReferenceImages[0] || undefined)
+        ? videoReferenceImage
         : generationSettings.referenceImage,
     };
 
@@ -391,7 +401,7 @@ export function StudioShell({
         duration: generationSettings.videoSettings.duration,
         audio: generationSettings.videoSettings.audio,
         aspectRatio: videoAspectRatio,
-        lastFrameImage: generationSettings.videoReferenceImages[1] || undefined,
+        lastFrameImage: videoLastFrameImage,
       };
       generate(params);
       return;

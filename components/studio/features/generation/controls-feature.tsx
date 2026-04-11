@@ -83,6 +83,10 @@ function ControlsFeatureView({
 
     // Get current model definition for video-specific properties
     const currentModelDef = getModel(generationSettings.model)
+    const maxReferenceFrames = React.useMemo(() => {
+        if (!currentModelDef?.supportsReferenceImage) return 0
+        return currentModelDef.supportsInterpolation ? 2 : (currentModelDef.referenceFrameCount ?? 1)
+    }, [currentModelDef])
 
     // Convert array-based reference images to first/last frame format for interpolation models
     const interpolationImages = React.useMemo(() => ({
@@ -176,7 +180,7 @@ function ControlsFeatureView({
             durationConstraints={currentModelDef?.durationConstraints}
             supportsAudio={currentModelDef?.supportsAudio ?? false}
             supportsInterpolation={currentModelDef?.supportsInterpolation ?? false}
-            maxReferenceFrames={currentModelDef?.referenceFrameCount ?? 2}
+            maxReferenceFrames={maxReferenceFrames}
 
             // History images for reference image browser
             historyImages={historyImages}

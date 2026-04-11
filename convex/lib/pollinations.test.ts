@@ -35,7 +35,7 @@ describe("buildPollinationsUrl", () => {
         expect(parsed.searchParams.get("image_urls")).toBeNull()
     })
 
-    it("does not encode last frame image for non-interpolation video models like ltx-2", () => {
+    it("does not encode reference images for text-only video models like ltx-2", () => {
         const url = buildPollinationsUrl({
             prompt: "test prompt",
             model: "ltx-2",
@@ -47,7 +47,7 @@ describe("buildPollinationsUrl", () => {
 
         const parsed = new URL(url)
 
-        expect(parsed.searchParams.get("image")).toBe("https://example.com/first.jpg")
+        expect(parsed.searchParams.get("image")).toBeNull()
     })
 })
 

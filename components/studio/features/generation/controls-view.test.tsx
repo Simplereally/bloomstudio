@@ -359,4 +359,20 @@ describe("ControlsView", () => {
     expect(screen.getByTestId("video-reference-frames-picker")).toHaveTextContent("Frames: 1");
     expect(screen.getByTestId("video-frames-section-collapsed-content")).toHaveTextContent("1 frame");
   });
+
+  it("does not render video frames section when maxReferenceFrames is zero", () => {
+    render(
+      <ControlsView
+        {...defaultProps}
+        isVideoModel={true}
+        videoReferenceImages={["https://example.com/first.jpg"]}
+        onVideoReferenceImagesChange={vi.fn()}
+        maxReferenceFrames={0}
+        videoSettings={undefined}
+        onVideoSettingsChange={undefined}
+      />
+    );
+
+    expect(screen.queryByTestId("video-frames-section")).not.toBeInTheDocument();
+  });
 });
