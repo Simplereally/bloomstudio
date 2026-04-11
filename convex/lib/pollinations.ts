@@ -14,8 +14,9 @@
 export const POLLINATIONS_BASE_URL = "https://gen.pollinations.ai"
 export const POLLINATIONS_FETCH_TIMEOUT_MS = 10 * 60 * 1000
 
-/** Video model IDs - these are the only models that support duration, aspectRatio, audio, and lastFrameImage */
-const VIDEO_MODELS = ["veo", "seedance", "seedance-pro", "wan", "grok-video"] as const
+/** Video model IDs - these are the only models that accept video-specific query params */
+const VIDEO_MODELS = ["veo", "seedance", "seedance-pro", "wan", "ltx-2", "grok-video"] as const
+const VIDEO_MODELS_WITH_REFERENCE_IMAGE = ["veo", "seedance", "seedance-pro", "wan", "grok-video"] as const
 
 // ============================================================
 // Types
@@ -104,20 +105,14 @@ export function buildPollinationsUrl(params: PollinationsUrlParams): string {
     // Video-specific parameters - only include for video models
     const isVideoModel = params.model && VIDEO_MODELS.includes(params.model as typeof VIDEO_MODELS[number])
     if (isVideoModel) {
-        // Reference image(s): handle different formats for different video models
-        if (params.model === "grok-video") {
-            if (params.image) {
-                queryParams.append("image", params.image)
-            }
-        } else {
-            // Other video models: for models that support interpolation (two reference images),
-            // join both URLs with "|" in a single `image` param so the Pollinations gateway
-            // splits them into the upstream `image_urls` array.
-            if (params.image && params.lastFrameImage) {
-                queryParams.append("image", `${params.image}|${params.lastFrameImage}`)
-            } else if (params.image) {
-                queryParams.append("image", params.image)
-            }
+        // Reference image(s): only Veo currently supports interpolation with start+end frames.
+        const supportsReferenceImage = VIDEO_MODELS_WITH_REFERENCE_IMAGE.includes(
+            params.model as typeof VIDEO_MODELS_WITH_REFERENCE_IMAGE[number]
+        )
+        if (params.model === "veo" && params.image && params.lastFrameImage) {
+            queryParams.append("image", `${params.image}|${params.lastFrameImage}`)
+        } else if (supportsReferenceImage && params.image) {
+            queryParams.append("image", params.image)
         }
 
         if (params.duration !== undefined && params.duration > 0) {

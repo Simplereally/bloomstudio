@@ -26,7 +26,7 @@ export const KnownImageModelSchema = z.enum([
 export const ImageModelSchema = z.union([KnownImageModelSchema, z.string()]);
 
 // Video models
-export const VideoModelSchema = z.enum(["veo", "seedance", "seedance-pro", "wan", "grok-video"]);
+export const VideoModelSchema = z.enum(["veo", "seedance", "seedance-pro", "wan", "ltx-2", "grok-video"]);
 
 // Combined model schema
 export const GenerationModelSchema = z.union([ImageModelSchema, VideoModelSchema]);
@@ -60,8 +60,8 @@ export const VideoGenerationParamsSchema = ImageGenerationParamsSchema.extend({
   model: VideoModelSchema,
   duration: z.number().int().min(1).max(10).optional(),
   aspectRatio: VideoAspectRatioSchema.optional(),
-  audio: z.boolean().optional().default(false), // veo only
-  lastFrameImage: z.string().optional(), // Last frame image URL for interpolation (veo only)
+  audio: z.boolean().optional().default(false), // Supported by select video models
+  lastFrameImage: z.string().optional(), // Last frame image URL for interpolation-capable video models
 });
 
 // Combined parameter schema for generated results

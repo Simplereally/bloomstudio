@@ -364,6 +364,7 @@ export const IMAGE_MODEL_PRICING: Record<string, ModelPricingDefinition> = {
             perImage: 0.001, // completionImageTokens from API (~free tier)
         },
     },
+
 } as const;
 
 // ============================================================================
@@ -431,6 +432,21 @@ export const VIDEO_MODEL_PRICING: Record<string, ModelPricingDefinition> = {
         isAlpha: true,
         videoPricing: {
             perSecond: 0.025,
+        },
+    },
+
+    /**
+     * LTX-2 - Fast text-to-video generation with an upscaler
+     * ~40 videos per pollen at the default 5s duration
+     */
+    "ltx-2": {
+        modelId: "ltx-2",
+        type: "video",
+        approximatePerPollen: 40,
+        supportsReferenceImage: false,
+        isAlpha: true,
+        videoPricing: {
+            perSecond: 0.005,
         },
     },
 

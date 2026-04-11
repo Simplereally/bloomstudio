@@ -34,6 +34,21 @@ describe("buildPollinationsUrl", () => {
         expect(parsed.searchParams.get("image")).toBe("https://example.com/first.jpg")
         expect(parsed.searchParams.get("image_urls")).toBeNull()
     })
+
+    it("does not encode reference images for text-only video models like ltx-2", () => {
+        const url = buildPollinationsUrl({
+            prompt: "test prompt",
+            model: "ltx-2",
+            image: "https://example.com/first.jpg",
+            lastFrameImage: "https://example.com/second.jpg",
+            duration: 5,
+            aspectRatio: "16:9",
+        })
+
+        const parsed = new URL(url)
+
+        expect(parsed.searchParams.get("image")).toBeNull()
+    })
 })
 
 // ============================================================

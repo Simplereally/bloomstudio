@@ -6,7 +6,6 @@ import { Toaster } from "@/components/ui/sonner"
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import type { Metadata, Viewport } from "next"
-import { headers } from "next/headers"
 import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google"
 import type React from "react"
 import { JsonLd } from "@/components/seo/json-ld"
@@ -122,14 +121,11 @@ export const metadata: Metadata = {
  * @param props - Component props
  * @param props.children - The child components to render within the layout
  */
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const requestHeaders = await headers()
-  const usePublicMaintenanceShell = requestHeaders.get("x-bloom-public-shell") === "maintenance"
-
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${geist.variable} ${geistMono.variable} ${bricolage.variable} font-sans antialiased`}>
@@ -153,28 +149,18 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {usePublicMaintenanceShell ? (
-            <>
-              {/* Temporary maintenance shell for the landing page.
-                  Keep this path out of the Clerk/Convex app shell so `/`
-                  can SSR without auth/profile/provider code touching Convex. */}
-              {children}
-              <SpeedInsights />
-            </>
-          ) : (
-            <ClerkThemeProvider>
-              <ConvexClientProvider>
-                <QueryProvider>
-                  <PollenAuthProvider>
-                    <Header />
-                    {children}
-                    <Toaster position="bottom-right" richColors closeButton />
-                    <SpeedInsights />
-                  </PollenAuthProvider>
-                </QueryProvider>
-              </ConvexClientProvider>
-            </ClerkThemeProvider>
-          )}
+          <ClerkThemeProvider>
+            <ConvexClientProvider>
+              <QueryProvider>
+                <PollenAuthProvider>
+                  <Header />
+                  {children}
+                  <Toaster position="bottom-right" richColors closeButton />
+                  <SpeedInsights />
+                </PollenAuthProvider>
+              </QueryProvider>
+            </ConvexClientProvider>
+          </ClerkThemeProvider>
         </ThemeProvider>
         <Analytics />
       </body>

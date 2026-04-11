@@ -86,6 +86,14 @@ describe("pollinations-pricing.schema", () => {
       expect(cost).toBe(0.15 * 5);
     });
 
+    it("should calculate cost for ltx-2 at $0.005/s", () => {
+      const cost5s = estimateVideoCost("ltx-2", 5);
+      expect(cost5s).toBe(0.005 * 5);
+
+      const cost10s = estimateVideoCost("ltx-2", 10);
+      expect(cost10s).toBe(0.005 * 10);
+    });
+
     it("should calculate cost for grok-video at $0.0025/s", () => {
       // grok-video is 0.0025 per second
       const cost5s = estimateVideoCost("grok-video", 5);
@@ -141,6 +149,7 @@ describe("pollinations-pricing.schema", () => {
     it("should return false for models that do not support reference image", () => {
       expect(modelSupportsReferenceImage("flux")).toBe(false);
       expect(modelSupportsReferenceImage("flux-2-dev")).toBe(false);
+      expect(modelSupportsReferenceImage("ltx-2")).toBe(false);
     });
 
     it("should return false for unknown models", () => {
@@ -151,6 +160,7 @@ describe("pollinations-pricing.schema", () => {
   describe("isModelAlpha", () => {
     it("should return true for alpha models", () => {
       expect(isModelAlpha("veo")).toBe(true);
+      expect(isModelAlpha("ltx-2")).toBe(true);
       expect(isModelAlpha("grok-video")).toBe(true);
     });
 

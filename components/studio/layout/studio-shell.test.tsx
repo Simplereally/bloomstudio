@@ -450,6 +450,19 @@ describe("StudioShell", () => {
         vi.clearAllMocks()
         mockActiveGenerations = []
         mockGalleryLoadMore.mockClear()
+        Object.assign(mockGenerationSettings, {
+            model: "flux",
+            aspectRatio: "1:1",
+            width: 1024,
+            height: 1024,
+            seed: -1,
+            referenceImage: undefined,
+            isVideoModel: false,
+            videoSettings: { duration: 5, audio: false },
+            videoReferenceImages: [],
+            resolutionTier: "hd",
+            constraints: undefined,
+        })
     })
 
     it("renders all main components", () => {
@@ -571,6 +584,30 @@ describe("StudioShell", () => {
         // Wait for the async operations
         await waitFor(() => {
             expect(mockPromptManager.addToPromptHistory).toHaveBeenCalledWith("Test prompt")
+        })
+    })
+
+    it("omits video reference images when the selected video model does not support them", async () => {
+        Object.assign(mockGenerationSettings, {
+            model: "ltx-2",
+            aspectRatio: "16:9",
+            isVideoModel: true,
+            videoReferenceImages: [
+                "https://example.com/first.jpg",
+                "https://example.com/second.jpg",
+            ],
+        })
+
+        render(<StudioShell {...defaultProps} />)
+
+        fireEvent.click(screen.getByTestId("generate-button"))
+
+        await waitFor(() => {
+            expect(mockGenerate).toHaveBeenCalledWith(expect.objectContaining({
+                model: "ltx-2",
+                image: undefined,
+                lastFrameImage: undefined,
+            }))
         })
     })
 

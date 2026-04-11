@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, act, fireEvent } from "@testing-library/react";
 import PollinationsCallbackPage from "./page";
 
 // Mock next/navigation
@@ -33,19 +33,14 @@ vi.mock("@/lib/pollen-auth", () => ({
   getCallbackUrl: vi.fn(() => "https://example.com/auth/pollinations/callback"),
 }));
 
-// Mock Convex
-const mockSetApiKey = vi.fn().mockResolvedValue({ success: true });
+// Mock server action
+const mockSavePollinationsApiKey = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({ status: "success" }),
+);
 
-vi.mock("convex/react", () => ({
-  useMutation: () => mockSetApiKey,
-}));
-
-vi.mock("@/convex/_generated/api", () => ({
-  api: {
-    users: {
-      setPollinationsApiKey: "setPollinationsApiKey",
-    },
-  },
+vi.mock("./actions", () => ({
+  savePollinationsApiKey: (apiKey: string | null) =>
+    mockSavePollinationsApiKey(apiKey),
 }));
 
 // Mock sonner
@@ -114,14 +109,33 @@ describe("PollinationsCallbackPage", () => {
   }
 
   /**
-   * Helper to advance past processing and wait for success state.
+   * Helper to advance past processing and wait for the user-confirmation state.
    */
-  async function advanceToSuccessState() {
+  async function advanceToReadyState() {
     await advancePastProcessingDelay();
     // Allow React to process the state update
     await act(async () => {
       vi.advanceTimersByTime(0);
     });
+  }
+
+  /**
+   * Helper to submit the server-action form and wait for success state.
+   */
+  async function submitConnection() {
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: /Finish Connection/i }),
+      );
+    });
+  }
+
+  /**
+   * Helper to advance past processing and submit the connection.
+   */
+  async function advanceToSuccessState() {
+    await advanceToReadyState();
+    await submitConnection();
   }
 
   describe("returnTo validation (isSafeReturnTo)", () => {
@@ -278,6 +292,7 @@ describe("PollinationsCallbackPage", () => {
         "",
         "/auth/pollinations/callback?returnTo=/dashboard",
       );
+      expect(mockSavePollinationsApiKey).toHaveBeenCalledWith("sk_test123");
     });
 
     it("should work correctly when there is no query string", async () => {
@@ -293,6 +308,36 @@ describe("PollinationsCallbackPage", () => {
         "",
         "/auth/pollinations/callback",
       );
+    });
+
+    it("should clear hash immediately during callback processing delay", () => {
+      window.location.hash = "#api_key=sk_test123";
+      window.location.search = "?returnTo=/studio";
+
+      render(<PollinationsCallbackPage />);
+
+      expect(window.history.replaceState).toHaveBeenCalledWith(
+        null,
+        "",
+        "/auth/pollinations/callback?returnTo=/studio",
+      );
+      expect(mockSavePollinationsApiKey).not.toHaveBeenCalled();
+    });
+
+    it("should clear hash before invalid-key callback bailout", async () => {
+      window.location.hash = "#api_key=invalid_key";
+
+      render(<PollinationsCallbackPage />);
+
+      await advancePastProcessingDelay();
+
+      expect(window.history.replaceState).toHaveBeenCalledWith(
+        null,
+        "",
+        "/auth/pollinations/callback",
+      );
+      expect(mockSavePollinationsApiKey).not.toHaveBeenCalled();
+      expect(screen.getByText(/Invalid API Key/i)).toBeInTheDocument();
     });
   });
 

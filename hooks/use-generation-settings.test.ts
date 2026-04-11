@@ -207,6 +207,33 @@ describe("useGenerationSettings", () => {
         expect(result.current.videoReferenceImages).toEqual(["https://example.com/first.jpg"])
     })
 
+    it("clears persisted video reference frames for ltx-2", () => {
+        window.localStorage.setItem("ps:gen:model", JSON.stringify("ltx-2"))
+        window.localStorage.setItem(
+            "ps:gen:videoReferenceFrames",
+            JSON.stringify(["https://example.com/first.jpg"])
+        )
+
+        const { result } = renderHook(() => useGenerationSettings())
+
+        expect(result.current.model).toBe("ltx-2")
+        expect(result.current.videoReferenceImages).toEqual([])
+    })
+
+    it("prevents video reference frame updates for ltx-2", () => {
+        const { result } = renderHook(() => useGenerationSettings())
+
+        act(() => {
+            result.current.handleModelChange("ltx-2")
+        })
+
+        act(() => {
+            result.current.setVideoReferenceImages(["https://example.com/first.jpg"])
+        })
+
+        expect(result.current.videoReferenceImages).toEqual([])
+    })
+
     it("provides aspectRatios based on model", () => {
         const { result } = renderHook(() => useGenerationSettings())
 

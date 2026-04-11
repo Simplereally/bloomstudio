@@ -22,6 +22,7 @@ import {
     internalQuery,
     mutation,
     query,
+    type MutationCtx,
 } from "./_generated/server"
 import {
     buildRecordBatchItemResultTransition,
@@ -67,6 +68,41 @@ type BatchJobSummary = {
     createdAt: number
     updatedAt: number
     lastErrorCode?: number
+}
+
+/**
+ * Find an existing active batch for a user. This makes startBatchJob idempotent
+ * across double-clicks, hotkey repeats, stale tabs, and direct mutation calls.
+ */
+async function getExistingActiveBatchJob(
+    ctx: MutationCtx,
+    ownerId: string
+): Promise<Doc<"batchJobs"> | null> {
+    const [pending, processing, paused] = await Promise.all([
+        ctx.db
+            .query("batchJobs")
+            .withIndex("by_owner_status", (q) =>
+                q.eq("ownerId", ownerId).eq("status", "pending")
+            )
+            .order("desc")
+            .take(1),
+        ctx.db
+            .query("batchJobs")
+            .withIndex("by_owner_status", (q) =>
+                q.eq("ownerId", ownerId).eq("status", "processing")
+            )
+            .order("desc")
+            .take(1),
+        ctx.db
+            .query("batchJobs")
+            .withIndex("by_owner_status", (q) =>
+                q.eq("ownerId", ownerId).eq("status", "paused")
+            )
+            .order("desc")
+            .take(1),
+    ])
+
+    return [...pending, ...processing, ...paused].sort((a, b) => b.createdAt - a.createdAt)[0] ?? null
 }
 
 /**
@@ -149,6 +185,11 @@ export const startBatchJob = mutation({
         // Validate batch size
         if (args.count < MIN_BATCH_SIZE || args.count > MAX_BATCH_SIZE) {
             throw new Error(`Batch size must be between ${MIN_BATCH_SIZE} and ${MAX_BATCH_SIZE}`)
+        }
+
+        const existingActiveBatch = await getExistingActiveBatchJob(ctx, identity.subject)
+        if (existingActiveBatch) {
+            return existingActiveBatch._id
         }
 
         const now = Date.now()

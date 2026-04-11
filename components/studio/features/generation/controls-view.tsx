@@ -357,7 +357,7 @@ export const ControlsView = React.memo(function ControlsView({
       </CollapsibleSection>
 
       {/* Video Frames (video models only) */}
-      {isVideoModel && (supportsInterpolation
+      {isVideoModel && maxReferenceFrames > 0 && (supportsInterpolation
         ? videoInterpolationImages && onVideoInterpolationImagesChange
         : videoReferenceImages && onVideoReferenceImagesChange
       ) && (

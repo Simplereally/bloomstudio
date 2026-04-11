@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import {
     ALL_MODEL_IDS,
     ACTIVE_IMAGE_MODEL_IDS,
+    ACTIVE_VIDEO_MODEL_IDS,
     IMAGE_MODEL_IDS,
     LEGACY_MODEL_IDS,
     MODEL_REGISTRY,
@@ -38,6 +39,7 @@ describe("Model Registry", () => {
                 "imagen-4",
                 "grok-imagine",
                 "flux-2-dev",
+                "dirtberry",
             ]
 
             for (const modelId of expectedImageModels) {
@@ -47,7 +49,7 @@ describe("Model Registry", () => {
         })
 
         it("should contain all expected video models", () => {
-            const expectedVideoModels = ["seedance-pro", "seedance", "veo", "wan", "grok-video"]
+            const expectedVideoModels = ["seedance-pro", "seedance", "veo", "wan", "ltx-2", "grok-video"]
 
             for (const modelId of expectedVideoModels) {
                 expect(MODEL_REGISTRY[modelId]).toBeDefined()
@@ -70,6 +72,7 @@ describe("Model Registry", () => {
             expect(MODEL_REGISTRY["seedance"].displayName).toBe("Seedance")
             expect(MODEL_REGISTRY["veo"].displayName).toBe("Veo 3.1")
             expect(MODEL_REGISTRY["wan"].displayName).toBe("Wan 2.6")
+            expect(MODEL_REGISTRY["ltx-2"].displayName).toBe("LTX-2")
             expect(MODEL_REGISTRY["klein"].displayName).toBe("FLUX.2 Klein 4B")
             expect(MODEL_REGISTRY["klein-large"].displayName).toBe("FLUX.2 Klein 9B")
             expect(MODEL_REGISTRY["imagen-4"].displayName).toBe("Imagen 4")
@@ -199,15 +202,17 @@ describe("Model Registry", () => {
             expect(IMAGE_MODEL_IDS).toContain("imagen-4")
             expect(IMAGE_MODEL_IDS).toContain("grok-imagine")
             expect(IMAGE_MODEL_IDS).toContain("dirtberry")
+            expect(IMAGE_MODEL_IDS).not.toContain("dirtberry-pro")
             expect(IMAGE_MODEL_IDS).toContain("flux-2-dev")
             expect(IMAGE_MODEL_IDS).not.toContain("veo")
         })
 
         it("should have correct video model IDs", () => {
-            expect(VIDEO_MODEL_IDS.length).toBe(5)
+            expect(VIDEO_MODEL_IDS.length).toBe(6)
             expect(VIDEO_MODEL_IDS).toContain("veo")
             expect(VIDEO_MODEL_IDS).toContain("seedance")
             expect(VIDEO_MODEL_IDS).toContain("wan")
+            expect(VIDEO_MODEL_IDS).toContain("ltx-2")
             expect(VIDEO_MODEL_IDS).toContain("grok-video")
             expect(VIDEO_MODEL_IDS).not.toContain("zimage")
         })
@@ -216,6 +221,10 @@ describe("Model Registry", () => {
     describe("Active / Legacy / Unrestricted Model Lists", () => {
         it("should include flux-2-dev in ACTIVE_IMAGE_MODEL_IDS (not legacy)", () => {
             expect(ACTIVE_IMAGE_MODEL_IDS).toContain("flux-2-dev")
+        })
+
+        it("should include ltx-2 in ACTIVE_VIDEO_MODEL_IDS (not legacy)", () => {
+            expect(ACTIVE_VIDEO_MODEL_IDS).toContain("ltx-2")
         })
 
         it("should NOT include flux-2-dev in LEGACY_MODEL_IDS", () => {
@@ -891,10 +900,46 @@ describe("Video Model Properties", () => {
         })
     })
 
+    describe("LTX-2", () => {
+        it("should have duration constraints 1-10s", () => {
+            const model = getModel("ltx-2")!
+            expect(model.durationConstraints?.min).toBe(1)
+            expect(model.durationConstraints?.max).toBe(10)
+            expect(model.durationConstraints?.defaultDuration).toBe(5)
+        })
+
+        it("should not support audio or reference images", () => {
+            const model = getModel("ltx-2")!
+            expect(model.supportsAudio).toBeUndefined()
+            expect(model.supportsReferenceImage).toBe(false)
+            expect(model.supportsInterpolation).toBeUndefined()
+        })
+
+        it("should have 1MP fixed video constraints", () => {
+            const model = getModel("ltx-2")!
+            expect(model.constraints.maxPixels).toBe(1_048_576)
+            expect(model.constraints.minDimension).toBe(256)
+            expect(model.constraints.maxDimension).toBe(1024)
+            expect(model.constraints.step).toBe(32)
+            expect(model.constraints.defaultDimensions).toEqual({ width: 1024, height: 576 })
+            expect(model.constraints.dimensionsEnabled).toBe(false)
+            expect(model.constraints.supportedTiers).toEqual(["sd"])
+        })
+
+        it("should have per-second pricing at $0.005/s", () => {
+            const model = getModel("ltx-2")!
+            expect(model.modelPricing.type).toBe("video")
+            expect(model.modelPricing.videoPricing?.perSecond).toBe(0.005)
+            expect(model.modelPricing.supportsReferenceImage).toBe(false)
+            expect(model.modelPricing.isAlpha).toBe(true)
+        })
+    })
+
     describe("Video aspect ratios", () => {
         it("should only support 16:9 and 9:16 for video models", () => {
             const veoRatios = getModelAspectRatios("veo")!
             const seedanceRatios = getModelAspectRatios("seedance")!
+            const ltx2Ratios = getModelAspectRatios("ltx-2")!
             const grokVideoRatios = getModelAspectRatios("grok-video")!
 
             expect(veoRatios.length).toBe(2)
@@ -902,6 +947,9 @@ describe("Video Model Properties", () => {
 
             expect(seedanceRatios.length).toBe(2)
             expect(seedanceRatios.map(r => r.value)).toEqual(["16:9", "9:16"])
+
+            expect(ltx2Ratios.length).toBe(2)
+            expect(ltx2Ratios.map(r => r.value)).toEqual(["16:9", "9:16"])
 
             expect(grokVideoRatios.length).toBe(2)
             expect(grokVideoRatios.map(r => r.value)).toEqual(["16:9", "9:16"])

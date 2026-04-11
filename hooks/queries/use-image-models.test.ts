@@ -87,6 +87,7 @@ describe("useImageModels", () => {
         expect(result.current.models).toEqual(expectedVideoModels)
         expect(result.current.models.every(m => m.type === "video")).toBe(true)
         expect(result.current.models.every(m => !m.isLegacy)).toBe(true)
+        expect(result.current.models.map(m => m.id)).toContain("ltx-2")
         
         // Verify alphabetical ordering
         const displayNames = result.current.models.map(m => m.displayName)

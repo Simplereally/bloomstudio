@@ -199,7 +199,9 @@ export function useGenerationSettings(): UseGenerationSettingsReturn {
     const isVideoModel = modelDef?.type === "video"
     const maxVideoReferenceImages = React.useMemo(() => {
         if (!modelDef) return undefined
-        return modelDef.supportsInterpolation ? 2 : modelDef.referenceFrameCount
+        if (modelDef.type !== "video") return undefined
+        if (!modelDef.supportsReferenceImage) return 0
+        return modelDef.supportsInterpolation ? 2 : (modelDef.referenceFrameCount ?? 1)
     }, [modelDef])
     const normalizedVideoReferenceImages = React.useMemo(() => {
         if (maxVideoReferenceImages === undefined) return videoReferenceImages
