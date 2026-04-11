@@ -297,6 +297,7 @@ export const cancelAllActiveGenerations = mutation({
  * backoff while still cleaning up genuinely orphaned records.
  */
 const STUCK_GENERATION_THRESHOLD_MS = 15 * 60 * 1000 // 15 minutes
+const STUCK_GENERATION_CLEANUP_BATCH_SIZE = 100
 
 /**
  * Clean up stuck generations — marks any pending/processing record older than
@@ -310,22 +311,31 @@ export const cleanupStuckGenerations = internalMutation({
         const cutoff = Date.now() - STUCK_GENERATION_THRESHOLD_MS
         const logger = "[StuckCleanup]"
 
-        // Query both stuck statuses using the by_status index.
-        // We filter by updatedAt < cutoff after retrieval (the index doesn't
-        // cover updatedAt, but the set of active records should be small).
-        const [pending, processing] = await Promise.all([
+        // Query by dispatch status + updatedAt so the cron only reads stale
+        // worker-plane rows instead of scanning every active generation.
+        const [pendingDispatch, dispatched, processingDispatch] = await Promise.all([
             ctx.db
                 .query("pendingGenerations")
-                .withIndex("by_status", (q) => q.eq("status", "pending"))
-                .collect(),
+                .withIndex("by_dispatch_status", (q) =>
+                    q.eq("dispatchStatus", "pending").lt("updatedAt", cutoff)
+                )
+                .take(STUCK_GENERATION_CLEANUP_BATCH_SIZE),
             ctx.db
                 .query("pendingGenerations")
-                .withIndex("by_status", (q) => q.eq("status", "processing"))
-                .collect(),
+                .withIndex("by_dispatch_status", (q) =>
+                    q.eq("dispatchStatus", "dispatched").lt("updatedAt", cutoff)
+                )
+                .take(STUCK_GENERATION_CLEANUP_BATCH_SIZE),
+            ctx.db
+                .query("pendingGenerations")
+                .withIndex("by_dispatch_status", (q) =>
+                    q.eq("dispatchStatus", "processing").lt("updatedAt", cutoff)
+                )
+                .take(STUCK_GENERATION_CLEANUP_BATCH_SIZE),
         ])
 
-        const stuck = [...pending, ...processing].filter(
-            (g) => g.updatedAt < cutoff
+        const stuck = [...pendingDispatch, ...dispatched, ...processingDispatch].filter(
+            (g) => g.status === "pending" || g.status === "processing"
         )
 
         if (stuck.length === 0) {
