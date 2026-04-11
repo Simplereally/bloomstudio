@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ACTIVE_MODEL_COUNT } from "@/lib/config/models";
 import { UpgradeModal } from "./upgrade-modal";
 
 // Mock dependencies
@@ -57,7 +58,7 @@ describe("UpgradeModal", () => {
 		expect(
 			screen.getByText("generations / day"),
 		).toBeInTheDocument();
-		expect(screen.getByText("10")).toBeInTheDocument();
+		expect(screen.getByText(String(ACTIVE_MODEL_COUNT))).toBeInTheDocument();
 		expect(screen.getByText("AI models included")).toBeInTheDocument();
 		expect(screen.getByText("Daily")).toBeInTheDocument();
 	});

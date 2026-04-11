@@ -22,7 +22,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, CheckCircle, XCircle, ArrowRight } from "lucide-react";
-import { useMutation } from "convex/react";
+import { useConvexAuth, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -111,6 +111,7 @@ export default function PollinationsCallbackPage() {
   const searchParams = useSearchParams();
   const [state, setState] = useState<CallbackState>("processing");
   const [redirectCountdown, setRedirectCountdown] = useState(3);
+  const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth();
   const setApiKey = useMutation(api.users.setPollinationsApiKey);
 
   /**
@@ -170,22 +171,25 @@ export default function PollinationsCallbackPage() {
     }
   }, [extractKeyFromHash, setApiKey]);
 
-  // Process the callback on mount
-  // NOTE: The 100ms delay is a defensive measure for browser timing quirks.
-  // Some browsers may not immediately populate `window.location.hash` in the
-  // same event loop tick after a redirect from an external OAuth provider.
-  // This ensures the hash fragment is parsed correctly after the page loads.
-  //
-  // Trade-off: If the hash is legitimately missing (e.g., user cancelled auth),
-  // there's a 100ms delay before showing the "Authorization Cancelled" error.
-  // Testing has shown this delay is necessary for reliable OAuth flows in Safari
-  // and some mobile browsers.
+  // Process the callback once Convex auth is ready.
+  // We must wait for isAuthLoading to be false before calling the mutation,
+  // because after the external OAuth redirect (full page reload), the Clerk
+  // auth token needs time to re-initialize and reach the Convex client.
+  // The 100ms delay handles browser quirks where window.location.hash
+  // isn't populated in the same tick after a redirect.
   useEffect(() => {
+    if (isAuthLoading) return;
+
     const timer = setTimeout(() => {
+      if (!isAuthenticated) {
+        setState("error_save_failed");
+        return;
+      }
+
       void processCallback();
     }, 100);
     return () => clearTimeout(timer);
-  }, [processCallback]);
+  }, [isAuthLoading, isAuthenticated, processCallback]);
 
   // Redirect countdown for success state
   // Note: We must NOT call router.push inside setRedirectCountdown, as this would

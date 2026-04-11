@@ -15,7 +15,7 @@ import {
 
 describe("MODEL_SEO_SLUGS registry", () => {
     it("should contain only active (non-legacy) models", () => {
-        // Current active set: 8 image + 1 video = 9
+        // Current active set: 8 image + 2 video = 10
         expect(MODEL_SEO_SLUGS.length).toBeGreaterThan(0)
     })
 
@@ -24,9 +24,9 @@ describe("MODEL_SEO_SLUGS registry", () => {
         expect(imageEntries).toHaveLength(8)
     })
 
-    it("should have 1 video model", () => {
+    it("should have 2 video models", () => {
         const videoEntries = MODEL_SEO_SLUGS.filter((e) => e.type === "video")
-        expect(videoEntries).toHaveLength(1)
+        expect(videoEntries).toHaveLength(2)
     })
 
     it("should have unique slugs", () => {
@@ -138,6 +138,7 @@ describe("getAllModelSlugs", () => {
         expect(slugs).toHaveLength(MODEL_SEO_SLUGS.length)
         expect(slugs).toContain("flux-2-dev")
         expect(slugs).toContain("flux-schnell")
+        expect(slugs).toContain("ltx-2")
     })
 
     it("should contain only unique values", () => {

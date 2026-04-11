@@ -865,6 +865,46 @@ export const MODEL_REGISTRY: Record<string, ModelDefinition> = {
   },
 
   /**
+   * ltx-2 — Lambda-backed LTX video generation.
+   *
+   * Upstream behavior (image.pollinations.ai/src/models/ltx2VideoModel.ts):
+   * - Duration defaults to 5s, max 10s
+   * - Width/height are rounded to multiples of 32
+   * - Max pixel budget is 1 MP
+   * - Text-only input path; no reference image or interpolation support in runtime
+   * - Seed is not forwarded to the backend
+   */
+  "ltx-2": {
+    id: "ltx-2",
+    displayName: "LTX-2",
+    type: "video",
+    icon: "video",
+    description: "Fast text-to-video generation with an upscaler, optimized for short 720p-class clips",
+    constraints: {
+      maxPixels: 1_048_576,
+      minPixels: 65_536,
+      minDimension: 256,
+      maxDimension: 1024,
+      step: 32,
+      defaultDimensions: { width: 1024, height: 576 },
+      dimensionsEnabled: false,
+      supportsSeed: false,
+      supportedTiers: ["sd"],
+      outputCertainty: "exact",
+      dimensionWarning: "Uses fixed 16:9 or 9:16 frames rounded to multiples of 32",
+    },
+    aspectRatios: VIDEO_ASPECT_RATIOS,
+    supportsNegativePrompt: false,
+    supportsReferenceImage: false,
+    durationConstraints: {
+      min: 1,
+      max: 10,
+      defaultDuration: 5,
+    },
+    modelPricing: VIDEO_MODEL_PRICING["ltx-2"],
+  },
+
+  /**
    * grok-video — xAI video generation via api.airforce
    *
    * Backend behavior (image.pollinations.ai/src/models/airforceModel.ts):

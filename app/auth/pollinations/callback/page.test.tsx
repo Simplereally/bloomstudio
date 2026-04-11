@@ -38,6 +38,7 @@ const mockSetApiKey = vi.fn().mockResolvedValue({ success: true });
 
 vi.mock("convex/react", () => ({
   useMutation: () => mockSetApiKey,
+  useConvexAuth: () => ({ isAuthenticated: true, isLoading: false }),
 }));
 
 vi.mock("@/convex/_generated/api", () => ({

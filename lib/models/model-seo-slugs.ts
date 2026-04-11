@@ -133,6 +133,13 @@ const SEO_METADATA: readonly ModelSlugEntry[] = [
     type: "video",
     categories: ["create", "features"],
   },
+  {
+    modelId: "ltx-2",
+    slug: "ltx-2",
+    displayName: "LTX-2",
+    type: "video",
+    categories: ["create", "features"],
+  },
 ];
 
 // ============================================================================
